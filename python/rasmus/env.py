@@ -5,11 +5,10 @@
 """
 
 import os, copy
-from socket import getfqdn
+#from socket import getfqdn
 
 
-hostname = getfqdn()
-
+#hostname = getfqdn()
 
 # paths
 datapath = "/afs/csail.mit.edu/u/r/rasmus/data/"

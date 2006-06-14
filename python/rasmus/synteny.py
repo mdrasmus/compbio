@@ -1104,7 +1104,7 @@ def generateMultiBlocks(hitdata, conf, comps, outputDir, outprefix):
     
 
 def findMultiSynteny(hitdata, conf = initConf(), outputDir = "./", 
-    outprefix = "all"):
+                     outprefix = "all"):
     """Find multigenome synteny
     
      example hit data:

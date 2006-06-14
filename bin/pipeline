@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+
+from rasmus import depend, util
+import sys, os
+
+options = [
+  ["f:", "file=", "file", "<pipeline file>",
+    {"default": ["Pipeline"],
+     "help": "Pipeline script to execute"}],
+  ["r", "reset", "reset", "",
+    {"help": "reset all jobs to incomplete"}],
+  ["u", "undo", "undo", "",
+    {"help": "undo any listed jobs"}],
+  ["t", "test", "test", "",
+    {"help": "pretend to execute each job"}],
+  ["s", "status", "status", "",
+    {"help": "show the status of each job"}],
+  ["v", "verbose", "verbose", "",
+    {"help": "turn on verbose output"}],
+  ["d", "display", "display", "",
+    {"help": "display dependencies and groups"}]
+]
+
+
+param = util.parseOptions(sys.argv, options, resthelp="<jobname> ...", quit=True)
+
+
+# global pipeline object
+pipeline = depend.Pipeline()
+
+
+# copy over common commands
+job = pipeline.add
+undo = pipeline.undo
+group = pipeline.addGroup
+groups = pipeline.addGroups
+run = pipeline.run
+set_pipeline_dir = pipeline.setStatusDir
+
+
+if "reset" in param:
+    pipeline.reset()
+
+if "test" in param:
+    pipeline.enableTesting()
+
+if "verbose" in param:
+    pipeline.setLogOutput(sys.stderr)
+
+
+# execute scripts
+for script in param["file"]:
+    try:
+        execfile(script, globals())
+    except depend.PipelineException, e:
+        print >>sys.stderr, e
+        print >>sys.stderr, "error executing script '%s'" % script
+        sys.exit(1)
+    
+
+
+pipeline.init()
+
+
+if "status" in param:
+    jobnames = pipeline.jobs.keys()
+    jobnames.sort()
+    mat = [["JOB", "STATUS", "COMMAND"]]
+    
+    for jobname in jobnames:
+        cmd = pipeline.jobs[jobname].task
+        if isinstance(cmd, str):
+            cmd = cmd.replace("\n", "")
+        else:
+            cmd = "<python>"
+        
+        mat.append([jobname, 
+                    pipeline.jobs[jobname].status,
+                    cmd])
+    
+    util.printcols(mat, spacing=3, width=80)
+
+
+if "display" in param:
+    jobnames = pipeline.jobs.keys()
+    jobnames.sort()
+    
+    out = util.IndentStream(sys.stdout)
+    
+    for jobname in jobnames:
+        print >>out, "%s: %s" % (jobname, pipeline.jobs[jobname].status)
+        
+        depends = map(lambda x: x.name, pipeline.jobs[jobname].parents)
+        if len(depends) > 0:
+            out.indent()
+            print >>out, "DEPENDS:" 
+            util.printcols(depends, spacing=1, width=78, out=out)
+            print >>out
+            out.dedent()
+        
+        subjobs = map(lambda x: x.name, pipeline.jobs[jobname].subjobs)
+        if len(subjobs) > 0:
+            out.indent()
+            print >>out, "SUBJOBS:" 
+            util.printcols(subjobs, spacing=1, width=78, out=out)
+            print >>out
+            out.dedent()
+        
+
+
+
+# execute jobs
+for jobname in param[""]:
+    try:
+        if "undo" in param:
+            undo(jobname)
+        else:
+            run(jobname)
+    except depend.PipelineException, e:
+        print >>sys.stderr, e
+        print >>sys.stderr, "error executing job '%s'" % jobname
+        sys.exit(1)
+
+
+# wait for all jobs to complete
+pipeline.process()
+
+

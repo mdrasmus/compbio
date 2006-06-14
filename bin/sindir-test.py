@@ -1,0 +1,246 @@
+#!/usr/bin/env python
+
+from rasmus import algorithms, stats, util, phylip, fasta
+from rasmus import ensembl, phyloutil, genomeutil, env
+import sys, os
+import math, StringIO, copy, random
+
+from compbio.tools import pp
+
+from rasmus import depend
+
+
+
+
+
+options = [
+ ["T:", "testdir=", "testdir", "<test directory>"],
+ ["o:", "outdir=", "outdir", "<output directory>",
+    {"help": "directory to place output", 
+     "single": True}],
+ ["f:", "ext=", "ext", "<input file extension>"],
+ ["t:", "treeext=", "treeext", "<correct tree extension>"],
+ ["n:", "num=", "num", "<max number of trees to eval>",
+    {"single": True,
+     "default": 1000000}],
+ ["i:", "start=", "start", "<starting tree>", 
+    {"single": True,
+     "default": 0}],
+ ["e:", "exec=", "exec", "<command to exec>"],     
+ ["r", "results", "results", "", {"help": "just compute results"}],
+ ["g:", "groups=", "groups", "<number of exec per group>",
+    {"default": [4]}],
+ ["s:", "stree=", "stree", "<species tree>"],
+ ["S:", "smap=", "smap", "<gene2species mapping>"],
+ ["P:", "statusdir=", "statusdir", "<status directory>"],
+ ["L", "local", "local", ""],
+ ["F", "force", "force", ""]
+]
+
+
+param = util.parseOptions(sys.argv, options, quit=True)
+
+
+LSF = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
+if depend.hasLsf() and "local" not in param:    
+    DISPATCH = LSF
+else:
+    DISPATCH = depend.DEFAULT_DISPATCH
+BACKGROUND = depend.hasLsf()
+pipeline = depend.Pipeline()
+pipeline.setLogOutput()
+
+if "statusdir" in param:
+    pipeline.setStatusDir(param["statusdir"][-1])
+else:
+    pipeline.setStatusDir("sindir-test-status")
+
+
+def main(param):
+    env.addEnvPaths("DATAPATH")
+
+    if "results" in param:
+        makeReport(param)
+    else:
+        testAll(param)
+        makeReport(param)
+
+
+def testAll(param):
+    util.tic("testing")
+    
+    files = util.listFiles(param["testdir"][-1], param["ext"][-1])
+    
+    jobs = []
+    start = int(param["start"])
+    num   = int(param["num"])
+    for infile in files[start:start+num]:
+        jobs.append(runJob(param, infile))
+    jobs = filter(lambda x: x != None, jobs)
+    
+    groups = pipeline.addGroups("testgroup", jobs, int(param["groups"][-1]), 
+                                dispatch=DISPATCH, 
+                                background=BACKGROUND)
+    alljobs = pipeline.add("testall", "echo all", groups)
+    
+    pipeline.reset()
+    pipeline.run("testall")
+    pipeline.process()
+    
+    util.toc()
+
+
+def runJob(param, infile):    
+    basefile = os.path.basename(infile.replace(param["ext"][-1], ""))
+    
+    # skip tests when output tree already exists
+    if "force" not in param and \
+       os.path.exists("%s/%s.tree" % (param["outdir"], basefile)):
+        util.log("skip '%s/%s.tree' output exists " % (param["outdir"], basefile))
+        return None
+    
+    cmd = param["exec"][-1]
+    cmd = cmd.replace("$FILE", basefile)
+    
+    jobname = pipeline.add("job_" + basefile, cmd, [])
+    
+    return jobname
+
+
+
+def makeReport(param):
+    gene2species = genomeutil.readGene2species(* map(env.findFile, 
+                                                     param["smap"]))
+    stree = algorithms.readTree(env.findFile(param["stree"][-1]))
+    
+
+    outfiles = util.listFiles(param["outdir"], ".tree")
+    
+    results = []
+    counts = util.Dict(1, 0)
+    orths = [0, 0, 0, 0]
+    
+    for outfile in outfiles:
+        basefile = os.path.basename(outfile.replace(".tree", ""))
+        correctTreefile = os.path.join(param["testdir"][-1], 
+                                       basefile + param["treeext"][-1])
+
+        tree1 = algorithms.readTree(outfile)
+        tree2 = algorithms.readTree(correctTreefile)
+        
+        tree1 = phyloutil.reconRoot(tree1, stree, gene2species)
+        tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
+        
+        hash1 = phyloutil.hashTree(tree1)
+        hash2 = phyloutil.hashTree(tree2)
+        
+        # make a species hash
+        shash1 = phyloutil.hashTree(tree1, gene2species)
+        shash2 = phyloutil.hashTree(tree2, gene2species)
+        counts[(shash1,shash2)] += 1
+        
+        if hash1 == hash2:
+            results.append([basefile, True])
+        else:
+            results.append([basefile, False])
+        
+        
+        orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
+
+    # print final results    
+    reportfile = os.path.join(param["outdir"], "results")
+    out = file(reportfile, "w")
+
+    total = len(results)
+    ncorrect = util.counteq(True, util.cget(results, 1))
+    nwrong = util.counteq(False, util.cget(results, 1))
+
+
+    print >>out, "total:      %d" % total
+    print >>out, "#correct:   %d (%f%%)" % (ncorrect, 100*ncorrect / float(total))
+    print >>out, "#incorrect: %d (%f%%)" % (nwrong, 100*nwrong / float(total))
+    print >>out
+    print >>out
+
+
+    util.printcols(results, out=out)
+    
+    # print out shash counts
+    mat = []
+    items = counts.items()
+    items.sort(key=lambda x: -x[1])
+    tot = float(sum(counts.values()))
+    for (tree1, tree2), num in items:
+        if tree1 == tree2: c = "*"
+        else: c = " "
+        mat.append([c, tree1, num, num/tot])
+        mat.append([c, tree2, "", ""])
+        mat.append(["", "", "", ""])
+    
+    util.printcols(mat, out=out)
+    
+    
+    # find ortholog sn, sp
+    [tp, fn, fp, tn] = orths
+    print >>out
+    print >>out, "ortholog detection:"
+    print >>out, "sensitivity:", tp / float(tp + fn)
+    print >>out, "specificity:", tn / float(fp + tn)
+
+
+
+def testOrthologs(tree1, tree2, stree, gene2species):
+    recon1 = phyloutil.reconcile(tree1, stree, gene2species)
+    recon2 = phyloutil.reconcile(tree2, stree, gene2species)
+    
+    orths1 = phyloutil.findAllOrthologs(tree1, stree, recon1)
+    orths2 = phyloutil.findAllOrthologs(tree2, stree, recon2)
+    
+    set1 = util.makeset(map(tuple, orths1))
+    set2 = util.makeset(map(tuple, orths2))
+    
+    ngenes = len(tree2.leaves())
+    nonorths = ngenes * (ngenes + 1) / 2 - len(set2)
+    
+    # sensitivity and specificity
+    overlap = util.intersect(set1, set2)
+    tp = len(overlap)
+    fp = len(set1) - len(overlap)
+    fn = len(set2) - len(overlap)
+    tn = nonorths - fp
+    
+    return [tp, fn, fp, tn]
+
+
+
+"sindir.py -p $PARAMS -s $STREE -S $SMAP -d $DIST -l $ALIGN -T $CORRECT_TREE -o $OUT_TREE $EXTRA &>$OUT_DEBUG"
+
+"""
+def runPhylip(param, testdir, alnfile, gene2species):
+    distext = param["distext"][-1]
+    labelext = param["labelext"][-1]
+    treeext = param["treeext"][-1]
+        
+    
+    basefile = os.path.basename(distfile.replace(distext, ""))
+
+    labelfile = distfile.replace(distext, labelext)
+    outtree = os.path.join(param["outdir"], basefile + ".tree")
+    correctTreefile = distfile.replace(distext, treeext)
+
+    debugfile = os.path.join(param["outdir"], basefile + ".debug")
+
+    cmd = "sindir.py -p %s -s %s -S %s -d %s -l %s -T %s -o %s %s &>%s" % (
+              param["param"], param["stree"], param["smap"][-1], 
+              distfile, labelfile, correctTreefile, outtree, 
+              param["extra"], debugfile)
+    
+    jobname = pipeline.add(os.path.basename(distfile), cmd, [])
+    
+    return jobname
+"""
+
+
+
+
+main(param)

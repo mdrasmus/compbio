@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd ~/projects/code && cvs commit
+

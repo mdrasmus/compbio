@@ -1,4 +1,4 @@
 #!/bin/sh
 
-cd ~/projects/code && cvs update -d
+cd ~/projects/rasmus && cvs update -d
 

@@ -80,12 +80,12 @@ def fasta2phylip(out, seqs):
     
     i = 0
     print >>out, len(seqs), len(seqs.values()[0])
-    for name in seqs.names:
+    for name in seqs.keys():
         #print >>out, "%9d %s" % (i, seqs[name])
         print >>out, "%8s  %s" % (phylipPadding(str(i), 8), seqs[name])
         i += 1
 
-    return seqs.names
+    return seqs.keys()
 
 
 

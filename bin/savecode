@@ -1,4 +1,4 @@
 #!/bin/sh
 
-cd ~/projects/code && cvs commit
+cd ~/projects/rasmus && cvs commit
 

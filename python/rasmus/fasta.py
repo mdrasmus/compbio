@@ -14,6 +14,15 @@ def firstword(key):
 
 
 class FastaDict (SeqDict):
+    """Store a FASTA file as a dictionary-like object
+       
+       FastaDict works exactly like a python dict except keys are guaranteed to
+       in the same order as they appear in the file.  If a FASTA has *.psd and
+       *.psi index files direct indexing with 'fastacmd' will be used.  This 
+       feature can be disabled with useIndex=False when reading a FASTA file.
+    """
+       
+
     def __init__(self, *args, ** keywords):
         SeqDict.__init__(self)
         

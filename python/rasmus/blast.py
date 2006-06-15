@@ -1,3 +1,5 @@
+# python imports
+import os
 
 # rasmus imports
 import env
@@ -5,8 +7,6 @@ import fasta
 import util
 
 
-# python imports
-import os
 
 try:
     import bsddb
@@ -342,9 +342,9 @@ def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
         
         if resume:
             try:
-                closure["index"] = seqs.names.index(resume)
+                closure["index"] = seqs.keys().index(resume)
                 util.log("resuming with query '%s' (%d of %d)" % (
-                    (resume, closure["index"], len(seqs.names))))
+                    (resume, closure["index"], len(seqs.keys()))))
             except ValueError:
                 raise "Could not resume from last query sequence '%s'" % resume
         
@@ -357,16 +357,16 @@ def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
                 closure["time"] += elapse
                 
                 util.log("blasted %d of %d sequences (%.1f%%), elapse %.0f m, left %.0f m" % (
-                    closure["index"], len(seqs.names), 
-                    100 * float(closure["index"]) / len(seqs.names),
+                    closure["index"], len(seqs.keys()), 
+                    100 * float(closure["index"]) / len(seqs.keys()),
                     closure["time"] / 60.0, 
-                    elapse / split * (len(seqs.names) - closure["index"]) / 60.0))
+                    elapse / split * (len(seqs.keys()) - closure["index"]) / 60.0))
                 
             util.tic()
             
             # find new subset of query sequences
             i = closure["index"]
-            names = seqs.names[i:i+split]
+            names = seqs.keys()[i:i+split]
             
             # if no more sequences then quit
             if len(names) == 0:

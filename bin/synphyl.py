@@ -104,7 +104,7 @@ defaultConfig = {
 
 
 def setDefaultConfig(config, param):   
-    env.addPaths(config["paths"])
+    env.addPaths(* config["paths"])
     
     # genome files
     # automatically find genome files
@@ -787,8 +787,8 @@ def main():
     if "showconfig" in param:
         showConfig(config)
             
-    if "paths" in param:        
-        env.addPaths(param["paths"])
+    #if "paths" in param:        
+    #    env.addPaths(* param["paths"])
     
     # stages
     if "synteny" in param:

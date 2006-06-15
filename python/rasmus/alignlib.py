@@ -593,17 +593,50 @@ def pssmSeq(pssm, seq):
 
 
 #--------------------------------------------------------------------------------
-# coordinate conversions
+# Coordinate conversions
+#
+# Coordinate systems
+# 
+#   1. local
+#       02134567
+#       ATGCTGCG
+# 
+#   2. align
+#       012222345567
+#       ATG---CTG-CG
+#
+#   3. global
+#       coordinate on chromosome on positive strand
+#
+# Notes: end is inclusive
+#
 #--------------------------------------------------------------------------------
 
-def mkAlignLookup(seq):
+def getAlignLookup(seq):
+    """
+    Returns list of indices of non-gap characters
+    
+    'ATG---CTG-CG' ==> [0,1,2,6,7,8,10,11]
+    
+    Used to go from local -> align space
+    """
+    
     lookup = []
     for i in xrange(len(seq)):
         if seq[i] == "-": continue
         lookup.append(i)
     return lookup
 
-def mkLocalLookup(seq):
+
+def getLocalLookup(seq):
+    """
+    Returns list such that 
+    
+    'ATG---CTG-CG' ==> [0,1,2,2,2,3,4,5,5,6,7]
+    
+    Used to go from align -> local space
+    """
+
     i = 0
     lookup = []
     for c in seq:
@@ -612,19 +645,26 @@ def mkLocalLookup(seq):
             i += 1
     return lookup
 
+
 def global2local(coord, start, end, strand):
+    """Returns local coordinate in a global region"""
+
     # swap if strands disagree
     if strand == 1:
         return coord - start
     else:
         return end - coord
 
+
 def local2global(coord, start, end, strand):
+    """Return global coordinate within a region from a local coordinate"""
+    
     # swap if strands disagree
     if strand == 1:
         return coord + start
     else:
         return end - coord
+
 
 def global2align(coord, start, end, strand, alignLookup):
     coord = global2local(coord, start, end, strand)
@@ -633,6 +673,7 @@ def global2align(coord, start, end, strand, alignLookup):
     if coord >= len(alignLookup): coord = len(alignLookup) - 1
     
     return alignLookup[coord]
+
 
 def align2global(coord, start, end, strand, localLookup):
     coord = localLookup[coord]

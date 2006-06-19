@@ -24,7 +24,9 @@ options = [
  ["n:", "num=", "num", "<max number of trees to eval>",
     {"single": True,
      "default": 1000000}],
- 
+ ["N:", "nproc=", "nproc", "<max number of processors to use>",
+    {"single": True,
+     "default": 1000}],
  ["i:", "start=", "start", "<starting tree>", 
     {"single": True,
      "default": 0}],

@@ -983,11 +983,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     # tree search
     lastl = top
     for i in xrange(1, conf["iters"]):
-        if isDebug(DEBUG_MED): util.tic("propose new tree")
         tree2 = proposeTree(tree)
         tree2 = proposeTree(tree2)
-        
-        if isDebug(DEBUG_MED): util.toc()
         
         # just for debug
         recon = phyloutil.reconcile(tree2, stree, gene2species)
@@ -1213,7 +1210,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
                 drawTreeLogl(tree)
         
             tree, logl = searchExhaustive(conf, distmat, labels, tree, stree, 
-                                    gene2species, params)
+                                    gene2species, params, depth=5)
         elif search == "none":
             break
         else:
@@ -1231,14 +1228,16 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         if sum(node.dist for node in tree2.nodes.values()) == 0.0:     
             setTreeDistances(conf, tree2, distmat, labels)
         logl2 = treeLogLikelihood(conf, tree2, stree, gene2species, params)
-        recon = phyloutil.reconcile(tree2, stree, gene2species)
-        events = phyloutil.labelEvents(tree2, recon)
+        
         
         trees.append(tree2)
         logls.append(logl2)
     
-        debug("\nuser given tree:")
-        drawTreeLogl(tree2, events=events)
+        if isDebug(DEBUG_LOW):
+            debug("\nuser given tree:")
+            recon = phyloutil.reconcile(tree2, stree, gene2species)
+            events = phyloutil.labelEvents(tree2, recon)
+            drawTreeLogl(tree2, events=events)
     
     util.toc()
     

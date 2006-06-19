@@ -23,6 +23,7 @@ VALID_STATUS = {
 
 
 DEFAULT_DISPATCH = "bash $SCRIPT"
+DEFAULT_BASH = "bash $SCRIPT"
 DEFAULT_LSF_DISPATCH = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
 
 
@@ -34,7 +35,15 @@ def getDefaultDispatch():
         return DEFAULT_LSF_DISPATCH
     else:
         return DEFAULT_DISPATCH
-        
+
+def getDefaultBackground():
+    platform = getPlatform()
+    
+    if platform == "lsf":
+        return True
+    else:
+        return False
+
 
 
 class PipelineException (Exception):
@@ -112,8 +121,8 @@ class Job:
 class Pipeline:
     def __init__(self, 
                  statusDir="pipeline", 
-                 background=True,
-                 dispatch=DEFAULT_DISPATCH):
+                 background=None,
+                 dispatch=None):
         
         self.statusDir = statusDir
         self.jobs = {}      # set of all jobs registered with Pipeline
@@ -123,11 +132,19 @@ class Pipeline:
         self.testing = False
         self.logOutput = None
         self.maxNumProc = 40 # maximum allowed number of processes
-        self.background = background
-        self.dispatch = dispatch
+        self.needReset = False
+        
+        if background == None:
+            self.background = getDefaultBackground()
+        else:
+            self.background = background
+        
+        if dispatch == None:
+            self.dispatch = getDefaultDispatch()
+        else:
+            self.dispatch = dispatch
 
         
-        self.needReset = False
     
     
     def init(self):

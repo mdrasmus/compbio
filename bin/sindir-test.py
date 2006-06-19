@@ -44,13 +44,10 @@ conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<input files>")
 
 
 # Pipeline setup
-LSF = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
-if depend.hasLsf() and "local" not in conf:    
-    DISPATCH = LSF
+if "local" in conf:
+    pipeline = depend.Pipeline(conf["statusdir"], False, depend.BASH_DISPATCH)
 else:
-    DISPATCH = depend.DEFAULT_DISPATCH
-BACKGROUND = depend.hasLsf()
-pipeline = depend.Pipeline(conf["statusdir"], BACKGROUND, DISPATCH)
+    pipeline = depend.Pipeline(conf["statusdir"])
 pipeline.setLogOutput()
 
 

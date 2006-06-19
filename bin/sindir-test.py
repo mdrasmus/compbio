@@ -50,6 +50,8 @@ else:
     pipeline = depend.Pipeline(conf["statusdir"])
 pipeline.setLogOutput()
 
+pipeline.dispatch
+
 
 def getBasenames(infile):
     basename = infile.replace(conf["ext"][-1], "")

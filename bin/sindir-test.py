@@ -50,7 +50,7 @@ else:
     pipeline = depend.Pipeline(conf["statusdir"])
 pipeline.setLogOutput()
 
-pipeline.dispatch
+print pipeline.dispatch
 
 
 def getBasenames(infile):

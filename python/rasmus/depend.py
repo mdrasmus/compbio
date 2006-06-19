@@ -280,8 +280,8 @@ class Pipeline:
     
     
     def addGroup(self, name, subjobnames, depends=[], 
-                 background=True,
-                 dispatch=DEFAULT_DISPATCH):
+                 background=None,
+                 dispatch=None):
         # set defaults
         if background == None:
             background = self.background
@@ -314,7 +314,7 @@ class Pipeline:
     
     
     def addGroups(self, name, subjobnames, size=1, depends=[], 
-                  background=True, dispatch=DEFAULT_DISPATCH):
+                  background=None, dispatch=None):
         # set defaults
         if background == None:
             background = self.background

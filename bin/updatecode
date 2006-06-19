@@ -3,5 +3,5 @@
 cd ~/projects/rasmus && cvs update -d
 
 chmod +x ~/projects/rasmus/bin/*
-chmod +x ~/projects/common/bin/*
+chmod +x ~/projects/compbio/bin/*
 

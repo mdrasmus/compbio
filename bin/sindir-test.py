@@ -59,7 +59,9 @@ def getBasenames(infile):
 
 def main(conf):
     env.addEnvPaths("DATAPATH")
-
+    
+    print "Pipeline is using dispatch: '%s'", pipeline.dispatch
+    
     if "results" in conf:
         makeReport(conf)
     else:

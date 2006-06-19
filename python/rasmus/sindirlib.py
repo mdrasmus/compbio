@@ -29,7 +29,7 @@ import scipy.optimize
 #-------------------------------------------------------------------------------
 # debugging variables and functions
 #-------------------------------------------------------------------------------
-DEBUG = sys.stderr
+DEBUG = sys.stdout
 
 DEBUG_LEVEL = 0
 

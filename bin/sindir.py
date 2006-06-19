@@ -112,9 +112,19 @@ options = [
 def main(argv):   
     # parse options
     conf = util.parseOptions(argv, options, quit=True)
+    
+    if conf["debug"] > 0:
+        util.globalTimer().removeStream(sys.stderr)
+        util.globalTimer().addStream(sys.stdout)
+        print "SINDIR"
+        print "configuration:"
+        util.printDict(conf, justify=lambda x: "left")
+        print
+        print
+    
     genomeutil.readOptions(conf)
     conf["specprob"] = 1.0 - conf["dupprob"]
-    
+
     
     # read input
     gene2species = conf["gene2species"]

@@ -901,7 +901,9 @@ def printwrap(text, width=80, prefix="", out=sys.stdout):
 
 def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
               num=None, compare=lambda a,b: cmp(a[0],b[0]),
-              spacing=4, out=sys.stdout):
+              spacing=4, out=sys.stdout,
+              format=defaultFormat, 
+              justify=defaultJustify):
     if num == None:
         num = len(dic)
     
@@ -909,7 +911,8 @@ def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
     items = dic.items()
     items.sort(compare)
     
-    printcols(items[:num], spacing=spacing, out=out)
+    printcols(items[:num], spacing=spacing, out=out, format=format, 
+              justify=justify)
 
 
 def printDictByKeys(dic, keyfunc=lambda x: x, valfunc=lambda x: x,

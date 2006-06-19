@@ -248,7 +248,7 @@ def mapalign(aln, keyfunc=lambda x: x, valfunc=lambda x: x):
 
             
 def subalign(aln, cols):
-    return mapalign(aln, valfunc=lambda x: "".join(util.mget(x, ind)))
+    return mapalign(aln, valfunc=lambda x: "".join(util.mget(x, cols)))
 
 
 def removeEmptyColumns(seqs):

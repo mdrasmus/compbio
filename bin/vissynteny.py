@@ -70,7 +70,6 @@ context = 1e6
 selgene = None
 selgenes = []
 
-genomes = []
 genes = {}
 lookup = {}
 comps = []
@@ -183,7 +182,7 @@ def readFasta(filename):
 def readAllSeqs():
     util.tic("read sequences")
 
-    for genome in genomes:
+    for genome in m.getGenomeOrder():
         try:
             seqfile = env.findFile("%s.fasta" % genome)
             util.tic("reading '%s'" % seqfile)

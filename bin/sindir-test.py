@@ -14,15 +14,17 @@ from rasmus import depend
 
 
 options = [
- ["T:", "testdir=", "testdir", "<test directory>"],
  ["o:", "outdir=", "outdir", "<output directory>",
     {"help": "directory to place output", 
      "single": True}],
+ ["s:", "stree=", "stree", "<species tree>"],
+ ["S:", "smap=", "smap", "<gene2species mapping>"],
  ["f:", "ext=", "ext", "<input file extension>"],
  ["t:", "treeext=", "treeext", "<correct tree extension>"],
  ["n:", "num=", "num", "<max number of trees to eval>",
     {"single": True,
      "default": 1000000}],
+ 
  ["i:", "start=", "start", "<starting tree>", 
     {"single": True,
      "default": 0}],
@@ -30,57 +32,57 @@ options = [
  ["r", "results", "results", "", {"help": "just compute results"}],
  ["g:", "groups=", "groups", "<number of exec per group>",
     {"default": [4]}],
- ["s:", "stree=", "stree", "<species tree>"],
- ["S:", "smap=", "smap", "<gene2species mapping>"],
- ["P:", "statusdir=", "statusdir", "<status directory>"],
+ ["P:", "statusdir=", "statusdir", "<status directory>",
+    {"default": "sindir-test-status",
+     "single": True}],
  ["L", "local", "local", ""],
  ["F", "force", "force", ""]
 ]
 
 
-param = util.parseOptions(sys.argv, options, quit=True)
+conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<input files>")
 
 
+# Pipeline setup
 LSF = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
-if depend.hasLsf() and "local" not in param:    
+if depend.hasLsf() and "local" not in conf:    
     DISPATCH = LSF
 else:
     DISPATCH = depend.DEFAULT_DISPATCH
 BACKGROUND = depend.hasLsf()
-pipeline = depend.Pipeline()
+pipeline = depend.Pipeline(conf["statusdir"], BACKGROUND, DISPATCH)
 pipeline.setLogOutput()
 
-if "statusdir" in param:
-    pipeline.setStatusDir(param["statusdir"][-1])
-else:
-    pipeline.setStatusDir("sindir-test-status")
+
+def getBasenames(infile):
+    basename = infile.replace(conf["ext"][-1], "")
+    return os.path.dirname(basename), os.path.basename(basename)
 
 
-def main(param):
+
+def main(conf):
     env.addEnvPaths("DATAPATH")
 
-    if "results" in param:
-        makeReport(param)
+    if "results" in conf:
+        makeReport(conf)
     else:
-        testAll(param)
-        makeReport(param)
+        testAll(conf)
+        makeReport(conf)
 
 
-def testAll(param):
+def testAll(conf):
     util.tic("testing")
     
-    files = util.listFiles(param["testdir"][-1], param["ext"][-1])
+    files = conf[""]
     
     jobs = []
-    start = int(param["start"])
-    num   = int(param["num"])
+    start = int(conf["start"])
+    num   = int(conf["num"])
     for infile in files[start:start+num]:
-        jobs.append(runJob(param, infile))
+        jobs.append(runJob(conf, infile))
     jobs = filter(lambda x: x != None, jobs)
     
-    groups = pipeline.addGroups("testgroup", jobs, int(param["groups"][-1]), 
-                                dispatch=DISPATCH, 
-                                background=BACKGROUND)
+    groups = pipeline.addGroups("testgroup", jobs, int(conf["groups"][-1]))
     alljobs = pipeline.add("testall", "echo all", groups)
     
     pipeline.reset()
@@ -90,17 +92,18 @@ def testAll(param):
     util.toc()
 
 
-def runJob(param, infile):    
-    basefile = os.path.basename(infile.replace(param["ext"][-1], ""))
+def runJob(conf, infile):
+    basedir, basefile = getBasenames(infile)
     
     # skip tests when output tree already exists
-    if "force" not in param and \
-       os.path.exists("%s/%s.tree" % (param["outdir"], basefile)):
-        util.log("skip '%s/%s.tree' output exists " % (param["outdir"], basefile))
+    if "force" not in conf and \
+       os.path.exists("%s/%s.tree" % (conf["outdir"], basefile)):
+        util.log("skip '%s/%s.tree' output exists " % (conf["outdir"], basefile))
         return None
     
-    cmd = param["exec"][-1]
+    cmd = conf["exec"][-1]
     cmd = cmd.replace("$FILE", basefile)
+    cmd = cmd.replace("$DIR", basedir)
     
     jobname = pipeline.add("job_" + basefile, cmd, [])
     
@@ -108,23 +111,31 @@ def runJob(param, infile):
 
 
 
-def makeReport(param):
+def makeReport(conf):
+    util.tic("make report")
+
     gene2species = genomeutil.readGene2species(* map(env.findFile, 
-                                                     param["smap"]))
-    stree = algorithms.readTree(env.findFile(param["stree"][-1]))
+                                                     conf["smap"]))
+    stree = algorithms.readTree(env.findFile(conf["stree"][-1]))
     
 
-    outfiles = util.listFiles(param["outdir"], ".tree")
+    outfiles = util.listFiles(conf["outdir"], ".tree")
+    infiles = conf[""]
     
     results = []
     counts = util.Dict(1, 0)
     orths = [0, 0, 0, 0]
     
-    for outfile in outfiles:
-        basefile = os.path.basename(outfile.replace(".tree", ""))
-        correctTreefile = os.path.join(param["testdir"][-1], 
-                                       basefile + param["treeext"][-1])
-
+    
+    for infile in infiles:
+        basedir, basefile = getBasenames(infile)
+        outfile = os.path.join(conf["outdir"], basefile + ".tree")
+        correctTreefile = os.path.join(basedir,
+                                       basefile + conf["treeext"][-1])
+        
+        if not os.path.exists(outfile):
+            continue
+        
         tree1 = algorithms.readTree(outfile)
         tree2 = algorithms.readTree(correctTreefile)
         
@@ -146,9 +157,10 @@ def makeReport(param):
         
         
         orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
-
+    
+    
     # print final results    
-    reportfile = os.path.join(param["outdir"], "results")
+    reportfile = os.path.join(conf["outdir"], "results")
     out = file(reportfile, "w")
 
     total = len(results)
@@ -186,6 +198,8 @@ def makeReport(param):
     print >>out, "ortholog detection:"
     print >>out, "sensitivity:", tp / float(tp + fn)
     print >>out, "specificity:", tn / float(fp + tn)
+
+    util.toc()
 
 
 
@@ -243,4 +257,4 @@ def runPhylip(param, testdir, alnfile, gene2species):
 
 
 
-main(param)
+main(conf)

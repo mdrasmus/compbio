@@ -110,7 +110,11 @@ class Job:
 
 
 class Pipeline:
-    def __init__(self, statusDir="pipeline"):
+    def __init__(self, 
+                 statusDir="pipeline", 
+                 background=True,
+                 dispatch=DEFAULT_DISPATCH):
+        
         self.statusDir = statusDir
         self.jobs = {}      # set of all jobs registered with Pipeline
         self.pending = {}   # set of all jobs that are ready to run
@@ -119,6 +123,9 @@ class Pipeline:
         self.testing = False
         self.logOutput = None
         self.maxNumProc = 40 # maximum allowed number of processes
+        self.background = background
+        self.dispatch = dispatch
+
         
         self.needReset = False
     
@@ -213,6 +220,7 @@ class Pipeline:
             if job.status in VALID_STATUS or not retry:
                 break
             else:
+                # wait for a little 
                 time.sleep(.05)
         
         if job.status not in VALID_STATUS:
@@ -235,7 +243,13 @@ class Pipeline:
             self.logOutput.write("pipeline: " + " ".join(text) + "\n")
     
     
-    def add(self, name, task, depends=[], background=True, dispatch=DEFAULT_DISPATCH):
+    def add(self, name, task, depends=[], background=None, dispatch=None):
+        # set defaults
+        if background == None:
+            background = self.background
+        if dispatch == None:
+            dispatch = self.dispatch
+    
         parents = []
         for dep in depends:
             try:
@@ -249,7 +263,14 @@ class Pipeline:
     
     
     def addGroup(self, name, subjobnames, depends=[], 
-                 background=True, dispatch=DEFAULT_DISPATCH):
+                 background=True,
+                 dispatch=DEFAULT_DISPATCH):
+        # set defaults
+        if background == None:
+            background = self.background
+        if dispatch == None:
+            dispatch = self.dispatch
+        
         parents = []
         for dep in depends:
             try:
@@ -277,6 +298,12 @@ class Pipeline:
     
     def addGroups(self, name, subjobnames, size=1, depends=[], 
                   background=True, dispatch=DEFAULT_DISPATCH):
+        # set defaults
+        if background == None:
+            background = self.background
+        if dispatch == None:
+            dispatch = self.dispatch
+        
         groups = []
         j = 1
         for i in xrange(0, len(subjobnames), size):

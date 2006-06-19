@@ -1261,14 +1261,11 @@ def cutBlocks(matching, blocks, refChrom, refStart, refEnd):
             otherChrom = block.chrom1
     
         # add other block to segments
-        #try:
         start, end, direction = \
             matching.interpolateSegment(refChrom, refStart, refEnd, otherChrom)
         if start != None:
             segments.append(Segment(otherGenome, otherChrom, start, end, direction))
-        #except:
-        #    pass
-
+    
     
     return MultiBlock(segments)
 
@@ -1315,6 +1312,7 @@ def makeChromMultiBlocks(conf, matching, refGenome, refChrom, blocks=None):
     for block in blocks:
         if block.start1 > block.end1 or \
            block.start2 > block.end2:
+            # maybe raise error
             continue
     
         if block.genome1 == refGenome and block.chrom1 == refChrom:

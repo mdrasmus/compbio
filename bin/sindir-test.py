@@ -31,14 +31,17 @@ options = [
     {"single": True,
      "default": 0}],
  ["e:", "exec=", "exec", "<command to exec>"],     
- ["r", "results", "results", "", {"help": "just compute results"}],
+ ["r", "results", "results", "", 
+    {"help": "just compute results"}],
  ["g:", "groups=", "groups", "<number of exec per group>",
     {"default": [4]}],
  ["P:", "statusdir=", "statusdir", "<status directory>",
     {"default": "sindir-test-status",
      "single": True}],
- ["L", "local", "local", ""],
- ["F", "force", "force", ""]
+ ["L", "local", "local", "",
+    {"help": "Do not distribute jobs"}],
+ ["F", "force", "force", "",
+    {"help": "Force rerun of all jobs"}]
 ]
 
 
@@ -46,6 +49,7 @@ conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<input files>")
 
 
 # Pipeline setup
+# decide whether to use default dispatch (LSF,BASH) or force BASH
 if "local" in conf:
     pipeline = depend.Pipeline(conf["statusdir"], False, depend.BASH_DISPATCH)
 else:
@@ -53,9 +57,21 @@ else:
 pipeline.setLogOutput()
 
 
-def getBasenames(infile):
+#
+# filename conventions
+#
+
+def getBasenames(conf, infile):
     basename = infile.replace(conf["ext"][-1], "")
     return os.path.dirname(basename), os.path.basename(basename)
+
+def getCorrectTree(conf, infile):
+    basedir, basefile = getBasenames(conf, infile)
+    return os.path.join(basedir, basefile + conf["treeext"][-1])
+
+def getOutputTree(conf, infile):
+    basedir, basefile = getBasenames(conf, infile)
+    return os.path.join(conf["outdir"], basefile + ".tree")
 
 
 
@@ -94,7 +110,7 @@ def testAll(conf):
 
 
 def runJob(conf, infile):
-    basedir, basefile = getBasenames(infile)
+    basedir, basefile = getBasenames(conf, infile)
     
     # skip tests when output tree already exists
     if "force" not in conf and \
@@ -110,6 +126,25 @@ def runJob(conf, infile):
     
     return jobname
 
+
+def checkOutput(conf, infile):
+    basedir, basefile = getBasenames(conf, infile)
+    outfile = getOutputTree(conf, infile)
+    correctTreefile = getCorrectTree(conf, infile)
+
+    if not os.path.exists(outfile):
+        return None, None 
+
+    tree1 = algorithms.readTree(outfile)
+    tree2 = algorithms.readTree(correctTreefile)
+
+    tree1 = phyloutil.reconRoot(tree1, stree, gene2species)
+    tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
+
+    hash1 = phyloutil.hashTree(tree1)
+    hash2 = phyloutil.hashTree(tree2)
+    
+    return tree1, tree2
 
 
 def makeReport(conf):
@@ -129,20 +164,9 @@ def makeReport(conf):
     
     
     for infile in infiles:
-        basedir, basefile = getBasenames(infile)
-        outfile = os.path.join(conf["outdir"], basefile + ".tree")
-        correctTreefile = os.path.join(basedir,
-                                       basefile + conf["treeext"][-1])
-        
-        if not os.path.exists(outfile):
-            continue
-        
-        tree1 = algorithms.readTree(outfile)
-        tree2 = algorithms.readTree(correctTreefile)
-        
-        tree1 = phyloutil.reconRoot(tree1, stree, gene2species)
-        tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
-        
+        basedir, basefile = getBasenames(conf, infile)
+        tree1, tree2 = checkOutput(conf, infile)
+                
         hash1 = phyloutil.hashTree(tree1)
         hash2 = phyloutil.hashTree(tree2)
         

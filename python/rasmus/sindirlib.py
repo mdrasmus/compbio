@@ -900,6 +900,16 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
 # Tree search
 #-------------------------------------------------------------------------------
 
+
+def numPossibleTrees(nleaves):
+    n = 1
+    
+    for i in range(3, 2*nleaves-5+1, 2):
+        n *= i
+    
+    return (2*nleaves - 3) * n
+
+
 def proposeNni(tree, node1, node2, change=0):
     """Proposes a new tree using Nearest Neighbor Interchange
        
@@ -948,10 +958,41 @@ def proposeTree(tree):
     return tree2
 
 
-def searchMCMC(conf, distmat, labels, stree, gene2species, params,
-               initTree=None):
-    # init with NJ
+def proposeTreeWeighted(tree):
+    """Nodes in tree must have logl in their data dict"""
     
+    tree2 = tree.copy()
+    
+    # find edges for NNI
+    nodes = tree2.nodes.values()
+    nodes = filter(lambda x: not x.isLeaf() and 
+                             x != tree2.root, nodes)
+    edges = [(node, node.parent) for node in nodes]
+    
+    # create weights
+    weights = []    
+    for edge in edges:
+        if "logl" in edge[0].data:
+            weights.append(edge[0].data["logl"])
+        else:
+            weights.append(0)
+    top = max(weights) + 1
+    weights = [top - x for x in weights]
+    #print weights
+    
+    # sample by weight
+    edge = edges[stats.sample(weights)]
+    
+    proposeNni(tree2, edge[0], edge[1], int(round(random.random())))
+    return tree2
+
+
+def searchMCMC(conf, distmat, labels, stree, gene2species, params,
+               initTree=None, visited=None):
+    if visited == None:
+        visited = {}
+               
+    # init with NJ    
     if initTree != None:
         tree = initTree
     else:
@@ -965,7 +1006,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     toptree = tree.copy()
     thash = phyloutil.hashTree(tree, lambda x: x)
     
-    visited = {thash: (top, tree.copy())}
+    visited[thash] = (top, tree.copy())
+    
     
     # just for debug
     recon = phyloutil.reconcile(tree, stree, gene2species)
@@ -983,8 +1025,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     # tree search
     lastl = top
     for i in xrange(1, conf["iters"]):
-        tree2 = proposeTree(tree)
-        tree2 = proposeTree(tree2)
+        tree2 = proposeTreeWeighted(tree)
+        #tree2 = proposeTree(tree2)
         
         # just for debug
         recon = phyloutil.reconcile(tree2, stree, gene2species)
@@ -1041,13 +1083,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #    print >>DEBUG, "_",
             #DEBUG.flush()
         
-    
-    debug("\n\nmost visited trees out of %d: " % len(visited))
-    visited = util.mapdict(visited, valfunc=lambda x: "%.4f" % x[0])
-    util.printDictByValues(visited, num=30, spacing=4, 
-                           compare=lambda a,b: cmp(float(b),float(a)), 
-                           out=DEBUG)
-    debug()
+
 
     return toptree, top
 
@@ -1055,7 +1091,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
 
 
 
-def searchGreedy(conf, distmat, labels, stree, gene2species, params):
+def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=None):
+    if visited == None:
+        visited = {}
+
     totalgenes = len(labels)
     ngenes = 2
     
@@ -1064,7 +1103,7 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params):
     tree.makeRoot()
     tree.addChild(tree.root, treelib.TreeNode(labels[0]))
     tree.addChild(tree.root, treelib.TreeNode(labels[1]))
-        
+    
     
     for ngenes in xrange(2, totalgenes):
         debug("adding", labels[ngenes])
@@ -1102,11 +1141,19 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params):
                 toplogl = logl
                 toptree = tree2
         tree = toptree
+
+        # only use visited hash table if all genes are present        
+        if ngenes == totalgenes:
+            visited2 = visited
+        else:
+            # otherwise use a new temp hash table
+            visited2 = {}
         
-        visited = {}
         tree, logl = searchExhaustive(conf, distmat2, labels2, 
                                       tree, stree, gene2species, params,
-                                      visited=visited)
+                                      visited=visited2)
+            
+            
         if logl >= toplogl:
             toplogl = logl
             toptree = tree
@@ -1131,6 +1178,8 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         logl = treeLogLikelihood(conf, tree, stree, 
                                     gene2species, params)
         visited[thash] = (logl, tree.copy())
+        
+        drawTreeLogl(tree)
     
     
     print " " * (depth*2), "(%d)" % len(visited)
@@ -1147,8 +1196,9 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
             
-            tree2 = phyloutil.reconRoot(tree, stree, gene2species,
-                                        rootby="duploss")
+            tree2 = tree
+            #tree2 = phyloutil.reconRoot(tree, stree, gene2species,
+            #                            rootby="duploss")
             
             thash = phyloutil.hashTree(tree2)
             if thash not in visited:
@@ -1156,7 +1206,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                 logl = treeLogLikelihood(conf, tree2, stree, 
                                          gene2species, params)
                 visited[thash] = (logl, tree2.copy())
-                    
+                
                 
                 # dig deeper
                 if depth > 1:
@@ -1170,16 +1220,10 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     
     # debug
     if topDepth and isDebug(DEBUG_LOW):
-        debug("\n\nmost visited trees out of %d: " % len(visited))
-        visited2 = util.mapdict(visited, valfunc=lambda x: "%.4f" % x[0])
-        util.printDictByValues(visited2, num=40, spacing=4, 
-                               compare=lambda a,b: cmp(float(b),float(a)), 
-                               out=DEBUG)
-        
         items = visited.items()
         i = util.argmaxfunc(lambda x: x[1], items)
         
-        thash, (tree, logl) = items[i]
+        thash, (logl, tree) = items[i]
         
         return tree, logl
     else:
@@ -1198,6 +1242,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     trees = []
     logls = []
     tree = None
+    visited = {}
     
     util.tic("SINDIR")
     
@@ -1206,37 +1251,50 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
 
         if search == "greedy":
             tree, logl = searchGreedy(conf, distmat, labels, stree, 
-                                      gene2species, params)        
+                                      gene2species, params,
+                                      visited=visited)
             
         elif search == "mcmc":
             tree, logl = searchMCMC(conf, distmat, labels, stree, 
-                                    gene2species, params, initTree=tree)
+                                    gene2species, params, initTree=tree,
+                                    visited=visited)
         elif search == "exhaustive":
             if tree == None:
                 tree = neighborjoin(distmat, labels)
                 tree = phyloutil.reconRoot(tree, stree, gene2species)
-                setTreeDistances(conf, tree, distmat, labels)
-                
-                drawTreeLogl(tree)
             
             tree, logl = searchExhaustive(conf, distmat, labels, tree, stree, 
                                           gene2species, params, 
-                                          depth=conf["depth"])
+                                          depth=conf["depth"],
+                                          visited=visited)
         elif search == "none":
             break
         else:
             raise SindirError("unknown search '%s'" % search)
+               
         
         trees.append(tree)
         logls.append(logl)
+        
+    
+        debug("\n\nmost likily trees out of %d visited (%s total): " % \
+              (len(visited), util.int2pretty(numPossibleTrees(len(labels)))))
+        visited2 = util.mapdict(visited, valfunc=lambda x: "%.4f" % x[0])
+        util.printDictByValues(visited2, num=30, spacing=4, 
+                               compare=lambda a,b: cmp(float(b),float(a)), 
+                               out=DEBUG)
+        debug()
         
     
     # eval the user given trees
     for treefile in conf["tree"]:
         tree = treelib.readTree(treefile)
         
-        if sum(node.dist for node in tree.nodes.values()) == 0.0:     
+        if sum(node.dist for node in tree.nodes.values()) == 0.0 or True:
+            debug("fitting distances")     
             setTreeDistances(conf, tree, distmat, labels)
+        else:
+            debug("use distances from file")
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
         trees.append(tree)

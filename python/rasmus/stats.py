@@ -3,8 +3,10 @@ from math import *
 import cmath
 import random
 
+
 # rasmus libs
 import util
+import algorithms
 
 
 
@@ -144,6 +146,30 @@ def factorial(x, k=1):
 def choose(n, k):
     return factorial(n, n - k) / factorial(k)
 
+
+
+def sample(weights):
+    """
+    Randomly choose an int between 0 and len(probs)-1 using
+    the weights stored in list probs.
+    """
+    
+    probs = util.oneNorm(weights)
+    
+    cdf = [0]
+    for i in range(1, len(probs)):
+        cdf.append(cdf[-1] + probs[i-1])
+    
+    pick = random.random()
+    
+    low,top = algorithms.binsearch(cdf, pick)
+    
+    assert low != None
+    
+    return low
+    
+    
+    
 
 """
 #

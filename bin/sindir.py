@@ -23,7 +23,7 @@ from rasmus import sindirlib
 from rasmus import stats
 from rasmus import util
 
-    
+
 
 # command line options
 options = [

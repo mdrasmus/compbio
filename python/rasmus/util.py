@@ -1506,7 +1506,7 @@ def plothist(array, ndivs = 20, **options):
     options.setdefault("style", "boxes")
     
     p.plot(h[0], h[1], **options)
-    return (h, p)
+    return p
 
 def plotdistrib(array, ndivs = 20, **options):
     """Plot a distribution of array"""

@@ -127,7 +127,7 @@ def runJob(conf, infile):
     return jobname
 
 
-def checkOutput(conf, infile):
+def checkOutput(conf, infile, stree, gene2species):
     basedir, basefile = getBasenames(conf, infile)
     outfile = getOutputTree(conf, infile)
     correctTreefile = getCorrectTree(conf, infile)
@@ -165,7 +165,7 @@ def makeReport(conf):
     
     for infile in infiles:
         basedir, basefile = getBasenames(conf, infile)
-        tree1, tree2 = checkOutput(conf, infile)
+        tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
                 
         hash1 = phyloutil.hashTree(tree1)
         hash2 = phyloutil.hashTree(tree2)

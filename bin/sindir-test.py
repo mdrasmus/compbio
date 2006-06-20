@@ -166,7 +166,10 @@ def makeReport(conf):
     for infile in infiles:
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
-                
+        
+        if tree1 == None:
+            continue
+        
         hash1 = phyloutil.hashTree(tree1)
         hash2 = phyloutil.hashTree(tree2)
         

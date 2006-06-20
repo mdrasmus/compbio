@@ -1120,18 +1120,21 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params):
 
 
 def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
-                     depth=2, visited=None):
+                     depth=2, visited=None, topDepth=True):
     if visited == None:
         visited = {}
     
     # find initial logl
     thash = phyloutil.hashTree(tree)
-    setTreeDistances(conf, tree, distmat, labels)
-    toplogl = treeLogLikelihood(conf, tree, stree, 
-                             gene2species, params)
-    visited[thash] = toplogl
-    toptree = tree
+    if thash not in visited:
+        setTreeDistances(conf, tree, distmat, labels)
+        logl = treeLogLikelihood(conf, tree, stree, 
+                                    gene2species, params)
+        visited[thash] = (logl, tree.copy())
     
+    
+    print " " * (depth*2), "(%d)" % len(visited)
+    sys.stdout.flush()
     
     # try all NNI
     # find edges for NNI
@@ -1144,37 +1147,43 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
             
-            # calc logl
-            if depth > 1:
-                tree, logl = searchExhaustive(conf, distmat, labels, 
-                                              tree, stree, gene2species, params,
-                                              depth=depth-1, visited=visited)
-            else:
-                thash = phyloutil.hashTree(tree)
-                if thash in visited:
-                    logl = visited[thash]
-                else:
-                    setTreeDistances(conf, tree, distmat, labels)
-                    logl = treeLogLikelihood(conf, tree, stree, 
-                                             gene2species, params)
-                    visited[thash] = logl
+            tree2 = phyloutil.reconRoot(tree, stree, gene2species,
+                                        rootby="duploss")
             
-            # save max logl
-            if logl > toplogl:
-                toplogl = logl
-                toptree = tree.copy()
-
+            thash = phyloutil.hashTree(tree2)
+            if thash not in visited:
+                setTreeDistances(conf, tree2, distmat, labels)
+                logl = treeLogLikelihood(conf, tree2, stree, 
+                                         gene2species, params)
+                visited[thash] = (logl, tree2.copy())
+                    
+                
+                # dig deeper
+                if depth > 1:
+                    searchExhaustive(conf, distmat, labels, 
+                                     tree2, stree, gene2species, params,
+                                     depth=depth-1, visited=visited,
+                                     topDepth=False)
+            
             # switch branch back
             proposeNni(tree, edge[0], edge[1], change)
     
     # debug
-    debug("\n\nmost visited trees out of %d: " % len(visited))
-    visited = util.mapdict(visited, valfunc=lambda x: "%.4f" % x)
-    util.printDictByValues(visited, num=40, spacing=4, 
-                           compare=lambda a,b: cmp(float(b),float(a)), 
-                           out=DEBUG)
-    
-    return toptree, toplogl
+    if topDepth and isDebug(DEBUG_LOW):
+        debug("\n\nmost visited trees out of %d: " % len(visited))
+        visited2 = util.mapdict(visited, valfunc=lambda x: "%.4f" % x[0])
+        util.printDictByValues(visited2, num=40, spacing=4, 
+                               compare=lambda a,b: cmp(float(b),float(a)), 
+                               out=DEBUG)
+        
+        items = visited.items()
+        i = util.argmaxfunc(lambda x: x[1], items)
+        
+        thash, (tree, logl) = items[i]
+        
+        return tree, logl
+    else:
+        return None, None
 
 
 #-------------------------------------------------------------------------------
@@ -1192,11 +1201,12 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     util.tic("SINDIR")
     
+    # do auto searches
     for search in conf["search"]:
 
         if search == "greedy":
             tree, logl = searchGreedy(conf, distmat, labels, stree, 
-                                   gene2species, params)        
+                                      gene2species, params)        
             
         elif search == "mcmc":
             tree, logl = searchMCMC(conf, distmat, labels, stree, 
@@ -1208,9 +1218,10 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
                 setTreeDistances(conf, tree, distmat, labels)
                 
                 drawTreeLogl(tree)
-        
+            
             tree, logl = searchExhaustive(conf, distmat, labels, tree, stree, 
-                                    gene2species, params, depth=5)
+                                          gene2species, params, 
+                                          depth=conf["depth"])
         elif search == "none":
             break
         else:
@@ -1222,22 +1233,20 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     # eval the user given trees
     for treefile in conf["tree"]:
-        tree2 = treelib.Tree()
-        tree2.readNewick(treefile)
+        tree = treelib.readTree(treefile)
         
-        if sum(node.dist for node in tree2.nodes.values()) == 0.0:     
-            setTreeDistances(conf, tree2, distmat, labels)
-        logl2 = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+        if sum(node.dist for node in tree.nodes.values()) == 0.0:     
+            setTreeDistances(conf, tree, distmat, labels)
+        logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
-        
-        trees.append(tree2)
-        logls.append(logl2)
+        trees.append(tree)
+        logls.append(logl)
     
         if isDebug(DEBUG_LOW):
             debug("\nuser given tree:")
-            recon = phyloutil.reconcile(tree2, stree, gene2species)
-            events = phyloutil.labelEvents(tree2, recon)
-            drawTreeLogl(tree2, events=events)
+            recon = phyloutil.reconcile(tree, stree, gene2species)
+            events = phyloutil.labelEvents(tree, recon)
+            drawTreeLogl(tree, events=events)
     
     util.toc()
     

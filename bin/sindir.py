@@ -62,6 +62,10 @@ options = [
         mcmc   - Markov Chain Monte Carlo (default)
         greedy - Phylip-like search
         none   - no search"""}],
+ ["I:", "depth=", "depth", "<NNI depth>",
+    {"default": 3,
+     "parser": int,
+     "single": True}],
  ["i:", "iters=", "iters", "<iterations>", 
     {"default": 2000, 
      "parser": int,

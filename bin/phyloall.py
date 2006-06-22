@@ -159,36 +159,25 @@ def run(conf, infile):
         if not os.path.exists(labelfile):
             labelfile = None
     
-    # save arguments for each program
-    allArgs = conf["args"]
     progs = conf["prog"].split(",")
     
-    while len(allArgs) < len(progs):
-        allArgs.append(" ")
-    
-    for i in range(len(allArgs)):
-        if len(allArgs[i].replace(" ", "")) == 0:
-            allArgs[i] = None
-    
-    conf2 = copy.copy(conf)
-    
-    for prog, args in zip(progs, allArgs):
-        conf2["args"] = args
+    for prog, args in zip(progs, conf["args2"]):
+        conf["args"] = args
     
         if prog in fasta2alignProgs:
             assert fastafile != None, "fasta required"
-            fasta2align(conf2, prog, fastafile, basename)
+            fasta2align(conf, prog, fastafile, basename)
         
         elif prog in align2treeProgs:
             assert alignfile != None, "alignment required"
-            align2tree(conf2, prog, alignfile, basename)
+            align2tree(conf, prog, alignfile, basename)
         
         elif prog in align2distProgs:
             assert alignfile != None, "alignment required"
-            align2dist(conf2, prog, alignfile, basename)
+            align2dist(conf, prog, alignfile, basename)
         
         elif prog in dist2treeProgs:
-            dist2tree(conf2, prog, distfile, labelfile, basename)
+            dist2tree(conf, prog, distfile, labelfile, basename)
             
         else:
             raise "unknown program '%s'" % prog
@@ -307,6 +296,20 @@ def align2dist(conf, prog, alignfile, basename):
 def main(conf):
     # parse conf
     files = conf[""]
+    
+    # save arguments for each program
+    allArgs = conf["args"]
+    progs = conf["prog"].split(",")
+    
+    while len(allArgs) < len(progs):
+        allArgs.append(" ")
+    
+    for i in range(len(allArgs)):
+        if len(allArgs[i].replace(" ", "")) == 0:
+            allArgs[i] = None
+    
+    conf["args2"] = allArgs
+    
     
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work

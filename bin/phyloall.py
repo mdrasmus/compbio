@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # python libs
+import copy
 import os
 import sys
 
@@ -169,25 +170,26 @@ def run(conf, infile):
         if len(allArgs[i].replace(" ", "")) == 0:
             allArgs[i] = None
     
+    conf2 = copy.copy(conf)
     
     for prog, args in zip(progs, allArgs):
-        conf["args"] = args
+        conf2["args"] = args
     
         if prog in fasta2alignProgs:
             assert fastafile != None, "fasta required"
-            fasta2align(conf, prog, fastafile, basename)
+            fasta2align(conf2, prog, fastafile, basename)
         
         elif prog in align2treeProgs:
             assert alignfile != None, "alignment required"
-            align2tree(conf, prog, alignfile, basename)
+            align2tree(conf2, prog, alignfile, basename)
         
         elif prog in align2distProgs:
             assert alignfile != None, "alignment required"
-            align2dist(conf, prog, alignfile, basename)
+            align2dist(conf2, prog, alignfile, basename)
         
         elif prog in dist2treeProgs:
-            dist2tree(conf, prog, distfile, labelfile, basename)
-        
+            dist2tree(conf2, prog, distfile, labelfile, basename)
+            
         else:
             raise "unknown program '%s'" % prog
 

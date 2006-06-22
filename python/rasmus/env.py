@@ -57,4 +57,3 @@ def addEnvPaths(varname, pathlist=datapaths):
     if newpaths != None:
         addPaths(newpaths, pathlist=pathlist)
 
-

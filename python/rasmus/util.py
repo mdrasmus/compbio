@@ -242,14 +242,20 @@ def subdict(dic, keys):
     return dic2
 
 
-def revdict(dic):
+def revdict(dic, allowdups=False):
     """Reverses a dict 'dic' such that the keys become values and the 
        values become keys.
     """
     
     dic2 = {}
-    for key, val in dic.iteritems():
-        dic2[val] = key
+    if allowdups:
+        for key, val in dic.iteritems():
+            dic2[val] = key
+    else:
+        for key, val in dic.iteritems():
+            assert key not in dic2, "duplicate value '%s' in dict" % val
+            dic2[val] = key
+    
     return dic2
 
 

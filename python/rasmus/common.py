@@ -56,7 +56,21 @@ def cd(path = os.environ["HOME"]):
 def strStream(text):
     return StringIO.StringIO(text)
 
-
+# really quick pretty printing
 pc = printcols
 pa = alignlib.printAlign
 pd = printDict
+
+
+
+# try to setup DATAPATH env
+RASMUS_COMMON_DATAPATH_LOADED = False
+if "DATAPATH" in os.environ:
+    env.addEnvPaths("DATAPATH")
+    RASMUS_COMMON_DATAPATH_LOADED = True
+    
+    print "rasmus.common: loaded data paths from DATAPATH"
+    for path in env.datapaths:
+        print path
+
+    

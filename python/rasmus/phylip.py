@@ -380,11 +380,14 @@ def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
     
 
 
-def protdist(seqs, output=None, verbose=True, force = False, args="y"):
+def protdist(seqs, output=None, verbose=True, force = False, args=None):
+    if args == None:
+        args = "y"
+
     validateSeq(seqs)
     cwd = createTempDir()
     util.tic("protdist on %d of length %d" % (len(seqs), len(seqs.values()[0])))
-
+    
     # create input
     labels = fasta2phylip(file("infile", "w"), seqs)
     
@@ -404,7 +407,10 @@ def protdist(seqs, output=None, verbose=True, force = False, args="y"):
         return labels, mat
 
 
-def dnadist(seqs, output=None, verbose=True, force = False, args="y"):
+def dnadist(seqs, output=None, verbose=True, force = False, args=None):
+    if args == None:
+        args = "y"
+    
     validateSeq(seqs)
     cwd = createTempDir()
     util.tic("dnadist on %d of length %d" % (len(seqs), len(seqs.values()[0])))

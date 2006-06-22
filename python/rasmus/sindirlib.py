@@ -730,7 +730,7 @@ def getBaserate(tree, stree, params, recon=None, gene2species=None):
     
     #util.printcols(zip(lens, means, sdevs, util.vdiv(lens, means)))
     
-    baserate = mleBaserate2(lens, means, sdevs, params["baserate"])
+    baserate = mleBaserate2(lens, means, sdevs, params["baserate"]) / 1.25
         
     return baserate
 

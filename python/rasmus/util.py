@@ -1378,6 +1378,15 @@ def deldir(path):
                 continue
             break
 
+
+def replaceExt(filename, oldext, newext):
+    if filename.endswith(oldext):
+        return filename[:-len(oldext)] + newext
+    else:
+        raise "file '%s' does not have extension '%s'" % (filename, oldext)
+
+
+
 ###############################################################################
 # sorting
 #

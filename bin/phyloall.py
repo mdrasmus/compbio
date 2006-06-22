@@ -35,8 +35,7 @@ options = [
      "default": 1,
      "single": True}],
   ["a:", "args=", "args", "<prog args>", 
-    {"default": None,
-     "single": True}],
+    {"default": []}],
   ["v", "verbose", "verbose", "",
    {"single": True}],
   
@@ -146,25 +145,44 @@ def run(conf, infile):
         distfile  = getDistFile(conf, basename)
         labelfile = getLabelFile(conf, basename)
     elif infileType == "align":
+        fastafile = None
         alignfile = infile
         distfile  = getDistFile(conf, basename)
         labelfile = getLabelFile(conf, basename)
     elif infileType == "dist":
-        distfile = infile
+        fastafile = None
+        alginfile = None
+        distfile  = infile
         labelfile = getLabelFile(conf, basename)
         
         if not os.path.exists(labelfile):
             labelfile = None
     
+    # save arguments for each program
+    allArgs = conf["args"]
+    progs = conf["prog"].split(",")
     
-    for prog in conf["prog"].split(","):
+    while len(allArgs) < len(progs):
+        allArgs.append(" ")
+    
+    for i in range(len(allArgs)):
+        if len(allArgs[i].replace(" ", "")) == 0:
+            allArgs[i] = None
+    
+    
+    for prog, args in zip(progs, allArgs):
+        conf["args"] = args
+    
         if prog in fasta2alignProgs:
+            assert fastafile != None, "fasta required"
             fasta2align(conf, prog, fastafile, basename)
         
         elif prog in align2treeProgs:
+            assert alignfile != None, "alignment required"
             align2tree(conf, prog, alignfile, basename)
         
         elif prog in align2distProgs:
+            assert alignfile != None, "alignment required"
             align2dist(conf, prog, alignfile, basename)
         
         elif prog in dist2treeProgs:
@@ -254,14 +272,17 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
 def align2dist(conf, prog, alignfile, basename):
     distfile = getDistFile(conf, basename)
     aln = fasta.readFasta(alignfile)
-    
-    print distfile
+
     
     if prog == "dnadist":
-        phylip.dnadist(aln, distfile, verbose=conf["verbose"])
+        phylip.dnadist(aln, distfile, 
+                       verbose=conf["verbose"], 
+                       args=conf["args"])
     
     elif prog == "protdist":
-        phylip.protdist(aln, distfile, verbose=conf["verbose"])
+        phylip.protdist(aln, distfile, 
+                        verbose=conf["verbose"], 
+                        args=conf["args"])
     
     elif prog == "fourfold":
         mat = alignlib.calcFourFoldDistMatrix(aln)

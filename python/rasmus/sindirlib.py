@@ -108,8 +108,9 @@ def drawTreeLogl(tree, out=DEBUG, events={}, baserate=1.0):
             labels[node.name] += " %s" % events[node]
         
     if "logl" in tree.data:
-        debug("logl: %f" % tree.data["logl"])
+        debug("logl:     %f" % tree.data["logl"])
     debug("baserate: %f" % baserate)
+    debug("treelen:  %f" % sum(x.dist for x in tree.nodes.values()))
     treelib.drawTree(tree, minlen=20, labels=labels, spacing=4, 
                         labelOffset=-3, out=out)
 
@@ -169,6 +170,37 @@ def readLabels(filename):
     
     return labels
 
+
+def writeTreeDistrib(out, lengths):
+    out = util.openStream(out, "w")
+
+    for node, lens in lengths.items():
+        if len(lens) == 0 or max(lens) == min(lens):
+            continue
+
+        out.write(str(node.name))
+
+        for length in lens:
+            out.write("\t%f" % length)
+        out.write("\n")
+
+
+def readTreeDistrib(filename):
+    infile = util.openStream(filename)
+    lengths = {}
+    
+    for line in infile:
+        tokens = line.split("\t")
+        name = tokens[0]
+        
+        if name.isdigit():
+            name = int(name)
+        
+        lengths[name] = map(float, tokens[1:])
+    
+    return lengths
+    
+    
 
 #-------------------------------------------------------------------------------
 # Branch length fitting
@@ -694,7 +726,11 @@ def getBaserate(tree, stree, params, recon=None, gene2species=None):
         walk(child, depths={tree.root: 0}, sroot=recon[tree.root], extra=False)
     
     
-    baserate = mleBaserate(lens, means, sdevs, params["baserate"])
+    #baserate = mleBaserate(lens, means, sdevs, params["baserate"])
+    
+    #util.printcols(zip(lens, means, sdevs, util.vdiv(lens, means)))
+    
+    baserate = mleBaserate2(lens, means, sdevs, params["baserate"])
         
     return baserate
 
@@ -845,9 +881,6 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     # debug info
     if isDebug(DEBUG_MED):
-        debug("treelen: ", sum(x.dist for x in tree.nodes.values()))
-        debug("baserate:", baserate, log(stats.gammaPdf(baserate, [9.8, 8.4])))
-        
         util.tic("find logl")
     
     

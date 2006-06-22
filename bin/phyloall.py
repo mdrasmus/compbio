@@ -16,6 +16,7 @@ from rasmus import env
 from rasmus import paml
 from rasmus import phylip
 from rasmus import phyml
+from rasmus import sindirlib
 from rasmus import treelib
 
 
@@ -79,7 +80,7 @@ fasta2alignProgs = ["clustalw", "muscle"]
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              "phyml_dna", "phyml_pep"]
              
-dist2treeProgs = [ "bionj" ]
+dist2treeProgs = [ "bionj", "lse" ]
 
 align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn"]
 
@@ -241,9 +242,9 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         tree = bionj.bionj(labels=labels, distmat=mat, verbose=conf["verbose"])
         
     elif prog == "lse":
-        sindirlib.setTreeDistances({"debug": False}, 
+        sindirlib.setTreeDistances({"debug": 2}, 
                                    usertree, mat, labels)
-        tree = conf["usertree"]
+        tree = usertree
     else:
         raise "unknown program '%s'" % prog
     
@@ -287,18 +288,15 @@ def main(conf):
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work
 
-        pipeline = depend.Pipeline()
-        pipeline.setStatusDir("phyloall")
+        pipeline = depend.Pipeline("phyloall")
         pipeline.setMaxNumProc(conf["nproc"])
-        dispatch = depend.getDefaultDispatch()
         
         prefix = " ".join(sys.argv[:-len(files)]) + " "
         jobs = []
         
         for i in range(0, len(files), conf["groupsize"]):
             jobs.append(pipeline.add("job%d" % i, 
-                         prefix + " ".join(files[i:i+conf["groupsize"]]),
-                         dispatch=dispatch))
+                         prefix + " ".join(files[i:i+conf["groupsize"]])))
         pipeline.add("all", "echo all jobs complete", jobs)
         
         if conf["force"]:

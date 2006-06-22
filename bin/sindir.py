@@ -74,12 +74,12 @@ options = [
     {"default": []}],     
 
  "Training options",
- ["t:", "traindir=", "traindir", "<training directory>",
+ ["t", "train", "train", "",
     {"help": """\
     Run SINDIR in training mode.  """,
     "single":True}],
- ["e:", "trainext=", "trainext", "<training tree extension>",
-    {"single":True}],
+ #["e:", "trainext=", "trainext", "<training tree extension>",
+ #   {"single":True}],
  ["z:", "trainstats=", "trainstats", "<training stats prefix>",
     {"single": True,
      "default": ""}],
@@ -134,7 +134,7 @@ def main(argv):
     gene2species = conf["gene2species"]
     stree = conf["stree"]    
     
-    if "traindir" in conf:
+    if conf["train"]:
         trainTree(conf, stree, gene2species)
     else:
         buildTree(conf, stree, gene2species)
@@ -143,7 +143,8 @@ def main(argv):
 
 
 def trainTree(conf, stree, gene2species):
-    treefiles = util.listFiles(conf["traindir"], conf["trainext"])
+    treefiles = conf[""] 
+    #util.listFiles(conf["traindir"], conf["trainext"])
 
     util.tic("reading trees")
     trees = []

@@ -72,10 +72,10 @@ class Latex:
     def graphic(self, image, width=3):
         template = r"""
         
-        \begin{center}
+        %%\begin{center}
         \includegraphics[width=%fin]{%s}
         
-        \end{center}
+        %%\end{center}
         
         """
         

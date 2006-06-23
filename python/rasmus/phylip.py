@@ -33,7 +33,7 @@ def execPhylip(cmd, args, verbose):
         assert os.system("""cat <<EOF | %s
 %s""" % (cmd, args)) == 0
     else:
-        assert os.system("""cat <<EOF | %s > /dev/null
+        assert os.system("""cat <<EOF | %s >/dev/null 2>&1
 %s""" % (cmd, args)) == 0
 
 

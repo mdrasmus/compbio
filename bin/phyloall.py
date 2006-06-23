@@ -4,6 +4,8 @@
 import copy
 import os
 import sys
+import StringIO
+
 
 # rasmsu libs
 from rasmus import alignlib
@@ -17,6 +19,7 @@ from rasmus import env
 from rasmus import paml
 from rasmus import phylip
 from rasmus import phyml
+from rasmus import puzzletree
 from rasmus import sindirlib
 from rasmus import treelib
 
@@ -82,7 +85,9 @@ align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              
 dist2treeProgs = [ "bionj", "lse" ]
 
-align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn"]
+align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
+                   "puzzledist"]
+
 
 
 # filenames
@@ -251,6 +256,9 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         tree = bionj.bionj(labels=labels, distmat=mat, verbose=conf["verbose"])
         
     elif prog == "lse":
+        if usertree == None:
+            raise "Must supply usertree with 'lse'"
+        
         sindirlib.setTreeDistances({"debug": 2}, 
                                    usertree, mat, labels)
         tree = usertree
@@ -286,6 +294,18 @@ def align2dist(conf, prog, alignfile, basename):
     elif prog == "dn":
         dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"])
         phylip.writeDistMatrix(dn[1], out=distfile)
+    
+    elif prog == "lapd":
+        if conf["args"] == None:
+            args = ""
+        else:
+            args = conf["args"]
+        
+        os.system("lapd -sd %s '%s' > '%s'" % (args, alignfile, distfile))
+    
+    elif prog == "puzzledist":
+        puzzletree.getDistMatrix(aln, args=conf["args"], output=distfile,
+                                 verbose=conf["verbose"])
     
     else:
         raise "unknown program '%s'" % prog

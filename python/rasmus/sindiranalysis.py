@@ -16,7 +16,7 @@ def showrates(lens, low=0, high=.5, step=.001):
     
     
 def showparams(g):
-    util.pc(map(util.flatten, g.params.items()))
+    pc(map(util.flatten, g.params.items()))
 
 
 def showstree(g):

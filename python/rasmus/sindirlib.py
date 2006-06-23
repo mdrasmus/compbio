@@ -429,8 +429,19 @@ def fitNormal(lens):
     
     return mu, sigma
 
+def fitNormal2(lens):
+    mu = stats.mean(lens)
+    sigma = stats.sdev(lens)
+    param, resid = stats.fitDistrib(stats.normalPdf, 
+                                    [mu, sigma],
+                                    lens,
+                                    mu - 2*sigma,
+                                    mu + 2*sigma,
+                                    sigma / min(30, len(lens)/5))
+    return param
 
-def fitParams(lengths, baserates, gene2species, fit=False):
+
+def fitParams(lengths, baserates, gene2species, fit=True):
     ntrees = len(lengths.values()[0])
     
     params = {}
@@ -452,8 +463,14 @@ def fitParams(lengths, baserates, gene2species, fit=False):
         lens = util.vdiv(lens, baserates)
         
         if fit:
-            dist = util.distrib(lens, size=.01)
-            param, resid = stats.fitCurve(dist[0], dist[1], stats.normalPdf, [0,1])
+            mu = stats.mean(lens)
+            sigma = stats.sdev(lens)            
+            param, resid = stats.fitDistrib(stats.normalPdf, 
+                                            [mu, sigma],
+                                            lens,
+                                            mu - 3*sigma,
+                                            mu + 3*sigma,
+                                            sigma / 10)
             params[node.name] = param 
         else:
             ndivs = int((max(lens) - min(lens)) / stats.mean(lens) *  40)
@@ -507,7 +524,7 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     util.tic("find branch length distributions")
     trees2, lengths = phyloutil.findBranchDistrib(trees, stree, gene2species,
                                                   False)
-    debug("Total trees matching species topology: %d out f %d" % 
+    debug("Total trees matching species topology: %d out of %d" % 
           (len(trees2), len(trees)))
     util.toc()
     
@@ -533,7 +550,7 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     
     
     util.tic("fitting params")
-    for (node, lens), totlen in zip(lengths.items(), totlens):
+    for node, lens in lengths.items():
         if len(lens) == 0 or max(lens) == min(lens):
             continue
         
@@ -544,7 +561,7 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
         #param, resid = stats.fitCurve(dist[0], dist[1], stats.normalPdf, [1,1])
         #param, resid = stats.fitCurve(dist[0], dist[1], stats.gammaDistrib, [1,1])
         
-        param = fitNormal(util.vdivs(lens, totlen))
+        param = fitNormal2(util.vdiv(lens, totlens))
         
         params[node.name] = param
         util.toc()
@@ -730,7 +747,7 @@ def getBaserate(tree, stree, params, recon=None, gene2species=None):
     
     #util.printcols(zip(lens, means, sdevs, util.vdiv(lens, means)))
     
-    baserate = mleBaserate2(lens, means, sdevs, params["baserate"]) / 1.25
+    baserate = mleBaserate2(lens, means, sdevs, params["baserate"])
         
     return baserate
 

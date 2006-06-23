@@ -208,7 +208,7 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
             i += 1
             j = 0
         
-        
+        assert i != -1
         for val in row:
             mat[i][j] = float(val)
             mat[j][i] = float(val)

@@ -26,7 +26,7 @@ def phyml(seqs, verbose=True, force = False, args=None,
         opttree = "n y"
     else:
         treefile = "BIONJ"
-        optree = "y y"
+        opttree = "y y"
     
     if args == None:
         if seqtype == "dna":

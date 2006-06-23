@@ -25,7 +25,7 @@ def phyml(seqs, verbose=True, force = False, args=None,
         treefile = "intree"
         opttree = "n y"
     else:
-        treetree = "BIONJ"
+        treefile = "BIONJ"
         optree = "y y"
     
     if args == None:

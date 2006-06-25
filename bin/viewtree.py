@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import util, algorithms, phyloutil, genomeutil, env
+from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
 
 
 options = [

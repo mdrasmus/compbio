@@ -25,6 +25,8 @@ options = [
   ["n", "names", "names", "",
     {"single": True,
      "help": "display internal node names"}],
+  ["r:", "reroot=", "reroot", "<branch to root tree>",
+    {"single": True}],
   ["d", "dump", "dump", "",
     {"single": True,
      "help": "covert to easy to parse format"}],
@@ -46,6 +48,11 @@ if "stree" in conf:
 counts = util.Dict(1, 0)
 
 
+if "reroot" in conf:
+    if conf["reroot"].isdigit():
+        conf["reroot"] = int(conf["reroot"])
+
+
 for treefile in (conf[""] + conf["tree"]):
     try:
         tree = algorithms.readTree(treefile)
@@ -58,6 +65,10 @@ for treefile in (conf[""] + conf["tree"]):
        "tree" in conf:
         tree = phyloutil.reconRoot(tree, stree, gene2species)
     
+    
+    if "reroot" in conf:
+        tree = treelib.reroot(tree, conf["reroot"])
+        
     
     if conf["hist"]:
         # only count the tree in histogram mode

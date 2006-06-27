@@ -381,6 +381,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
+    tree.data["error"] = sum(abs(scipy.matrixmultiply(A, b) - d))
+    
     if isDebug(DEBUG_MED):
         error = scipy.matrixmultiply(A, b) - d
         debug("distance error:", sum(abs(error)))
@@ -1057,7 +1059,11 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                initTree=None, visited=None):
     if visited == None:
         visited = {}
-               
+    
+    
+    errorfactor = 1.5
+    minerror = util.INF
+    
     # init with NJ    
     if initTree != None:
         tree = initTree
@@ -1065,7 +1071,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         tree = neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
         setTreeDistances(conf, tree, distmat, labels)
-    
+        minerror = min(minerror, tree.data["error"])
     
     # init likelihood score
     top = treeLogLikelihood(conf, tree, stree, gene2species, params)
@@ -1106,6 +1112,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             logl, tree2 = visited[thash]
         else:
             setTreeDistances(conf, tree2, distmat, labels)      
+            minerror = min(minerror, tree.data["error"])
             logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
             
         
@@ -1115,7 +1122,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         
         
         # best yet tree
-        if logl > top:
+        if logl > top and \
+           tree.data["error"] < minerror * errorfactor:
             if isDebug(DEBUG_LOW):
                 debug("\n=======================================")
                 debug("i:", i, "logl:", logl, "top:", top)

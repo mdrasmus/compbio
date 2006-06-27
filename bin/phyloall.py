@@ -155,6 +155,14 @@ def checkFamilySize(conf, size, filename):
     return True
 
 
+def checkFileExists(filename):
+    if not os.path.exists(filename):
+        print "skipping '%s'; file does not exist"
+        return False
+    else:
+        return True
+    
+
 def run(conf, infile):
     # determine infile type
     infileType, basename = getFileType(conf, infile)
@@ -189,17 +197,21 @@ def run(conf, infile):
     
         if prog in fasta2alignProgs:
             assert fastafile != None, "fasta required"
+            if not checkFileExists(fastafile): continue
             fasta2align(conf, prog, fastafile, basename)
         
         elif prog in align2treeProgs:
             assert alignfile != None, "alignment required"
+            if not checkFileExists(alignfile): continue
             align2tree(conf, prog, alignfile, basename)
         
         elif prog in align2distProgs:
             assert alignfile != None, "alignment required"
+            if not checkFileExists(alignfile): continue
             align2dist(conf, prog, alignfile, basename)
         
         elif prog in dist2treeProgs:
+            if not checkFileExists(distfile): continue
             dist2tree(conf, prog, distfile, labelfile, basename)
             
         else:

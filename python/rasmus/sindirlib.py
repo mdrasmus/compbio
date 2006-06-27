@@ -125,6 +125,21 @@ class SindirError (Exception):
 
 
 
+def printVisitedTrees(visited):
+    nleaves = len(visited.values()[0][0].leaves())
+    
+    debug("\n\nmost likily trees out of %d visited (%s total): " % \
+          (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
+    
+    mat = [["TREE", "LOGL", "ERROR"]] +
+          [[key, logl, tree.data["error"]] 
+           for key, (logl, tree) in visited.iteritems()]
+    mat.sort(key=lambda x: x[1])
+    
+    util.printcols(mat[:30], spacing=4, out=DEBUG)
+    debug()
+
+
 #-------------------------------------------------------------------------------
 # SINDIR input/output
 #-------------------------------------------------------------------------------
@@ -1350,14 +1365,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         trees.append(tree)
         logls.append(logl)
         
-    
-        debug("\n\nmost likily trees out of %d visited (%s total): " % \
-              (len(visited), util.int2pretty(numPossibleTrees(len(labels)))))
-        visited2 = util.mapdict(visited, valfunc=lambda x: "%.4f" % x[0])
-        util.printDictByValues(visited2, num=30, spacing=4, 
-                               compare=lambda a,b: cmp(float(b),float(a)), 
-                               out=DEBUG)
-        debug()
+        printVisitedTrees(visited)
         
     
     # eval the user given trees

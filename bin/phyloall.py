@@ -141,6 +141,19 @@ def getFileType(conf, infile):
     raise "unknown file type '%s'" % infile
 
 
+def checkFamilySize(conf, size, filename):
+    if size > conf["maxsize"]:
+        print "skipping '%s'; family size %d exceeds %d" % \
+            (filename, size, conf["maxsize"])
+        return False
+    
+    if size < 3:
+        print "skipping '%s'; family size %d is too small" % \
+            (filename, size)
+        return False
+    
+    return True
+
 
 def run(conf, infile):
     # determine infile type
@@ -198,10 +211,9 @@ def fasta2align(conf, prog, fastafile, basename):
     seqs = fasta.readFasta(fastafile)
     
     # check family size
-    if len(seqs) > conf["maxsize"]:
-        print "skipping '%s'; family size %d exceeds %d" % \
-            (fastafile, len(seqs), conf["maxsize"])
+    if not checkFamilySize(conf, len(seqs), fastafile):
         return
+
     
     if prog == "muscle":
         aln = muscle.muscle(seqs, verbose=conf["verbose"])
@@ -219,11 +231,9 @@ def align2tree(conf, prog, alignfile, basename):
     usertree = getUserTree(conf, basename)
     
     # check family size
-    if len(aln) > conf["maxsize"]:
-        print "skipping '%s'; family size %d exceeds %d" % \
-            (alignfile, len(aln), conf["maxsize"])
+    if not checkFamilySize(conf, len(aln), alignfile):
         return
-    
+
         
     if prog in ["proml", "dnaml", "protpars", "dnapars"]:
         
@@ -260,17 +270,16 @@ def align2tree(conf, prog, alignfile, basename):
     tree.writeNewick(treefile)
 
 
+
 def dist2tree(conf, prog, distfile, labelfile, basename):
     labels, mat = phylip.readDistMatrix(distfile)
     treefile = getTreeFile(conf, basename)
     usertree = getUserTree(conf, basename)
     
     # check family size
-    if len(labels) > conf["maxsize"]:
-        print "skipping '%s'; family size %d exceeds %d" % \
-            (distfile, len(labels), conf["maxsize"])
+    if not checkFamilySize(conf, len(labels), distfile):
         return
-    
+
     
     if labelfile != None:
         labels = fasta.readFasta(labelfile).keys()
@@ -291,16 +300,15 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
     tree.writeNewick(treefile)
     
 
+
 def align2dist(conf, prog, alignfile, basename):
     distfile = getDistFile(conf, basename)
     aln = fasta.readFasta(alignfile)
     
     # check family size
-    if len(aln) > conf["maxsize"]:
-        print "skipping '%s'; family size %d exceeds %d" % \
-            (alignfile, len(aln), conf["maxsize"])
+    if not checkFamilySize(conf, len(aln), alignfile):
         return
-    
+
     
     if prog == "dnadist":
         phylip.dnadist(aln, distfile, 

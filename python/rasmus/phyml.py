@@ -9,7 +9,7 @@ import util
 
 
 def phyml(seqs, verbose=True, force = False, args=None, 
-          usertree=None, seqtype="prot", saveOutput="", bootiter=1):
+          usertree=None, seqtype="prot", saveOutput="", bootiter=0):
     phylip.validateSeq(seqs)
     cwd = phylip.createTempDir()
     

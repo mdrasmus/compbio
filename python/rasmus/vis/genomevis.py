@@ -31,8 +31,6 @@ BINDINGS_HELP = """
 ==============================
 c     toggle controls
 l     toggle gene labels
-
-
 """
 
 
@@ -762,6 +760,7 @@ class SyntenyVis:
     def addRegions(self, regions, shape=None, col=None, height=None):
     
         for region in regions:
+            # set default visualizatios attributes
             if "shape" not in region.attrs:
                 if shape == None:
                     region.attrs["shape"] = "fill"
@@ -783,6 +782,13 @@ class SyntenyVis:
                     region.attrs["height"] = height
             else:
                 region.attrs["height"] = float(region.attrs["height"])
+            
+            # ensure species is specified
+            assert "species" in region.attrs
+            
+            # force stand to +1 or -1
+            if region.strand not in [1, -1]:
+                region.strand = 1
             
             chrom = self.matching.genomes[region.attrs["species"]].chroms[region.seqname]
             self.regions[chrom].append(region)

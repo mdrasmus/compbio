@@ -346,7 +346,7 @@ def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
                 util.log("resuming with query '%s' (%d of %d)" % (
                     (resume, closure["index"], len(seqs.keys()))))
             except ValueError:
-                raise "Could not resume from last query sequence '%s'" % resume
+                raise Exception("Could not resume from last query sequence '%s'" % resume)
         
         
         def processFunc():

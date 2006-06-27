@@ -405,7 +405,7 @@ class Gnuplot:
             list1 = range(len(list1))
         
         if len(list1) != len(list2):
-            raise "ERROR: arrays are not same length"
+            raise Exception("ERROR: arrays are not same length")
         return list1, list2, list3
     
     
@@ -445,7 +445,7 @@ class Gnuplot:
         print len(list1), len(list2), len(list3)
     
         if not self.enable:
-            raise "must be output must be enabled for fitting"
+            raise Exception("must be output must be enabled for fitting")
         
         list1, list2, list3 = self.prepareData(list1, list2, list3)
         
@@ -588,7 +588,7 @@ class MultiPlot:
             elif self.direction == "col":
                 ypos += 1
             else:
-                raise "unknown direction '%s'" % self.direction
+                raise Exception("unknown direction '%s'" % self.direction)
             
             if xpos >= self.ncols:
                 xpos = 0
@@ -693,7 +693,7 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
         ranchor = "start"
         coffset = 0
     else:
-        raise "xdir must be 1 or -1"
+        raise Exception("xdir must be 1 or -1")
             
     if ydir == 1:
         ystart = ymargin
@@ -704,7 +704,7 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
         roffset = 0
         canchor = "end"
     else:
-        raise "ydir must be 1 or -1"
+        raise Exception("ydir must be 1 or -1")
     
     
     # begin svg

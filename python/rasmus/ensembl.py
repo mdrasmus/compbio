@@ -7,7 +7,7 @@ def id2genome(ensid):
     elif ensid.startswith("ENSMUSG"): return "mouse"
     elif ensid.startswith("ENSRNOG"): return "rat"
     else:
-        raise "unknown ENSEMBL ID"
+        raise Exception("unknown ENSEMBL ID")
 
 
 def genomeComposition(genomes, comp):

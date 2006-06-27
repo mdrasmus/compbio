@@ -19,7 +19,7 @@ class Progress:
            self.end = float(args[1])
            self.step = args[2]
        else:
-           raise "wrong number of arguments"
+           raise Exception("wrong number of arguments")
 
        self.prog = self.pos
    

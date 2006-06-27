@@ -51,7 +51,7 @@ class TextCanvas:
                     y2 += 1
                     self.set(x+x2, y+y2, text[i])
         else:
-            raise "unknown text direction '%s'" % dir
+            raise Exception("unknown text direction '%s'" % dir)
 
     
     def display(self, out=sys.stdout):

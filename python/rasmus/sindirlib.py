@@ -862,11 +862,11 @@ def subtreeLikelihood(conf, tree, root, recon, events, stree, params, baserate):
             
             
             # debug saving
-            node.data["logl"] = this.logl
+            node.data["logl"] = logl
             
             if this.logl > 1e10:
                 debug(dist, condDist, baserate, mu, sigma, logl, logdenom)
-                raise "logl too high"
+                raise Exception("logl too high")
             
             node.data["params"] = [[mu, sigma]]
             node.data["fracs"] = [[1]]
@@ -877,33 +877,15 @@ def subtreeLikelihood(conf, tree, root, recon, events, stree, params, baserate):
     return this.logl
 
 
-
-def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
-    # derive relative branch lengths
-    tree.clearData("logl", "extra", "fracs", "params", "unfold")
-    recon = phyloutil.reconcile(tree, stree, gene2species)
-    events = phyloutil.labelEvents(tree, recon)
+def branchLikelihoods(conf, tree, recon, events, stree, params, baserate):
+    this = util.Closure(logl=0.0)
 
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
        events[tree.root] == "dup":
         for child in tree.root.children:
             if recon[child] != stree.root:
-                child.data["unfold"] = True
-    
-    # determine baserate
-    if baserate == None:
-        baserate = getBaserate(tree, stree, params, recon=recon)
-    
-    
-    # debug info
-    if isDebug(DEBUG_MED):
-        util.tic("find logl")
-    
-    
-    # top branch is "free"
-    params[stree.root.name] = [0,0]
-    this = util.Closure(logl=0.0)
+                child.data["unfold"] = True    
     
     # recurse through indep sub-trees
     def walk(node):
@@ -914,23 +896,57 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
                                                 stree, params, baserate)
         node.recurse(walk)
     walk(tree.root)
+    
+    return this.logl
+
+
+
+def rareEventsLikelihood(conf, tree, stree, recon, events):
+    logl = 0.0
+    
+    for node, event in events.items():
+        if event == "dup":
+            logl += log(conf["dupprob"])
+        
+    nloss = len(phyloutil.findLoss(tree, stree, recon))
+    logl += nloss * log(conf["lossprob"])
+    
+    return logl
+
+
+def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
+    # reconcile the gene tree
+    # determine all events
+    tree.clearData("logl", "extra", "fracs", "params", "unfold")
+    recon = phyloutil.reconcile(tree, stree, gene2species)
+    events = phyloutil.labelEvents(tree, recon)
+    
+    # determine baserate
+    if baserate == None:
+        baserate = getBaserate(tree, stree, params, recon=recon)
+    
+    
+    # debug info
+    if isDebug(DEBUG_MED):
+        util.tic("find logl")
+
+    
+    # top branch is "free"
+    #params[stree.root.name] = [0,0]
+    this = util.Closure(logl=0.0)
+    this.logl = branchLikelihoods(conf, tree, recon, events, 
+                                  stree, params, baserate)
         
     
     # calc probability of rare events
-    for node, event in events.items():
-        if event == "dup":
-            this.logl += log(conf["dupprob"])
-        elif event == "spec":
-            this.logl += log(conf["specprob"])
+    this.logl += rareEventsLikelihood(conf, tree, stree, recon, events)
     
-    nloss = len(phyloutil.findLoss(tree, stree, recon))
-    this.logl += nloss * log(conf["lossprob"])
-    
-    tree.data["baserate"] = baserate
-    tree.data["logl"] = this.logl
     
     
     # debugging information
+    tree.data["baserate"] = baserate
+    tree.data["logl"] = this.logl
+    
     if isDebug(DEBUG_MED):
         util.toc()
         debug("\n\n")
@@ -1362,3 +1378,75 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         raise SindirError("No search or tree topologies given")
     
     return trees[util.argmax(logls)], max(logls)
+
+
+
+#
+# testing
+#
+if __name__ == "__main__":
+    import StringIO
+    
+    def floateq(a, b, accuracy=.0001):
+        if b - accuracy <= a <= b + accuracy:
+            print "pass"
+            print a, "==", b
+        else:
+            print a, "!=", b
+            raise Exception("not equal")
+        
+    
+    
+    def gene2species(name):
+        return name[:1].upper()
+    
+    
+    params = {"A": [4, 2],
+              "B": [3, 1]}
+              
+    conf = {"debug": 0,
+            "dupprob": .5,
+            "lossprob": 1.0}
+    
+    
+    
+    stree = treelib.readTree(StringIO.StringIO("(A, B);"))
+    
+    
+    # test 1
+    print "\n\nTest 1"
+    tree  = treelib.readTree(StringIO.StringIO("(a:3, b:2);"))
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
+    
+    treelib.drawTreeLens(tree,scale=5)
+    floateq(logl, log(stats.normalPdf(3, params["A"]) *
+                      stats.normalPdf(2, params["B"])))
+    
+    
+    # test 2
+    print "\n\nTest 2"    
+    tree  = treelib.readTree(StringIO.StringIO("((a1:2.5, a2:2):1, b:2);"))
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
+    
+    treelib.drawTreeLens(tree,scale=5)
+    floateq(logl, log(stats.normalPdf(2.5+1, params["A"])) +
+                  log(stats.normalPdf(2+1, params["A"])) -
+                  log(1.0 - stats.normalCdf(1, params["A"])) +
+                  log(stats.normalPdf(2, params["B"])))
+
+
+    print "\n\nTest 3"    
+    tree  = treelib.readTree(StringIO.StringIO(
+                             "(((a1:2.5, a2:2):1, a3:1.5):1.2, b:2);"))
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
+    
+    treelib.drawTreeLens(tree,scale=5)
+    floateq(logl, log(stats.normalPdf(2.5+1+1.2, params["A"])) +
+                  log(stats.normalPdf(2+1+1.2, params["A"])) -
+                  log(1.0 - stats.normalCdf(1+1.2, params["A"])) +
+                  log(stats.normalPdf(1.5+1.2, params["A"])) -
+                  log(1.0 - stats.normalCdf(1.2, params["A"])) +
+                  log(stats.normalPdf(2, params["B"])))    
+
+
+

@@ -95,9 +95,13 @@ class Region:
             frame = str(self.frame)
         
         attrs = []
-        for key, val in self.attrs.items():
-            attrs.append('%s "%s";' % (key, str(val)))
-        attr = " ".join(attrs)
+        if self.attrs.keys() == [None]:
+            # simple attribute
+            attr = self.attrs[None]
+        else:
+            for key, val in self.attrs.items():
+                attrs.append('%s "%s";' % (key, str(val)))
+            attr = " ".join(attrs)
         
         if self.comment != "":
             comment = " #%s" % self.comment
@@ -159,10 +163,27 @@ class RegionIter:
         
         self.index += 1
         return gene
-    
-    
 
-def readGffRegion(line):
+
+
+def readGffAttrs(attrstr):
+    tokens = attrstr.split(";")
+    attrs = {}
+
+    for attr in tokens[:-1]:
+        attr = attr.strip()
+
+        pos = attr.index(" ")
+
+        key = attr[:pos]
+        val = attr[pos+1:].split("\"")[1]
+
+        attrs[key] = val
+    
+    return attrs
+
+
+def readGffRegion(line, attrReader=readGffAttrs):
     region = Region()
 
     if "#" in line:
@@ -179,41 +200,34 @@ def readGffRegion(line):
     region.feature = tokens[2]
     region.start   = int(tokens[3])
     region.end     = int(tokens[4])
+    
     if tokens[5] == ".":
         region.score = None
     else:
         region.score = float(tokens[5])
+    
     if tokens[6] == "+":
         region.strand = 1
-    else:
+    elif tokens[6] == "-":
         region.strand = -1
+    else:
+        region.strand = None
+    
     if tokens[7] == ".":
         region.frame = None
     else:
         region.frame = int(tokens[7])
-    region.attrs = readGffAttrs(tokens[8])
-
+    
+    if attrReader == None:
+        region.attrs = {None: tokens[8]}
+    else:
+        region.attrs = attrReader(tokens[8])
+    
     return region
 
 
-def readGffAttrs(attrstr):
-    tokens = attrstr.split(";")
-    attrs = {}
 
-    for attr in tokens[:-1]:
-        attr = attr.strip()
-
-        pos = attr.index(" ")
-
-        key = attr[:pos]
-        val = attr[pos+1:].split("\"")[1]
-
-        attrs[key] = val
-
-    return attrs
-
-
-def readGff(filename):
+def readGff(filename, attrReader=readGffAttrs):
     infile = util.openStream(filename)
     
     regions = []
@@ -222,7 +236,7 @@ def readGff(filename):
         line = line.rstrip()
         if len(line) == 0 or line[0] == "#":
             continue
-        regions.append(readGffRegion(line))
+        regions.append(readGffRegion(line, attrReader=attrReader))
     
     return regions
 

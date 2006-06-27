@@ -23,7 +23,7 @@ def checkTempFiles(force):
     elif os.path.isfile("infile") or \
          os.path.isfile("outfile") or \
          os.path.isfile("outtree"):
-        raise "Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!"
+        raise Exception("Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!")
 
 
 def execPhylip(cmd, args, verbose):

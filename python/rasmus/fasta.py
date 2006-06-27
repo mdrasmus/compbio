@@ -139,7 +139,7 @@ def fastaGet(fastaFile, key, start=0, end=0):
     # remove key
     val = stream.read()
     if val == "":
-        raise "no such sequence"
+        raise Exception("no such sequence")
     else:
         seq = val.split("\n")[1:]
         seq = "".join(seq)
@@ -222,7 +222,7 @@ class Alignment:
         elif self.kind == " revcomp_aligned":
             self.strand = -1
         else:
-            raise "unknown kind"
+            raise Exception("unknown kind")
     
     def makekey(self):
         return "%s|%s|%s" % \

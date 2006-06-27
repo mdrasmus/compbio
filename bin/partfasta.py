@@ -49,7 +49,9 @@ def main(conf):
     # actually split fasta
     for i in xrange(len(parts)):
         if conf["dir"]:
-            seqfile = os.path.join(conf["outdir"], "%d/%d.fasta" % (i, i))
+            if not os.path.exists(os.path.join(conf["outdir"], str(i))):
+                os.mkdir(os.path.join(conf["outdir"], str(i)))
+            seqfile = os.path.join(conf["outdir"], str(i), "%d.fasta" % i)
         else:
             seqfile = os.path.join(conf["outdir"], "%d.fasta" % i)
         util.log(seqfile)

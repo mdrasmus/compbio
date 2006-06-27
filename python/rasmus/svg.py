@@ -126,7 +126,7 @@ class Svg:
 
                     
             else:
-                raise "unknown transform option '%s'" % key
+                raise Exception("unknown transform option '%s'" % key)
         
         self.out.write("' >\n")
     

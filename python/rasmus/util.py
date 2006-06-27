@@ -765,7 +765,7 @@ def openStream(filename, mode = "r"):
             elif mode == "r":
                 return sys.stdin
             else:
-                raise "stream '-' can only be opened with modes r/w"
+                raise Exception("stream '-' can only be opened with modes r/w")
         
         # open regular file
         else:
@@ -773,7 +773,7 @@ def openStream(filename, mode = "r"):
     
     # cannot handle other types for filename
     else:
-        raise "unknown filename type '%s'" % type(filename)
+        raise Exception("unknown filename type '%s'" % type(filename))
 
 
 
@@ -1179,7 +1179,7 @@ def str2bool(val):
     elif val == "False":
         return False
     else:
-        raise "unknown string for bool '%s'" % val
+        raise Exception("unknown string for bool '%s'" % val)
 
 tableTypesLookup = {
         "string": str,
@@ -1300,13 +1300,13 @@ def lookupTable(table, key, index=False):
         for i in xrange(len(table)):
             key2 = table[i][key]
             if key2 in lookup:
-                raise "duplicate key '%s'" % str(key2)
+                raise Exception("duplicate key '%s'" % str(key2))
             lookup[key2] = i
     else:
         for i in xrange(len(table)):
             key2 = table[i][key]
             if key2 in lookup:
-                raise "duplicate key '%s'" % str(key2)
+                raise Exception("duplicate key '%s'" % str(key2))
             lookup[key2] = table[i]
     return lookup
 
@@ -1389,7 +1389,7 @@ def replaceExt(filename, oldext, newext):
     if filename.endswith(oldext):
         return filename[:-len(oldext)] + newext
     else:
-        raise "file '%s' does not have extension '%s'" % (filename, oldext)
+        raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
 
 
 

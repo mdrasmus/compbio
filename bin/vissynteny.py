@@ -293,14 +293,6 @@ def align_selgenes():
 def print_selgenes():
     print selgenes
 
-set_binding(input_key("g"), press("gene"))
-set_binding(input_key("v"), press("view"))
-set_binding(input_key("s"), press("sequence"))
-set_binding(input_key("a"), press("align"))
-set_binding(input_key("d"), clear_selgenes)
-set_binding(input_key("w"), align_selgenes)
-set_binding(input_key("e"), print_selgenes)
-
 
 def readData(genomes, compfile, syntenyfile, smapfile):
     global genes
@@ -342,6 +334,16 @@ def readData(genomes, compfile, syntenyfile, smapfile):
 
 
 
+set_binding(input_key("g"), press("gene"))
+set_binding(input_key("v"), press("view"))
+set_binding(input_key("s"), press("sequence"))
+set_binding(input_key("a"), press("align"))
+set_binding(input_key("d"), clear_selgenes)
+set_binding(input_key("w"), align_selgenes)
+set_binding(input_key("e"), print_selgenes)
+
+
+
 #--------------------------------------------------------------------------------
 # main function
 #--------------------------------------------------------------------------------
@@ -354,6 +356,19 @@ def main(param):
 
     # init
     print genomevis.BINDINGS_HELP
+    print """
+Modes
+g     display gene info mode
+v     gene viewing mode (display gene with context)
+s     display gene sequence mode
+a     display gene alignment mode
+
+Gene array
+d     clear selgene array (selected genes)
+e     print selgene array
+w     print clustalw of selgene array
+
+    """
     set_bgcolor(1,1,1)
 
     env.addPaths(param["paths"])
@@ -434,3 +449,6 @@ def main(param):
 
 
 main(param)
+
+
+

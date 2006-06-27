@@ -42,6 +42,11 @@ options = [
     {"default": []}],
   ["v", "verbose", "verbose", "",
    {"single": True}],
+  ["x:", "maxsize=", "maxsize", "<maximum gene family size>",
+    {"single": True,
+     "default": util.INF,
+     "parser": int,
+     "help": "maximum gene family size to reconstruct"}],
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -192,6 +197,12 @@ def fasta2align(conf, prog, fastafile, basename):
     alignfile = getAlignFile(conf, basename)
     seqs = fasta.readFasta(fastafile)
     
+    # check family size
+    if len(seqs) > conf["maxsize"]:
+        print "skipping '%s'; family size %d exceeds %d" % \
+            (fastafile, len(seqs), conf["maxsize"])
+        return
+    
     if prog == "muscle":
         aln = muscle.muscle(seqs, verbose=conf["verbose"])
         
@@ -206,6 +217,12 @@ def align2tree(conf, prog, alignfile, basename):
     distfile = getDistFile(conf, basename)
     aln = fasta.readFasta(alignfile)
     usertree = getUserTree(conf, basename)
+    
+    # check family size
+    if len(aln) > conf["maxsize"]:
+        print "skipping '%s'; family size %d exceeds %d" % \
+            (alignfile, len(aln), conf["maxsize"])
+        return
     
         
     if prog in ["proml", "dnaml", "protpars", "dnapars"]:
@@ -248,6 +265,12 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
     treefile = getTreeFile(conf, basename)
     usertree = getUserTree(conf, basename)
     
+    # check family size
+    if len(labels) > conf["maxsize"]:
+        print "skipping '%s'; family size %d exceeds %d" % \
+            (distfile, len(labels), conf["maxsize"])
+        return
+    
     
     if labelfile != None:
         labels = fasta.readFasta(labelfile).keys()
@@ -271,7 +294,13 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
 def align2dist(conf, prog, alignfile, basename):
     distfile = getDistFile(conf, basename)
     aln = fasta.readFasta(alignfile)
-
+    
+    # check family size
+    if len(aln) > conf["maxsize"]:
+        print "skipping '%s'; family size %d exceeds %d" % \
+            (alignfile, len(aln), conf["maxsize"])
+        return
+    
     
     if prog == "dnadist":
         phylip.dnadist(aln, distfile, 

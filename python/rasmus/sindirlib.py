@@ -111,6 +111,9 @@ def drawTreeLogl(tree, out=DEBUG, events={}, baserate=1.0):
         debug("logl:     %f" % tree.data["logl"])
     debug("baserate: %f" % baserate)
     debug("treelen:  %f" % sum(x.dist for x in tree.nodes.values()))
+    if "error" in tree.data:
+        debug("error:    %f" % tree.data["error"])
+    
     treelib.drawTree(tree, minlen=20, labels=labels, spacing=4, 
                         labelOffset=-3, out=out)
 
@@ -126,17 +129,16 @@ class SindirError (Exception):
 
 
 def printVisitedTrees(visited):
-    nleaves = len(visited.values()[0][0].leaves())
+    nleaves = len(visited.values()[0][1].leaves())
     
     debug("\n\nmost likily trees out of %d visited (%s total): " % \
           (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
     
-    mat = [["TREE", "LOGL", "ERROR"]] + \
-          [[key, logl, tree.data["error"]] 
+    mat = [[key, logl, tree.data["error"]] 
            for key, (logl, tree) in visited.iteritems()]
-    mat.sort(key=lambda x: x[1])
+    mat.sort(key=lambda x: x[1], reverse=True)
     
-    util.printcols(mat[:30], spacing=4, out=DEBUG)
+    util.printcols([["TREE", "LOGL", "ERROR"]] + mat[:30], spacing=4, out=DEBUG)
     debug()
 
 
@@ -398,9 +400,6 @@ def setTreeDistances(conf, tree, distmat, genes):
     
     tree.data["error"] = sum(abs(scipy.matrixmultiply(A, b) - d))
     
-    if isDebug(DEBUG_MED):
-        error = scipy.matrixmultiply(A, b) - d
-        debug("distance error:", sum(abs(error)))
     
     for i in xrange(len(edges)):
         gene1, gene2 = edges[i]

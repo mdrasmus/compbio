@@ -22,8 +22,11 @@ import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast
 from phyloutil import viewTree
 
 # common compbio imports
-from compbio.tools import pp
-from compbio import tools
+try:
+    from compbio.tools import pp
+    from compbio import tools
+except:
+    pass
 
 # python imports
 import os, sys, re

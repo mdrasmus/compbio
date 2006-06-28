@@ -134,11 +134,17 @@ def printVisitedTrees(visited):
     debug("\n\nmost likily trees out of %d visited (%s total): " % \
           (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
     
-    mat = [[key, logl, tree.data["error"]] 
+    mat = [[key, logl, tree.data["error"], tree.data["baserate"]] 
            for key, (logl, tree) in visited.iteritems()]
     mat.sort(key=lambda x: x[1], reverse=True)
     
-    util.printcols([["TREE", "LOGL", "ERROR"]] + mat[:30], spacing=4, out=DEBUG)
+    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
+                   mat[:30], spacing=4, out=DEBUG)
+    debug()
+
+    mat.sort(key=lambda x: x[2])
+    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
+                   mat[:30], spacing=4, out=DEBUG)
     debug()
 
 

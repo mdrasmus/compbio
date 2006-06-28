@@ -1107,7 +1107,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     # init likelihood score
     top = treeLogLikelihood(conf, tree, stree, gene2species, params)
     toptree = tree.copy()
-    thash = phyloutil.hashTree(tree, lambda x: x)
+    thash = phyloutil.hashTree(tree)
     
     visited[thash] = (top, tree.copy())
     
@@ -1138,7 +1138,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         #tree2 = proposeTree(tree2)
         #tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
         
-        thash = phyloutil.hashTree(tree2, lambda x: x)
+        thash = phyloutil.hashTree(tree2)
         if thash in visited:
             logl, tree2 = visited[thash]
         else:
@@ -1377,10 +1377,6 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         else:
             raise SindirError("unknown search '%s'" % search)
                
-        
-        trees.append(tree)
-        logls.append(logl)
-        
         printVisitedTrees(visited)
         
     
@@ -1395,8 +1391,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             debug("use distances from file")
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
-        trees.append(tree)
-        logls.append(logl)
+        visited[phyloutil.hashTree(tree)] = (logl, tree.copy())
     
         if isDebug(DEBUG_LOW):
             debug("\nuser given tree:")
@@ -1406,10 +1401,23 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     util.toc()
     
-    if len(trees) == 0:
+    if len(visited) == 0:
         raise SindirError("No search or tree topologies given")
     
-    return trees[util.argmax(logls)], max(logls)
+    
+    
+    # find best tree
+    errorfactor = 1.2
+    minerror = min(x[1].data["error"] for x in visited.itervalues())
+    
+    # find all tree with error near minerror
+    goodtrees = filter(lambda x: x[1].data["error"] < errorfactor * minerror,
+                       visited.itervalues())
+    
+    # find best tree as max logl in good trees
+    i = util.argmax([x[1].data["logl"] for x in goodtrees])
+    
+    return goodtrees[i], goodtrees[i].data["logl"]
 
 
 

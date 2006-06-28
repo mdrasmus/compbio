@@ -93,11 +93,11 @@ options = [
  #    "parser": float,
  #    "single": True}],
  ["D:", "dupprob=", "dupprob", "<probability of duplication>",
-    {"default": .01,
+    {"default": 1,
      "parser": float,
      "single": True}],
  ["L:", "lossprob=", "lossprob", "<probability of loss>",
-    {"default": .01,
+    {"default": 1,
      "parser": float,
      "single": True}],
  

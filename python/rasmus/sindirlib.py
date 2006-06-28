@@ -1415,7 +1415,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
                        visited.itervalues())
     
     # find best tree as max logl in good trees
-    i = util.argmax([x[1].data["logl"] for x in goodtrees])
+    i = util.argmax(x.data["logl"] for x in goodtrees)
     
     return goodtrees[i], goodtrees[i].data["logl"]
 

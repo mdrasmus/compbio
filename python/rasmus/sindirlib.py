@@ -415,7 +415,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
-    tree.data["error"] = sum(abs(scipy.matrixmultiply(A, b) - d))
+    resids = scipy.matrixmultiply(A, b) - d
+    tree.data["error"] = scipy.dot(resids, resids)
     
     
     for i in xrange(len(edges)):
@@ -1407,7 +1408,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     
     # find best tree
-    errorfactor = 1.1
+    errorfactor = 1.3
     minerror = min(x[1].data["error"] for x in visited.itervalues())
     
     # find all tree with error near minerror

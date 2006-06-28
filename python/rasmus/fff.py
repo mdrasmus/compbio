@@ -76,10 +76,10 @@ class FeatureIndex:
                     first = 0
                 
                 i = first
-                while sites[i].start < end:
+                while i < len(sites) and sites[i].start < end:
                     lookups.append(sites[i])
                     i += 1
-                
+            
             return lookups
     
     
@@ -91,10 +91,10 @@ class FeatureIndex:
             infile = self.infiles[l.filename]
             infile.seek(l.pos)
             
+            
             starts = []
-            coord = start
             while True:
-                token, char = util.readUntil(infile, " \n")
+                token, char = util.readUntil(infile, " \t\n")
                 if char == "\n":
                     break
                 
@@ -116,7 +116,7 @@ class FeatureIndex:
 def readFffIndex(* filenames):
     findex = FeatureIndex()
     findex.read(* filenames)
-
+    return findex
 
 
 def makeTestFff(species, chrom, length, out):

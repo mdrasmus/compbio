@@ -773,7 +773,10 @@ class SyntenyVis:
                 else:
                     region.attrs["color"] = col
             else:
-                region.attrs["color"] = eval(region.attrs["color"])
+                if isinstance(region.attrs["color"], str):
+                    region.attrs["color"] = eval(region.attrs["color"])
+                else:
+                    region.attrs["color"] = region.attrs["color"]
             
             if "height" not in region.attrs:
                 if height == None:
@@ -781,7 +784,10 @@ class SyntenyVis:
                 else:
                     region.attrs["height"] = height
             else:
-                region.attrs["height"] = float(region.attrs["height"])
+                if isinstance(region.attrs["height"], str):
+                    region.attrs["height"] = float(region.attrs["height"])
+                else:
+                    region.attrs["height"] = region.attrs["height"]
             
             # ensure species is specified
             assert "species" in region.attrs
@@ -813,10 +819,12 @@ class SyntenyVis:
     
     def drawFrequentFeatures(self, frag):
         
-        colors = [color(1, 0, 0, .6),
-                  color(1, .2, 0, .6),
-                  color(1, .5, 0, .6),
-                  color(1, 1, 0, .6),
+        colors = [color(0, 0, 0),
+                  color(1, .2, 0),
+                  color(1, .5, 0)]
+                  
+        """
+                  color(1, 1, 0),
                   color(.5, 1, 0, .6),
                   color(.2, 1, 0, .6),
                   color(0, 1, 0, .6),
@@ -838,7 +846,7 @@ class SyntenyVis:
                   color(0 , .5, .5, .6),
                   color(0, 0, .5, .6),
                   color(.5, 0, .5, .6)
-                  ]
+                  ]"""
         
         features = self.findex.getFeatures(frag.chrom.genome.name,
                                            frag.chrom.name,

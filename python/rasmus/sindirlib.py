@@ -111,11 +111,12 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
             labels[node.name] += " %s" % events[node]
         
     if "logl" in tree.data:
-        debug("logl:     %f" % tree.data["logl"])
-    debug("baserate: %f" % baserate)
-    debug("treelen:  %f" % sum(x.dist for x in tree.nodes.values()))
+        debug("logl:      %f" % tree.data["logl"])
+        debug("eventlogl: %f" % tree.data["eventlogl"])
+    debug("baserate:  %f" % baserate)
+    debug("treelen:   %f" % sum(x.dist for x in tree.nodes.values()))
     if "error" in tree.data:
-        debug("error:    %f" % tree.data["error"])
+        debug("error:     %f" % tree.data["error"])
     
     treelib.drawTree(tree, minlen=20, labels=labels, spacing=4, 
                         labelOffset=-3, out=out)
@@ -375,13 +376,20 @@ def findSplits(network, leaves):
     
     return splits
 
-
+def makeVector(array):
+    if len(array.shape) == 2:
+        if array.shape[0] == 1:
+            return array[0]
+        else:
+            return scipy.transpose(array)[0]
+    else:
+        return array
 
 def setTreeDistances(conf, tree, distmat, genes):
     if isDebug(DEBUG_MED):
         util.tic("fit branch lengths")
-
-
+    
+    
     if not treelib.isRooted(tree):
         tree.addChild(treelib.TreeNode(tree.newName()), tree.root)
         tree.root = tree.root.parent
@@ -415,7 +423,7 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
-    resids = scipy.matrixmultiply(A, b) - d
+    resids = makeVector(scipy.matrixmultiply(A, b)) - d
     tree.data["error"] = scipy.dot(resids, resids)
     
     
@@ -428,7 +436,7 @@ def setTreeDistances(conf, tree, distmat, genes):
         else:
             tree.nodes[gene1].dist = float(b[i])
     
-
+    
     
     if len(tree.root.children) == 1:
         tree.root = tree.root.children[0]
@@ -973,7 +981,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         
     
     # calc probability of rare events
-    this.logl += rareEventsLikelihood(conf, tree, stree, recon, events)
+    tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
+    this.logl += tree.data["eventlogl"]
     
     
     

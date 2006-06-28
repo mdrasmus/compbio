@@ -1407,7 +1407,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     
     # find best tree
-    errorfactor = 1.2
+    errorfactor = 1.1
     minerror = min(x[1].data["error"] for x in visited.itervalues())
     
     # find all tree with error near minerror

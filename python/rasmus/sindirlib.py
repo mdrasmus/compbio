@@ -67,8 +67,11 @@ def setDebugStream(stream):
     globals()["DEBUG"] = stream
 
 
-def drawTreeLogl(tree, out=DEBUG, events={}, baserate=1.0):
+def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
     labels = {}
+    
+    if out == None:
+        out = DEBUG
     
     if "baserate" in tree.data:
         baserate = tree.data["baserate"]
@@ -222,8 +225,16 @@ def readTreeDistrib(filename):
         lengths[name] = map(float, tokens[1:])
     
     return lengths
-    
-    
+
+
+def outTreeFile(conf):
+    return conf["out"] + ".tree"
+
+
+def debugFile(conf):
+    return conf["out"] + ".debug"
+
+
 
 #-------------------------------------------------------------------------------
 # Branch length fitting
@@ -1276,7 +1287,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         drawTreeLogl(tree)
     
     
-    print " " * (depth*2), "(%d)" % len(visited)
+    debug(" " * (depth*2), "(%d)" % len(visited))
     sys.stdout.flush()
     
     # try all NNI

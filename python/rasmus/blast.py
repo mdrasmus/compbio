@@ -51,7 +51,7 @@ class BlastReader:
     
     def read(self):
         line = self.infile.readline()
-        while line[:1] == "#":
+        while line[:1] == "#" or len(line) == 0:
             line = self.infile.readline()
         
         return line.rstrip().split("\t")

@@ -142,12 +142,12 @@ def printVisitedTrees(visited):
     mat.sort(key=lambda x: x[1], reverse=True)
     
     util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
-                   mat[:30], spacing=4, out=DEBUG)
+                   mat[:80], spacing=4, out=DEBUG)
     debug()
 
     mat.sort(key=lambda x: x[2])
     util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
-                   mat[:30], spacing=4, out=DEBUG)
+                   mat[:80], spacing=4, out=DEBUG)
     debug()
 
 

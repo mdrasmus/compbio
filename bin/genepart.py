@@ -9,6 +9,9 @@ from rasmus import treelib
 
 
 options = [
+    """ note: Blast files should be in NCBI blast -m8 output format
+    """,
+    
     ["r:", "relcutoff=", "relcutoff", "<relative cutoff>",
         {"single": True,
          "parser": float,

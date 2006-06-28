@@ -27,10 +27,13 @@ from rasmus import util
 
 # command line options
 options = [
- ["o:", "out=", "out", "<output file>",
-    {"help": "Tree output file (Newick format) (default: stdout)", 
+ """Species INformed DIstance-based Reconciliation
+ """,
+ "Options",
+ ["o:", "out=", "out", "<output prefix>",
+    {"help": "The prefix for all output files", 
      "single": True,
-     "default": sys.stdout}],
+     "default": "sindir"}],
  
  ["d:", "dist=", "dist", "<distance file>", 
     {"help": "Build a tree from a phylip distance matrix file"}],
@@ -85,10 +88,10 @@ options = [
      "default": ""}],
  
  "Parameter options",
- ["A:", "accuracy=", "accuracy", "<accuracy>",
-    {"default": .1,
-     "parser": float,
-     "single": True}],
+ #["A:", "accuracy=", "accuracy", "<accuracy>",
+ #   {"default": .1,
+ #    "parser": float,
+ #    "single": True}],
  ["D:", "dupprob=", "dupprob", "<probability of duplication>",
     {"default": .01,
      "parser": float,
@@ -111,28 +114,33 @@ options = [
      "default": "."}]
 ]
 
- 
+# import sindirlib's debug function
+debug = sindirlib.debug
+
 
 def main(argv):   
     # parse options
     conf = util.parseOptions(argv, options, quit=True)
+
+    # setup debug output
+    #sindirlib.setDebugStream(file(sindirlib.debugFile(conf), "w"))
     
     if conf["debug"] > 0:
         util.globalTimer().removeStream(sys.stderr)
         util.globalTimer().addStream(sys.stdout)
-        print "SINDIR"
-        print "configuration:"
-        util.printDict(conf, justify=lambda x: "left")
-        print
-        print
+        debug("SINDIR")
+        debug("configuration:")
+        util.printDict(conf, justify=lambda x: "left", out=sindirlib.DEBUG)
+        debug()
+        debug()
+    
     
     genomeutil.readOptions(conf)
     conf["specprob"] = 1.0 - conf["dupprob"]
-
     
     # read input
     gene2species = conf["gene2species"]
-    stree = conf["stree"]    
+    stree = conf["stree"]
     
     if conf["train"]:
         trainTree(conf, stree, gene2species)
@@ -163,7 +171,7 @@ def trainTree(conf, stree, gene2species):
 
 def buildTree(conf, stree, gene2species):
     params = sindirlib.readParams(conf["param"])
-
+    
     if "dist" in conf:
         for i in range(len(conf["dist"])):
             distfile = conf["dist"][i]
@@ -176,7 +184,7 @@ def buildTree(conf, stree, gene2species):
             
             tree, logl = sindirlib.sindir(conf, distmat, labels, stree, 
                                           gene2species, params)
-            tree.write(conf["out"])
+            tree.write(sindirlib.outTreeFile(conf))
 
 
 

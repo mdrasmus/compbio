@@ -138,7 +138,7 @@ def drawGene(geneName, context = context):
     vis.mark(geneName, shape="box", col=markColor)
 
 def drawAll(genome):
-    vis.drawAll(conf, m, genome)
+    vis.drawAll(genome)
 
 
 def align(* names):

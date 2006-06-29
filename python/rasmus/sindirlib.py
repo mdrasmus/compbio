@@ -138,7 +138,10 @@ def printVisitedTrees(visited):
     debug("\n\nmost likily trees out of %d visited (%s total): " % \
           (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
     
-    mat = [[key, logl, tree.data["error"], tree.data["baserate"]] 
+    mat = [[key, logl, 
+           math.sqrt(tree.data["error"]) / 
+           sum(x.dist for x in tree.nodes.values()), 
+           tree.data["baserate"]] 
            for key, (logl, tree) in visited.iteritems()]
     mat.sort(key=lambda x: x[1], reverse=True)
     
@@ -574,21 +577,9 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     
     totlens = map(sum, zip(* lengths.values()))
     
+    # print output stats
     if statsprefix != "":
-        out = file(statsprefix + ".lens", "w")
-        
-        for node, lens in lengths.items():
-            if len(lens) == 0 or max(lens) == min(lens):
-                continue
-        
-            out.write(str(node.name))
-            
-            for length in lens:
-                out.write("\t%f" % length)
-            out.write("\n")
-        
-        out.close()
-    
+        writeTreeDistrib(file(statsprefix + ".lens", "w"), lengths)
     
     
     util.tic("fitting params")
@@ -1417,17 +1408,35 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     
     # find best tree
-    errorfactor = 1.3
-    minerror = min(x[1].data["error"] for x in visited.itervalues())
+    if False:
+        errorfactor = 1.3
+        minerror = min(x[1].data["error"] for x in visited.itervalues())
+
+        # find all tree with error near minerror
+        goodtrees = filter(lambda x: x[1].data["error"] < errorfactor * minerror,
+                           visited.itervalues())
+
+        # find best tree as max logl in good trees
+        i = util.argmax([x[1].data["logl"] for x in goodtrees])
+
+    if True:
+        errorcutoff = .2
+        trees = [x[1] for x in visited.values()]
+        errors = [math.sqrt(x.data["error"]) / 
+                  sum(x.dist for x in tree.nodes.values())
+                  for tree in trees]
+        
+
+        # find all tree with acceptable error
+        goodind = util.find(lambda err: err < errorcutoff, errors)
+        goodtrees = util.mget(trees, goodind)
+
+        # find best tree as max logl in good trees
+        i = util.argmax([x.data["logl"] for x in goodtrees])
     
-    # find all tree with error near minerror
-    goodtrees = filter(lambda x: x[1].data["error"] < errorfactor * minerror,
-                       visited.itervalues())
     
-    # find best tree as max logl in good trees
-    i = util.argmax([x[1].data["logl"] for x in goodtrees])
     
-    return goodtrees[i][1], goodtrees[i][1].data["logl"]
+    return goodtrees[i], goodtrees[i].data["logl"]
 
 
 

@@ -1422,13 +1422,13 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     if True:
         errorcutoff = .2
         trees = [x[1] for x in visited.values()]
-        errors = [math.sqrt(x.data["error"]) / 
+        errors = [math.sqrt(tree.data["error"]) / 
                   sum(x.dist for x in tree.nodes.values())
                   for tree in trees]
         
 
         # find all tree with acceptable error
-        goodind = util.find(lamdba err: err < errorcutoff, errors)
+        goodind = util.find(lambda err: err < errorcutoff, errors)
         goodtrees = util.mget(trees, goodind)
 
         # find best tree as max logl in good trees

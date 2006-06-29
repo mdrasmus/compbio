@@ -1385,7 +1385,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     for treefile in conf["tree"]:
         tree = treelib.readTree(treefile)
         
-        if sum(node.dist for node in tree.nodes.values()) == 0.0: # or True:
+        if True: #sum(node.dist for node in tree.nodes.values()) == 0.0: # or True:
             debug("fitting distances")     
             setTreeDistances(conf, tree, distmat, labels)
         else:

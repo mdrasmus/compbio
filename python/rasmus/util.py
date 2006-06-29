@@ -69,12 +69,12 @@ class Closure:
 class Dict (dict):
     """My personal nested Dictionary (with default values)"""
     
-    def __init__(self, dim = 1, null=None):
-        """dim   - number of dimensions of the dictionary
-           null  - default value of a dictionary item
+    def __init__(self, dim=1, default=None):
+        """dim     - number of dimensions of the dictionary
+           default - default value of a dictionary item
         """
         self.dim = dim
-        self.null = null
+        self.null = default
         
         # backwards compatiability
         self.data = self

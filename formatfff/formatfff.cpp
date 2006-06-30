@@ -140,7 +140,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "formatfff: error processing '%s'\n", argv[i]);
             exit(1);
         }
-        fprintf(stderr, "processed '%s'\n", argv[i]);
+        fprintf(stderr, "%s\n", argv[i]);
     }
     
     return 0;

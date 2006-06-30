@@ -20,8 +20,9 @@ options = [
         {"single": True,
          "parser": float,
          "default": 1e-3}],
-    ["a", "all", "all", "",
+    ["a:", "all=", "all", "<output prefix>",
         {"single": True,
+         "default": None,
          "help": "write all partitionings in the tree"}]
 ] + genomeutil.options
 
@@ -36,13 +37,14 @@ def main(conf):
                               conf["gene2species"],
                               cluster.makeBlastFileLookup(blastfiles))
     
-    if conf["all"]:
+    if conf["all"] != None:
         for node in tree.nodes.values():
-            if "parts" in dir(node):
-                util.writeDelim("node-" + str(node.name) + ".part", node.parts)
+            if "parts" in dir(node) and \
+               len(node.parts) > 0:
+                util.writeDelim(conf["all"] + str(node.name) + ".part", node.parts)
     else:
         util.writeDelim(sys.stdout, tree.root.parts)
-    
+
     
 
 conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<blast files>")

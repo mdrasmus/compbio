@@ -1307,17 +1307,17 @@ def oneNorm(vals):
     s = float(sum(vals))
     return map(lambda x: x/s, vals)
 
-def bucketSize(array, ndivs = 20):
+def bucketSize(array, ndivs=20):
     """Determine the bucket size needed to divide the values in array into 
        'ndivs' evenly sized buckets"""
-    #return abs(max(array) - min(array) + 1) / float(ndivs)
-    return abs(max(array) - min(array)) / float(ndivs)
+    return (max(array) - min(array)) / float(ndivs)
+
 
 def hist(array, ndivs = 20, size=None):
     """Create a histogram of 'array' with 'ndivs' buckets"""
     
     if size != None:
-        ndivs = int(abs(max(array) - min(array) + 1) / float(size))
+        ndivs = max(int(abs(max(array) - min(array)) / float(size)), 1)
     
     h = [0] * ndivs
     x = []
@@ -1329,21 +1329,35 @@ def hist(array, ndivs = 20, size=None):
         x.append(i * bucketwidth + low)
     return (x, h)
 
-def bucket(array, ndivs = 20, low=None, bucketwidth=None):
+
+def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     """Group elements of 'array' into 'ndivs' lists"""
+
+    keys = map(key, array)
+
+    # set defaults
+    if low is None:
+        low = min(keys)
+    
+    if ndivs is None:
+        if width is None:
+            ndivs = 20
+        else:
+            ndivs = int(max((max(keys) - low) / float(width), 1))
+    
+    if width is None:
+        width = (max(keys) - low) / float(ndivs)        
     
     h = [[] for i in range(ndivs)]
-    x = []    
-    if bucketwidth == None:
-        bucketwidth = bucketSize(array, ndivs)
-    if low == None:
-        low = min(array)
+    x = []
     
     for i in array:
-        h[min(int((i - low) / bucketwidth), ndivs-1)].append(i)
+        if i >= low:
+            h[min(int((key(i) - low) / width), ndivs-1)].append(i)
     for i in range(ndivs):
-        x.append(i * bucketwidth + low)
+        x.append(i * width + low)
     return (x, h)
+
 
 def hist2(array1, array2, ndivs1=20, ndivs2=20):
     """Perform a 2D histogram"""

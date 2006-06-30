@@ -178,22 +178,22 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
             if blast.evalue(hit) > conf["signif"]:
                 continue
             
-
+            
             if gene1 in lookup1:
                 part1 = (0, lookup1[gene1])
             else:
                 parts1.append([gene1])
                 lookup1[gene1] = len(parts1) - 1
                 part1 = (0, len(parts1) - 1)
-
+            
             if gene2 in lookup2:
                 part2 = (1, lookup2[gene2])
             else:
                 parts2.append([gene2])
                 lookup2[gene2] = len(parts2) - 1
                 part2 = (1, len(parts2) - 1)
-        
-
+            
+            
             if score > best[part1][0]:
                 best[part1] = (score, part2)
             if score > best[part2][0]:

@@ -51,7 +51,9 @@ class BlastReader:
     
     def read(self):
         line = self.infile.readline()
-        while line[:1] == "#" or len(line) == 0:
+        
+        # skip comments and blanks but not EOF
+        while len(line) > 0 and line[0] in "#\n":
             line = self.infile.readline()
         
         return line.rstrip().split("\t")

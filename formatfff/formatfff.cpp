@@ -1,8 +1,19 @@
+/********************************************************************************
+    formatfff
+    Matt Rasmussen    
+    Fri Jun 30 13:17:02 EDT 2006
+
+
+    Creates index files (*.ffi) for Frequent Feature Files (*.fff).
+********************************************************************************/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 
 using namespace std;
+
 
 
 bool indexFff(string filename, int nstarts)

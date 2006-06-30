@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     // parse args
     int i;
     for (i=1; i<argc; i++) {
-        if (argv[i] == "-n") {
+        if (!strcmp(argv[i], "-n")) {
             nstarts = atoi(argv[++i]);
         } else {
             // this must be a fff filename

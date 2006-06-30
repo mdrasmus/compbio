@@ -92,6 +92,12 @@ class FastaDict (SeqDict):
             return False
         else:
             return True
+    
+    
+    def alignlen(self):
+        """If this fasta is an alignment, this function will return its length"""
+        
+        return len(self.values()[0])
 
 
 def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 

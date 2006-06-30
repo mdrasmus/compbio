@@ -5,7 +5,7 @@
 
 CC = g++
 AR = ar
-COMPILE = -c
+COMPILE = -c -g
 
 OBJS = formatfff.o
 

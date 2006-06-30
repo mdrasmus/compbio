@@ -211,7 +211,7 @@ def revcomp(seq):
     return "".join(seq2)
 
 
-def cgContent(seq):
+def gcContent(seq):
     hist = util.histDict(seq)
     total = hist["A"] + hist["C"] + hist["T"] + hist["G"]
     

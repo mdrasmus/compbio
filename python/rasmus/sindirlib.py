@@ -1429,7 +1429,11 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
 
         # find all tree with acceptable error
         goodind = util.find(lambda err: err < errorcutoff, errors)
-        goodtrees = util.mget(trees, goodind)
+        if len(goodind) > 0:
+            goodtrees = util.mget(trees, goodind)
+        else:
+            # default to all trees if all errors are high
+            goodtrees = trees
 
         # find best tree as max logl in good trees
         i = util.argmax([x.data["logl"] for x in goodtrees])

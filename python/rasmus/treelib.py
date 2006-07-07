@@ -612,7 +612,40 @@ class Tree:
         walk(node)
         return tree
     
+
+
+def findDist(tree, name1, name2):
+    if not name1 in tree.nodes or \
+       not name2 in tree.nodes:
+        raise Exception("nodes '%s' and '%s' are not in tree" %
+                        (name1, name2))
     
+    # find root path for node1
+    node1 = tree.nodes[name1]
+    path1 = [node1]    
+    while node1 != tree.root:
+        node1 = node1.parent
+        path1.append(node1)
+    
+    # find root path for node2
+    node2 = tree.nodes[name2]
+    path2 = [node2]
+    while node2 != tree.root:
+        node2 = node2.parent
+        path2.append(node2)
+    
+    # find when paths diverge
+    i = 1
+    while i <= len(path1) and i <= len(path2) and (path1[-i] == path2[-i]):
+        i += 1
+    
+    dist = 0
+    for j in range(i, len(path1)+1):
+        dist += path1[-j].dist
+    for j in range(i, len(path2)+1):
+        dist += path2[-j].dist
+    
+    return dist
 
 
 

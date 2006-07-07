@@ -33,6 +33,6 @@ def getDistMatrix(seqs, output=None, verbose=True, force = False, args=None):
         phylip.cleanupTempDir(cwd)
         return labels
     else:
-        name, mat = readDistMatrix("infile.dist")
+        name, mat = phylip.readDistMatrix("infile.dist")
         phylip.cleanupTempDir(cwd)
         return labels, mat

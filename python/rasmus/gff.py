@@ -167,6 +167,8 @@ class RegionIter:
 
 
 def readGffAttrs(attrstr):
+    """Parses an attribute field into a dict of key/value pairs"""
+    
     tokens = attrstr.split(";")
     attrs = {}
 
@@ -184,6 +186,13 @@ def readGffAttrs(attrstr):
 
 
 def readGffRegion(line, attrReader=readGffAttrs):
+    """
+    Reads a line from a gff file
+    
+    'attrReader' should take an attribute field and parse it into
+    a dict of key/value pairs
+    """
+    
     region = Region()
 
     if "#" in line:
@@ -227,16 +236,22 @@ def readGffRegion(line, attrReader=readGffAttrs):
 
 
 
-def readGff(filename, attrReader=readGffAttrs):
-    infile = util.openStream(filename)
+def readGff(filename, attrReader=readGffAttrs, 
+            lineFilter=lambda x: True,
+            regionFilter=lambda x: True):
+    """
+    Read all regions in a GFF file
+    """
+    
+    infile = iterGff(filename,
+                     attrReader, 
+                     lineFilter,
+                     regionFilter)
     
     regions = []
     
-    for line in infile:
-        line = line.rstrip()
-        if len(line) == 0 or line[0] == "#":
-            continue
-        regions.append(readGffRegion(line, attrReader=attrReader))
+    for region in infile:
+        regions.append(region)
     
     return regions
 
@@ -247,16 +262,29 @@ def writeGff(filename, regions):
     for region in regions:
         print >>out, region
 
-def iterGff(filename):
+
+def iterGff(filename, attrReader=readGffAttrs, 
+            lineFilter=lambda x: True,
+            regionFilter=lambda x: True):
+    """
+    Iterate over the regions in a GFF file
+    """
+    
     infile = util.openStream(filename)
     
     for line in infile:
         line = line.rstrip()
-        print line
-        if len(line) == 0 or line[0] == "#":
+        
+        # only continue processing if line is not comment and passes filter
+        if len(line) == 0 or line[0] == "#" or not lineFilter(line):
             continue
-        yield readGffRegion(line)
-
+        
+        # parse region
+        region = readGffRegion(line, attrReader=attrReader)
+        
+        # only return region if region passes filter
+        if regionFilter(region):
+            yield region
 
 
 if __name__ == "__main__":

@@ -5,9 +5,11 @@ from util import *
 
 import sys
 import getopt
-
+import __builtin__
 
 class OptionError (Exception):
+    """Exception for errors while parsing and accessing optiosn"""
+
     def __init__(self, msg):
         Exception.__init__(self)
         self.msg = msg
@@ -15,6 +17,8 @@ class OptionError (Exception):
         return str(self.msg)
 
 class Option:
+    """Class for commandline options"""
+    
     def __init__(self, option_list):
         if isinstance(option_list, str):
             self.comment = option_list
@@ -47,12 +51,19 @@ class Option:
             if self.flag and self.single:
                 self.defaultGiven = True
                 self.default = False
-
+            
+            # backwards compatibility (remove soon)
             if self.arg.startswith("AUTO"):
                 self.arg = self.arg[4:]
 
 
 class Configuration (dict):
+    """
+    Configuration dict
+    
+    will throw informative exception if key is not present.
+    """
+
     def __init__(self, options):
         dict.__init__(self)
         self.options = options
@@ -79,14 +90,20 @@ def parseOptions(argv, options, quit=False, resthelp = ""):
 
 
 def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
-              helpOption=True):
+              helpOption=True, configFileOption=True):
     
+    # add config file option
+    if configFileOption:
+        options.append(["C:", "config=", "config", "<config file>",
+                   {"default": [],
+                    "help": "specify configuration in a file instead of on command line"}])
     
     # add help options
     if helpOption:
         options.append(["h", "help", "help", "",
                         {"single": True,
                          "help": "display program usage"}])
+                         
     
     # setup options
     options = map(lambda x: Option(x), options)
@@ -111,7 +128,8 @@ def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
     # organize options    
     lookup = {}
     for option in options2:
-        lookup["-" + option.short.replace(":", "")] = option
+        if option.short != "":
+            lookup["-" + option.short.replace(":", "")] = option
         lookup["--" + option.long.replace("=", "")] = option
     
     
@@ -157,8 +175,13 @@ def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
             raise OptionError("required argument -%s, --%s not given" % 
                 (option.short.replace(":",""), option.long.replace("=", "")))
     
-    conf[""] = rest
     
+    conf[""] = rest         # old way (will remove some day)
+    conf["REST"] = rest     # new way
+
+    # check for config file option
+    if configFileOption:
+        conf.update(readConfigFile(* conf["config"]))
     
     if returnRest:
         return conf, rest
@@ -176,9 +199,15 @@ def usage(progname, options, resthelp = ""):
         if option.comment != None:
             print >>sys.stderr, option.comment
         else:
-            print >>sys.stderr, "  -%s,--%s %s" % (option.short.replace(":", ""), 
-                                                  option.long.replace("=", ""),
-                                                  option.arg)
+            if option.short != "":
+                short = "-" + option.short.replace(":", "") + ","
+            else:
+                # no short version exists
+                short = ""
+            
+            print >>sys.stderr, "  %s--%s %s" % (short, 
+                                                 option.long.replace("=", ""),
+                                                 option.arg)
             if option.help != "":
                 if option.help.startswith(" ") or \
                    option.help.startswith("\t"):
@@ -188,7 +217,21 @@ def usage(progname, options, resthelp = ""):
             else:
                 print >>sys.stderr
     print >>sys.stderr
+
+
+def readConfigFile(* filenames):
+    conf = {}
     
+    for filename in filenames:
+        execfile(filename, conf)
+    
+    # remove builins from conf dict
+    for var in dir(__builtin__) + ["__builtins__"]:
+        if var in conf:
+            del conf[var]
+    
+    return conf
+
     
 """
 def getopt(* lst):

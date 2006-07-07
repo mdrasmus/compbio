@@ -14,6 +14,7 @@ import algorithms
 import ensembl
 import env
 import fasta
+import gff
 import matrix
 import stats
 import treelib
@@ -35,7 +36,7 @@ options = [
   ["P:", "paths=", "paths", "<files path>",
     {"single": True,
      "help": "colon separated paths used to search for data files",
-     "default": "."}]
+     "default": "."}],
 ]
 
 def readOptions(conf):
@@ -86,7 +87,8 @@ def makeGene2species(maps):
                     return species
         raise Exception("Cannot map gene '%s' to any species" % gene)
     return gene2species
-    
+
+
 def readGene2species(* filenames):
     for filename in filenames:
         if filename == "ENSEMBL":
@@ -96,7 +98,8 @@ def readGene2species(* filenames):
         else:
             maps = []
             for filename in filenames:
-                maps.extend(util.readDelim(filename))
+                maps.extend(util.readDelim(util.skipComments(
+                            util.openStream(filename))))
             smap = makeGene2species(maps)
     
     return smap
@@ -111,6 +114,7 @@ def genomeComposition(genomes, comp, gene2species=gene2species):
         if genome in genomes:
             counts[genome] += 1
     return counts
+
 
 def componentCompositions(order, comps, gene2species=gene2species):
     compositions = util.Dict(1, 0)
@@ -688,36 +692,66 @@ class Matching:
         """
     
     def readGenomes(self, filename, gene2species=gene2species):
-        infile = util.openStream(filename)
+        if filename.endswith(".coord"):
+            self.readCoordFile(filename, gene2species)
     
+    
+    def readGffFile(self, filename, gene2species):
+        """assume one transcript per gene"""
+        
+        for region in gff.iterGff(filename,
+                            lineFilter=lambda x: "\tgene\t" in x,
+                            regionFilter=lambda x: region.feature == "gene"):
+            
+            geneName = region.attrs["gene_id"]
+            
+            # don't add duplicate genes
+            assert geneName not in self.genes
+            
+            self.addGene(geneName, region.seqname, 
+                         region.start, region.end, region.strand)
+    
+    
+    def readCoordFile(self, filename, gene2species):
+        infile = util.openStream(filename)
         for line in infile:
             geneName, chromName, start, end, strand = line.rstrip().split("\t")
             
-            # add genome if needed
-            genomeName = gene2species(geneName)
-            if genomeName not in self.genomes:
-                genome = Genome(genomeName)
-                self.genomes[genomeName] = genome
-            else:
-                genome = self.genomes[genomeName]
+            start = int(start)
+            end = int(end)
             
-            # add chromosome if needed
-            if chromName not in genome.chroms:
-                chrom = Chromosome(chromName, genome)
-                genome.chroms[chromName] = chrom
-            
-            # create gene
-            gene = Gene()
-            gene.name  = geneName
-            gene.chrom = genome.chroms[chromName]
-            gene.start = int(start)
-            gene.end   = int(end)
             if strand == "+" or strand == "1":
-                gene.direction = 1
+                strand = 1
             else:
-                gene.direction = -1
-            genome.genes[geneName] = gene
-            self.genes[geneName] = gene
+                strand = -1
+            
+            self.addGene(geneName, chromName, start, end, strand)
+            
+    
+    def addGene(self, geneName, chromName, start, end, strand):
+        # add genome if needed
+        genomeName = gene2species(geneName)
+        if genomeName not in self.genomes:
+            genome = Genome(genomeName)
+            self.genomes[genomeName] = genome
+        else:
+            genome = self.genomes[genomeName]
+
+        # add chromosome if needed
+        if chromName not in genome.chroms:
+            chrom = Chromosome(chromName, genome)
+            genome.chroms[chromName] = chrom
+
+        # create gene
+        gene = Gene()
+        gene.name  = geneName
+        gene.chrom = genome.chroms[chromName]
+        gene.start = start
+        gene.end   = end
+        gene.strand = strand
+
+        genome.genes[geneName] = gene
+        self.genes[geneName] = gene
     
     
     def autoconf(self, genomes = None):

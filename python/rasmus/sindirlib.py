@@ -491,7 +491,7 @@ def fitParams(lengths, baserates, gene2species, fit=True):
     
     params = {}
     
-    dist = util.distrib(baserates, size=.01)
+    dist = util.distrib(baserates, width=.01)
     top = min(max(baserates, 10))
     param, resid = stats.fitCurve(dist[0], dist[1], stats.gammaPdf, [0,top])
     params["baserate"] = param
@@ -627,7 +627,7 @@ def learnModel2(lengths, gene2species, niters=10, fit=True):
     paramsList = []
     
     # fit baserate distribution
-    dist = util.distrib(baserates, size=.2)
+    dist = util.distrib(baserates, width=.2)
     baserateparam, resid = stats.fitCurve(dist[0], dist[1], stats.gammaPdf, [1,1])
     
     

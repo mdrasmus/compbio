@@ -33,9 +33,14 @@ def mode(vals):
             topkey = key
     return topkey
 
+"""
+Bad function name
+
 def var(vals):
     u = mean(vals)
     return mean(map(lambda x: (x - u)**2, vals))
+"""
+
 
 def variance(vals):
     u = mean(vals)
@@ -47,7 +52,7 @@ def sdev(vals):
 def serror(vals):
     return sdev(vals) / sqrt(len(vals))
 
-def cov(lst1, lst2):
+def covariance(lst1, lst2):
     m1 = mean(lst1)
     m2 = mean(lst2)
     tot = 0.0
@@ -72,7 +77,7 @@ def corrmatrix(mat):
 
 
 def corr(lst1, lst2):
-    num = cov(lst1, lst2)
+    num = covariance(lst1, lst2)
     denom = float(sdev(lst1) * sdev(lst2))
     if denom != 0:
         return num / denom
@@ -114,10 +119,13 @@ def fitLine(xlist, ylist):
 
 
 def smooth(vals, radius):
-    """return an averaging of vals using a radius
+    """
+    return an averaging of vals using a radius
     
-       Note: not implemented as fast as possible
-       """
+    Note: not implemented as fast as possible
+    runtime: O(len(vals) * len(radius))
+    """
+    
     vals2 = []
     vlen = len(vals)
     

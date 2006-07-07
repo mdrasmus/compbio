@@ -33,6 +33,8 @@ def pepfile(genome):
 def coordfile(genome):
     return "%s.coord" % genome
 
+def genefile(genome):
+    return "%s.gff" % genome
 
 
 
@@ -105,7 +107,12 @@ def readGenomes(matching, genomes, gene2species=gene2species,
     util.tic("reading genomes")
     for genome in genomes:
         util.tic("reading %s" % genome)
-        fn = env.findFile(coordfile(genome), paths)
+        
+        try:
+            fn = env.findFile(genefile(genome), paths)
+        except env.PathError:    
+            fn = env.findFile(coordfile(genome), paths)
+        
         matching.readGenomes(fn, gene2species)
         util.log("read %d genes" % len(matching.genomes[genome].genes))
         util.toc()

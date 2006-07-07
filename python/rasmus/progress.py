@@ -20,11 +20,11 @@ class Progress:
            self.step = args[2]
        else:
            raise Exception("wrong number of arguments")
-
+    
        self.prog = self.pos
    
     def update(self, stream = None, msg = "progress %2.0f%%"):
-        self.pos += 1      
+        self.pos += 1
         if (self.pos > self.prog):
             self.prog += self.step * self.end
             if stream != None:

@@ -20,7 +20,6 @@ from rasmus import paml
 from rasmus import phylip
 from rasmus import phyml
 from rasmus import puzzletree
-from rasmus import sindirlib
 from rasmus import treelib
 
 
@@ -76,7 +75,6 @@ options = [
   ["O:", "extraoutput=", "extraoutput", "",
     {"single": True,
      "default": ""}]
-    
 ]
 
 conf = util.parseOptions(sys.argv, options, 
@@ -303,6 +301,7 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
+        from rasmus import sindirlib
         sindirlib.setTreeDistances({"debug": 2}, 
                                    usertree, mat, labels)
         tree = usertree
@@ -400,6 +399,8 @@ def main(conf):
         pipeline.run("all")
         pipeline.process()
     else:
+        # run locally
+        
         for f in files:
             util.tic("%s on %s" % (conf["prog"], f))
             run(conf, f)

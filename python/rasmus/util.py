@@ -6,6 +6,7 @@
  Common utilities (timers, progress bars, plotting, list/dict manipulation)
 """
 
+
 # python libs
 import copy
 import cPickle
@@ -219,8 +220,8 @@ def concat(* lists):
 def sublist(lst, ind):
     """Returns a list 'lst2' such that lst2[i] = lst[ind[i]]
        
-       Or in otherwords, get the subsequence 'lst'
-       same as mget
+       Or in otherwords, get the subsequence of 'lst'.
+       Same as mget().  Use mget() instead.
        
        DEPRECATED
     """
@@ -328,10 +329,20 @@ def groupby(func, lst):
 
 
 def unique(lst):
-    """Returns a copy of 'lst' with only unique entries
+    """
+    Returns a copy of 'lst' with only unique entries.
+    The list is stable (the first occurance is kept.
     """
     
-    return list2dict(lst).keys()
+    found = set()
+    
+    lst2 = []
+    for i in lst:
+        if i not in found:
+            lst2.append(i)
+            found.add(i)
+    
+    return lst2
 
 
 def flatten(lst, depth=INF):
@@ -411,7 +422,7 @@ def frange(start, end, step):
     
     i = 0
     lst = []
-    while start < end:
+    while start + i * step < end:
         lst.append(start + i * step)
         i += 1
     return lst
@@ -616,7 +627,7 @@ def safediv(a, b, default=INF):
 def safelog(x, base=math.e, default=-INF):
     try:
         return math.log(x)
-    except OverflowError:
+    except (OverflowError, ValueError):
         return default
         
 def invcmp(a, b): return cmp(b, a)
@@ -653,6 +664,11 @@ def compose(* funcs):
 #
 # set operations
 #
+# Should use python set instead
+#
+# DEPRECATED
+#
+
 def makeset(lst):
     return list2dict(lst)
 
@@ -687,7 +703,11 @@ def setSubtract(set1, set2):
 #
 
 def match(pattern, line):
-    """  remember: to name tokens use (?P<name>pattern) """
+    """
+    A quick way to do pattern matching.
+    
+    remember: to name tokens use (?P<name>pattern)
+    """
     
     m = re.match(pattern, line)
     
@@ -756,8 +776,12 @@ def openStream(filename, mode = "r"):
     """
     
     # if filename has a file interface then return it back unchanged
-    if "read" in dir(filename) or \
-       "write" in dir(filename):
+    if hasattr(filename, "read") or \
+       hasattr(filename, "write"):
+        return filename
+    
+    # if mode is reading and filename is an iterator
+    if "r" in mode and hasattr(filename, "next"):
         return filename
     
     # if filename is a string then open it
@@ -768,9 +792,9 @@ def openStream(filename, mode = "r"):
         
         # open stdin and stdout
         elif filename == "-":
-            if mode == "w":
+            if "w" in mode:
                 return sys.stdout
-            elif mode == "r":
+            elif "r" in mode:
                 return sys.stdin
             else:
                 raise Exception("stream '-' can only be opened with modes r/w")
@@ -1149,7 +1173,7 @@ def readWhile(stream, chars):
 
 def skipComments(infile):
     for line in infile:
-        if line.startswith("#"):
+        if line.startswith("#") or line.startswith("\n"):
             continue
         yield line
 
@@ -1307,27 +1331,42 @@ def oneNorm(vals):
     s = float(sum(vals))
     return map(lambda x: x/s, vals)
 
-def bucketSize(array, ndivs=20):
-    """Determine the bucket size needed to divide the values in array into 
-       'ndivs' evenly sized buckets"""
+def bucketSize2(array, ndivs=20):
+    """
+    Determine the bucket size needed to divide the values in array into 
+    'ndivs' evenly sized buckets
+       
+    DEPRECATED   
+    """
     return (max(array) - min(array)) / float(ndivs)
 
 
-def hist(array, ndivs = 20, size=None):
-    """Create a histogram of 'array' with 'ndivs' buckets"""
+def bucketSize(array, ndivs=None, low=None, width=None):
+    """Determine the bucket size needed to divide the values in array into 
+       'ndivs' evenly sized buckets"""
     
-    if size != None:
-        ndivs = max(int(abs(max(array) - min(array)) / float(size)), 1)
+    if low is None:
+        low = min(array)
     
-    h = [0] * ndivs
-    x = []
-    bucketwidth = bucketSize(array, ndivs)
-    low = min(array)
-    for i in array:
-        h[min(int((i - low) / bucketwidth), ndivs-1)] += 1
-    for i in range(ndivs):
-        x.append(i * bucketwidth + low)
-    return (x, h)
+    if ndivs is None:
+        if width is None:
+            ndivs = 20
+        else:
+            ndivs = int(math.ceil(max((max(array) - low) / float(width), 1)))
+    
+    if width is None:
+        width = (max(array) - low) / float(ndivs)
+    
+    return ndivs, low, width
+
+
+def bucketBin(item, ndivs, low, width):
+    """
+    Return the bin for an item
+    """
+    
+    assert item >= low, Exception("negative bucket index")
+    return min(int((item - low) / width), ndivs-1)
 
 
 def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
@@ -1335,77 +1374,93 @@ def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
 
     keys = map(key, array)
 
-    # set defaults
-    if low is None:
-        low = min(keys)
+    # set bucket sizes
+    ndivs, low, width = bucketSize(keys, ndivs, low, width)
     
-    if ndivs is None:
-        if width is None:
-            ndivs = 20
-        else:
-            ndivs = int(max((max(keys) - low) / float(width), 1))
-    
-    if width is None:
-        width = (max(keys) - low) / float(ndivs)        
-    
+    # init histogram
     h = [[] for i in range(ndivs)]
     x = []
     
+    # bin items
     for i in array:
         if i >= low:
-            h[min(int((key(i) - low) / width), ndivs-1)].append(i)
+            h[bucketBin(key(i), ndivs, low, width)].append(i)
     for i in range(ndivs):
         x.append(i * width + low)
     return (x, h)
 
 
-def hist2(array1, array2, ndivs1=20, ndivs2=20):
+def hist(array, ndivs=None, low=None, width=None):
+    """Create a histogram of 'array' with 'ndivs' buckets"""
+    
+    # set bucket sizes
+    ndivs, low, width = bucketSize(array, ndivs, low, width)
+    
+    # init histogram
+    h = [0] * ndivs
+    x = []
+    
+    # count items
+    for i in array:
+        h[bucketBin(i, ndivs, low, width)] += 1
+    for i in range(ndivs):
+        x.append(i * width + low)
+    return (x, h)
+
+
+def hist2(array1, array2, 
+          ndivs1=None, ndivs2=None,
+          low1=None, low2=None,
+          width1=None, width2=None):
     """Perform a 2D histogram"""
     
+    
+    # set bucket sizes
+    ndivs1, low1, width1 = bucketSize(array1, ndivs1, low1, width1)
+    ndivs2, low2, width2 = bucketSize(array2, ndivs2, low2, width2)
+    
+    # init histogram
     h = [[0] * ndivs1 for i in xrange(ndivs2)]
     labels = []
-    bucketwidth = bucketSize(array1, ndivs1)
-    bucketheight = bucketSize(array2, ndivs2)
-    low1 = min(array1)
-    low2 = min(array2)
     
     for j,i in zip(array1, array2):
-        h[min(int((i - low2) / bucketheight), ndivs2-1)] \
-         [min(int((j - low1) / bucketwidth), ndivs1-1)] += 1
+        h[bucketBin(i, ndivs2, low2, width2)] \
+         [bucketBin(j, ndivs1, low1, width1)] += 1
     
     for i in range(ndivs2):
         labels.append([])
         for j in range(ndivs1):        
-            labels[-1].append([j * bucketwidth + low1,
-                               i * bucketheight + low2])
+            labels[-1].append([j * width1 + low1,
+                               i * width2 + low2])
     return labels, h
     
   
 
-def distrib(array, ndivs = 20, size=None):
+def distrib(array, ndivs=None, low=None, width=None):
     """Find the distribution of 'array' using 'ndivs' buckets"""
     
-    h = hist(array, ndivs, size=size)
+    # set bucket sizes
+    ndivs, low, width = bucketSize(array, ndivs, low, width)
+    
+    h = hist(array, ndivs, low, width)
     area = 0
-    if size != None:
-        delta = size
-    else:
-        delta = bucketSize(array, ndivs)
+    
     total = float(sum(h[1]))
-    return (h[0], map(lambda x: (x/total)/delta, h[1]))
+    return (h[0], map(lambda x: (x/total)/width, h[1]))
 
-def plothist(array, ndivs = 20, **options):
+
+def plothist(array, ndivs=None, low=None, width=None, **options):
     """Plot a histogram of array"""
-    h = hist(array, ndivs)
+    h = hist(array, ndivs, low, width)
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes")
     
     p.plot(h[0], h[1], **options)
     return p
 
-def plotdistrib(array, ndivs = 20, **options):
+def plotdistrib(array, ndivs=None, low=None, width=None, **options):
     """Plot a distribution of array"""
-    d = distrib(array, ndivs)
+    d = distrib(array, ndivs, low, width)
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes")
     
@@ -1414,6 +1469,7 @@ def plotdistrib(array, ndivs = 20, **options):
 
 def histInt(array):
     """Returns a histogram of integers as a list of counts"""
+    
     hist = [0]  * (max(array) + 1)
     negative = []
     for i in array:
@@ -1429,9 +1485,10 @@ def histDict(array):
        The keys of the returned dict are elements of 'array' and the values
        are the counts of each element in 'array'.
     """
+    
     hist = {}
     for i in array:
-        if i in hist.keys():
+        if i in hist:
             hist[i] += 1
         else:
             hist[i] = 1

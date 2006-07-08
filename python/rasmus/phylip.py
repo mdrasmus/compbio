@@ -224,13 +224,16 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     return names, mat
 
 
-def writeDistMatrix(mat, out=sys.stdout):
+def writeDistMatrix(mat, labels=None, out=sys.stdout):
     out = util.openStream(out, "w")
     
     out.write("%d\n" % len(mat))
     
     for i in range(len(mat)):
-        out.write("%9d " % i)
+        if labels == None:
+            out.write("%8s  " % phylipPadding(str(i)))
+        else:
+            out.write("%8s  " % labels[i])
         
         for val in mat[i]:
             out.write("%10f" % val)

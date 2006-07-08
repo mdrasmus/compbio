@@ -27,8 +27,8 @@ from rasmus import treelib
 
 options = [
   ["p:", "prog=", "prog", "<program1>,<program2>,...",
-    {"req": True,
-     "single": True}],
+    {"single": True,
+     "help": "use --proghelp to see all supported programs"}],
   ["t:", "usertree=", "usertree", "<user supplied tree",
     {"single": True,
      "default": None,
@@ -46,6 +46,8 @@ options = [
      "default": util.INF,
      "parser": int,
      "help": "maximum gene family size to reconstruct"}],
+  ["", "proghelp", "proghelp", "",
+    {"single": True}],
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -363,7 +365,31 @@ def align2dist(conf, prog, alignfile, basename):
 
 def main(conf):
     # parse conf
-    files = conf[""]
+    files = conf["REST"]
+
+    # print program help    
+    if conf["proghelp"]:
+        print >>sys.stderr, "SUPPORTED PROGRAMS\n"
+    
+        print >>sys.stderr, "Fasta to alignment"
+        print >>sys.stderr, " ", " ".join(fasta2alignProgs)
+        print >>sys.stderr
+        
+        print >>sys.stderr, "Alignment to tree"
+        print >>sys.stderr, " ", " ".join(align2treeProgs)
+        print >>sys.stderr
+
+        print >>sys.stderr, "Alignment to distance matrix"
+        print >>sys.stderr, " ", " ".join(align2distProgs)
+        print >>sys.stderr
+        
+        print >>sys.stderr, "Distance matrix to tree"
+        print >>sys.stderr, " ", " ".join(dist2treeProgs)
+        print >>sys.stderr
+
+        
+        sys.exit(1)
+        
     
     # save arguments for each program
     allArgs = conf["args"]

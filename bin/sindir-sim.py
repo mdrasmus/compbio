@@ -1,10 +1,18 @@
 #!/usr/bin/env python
 
+# python libs
 import sys, time, os, random, math
-from rasmus import synteny, synphylweb, bionj, ensembl, phyloutil, env
-from rasmus import fasta, util, genomeio, genomeutil, phylip
-from rasmus import muscle, phylip, algorithms, clustalw, alignlib
-from rasmus import sindirlib
+
+# rasmus libs
+from rasmus import env, treelib
+from rasmus import fasta, util
+from rasmus import sindirlib, stats
+
+# scipy libs
+from scipy import matrixmultiply as mm
+from scipy import transpose, array, dot
+from scipy.linalg import expm, logm, eig
+
 
 
 options = [
@@ -63,8 +71,11 @@ options = [
          "parser": float}],
     
     "Codon simulation",
-    ["", "csm=", "csm", "<Codon Substitution Matrix>"],
-    ["", "csmbranchlen=", "csmbranchlen", "<branch length for species in CSM>"],
+    ["", "csm=", "csm", "<Codon Substitution Matrix>",
+        {"single": True}],
+    ["", "csmbranchlen=", "csmbranchlen", "<branch length for species in CSM>",
+        {"single": True,
+         "parser": float}],
     
     "Output extensions",
     ["t:", "outtree=", "outtree", "<output tree filename extension>",
@@ -117,10 +128,10 @@ def main(conf):
     
     
     # adjustment for baserate (empirically determined)
-    conf["baserate"] = conf["baserate"] / .9
+    #conf["baserate"] = conf["baserate"] / .9
     
     
-    stree = algorithms.readTree(env.findFile(conf["stree"]))
+    stree = treelib.readTree(env.findFile(conf["stree"]))
     params = sindirlib.readParams(conf["params"])
     
     # read species2gene
@@ -136,6 +147,24 @@ def main(conf):
     for f in conf["seqfile"]:
         rootseqs.extend(fasta.readFasta(f).values())
     rootseqs = [s.replace("-", "") for s in rootseqs]
+    
+    
+    # load CSM
+    if "csm" in conf:
+        labels, conf["csm"] = loadCsm(conf["csm"])
+        
+        # remove AA from labels
+        labels = [x[:x.index("/")] for x in labels]
+        conf["csmlabels"] = labels
+        
+        # make csm lookup
+        conf["csmlookup"] = {}
+        for i, label in enumerate(labels):
+            conf["csmlookup"][label] = i
+        
+        # find rate matrix
+        conf["csmrate"] = logm(conf["csm"]) / conf["csmbranchlen"]
+        
     
     
     # simulate
@@ -165,7 +194,7 @@ def main(conf):
         
         while True:
             tree = simTree(conf, rootseq, stree, params, species2gene)
-            algorithms.removeSingleChildren(tree)
+            treelib.removeSingleChildren(tree)
             
             # make another tree if this one is too simple
             if len(tree.leaves()) >= 4:
@@ -185,9 +214,15 @@ def main(conf):
         #phylip.dnadist(seqs, str(i) + conf["outdist"], verbose=False)
 
 
+def real(x):
+    if isinstance(x, float):
+        return x
+    else:
+        return x.real
+
 
 def simTree(conf, rootseq, stree, params, species2gene):
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.makeRoot()
     
     # hard-coded pre-dup lengths
@@ -229,14 +264,17 @@ def simTree(conf, rootseq, stree, params, species2gene):
         
         
         # mutate sequence
-        seq2 = simSeq(conf, gparent.data["seq"], branchlen)
+        if "csm" in conf:
+            seq2 = simSeqCsm(conf, gparent.data["seq"], branchlen)
+        else:
+            seq2 = simSeq(conf, gparent.data["seq"], branchlen)
         
         # setup new gene node
         if snode.isLeaf() and not dup:
             prefix = species2gene[snode.name]
-            gchild = algorithms.TreeNode(prefix + "_sim_" + str(tree.newName()))
+            gchild = treelib.TreeNode(prefix + "_sim_" + str(tree.newName()))
         else:
-            gchild = algorithms.TreeNode(tree.newName())
+            gchild = treelib.TreeNode(tree.newName())
         gchild.dist = branchlen
         gchild.data["seq"] = seq2
         tree.addChild(gparent, gchild)
@@ -290,7 +328,7 @@ def simTree(conf, rootseq, stree, params, species2gene):
             break
     
     # remove any redundant single children nodes
-    algorithms.removeSingleChildren(tree)
+    treelib.removeSingleChildren(tree)
     
     assert int not in [type(x.name) for x in tree.leaves()]
     
@@ -320,6 +358,21 @@ def simSeq(conf, seq, branchlen):
     return "".join(seq2)
 
 
+def simSeqCsm(conf, seq, branchlen):
+    seq2 = []
+    
+    csm2 = util.map2(real, expm(branchlen * conf["csmrate"]))
+    lookup = conf["csmlookup"]
+    labels = conf["csmlabels"]
+    
+    for i in range(0, len(seq), 3):
+        codon = seq[i:i+3]
+        codon2 = labels[stats.sample(csm2[lookup[codon]])]
+        seq2.append(codon2)
+    
+    return "".join(seq2)
+
+
 
 def kimura(base, alpha, beta, time):
     probs = {
@@ -339,7 +392,30 @@ def kimura(base, alpha, beta, time):
             return INT2BASE[i]
     
     assert False, "probabilities do not add to one"
-        
+    
+
+def readCsm(filename):
+    data = util.readDelim(filename)
+
+    labels = data[0]
+    mat = []
+
+    for i, row in enumerate(data[1:]):
+        assert row[0] == labels[i]
+        mat.append(map(lambda x: int(float(x)), row[1:]))
+
+    return labels, mat
+
+
+def normMatrix(mat):
+    rowsum = map(sum, mat)
+    
+    return [[x/float(tot) for x in row]
+            for row, tot in zip(mat, rowsum)]
+
+def loadCsm(filename):
+    labels, csm_counts = readCsm(filename)
+    return labels, normMatrix(csm_counts)
 
 
 main(conf)

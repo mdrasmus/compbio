@@ -103,7 +103,8 @@ for treefile in (conf[""] + conf["tree"]):
         if conf["headings"]:
             print
             print "------------------------------------------------"
-            print treefile
+            print "filename: %s" % treefile
+            print "treelen:  %f" % sum(x.dist for x in tree.nodes.values())
             print
             
         

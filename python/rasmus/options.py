@@ -31,7 +31,7 @@ class Option:
             self.comment = None
 
             # defaults
-            self.flag = ":" not in self.short
+            self.flag = "=" not in self.long
             self.req = False
             self.single = False
             self.help = ""

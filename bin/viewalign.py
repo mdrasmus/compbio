@@ -5,28 +5,34 @@ from rasmus import util, fasta, alignlib
 
 
 options = [
-    ["f:", "fasta=", "fasta", "AUTO<fasta file>"],
-    ["w:", "width=", "width", "AUTO<width of alignment>"],
+    ["f:", "fasta=", "fasta", "<fasta file>",
+        {"default": []}],
+    ["w:", "width=", "width", "<width of alignment>",
+        {"single": True,
+         "default": 59,
+         "parser": int}],
     ]
 
 
-param = util.parseOptions(sys.argv, options, quit=True)
+conf = util.parseOptions(sys.argv, options, quit=True)
+
+alnfiles = conf["fasta"] + conf["REST"]
+
+def printAlign(conf, alnfile):       
+    aln = fasta.readFasta(alnfile)
+
+    percid = alignlib.calcConservation(aln)
+    
+    print "----------------------------------"
+    print "file:    %s" % alnfile
+    print "length:  %d" % len(aln.values()[0])
+    print "perc id: %f" % (util.countge(.99, percid) / float(len(percid)))
+    print 
+
+    alignlib.printAlign(aln, seqwidth=conf["width"])
 
 
-aln = fasta.readFasta(param["fasta"][-1])
-
-
-width = 59
-if "width" in param:
-    width = int(param["width"][-1])
-
-
-
-
-percid = alignlib.calcConservation(aln)
-
-print "length:  %d" % len(aln.values()[0])
-print "perc id: %f" % (util.countge(.99, percid) / float(len(percid)))
-print 
-
-alignlib.printAlign(aln, seqwidth=width)
+for alnfile in alnfiles:
+    printAlign(conf, alnfile)
+    
+ 

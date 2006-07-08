@@ -38,8 +38,6 @@ options = [
         {"help": "do quick processing"}],
     ["r:", "report=", "report", "<report type>", 
         {"help": "print a report"}],
-    ["C:", "genconf=", "genconf", "<config file>", 
-        {"help": "generate a config template"}],
     ["P:",  "paths=", "paths", "<data path>"]
 ]
 
@@ -309,8 +307,8 @@ def setupSyntenyInputs(config):
             data.append([genome1, genome2, 
                          config["genome_files"][genome1], 
                          config["genome_files"][genome2],
-                         fastaFile(config, genome1),
-                         fastaFile(config, genome2),
+                         "",    # fasta file not needed
+                         "",    # fasta file not needed
                          matchFile(config, genome1, genome2)])
     else:
         for genome1 in config["genomes"]:
@@ -320,8 +318,8 @@ def setupSyntenyInputs(config):
                     data.append([genome1, genome2, 
                          config["genome_files"][genome1], 
                          config["genome_files"][genome2],
-                         fastaFile(config, genome1),
-                         fastaFile(config, genome2),
+                         "",    # fasta file not needed
+                         "",    # fasta file not needed
                          matchFile(config, genome1, genome2)])
                 except env.PathError:
                     pass

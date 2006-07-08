@@ -34,14 +34,15 @@ options = [
   ["S:", "smap=", "smap", "<gene2species map>",
     {"help": "mapping of gene names to species names"}],
   ["P:", "paths=", "paths", "<files path>",
-    {"single": True,
-     "help": "colon separated paths used to search for data files",
+    {"help": "colon separated paths used to search for data files",
      "default": "."}],
 ]
 
 def readOptions(conf):
+    """Setup data paths and parse common options"""
+
     # setup data paths
-    env.addPaths(conf["paths"])
+    env.addPaths(* conf["paths"])
     env.addEnvPaths("DATAPATH")
     
     # read species map

@@ -160,6 +160,8 @@ def sample(weights):
     """
     Randomly choose an int between 0 and len(probs)-1 using
     the weights stored in list probs.
+    
+    item i will be chosen with probability weights[i]/sum(weights)
     """
     
     probs = util.oneNorm(weights)

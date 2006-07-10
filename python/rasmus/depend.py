@@ -23,8 +23,8 @@ VALID_STATUS = {
 
 
 DEFAULT_DISPATCH = "bash $SCRIPT"
-DEFAULT_BASH = "bash $SCRIPT"
-DEFAULT_LSF_DISPATCH = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
+BASH_DISPATCH = "bash $SCRIPT"
+LSF_DISPATCH = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
 
 
 # autodetect dispatch
@@ -32,7 +32,7 @@ def getDefaultDispatch():
     platform = getPlatform()
     
     if platform == "lsf":
-        return DEFAULT_LSF_DISPATCH
+        return LSF_DISPATCH
     else:
         return DEFAULT_DISPATCH
 

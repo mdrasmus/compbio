@@ -768,11 +768,12 @@ def openStream(filename, mode = "r"):
        The following types for 'filename' are handled:
        
        stream         - returns 'filename' unchanged
+       iterator       - returns 'filename' unchanged
        URL string     - opens http pipe
        '-'            - opens stdin or stdout, depending on 'mode'
        other string   - opens file with name 'filename'
        
-       mode is standard mode for file(): r,w,a
+       mode is standard mode for file(): r,w,a,b
     """
     
     # if filename has a file interface then return it back unchanged

@@ -30,9 +30,6 @@ class Gnuplot:
             "ylab"  : "",
             "zlab"  : "",
             "plab"  : "",
-            "xfunc" : float,
-            "yfunc" : float,
-            "zfunc" : float,
             "eqn": None,
             
             # graph options
@@ -78,6 +75,7 @@ class Gnuplot:
     def unlog(self):
         self.options["xlog"] = False
         self.options["ylog"] = False
+        self.options["zlog"] = False
         self.replot()
     
     def xlog(self, base=10):
@@ -130,11 +128,15 @@ class Gnuplot:
     
     
     def savedata(self, filename):
+        """Save gnuplot commands in filename"""
+        
         self.stream = file(filename, "w")
         self.replot()
         self.enableOutput()
 
     def savetab(self, filename):
+        """Save data in tab delimited format"""
+        
         out = openStream(filename, "w")
 
         for data in self.data:
@@ -157,6 +159,16 @@ class Gnuplot:
     
     
     def saveall(self, filename):
+        """
+        Save gnuplot commands, tad delimited, and plot image in the 
+        following files:
+            
+            <filename>.gnuplot
+            <filename>.tab
+            <filename>.png
+        
+        """
+        
         if not self.enable:
             return
         
@@ -217,29 +229,7 @@ class Gnuplot:
         os.remove(tmpfile)
         
     
-    
-    def getTransform(self):
-        def mylog(x):
-            if x > 0:
-                return math.log10(x)
-            else:
-                return 0.0
-            
-        funcs = []
-            
-        # determine transformation functions
-        for axis in ["xfunc", "yfunc", "zfunc"]:
-            if self.options[axis] == "none":
-                funcs.append(lambda x: float(x))
-            #elif self.options[axis] == "log":
-            #    funcs.append(mylog)
-            else:
-                funcs.append(self.options[axis])
-        return funcs
-    
     def findRange(self):
-        (xfunc, yfunc, zfunc) = self.getTransform()
-    
         bestLeft = 1e500
         bestRight = -1e500
         bestTop = -1e500
@@ -254,10 +244,10 @@ class Gnuplot:
             list2 = graph.ylist
 
             # find border
-            top    = yfunc(max(list2))
-            bottom = yfunc(min(list2))
-            left   = xfunc(min(list1))
-            right  = xfunc(max(list1))
+            top    = max(list2)
+            bottom = min(list2)
+            left   = min(list1)
+            right  = max(list1)
             
             # find margin
             ymargin = (top - bottom) * self.margin
@@ -288,13 +278,11 @@ class Gnuplot:
         
     
     def replot(self):
+        # do nothing if no data or plotting is not enabled
         if len(self.data) == 0 or \
            not self.enable:
             return  
         
-
-        # find defualt ranges
-        (maxy, miny, minx, maxx) = self.findRange()
         
         # configure 
         print >>self.stream, "set mouse"
@@ -327,7 +315,7 @@ class Gnuplot:
             print >>self.stream, "set ztics autofreq"
         else:
             print >>self.stream, "set ztics %f" % self.options["ztics"]
-
+        
         # log scale
         print >>self.stream, "unset logscale xyz"
         if self.options["xlog"]:
@@ -338,6 +326,7 @@ class Gnuplot:
             print >>self.stream, "set logscale z %d" % self.options["zlog"]
         
         # setup ranges
+        (maxy, miny, minx, maxx) = self.findRange()
         if self.options["xmin"] != None: minx = self.options["xmin"]
         if self.options["xmax"] != None: maxx = self.options["xmax"]
         if self.options["ymin"] != None: miny = self.options["ymin"]
@@ -393,11 +382,12 @@ class Gnuplot:
         for graph in self.data:
             if graph.options["eqn"]:
                 continue
-            self.outputData(graph.xlist, graph.ylist, graph.zlist)
+            self.outputData(graph.xlist, graph.ylist, graph.zlist, graph.options)
             
         
         # need to make sure gnuplot gets what we have written
         self.stream.flush()
+    
     
     def prepareData(self, list1, list2=[], list3=[]):
         if list2 == []:
@@ -409,17 +399,25 @@ class Gnuplot:
         return list1, list2, list3
     
     
-    def outputData(self, list1, list2, list3=[]):
-        (xfunc, yfunc, zfunc) = self.getTransform()
-    
+    def outputData(self, list1, list2, list3=[], options={}):
         for i in range(len(list1)):
             if list3 == []:
-                print >>self.stream, xfunc(list1[i]), \
-                                     yfunc(list2[i])
+                print >>self.stream, list1[i], \
+                                     list2[i],
             else:
-                print >>self.stream, xfunc(list1[i]), \
-                                     xfunc(list2[i]), \
-                                     yfunc(list3[i])
+                print >>self.stream, list1[i], \
+                                     list2[i], \
+                                     list3[i],
+            
+            # error bars
+            if "err" in options:
+                print >>self.stream, options["err"][i],
+            
+            if "errlow" in options and "errhi" in options:
+                print >>self.stream, options["errlow"][i], options["errhi"][i],
+            
+            # newline
+            print >>self.stream
         print >>self.stream, "e"
     
     

@@ -4,7 +4,7 @@
 import sys, time, os, random, math
 
 # rasmus libs
-from rasmus import env, treelib
+from rasmus import env, treelib, alignlib
 from rasmus import fasta, util
 from rasmus import sindirlib, stats
 
@@ -173,21 +173,7 @@ def main(conf):
         
         # create initial sequence
         if conf["seqlen"] > 0:
-            seq = []
-            gc = conf["gc"]
-            for k in range(conf["seqlen"]):
-                j = random.random() 
-                if j < gc:
-                    if j < gc / 2:
-                        seq.append("G")
-                    else:
-                        seq.append("C")
-                else:
-                    if j < gc + (1 - gc) / 2:
-                        seq.append("A")
-                    else:
-                        seq.append("T")
-            rootseq = "".join(seq)
+            rootseq = createRandomSeq(conf["seqlen"])
         else:
             rootseq = rootseqs[i % len(rootseqs)]
         
@@ -212,6 +198,17 @@ def main(conf):
         out.close()
         
         #phylip.dnadist(seqs, str(i) + conf["outdist"], verbose=False)
+
+
+def createRandomSeq(seqlen):
+    codons = util.remove(alignlib.CODON_TABLE.keys(), 
+                         "---", "TGA", "TAG", "TAA")
+
+    seq = []
+    for k in range(seqlen / 3):
+        j = random.randint(0, len(codons) - 1)
+        seq.append(codons[j])
+    return "".join(seq)
 
 
 def real(x):

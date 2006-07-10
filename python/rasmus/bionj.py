@@ -10,7 +10,7 @@ def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):
     
     # find distances and then NJ tree
     if distmat != None:
-        phylip.writeDistMatrix(distmat, distfile)
+        phylip.writeDistMatrix(distmat, out=distfile)
         
         if labels == None:
             labels = aln.keys()

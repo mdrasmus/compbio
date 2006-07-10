@@ -146,8 +146,7 @@ class Gnuplot:
             if len(data.ylist) > 0:
                 if len(data.zlist) > 0:
                     rows = zip(data.xlist, data.ylist, data.zlist)
-                    labels = mget(data.options, ["xlab", "ylab", 
-    "zlab"])
+                    labels = mget(data.options, ["xlab", "ylab", "zlab"])
                 else:
                     rows = zip(data.xlist, data.ylist)
                     labels = mget(data.options, ["xlab", "ylab"])

@@ -3,7 +3,7 @@ import os, StringIO
 
 
 
-def mrbayes(aln, filename = "", format="protein", options=None):
+def mrbayes(aln, filename = "", format="protein", options=None, verbose=False):
     if not options: options = {}
     if filename == "":
         filename = util.tempfile(".", "mrbayes-in", ".nex")
@@ -16,12 +16,16 @@ def mrbayes(aln, filename = "", format="protein", options=None):
     
     
     writeNexus(file(filename, "w"), aln.keys(), aln.values(), format, options)
-    os.system("echo exe %s | mb" % filename)
+    if verbose:
+        os.system("echo exe %s | mb" % filename)
+    else:
+        os.system("echo exe %s | mb >/dev/null 2>&1" % filename)
     
     tree = readNexusConTree(file(filename + ".con"))
     util.toc()
     
     return tree
+
 
 # todo: make slide an argument
 def mrbayesIntrons(aln, genes, lookup, slide=1, filename = "", format="protein", options=None):

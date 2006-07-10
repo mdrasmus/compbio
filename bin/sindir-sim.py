@@ -61,11 +61,11 @@ options = [
          "parser": float}],
     
     "Kimura model parameters",
-    ["A:", "alpha=", "alpha", "<kimura alpha>",
+    ["a:", "alpha=", "alpha", "<kimura alpha>",
         {"single": True,
          "default": .25,
          "parser": float}],
-    ["B:", "beta=", "beta", "<kimura beta>",
+    ["b:", "beta=", "beta", "<kimura beta>",
         {"single": True,
          "default": .25,
          "parser": float}],
@@ -78,15 +78,15 @@ options = [
          "parser": float}],
     
     "Output extensions",
-    ["t:", "outtree=", "outtree", "<output tree filename extension>",
+    ["T:", "outtree=", "outtree", "<output tree filename extension>",
         {"single": True,
          "default": ".tree"}],
-    ["a:", "outalign=", "outalign", "<output align filename extension>",
+    ["A:", "outalign=", "outalign", "<output align filename extension>",
         {"single": True,
          "default": ".align"}],
-    ["d:", "outdist=", "outdist", "<output distance filename extension>",
-        {"single": True,
-         "default": ".dist"}],
+#    ["d:", "outdist=", "outdist", "<output distance filename extension>",
+#        {"single": True,
+#         "default": ".dist"}],
     
 ]
 

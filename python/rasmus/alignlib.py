@@ -608,7 +608,11 @@ def pssmSeq(pssm, seq):
 #   3. global
 #       coordinate on chromosome on positive strand
 #
-# Notes: end is inclusive
+# Notes: 0-based, end is inclusive
+# TODO: make end exclusive
+# There should only be two kinds of indexing
+# 1. 0-based, end exclusive
+# 2. 1-based, end inclusive
 #
 #--------------------------------------------------------------------------------
 
@@ -669,6 +673,7 @@ def local2global(coord, start, end, strand):
 def global2align(coord, start, end, strand, alignLookup):
     coord = global2local(coord, start, end, strand)
     
+    # maybe throw exception for out of bounds
     if coord < 0: coord = 0
     if coord >= len(alignLookup): coord = len(alignLookup) - 1
     

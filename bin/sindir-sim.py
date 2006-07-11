@@ -27,9 +27,9 @@ options = [
         {"single": True}],
     ["r:", "baserate=", "baserate", "<baserate>",
         {"single": True,
-         "default": 1.0,
-         "parser": float}],        
-    
+         "default": None,
+         "parser": float}],
+        
     "Sequence generation",
     ["n:", "ntrees=", "ntrees", "<number of trees to produce>",
         {"single": True,
@@ -151,7 +151,7 @@ def main(conf):
     
     # load CSM
     if "csm" in conf:
-        labels, conf["csm"] = loadCsm(conf["csm"])
+        labels, conf["csm"], conf["codon_usage"] = loadCsm(conf["csm"])
         
         # remove AA from labels
         labels = [x[:x.index("/")] for x in labels]
@@ -168,18 +168,28 @@ def main(conf):
     
     
     # simulate
+    util.tic("simulating %d sequences" % conf["ntrees"])
     for i in range(conf["ntrees"]):
         util.log("simulating", i)
         
         # create initial sequence
         if conf["seqlen"] > 0:
-            rootseq = createRandomSeq(conf["seqlen"])
+            rootseq = createRandomSeq(conf["seqlen"], 
+                                      conf["csmlabels"],
+                                      conf["codon_usage"])
         else:
             rootseq = rootseqs[i % len(rootseqs)]
         
+        # create baserate
+        if conf["baserate"] is None:
+            baserate = random.gammavariate(params["baserate"][0],
+                                           1 / params["baserate"][1])
+        else:
+            baserate = conf["baserate"]
         
+        # create tree
         while True:
-            tree = simTree(conf, rootseq, stree, params, species2gene)
+            tree = simTree(conf, rootseq, baserate, stree, params, species2gene)
             treelib.removeSingleChildren(tree)
             
             # make another tree if this one is too simple
@@ -198,15 +208,13 @@ def main(conf):
         out.close()
         
         #phylip.dnadist(seqs, str(i) + conf["outdist"], verbose=False)
+    util.toc()
 
 
-def createRandomSeq(seqlen):
-    codons = util.remove(alignlib.CODON_TABLE.keys(), 
-                         "---", "TGA", "TAG", "TAA")
-
+def createRandomSeq(seqlen, codons, codonUsage):
     seq = []
     for k in range(seqlen / 3):
-        j = random.randint(0, len(codons) - 1)
+        j = stats.sample(codonUsage)
         seq.append(codons[j])
     return "".join(seq)
 
@@ -218,7 +226,7 @@ def real(x):
         return x.real
 
 
-def simTree(conf, rootseq, stree, params, species2gene):
+def simTree(conf, rootseq, baserate, stree, params, species2gene):
     tree = treelib.Tree()
     tree.makeRoot()
     
@@ -256,7 +264,7 @@ def simTree(conf, rootseq, stree, params, species2gene):
             endpoint = 1.0
         
         # choose branch length
-        branchlen = simBranchLen(conf, conf["baserate"], 
+        branchlen = simBranchLen(conf, baserate, 
                                  params[snode.name], midpoint, endpoint)
         
         
@@ -412,7 +420,7 @@ def normMatrix(mat):
 
 def loadCsm(filename):
     labels, csm_counts = readCsm(filename)
-    return labels, normMatrix(csm_counts)
+    return labels, normMatrix(csm_counts), map(sum, csm_counts)
 
 
 main(conf)

@@ -12,16 +12,16 @@ from rasmus import alignlib
 from rasmus import bionj
 from rasmus import clustalw
 from rasmus import depend
-from rasmus import fasta
-from rasmus import muscle
-from rasmus import util
 from rasmus import env
+from rasmus import fasta
+from rasmus import mrbayes
+from rasmus import muscle
 from rasmus import paml
 from rasmus import phylip
 from rasmus import phyml
 from rasmus import puzzletree
 from rasmus import treelib
-
+from rasmus import util
 
 
 
@@ -86,7 +86,7 @@ conf = util.parseOptions(sys.argv, options,
 fasta2alignProgs = ["clustalw", "muscle"]
 
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
-             "phyml_dna", "phyml_pep"]
+             "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep"]
              
 dist2treeProgs = [ "bionj", "lse" ]
 
@@ -274,7 +274,14 @@ def align2tree(conf, prog, alignfile, basename):
                            args=conf["args"],
                            saveOutput=conf["extraoutput"])
     
-
+    elif prog == "mrbayes_dna":
+        tree = mrbayes.mrbayes(aln, 
+                               format="dna",
+                               verbose=conf["verbose"])
+    elif prog == "mrbayes_pep":
+        tree = mrbayes.mrbayes(aln, 
+                               format="pep",
+                               verbose=conf["verbose"])
     else:
         raise "unknown phylogeny program '%s'" % prog
     

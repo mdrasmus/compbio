@@ -37,7 +37,7 @@ options = [
 
 
 # parse options
-conf = util.parseOptions(sys.argv, options, quit=True)
+conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<trees> ...")
 genomeutil.readOptions(conf)
 gene2species = conf["gene2species"]
 if "stree" in conf:

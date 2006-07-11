@@ -1,30 +1,87 @@
-import fasta, util, algorithms, exonutil
+import fasta, util, treelib, exonutil, phylip
 import os, StringIO
 
 
 
-def mrbayes(aln, filename = "", format="protein", options=None, verbose=False):
-    if not options: options = {}
-    if filename == "":
-        filename = util.tempfile(".", "mrbayes-in", ".nex")
+def mrbayes(aln, nexfilename = "", format="pep", options=None, 
+            verbose=True, saveOutput=""):
     util.tic("mrbayes on %d of length %d" % (len(aln), len(aln.values()[0])))
     
+    
+    if nexfilename == "":
+        cwd = phylip.createTempDir()
+    else:
+        cwd = None
+    
+    # setup options
+    if nexfilename == "":
+        nexfilename = "infile.nex"    
+    if not options: 
+        options = {}
     setDefaultOptions(options)
     
     burnin = .25 * options["ngen"] / options["samplefreq"]
     options["extra"] += "sumt;"
     
+    # write input file
+    writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), format, options)
     
-    writeNexus(file(filename, "w"), aln.keys(), aln.values(), format, options)
+    # exec mrbayes
     if verbose:
-        os.system("echo exe %s | mb" % filename)
+        os.system("echo exe %s | mb" % nexfilename)
     else:
-        os.system("echo exe %s | mb >/dev/null 2>&1" % filename)
+        os.system("echo exe %s | mb >/dev/null 2>&1" % nexfilename)
     
-    tree = readNexusConTree(file(filename + ".con"))
+    # read tree
+    tree = readNexusConTree(file(nexfilename + ".con"))
+    
+    # clean up
+    if cwd != None:
+        if saveOutput != "":
+            phylip.saveTempDir(cwd, saveOutput)
+        else:
+            phylip.cleanupTempDir(cwd)
+    
     util.toc()
     
     return tree
+    
+    
+
+def writeNexus(out, names, seqs, format="pep", options=None):
+    # setup options
+    if options is None:
+        options = {}
+    
+    # determine sequence format
+    if format == "pep":
+        format = "protein"
+    elif format == "dna":
+        format = "dna"
+    else:
+        raise Exception("unknown sequence format")
+    
+    # write Nexus file header
+    print >>out, """\
+#NEXUS
+begin data;
+dimensions ntax=%d nchar=%d;
+format datatype=%s interleave=yes gap=-;
+matrix
+""" % (len(seqs), len(seqs[0]), format)
+    
+    # write sequences
+    for name, seq in zip(names, seqs):
+        print >>out, "%s\t%s" % (name, seq)
+    
+    print >>out, """\
+;
+end;
+"""
+    # write options
+    writeMrbayesOptions(out, options)
+
+
 
 
 # todo: make slide an argument
@@ -47,31 +104,7 @@ def mrbayesIntrons(aln, genes, lookup, slide=1, filename = "", format="protein",
     tree = readNexusConTree(file(filename + ".con"))
     util.toc()
     
-    return tree
-    
-    
-
-def writeNexus(out, names, seqs, format="protein", options=None):
-    if not options: options = {}
-    print >>out, """\
-#NEXUS
-begin data;
-dimensions ntax=%d nchar=%d;
-format datatype=%s interleave=yes gap=-;
-matrix
-""" % (len(seqs), len(seqs[0]), format)
-
-    for name, seq in zip(names, seqs):
-        print >>out, "%s\t%s" % (name, seq)
-    
-
-    print >>out, """\
-;
-end;
-"""
-    
-    writeMrbayesOptions(out, options)
-    
+    return tree    
 
 def writeNexusIntrons(out, names, seqs, intronseqs, format="protein", options=None):
     if not options: options = {}
@@ -166,8 +199,8 @@ def readNexusConTree(infile):
             
             # only read the second tree
             if count == 2:
-                line.replace("   tree con_50_majrule =", "")
-                tree = algorithms.Tree()
+                line = line.replace("   tree con_50_majrule =", "")
+                tree = treelib.Tree()
                 tree.readNewick(StringIO.StringIO(line))
                 
                 return tree

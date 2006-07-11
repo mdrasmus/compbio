@@ -274,8 +274,16 @@ def gammaPdf(x, params):
     if x <= 0 or alpha <= 0 or beta <= 0:
         return 0.0
     else:
-        return (exp(-beta * x) * (x ** (alpha -1)) * (beta ** alpha)) / \
+        return (exp(-x * beta) * (x ** (alpha - 1)) * (beta ** alpha)) / \
            gamma(alpha)
+
+def gammaPdf2(x, params):
+    alpha, beta = params
+    if x <= 0 or alpha <= 0 or beta <= 0:
+        return 0.0
+    else:
+        return exp(- x * beta + (alpha - 1)*log(x) + alpha * log(beta) -
+                   gammaln(alpha))
 
 
 def gammaCdf(x, params):

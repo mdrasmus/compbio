@@ -180,17 +180,10 @@ def main(conf):
         else:
             rootseq = rootseqs[i % len(rootseqs)]
         
-        # create baserate
-        if conf["baserate"] is None:
-            baserate = random.gammavariate(params["baserate"][0],
-                                           1 / params["baserate"][1])
-        else:
-            baserate = conf["baserate"]
         
         # create tree
         while True:
-            tree = simTree(conf, rootseq, baserate, stree, params, species2gene)
-            treelib.removeSingleChildren(tree)
+            tree = simTree(conf, rootseq, stree, params, species2gene)
             
             # make another tree if this one is too simple
             if len(tree.leaves()) >= 4:
@@ -211,22 +204,38 @@ def main(conf):
     util.toc()
 
 
-def createRandomSeq(seqlen, codons, codonUsage):
-    seq = []
-    for k in range(seqlen / 3):
-        j = stats.sample(codonUsage)
-        seq.append(codons[j])
-    return "".join(seq)
-
-
-def real(x):
-    if isinstance(x, float):
-        return x
+def simTree(conf, rootseq, stree, params, species2gene):
+    if conf["baserate"] is None:
+        baserate = random.gammavariate(params["baserate"][0],
+                                       1 / params["baserate"][1])
     else:
-        return x.real
+        baserate = conf["baserate"]
 
+    tree = simTreeTopology(conf, baserate, stree, params, species2gene)
+    simTreeSequence(conf, tree, rootseq)
+    
+    return tree
+    
 
-def simTree(conf, rootseq, baserate, stree, params, species2gene):
+def simTreeSequence(conf, tree, rootseq):    
+    tree.root.data["seq"] = rootseq
+    
+    # recurse down tree
+    def walk(node):
+        if "csm" in conf:
+            node.data["seq"] = simSeqCsm(conf, node.parent.data["seq"], 
+                                         node.dist)
+        else:
+            node.data["seq"] = simSeq(conf, node.parent.data["seq"], node.dist)
+        
+        node.recurse(walk)
+    for child in tree.root.children:
+        walk(child)
+    
+    
+    
+
+def simTreeTopology(conf, baserate, stree, params, species2gene):
     tree = treelib.Tree()
     tree.makeRoot()
     
@@ -234,10 +243,8 @@ def simTree(conf, rootseq, baserate, stree, params, species2gene):
     params[stree.root.name] = [.25, .125]
     
     
-    tree.root.data["seq"] = rootseq
-    
     # determine where losses and dups should be
-    dups = util.Dict(1, 0)    
+    dups = util.Dict(default=0)
     for i in range(conf["dupnum"]):
         while True:
             x = int(random.random() * len(stree.nodes))
@@ -268,12 +275,6 @@ def simTree(conf, rootseq, baserate, stree, params, species2gene):
                                  params[snode.name], midpoint, endpoint)
         
         
-        # mutate sequence
-        if "csm" in conf:
-            seq2 = simSeqCsm(conf, gparent.data["seq"], branchlen)
-        else:
-            seq2 = simSeq(conf, gparent.data["seq"], branchlen)
-        
         # setup new gene node
         if snode.isLeaf() and not dup:
             prefix = species2gene[snode.name]
@@ -281,7 +282,6 @@ def simTree(conf, rootseq, baserate, stree, params, species2gene):
         else:
             gchild = treelib.TreeNode(tree.newName())
         gchild.dist = branchlen
-        gchild.data["seq"] = seq2
         tree.addChild(gparent, gchild)
         
         # recurse
@@ -313,7 +313,7 @@ def simTree(conf, rootseq, baserate, stree, params, species2gene):
             if tree.nodes.values()[x] != tree.root and \
                losses[tree.nodes.values()[x]] == 0: break
         losses[tree.nodes.values()[x]] = 1
-
+    
     for key, val in losses.items():
         if val == 1:
             tree.removeTree(key)
@@ -337,8 +337,23 @@ def simTree(conf, rootseq, baserate, stree, params, species2gene):
     
     assert int not in [type(x.name) for x in tree.leaves()]
     
-    return tree
+    return tree    
+    
 
+
+def createRandomSeq(seqlen, codons, codonUsage):
+    seq = []
+    for k in range(seqlen / 3):
+        j = stats.sample(codonUsage)
+        seq.append(codons[j])
+    return "".join(seq)
+
+
+def real(x):
+    if isinstance(x, float):
+        return x
+    else:
+        return x.real
 
 
 def simBranchLen(conf, baserate, param, midpoint, endpoint):

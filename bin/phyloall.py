@@ -411,6 +411,7 @@ def main(conf):
     
     conf["args2"] = allArgs
     
+    util.tic("phyloall")
     
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work
@@ -438,6 +439,8 @@ def main(conf):
             util.tic("%s on %s" % (conf["prog"], f))
             run(conf, f)
             util.toc()
+    
+    util.toc()
         
         
         

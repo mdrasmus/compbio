@@ -327,7 +327,7 @@ def simTreeTopology(conf, baserate, stree, params, species2gene):
             for node in exposed:
                 if node == tree.root:
                     # try to make another tree
-                    return simTree(conf, rootseq, stree, params, species2gene)
+                    return simTreeTopology(conf, baserate, stree, params, species2gene)
                 tree.removeTree(node)
         else:
             break

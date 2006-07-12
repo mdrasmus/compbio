@@ -29,7 +29,7 @@ options = [
   ["p:", "prog=", "prog", "<program1>,<program2>,...",
     {"single": True,
      "help": "use --proghelp to see all supported programs"}],
-  ["t:", "usertree=", "usertree", "<user supplied tree",
+  ["t:", "usertree=", "usertree", "<user supplied tree>",
     {"single": True,
      "default": None,
      "parser": treelib.readTree}],
@@ -83,6 +83,7 @@ conf = util.parseOptions(sys.argv, options,
                          resthelp="<alignments> ...", quit=True)
 
 
+# supported programs
 fasta2alignProgs = ["clustalw", "muscle"]
 
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",

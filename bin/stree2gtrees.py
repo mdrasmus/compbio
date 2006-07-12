@@ -12,36 +12,35 @@ import sys
 
 options = [
  ["S:", "smap=", "smap", "<gene2speces map>"],
- ["s:", "stree=", "stree", "<species tree>"],
- ["A:", "alignext=", "alignext", "<alignment extension>"],
- ["T:", "treeext=", "treeext", "<tree extension>"]
+ ["s:", "stree=", "stree", "<species tree>",
+    {"single": True}],
+ ["F:", "fastaext=", "fastaext", "<fasta extension>",
+    {"single": True}],
+ ["T:", "treeext=", "treeext", "<tree extension>",
+    {"single": True}]
 ]
 
-param = util.parseOptions(sys.argv, options, quit=True)
+conf = util.parseOptions(sys.argv, options, quit=True)
 
 
-def main(param):
+def main(conf):
     env.addEnvPaths("DATAPATH")
 
-    alnfiles = param[""]
-    gene2species = genomeutil.readGene2species(* map(env.findFile, param["smap"]))
-    stree = treelib.readTree(env.findFile(param["stree"][-1]))
+    files = conf["REST"]
+    gene2species = genomeutil.readGene2species(* map(env.findFile, conf["smap"]))
+    stree = treelib.readTree(env.findFile(conf["stree"]))
     
-    util.tic("make ML trees from stree")
+    util.tic("species tree -> gene tree")
     
     i = 0
-    for f in alnfiles:
+    for f in files:
         i += 1
         util.logger("%d of %d (%s)" % (i, len(alnfiles), f))
-
-        aln = fasta.readFasta(f)
-        tree = phyloutil.stree2gtree(stree, aln.keys(), gene2species)
-
-        logl, tree = phylip.promlTreelk(aln, tree, verbose=False)
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
         
-        tree.writeNewick(f.replace(param["alignext"][-1], param["treeext"][-1]))
+        seqs = fasta.readFasta(f)
+        tree = phyloutil.stree2gtree(stree, seqs.keys(), gene2species)
+        tree.writeNewick(f.replace(conf["fastaext"], conf["treeext"]))
 
     util.toc()
 
-main(param)
+main(conf)

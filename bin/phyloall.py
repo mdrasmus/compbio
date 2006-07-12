@@ -58,8 +58,8 @@ options = [
     {"single": True,
      "default": 10,
      "parser": int}],
-  ["f", "force", "force", "",
-    {"help": "force execution",
+  ["r", "resume", "resume", "",
+    {"help": "resume execution (uses Pipeline status to resume)",
      "single": True}],
 
   "Output extensions",     
@@ -428,7 +428,7 @@ def main(conf):
                          prefix + " ".join(files[i:i+conf["groupsize"]])))
         pipeline.add("all", "echo all jobs complete", jobs)
         
-        if conf["force"]:
+        if not conf["resume"]:
             pipeline.reset()
         
         pipeline.run("all")

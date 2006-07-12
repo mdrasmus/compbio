@@ -273,6 +273,12 @@ def removeEmptyColumns(seqs):
     return seqs2
 
 
+def removeGappedColumns(aln):
+    cols = zip(* aln.values())
+    ind = find(lambda col: "-" not in col, cols)
+    return subalign(aln, ind)
+
+
 def calcConservationString(aln):
     percids = calcConservation(aln)
     
@@ -370,7 +376,7 @@ def tsitTver(seq1, seq2):
     return counts[SUB_TSIT] / float(counts[SUB_TVER])
 
 
-def transitionMatrix(seq1, seq2):
+def calcTransitionMatrix(seq1, seq2):
     assert len(seq1) == len(seq2), "sequences are not same length"
     
     c = util.histDict(map("".join, zip(seq1, seq2)))

@@ -25,6 +25,9 @@ options = [
   ["n", "names", "names", "",
     {"single": True,
      "help": "display internal node names"}],
+  ["", "nolen", "nolen", "",
+    {"single": True,
+     "help": "do not display branch length"}],
   ["r:", "reroot=", "reroot", "<branch to root tree>",
     {"single": True}],
   ["d", "dump", "dump", "",
@@ -114,7 +117,10 @@ for treefile in (conf[""] + conf["tree"]):
         for node in tree.nodes.values():
             
             # label distances
-            labels[node.name] = "%f" % node.dist
+            if conf["nolen"]:
+                labels[node.name] = ""
+            else:
+                labels[node.name] = "%f" % node.dist
             
             # label bootstraps
             if "boot" in node.data:

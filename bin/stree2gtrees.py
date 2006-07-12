@@ -35,7 +35,7 @@ def main(conf):
     i = 0
     for f in files:
         i += 1
-        util.logger("%d of %d (%s)" % (i, len(alnfiles), f))
+        util.logger("%d of %d (%s)" % (i, len(files), f))
         
         seqs = fasta.readFasta(f)
         tree = phyloutil.stree2gtree(stree, seqs.keys(), gene2species)

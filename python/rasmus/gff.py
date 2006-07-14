@@ -62,7 +62,7 @@ class Region:
             self.attrs   = dict(region.attrs)
             self.comment = comment
             
-        elif instance(region, str):
+        elif isinstance(region, str):
             self.read(region)
             
         else:
@@ -354,8 +354,7 @@ def iterGff(filename, format=Region,
             continue
         
         # parse region        
-        region = format()
-        region.read(line)
+        region = format(line)
         
         # only return region if region passes filter
         if regionFilter(region):

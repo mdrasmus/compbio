@@ -59,7 +59,7 @@ class FastaDict (SeqDict):
                 self.add(key, valuefunc(value), errors)
     
     
-    def write(self, filename=sys.stdout, names = None, width=None):
+    def write(self, filename=sys.stdout, names = None, width=80):
         out = util.openStream(filename, "w")
         
         if names == None:
@@ -137,7 +137,7 @@ def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
 def _revcomp(seq):
     """Reverse complement a sequence"""
 
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N"}
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", "n":"n"}
     
     seq2 = []
     for i in xrange(len(seq)-1, -1, -1):
@@ -292,11 +292,79 @@ def alignment2fasta(aln):
 
 
 
+def makeFastaIndex(filename):
+    infile = util.openStream(filename)
+    
+    index = {}
+    
+    for line in util.SafeReadIter(infile):
+        if line.startswith(">"):
+            index[line[1:].rstrip()] = infile.tell()
+    
+    return index
 
+
+class FastaIndex:
+    def __init__(self, filename):
+        # open fasta
+        self.fafile = file(filename, "rb")
+        
+        # estimate column width
+        numlines = 5
+        widths = []
+        for line in self.fafile:
+            if len(line) != 0  and line[0] != ">":
+                widths.append(len(line.rstrip()))
+                if len(widths) == numlines:
+                    break
+        if not util.equal(* widths):
+            raise Exception("lines do not have consistent width")
+        self.width = widths[0]
+        
+        # read index
+        self.index = {}
+        for key, ind in util.DelimReader(filename + ".index"):
+            self.index[key] = int(ind)
+    
+    
+    def get(self, key, start=1, end=None, strand=1):
+        assert start > 0, Exception("must specify coordinates one-based")
+        assert key in self.index, Exception("key '%s' not in index" % key)
+        
+        # must translate from one-based to zero-based
+        # must account for newlines
+        start2 = self.index[key] + start - 1 + ((start-1) / self.width)
+        
+        # seek to beginning
+        self.fafile.seek(start2)
+        
+        # read until end
+        if end != None:
+            end2 = self.index[key] + end + ((end-1) / self.width)
+            readlen = end2 - start2
+            seq = self.fafile.read(readlen).replace("\n", "")
+        else:
+            # read until end of sequence
+            seq = []
+            while True:
+                line = self.fafile.readline()
+                if line.startswith(">") or len(line) == 0:
+                    break
+                seq.append(line.rstrip())
+            seq = "".join(seq)
+        
+        
+        # reverse complement if needed
+        if strand == -1:
+            seq = _revcomp(seq)
+        
+        return seq
 
 
 
 """
+
+
 def makeFastaIndex(filename, keyfunc = lambda x: x):
     def addKey(index, key, locs):
         if key in index:
@@ -325,6 +393,8 @@ def makeFastaIndex(filename, keyfunc = lambda x: x):
         addKey(index, key, locs)
     
     return index
+
+
 
 
 def readFastaIndex(filename, keyfunc=firstword):

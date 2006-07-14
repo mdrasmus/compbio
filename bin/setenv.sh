@@ -47,6 +47,14 @@ fly_genscan() {
     export DATAPATH=$DATAPATH:$FILEPATH/data/flies/genscan/blast_pep
 }
 
+fly_aaa() {
+    export DATAPATH=$DATAPATH:$FILEPATH/data/flies/aaa
+    export DATAPATH=$DATAPATH:$FILEPATH/data/flies/aaa/gene_coord
+    export DATAPATH=$DATAPATH:$FILEPATH/data/flies/aaa/pep
+    export DATAPATH=$DATAPATH:$FILEPATH/data/flies/aaa/nt
+    export DATAPATH=$DATAPATH:$FILEPATH/data/flies/aaa/blast_pep
+}
+
 
 # always include fungi
 fungi

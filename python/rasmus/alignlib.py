@@ -206,7 +206,7 @@ def revcomp(seq):
     comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N"}
     
     seq2 = []
-    for i in range(len(seq)-1, -1, -1):
+    for i in xrange(len(seq)-1, -1, -1):
         seq2.append(comp[seq[i]])
     return "".join(seq2)
 

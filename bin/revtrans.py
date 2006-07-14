@@ -34,7 +34,7 @@ def main(param):
     if "dna" in param:
         for f in param["dna"]:
             util.tic("read fasta '%s'" % f)
-            seqs.read(f)
+            seqs.read(env.findFile(f))
             util.toc()
     
     if "genomes" in param:

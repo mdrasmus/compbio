@@ -44,8 +44,30 @@ TEST_GTF = \
 
 
 class Region:
-    def __init__(self):
-        pass
+    """
+    A generic GFF region
+    """
+    
+    def __init__(self, region=None):
+        if isinstance(region, Region):
+            # copy information from other region
+            self.seqname = region.seqname
+            self.source  = region.source
+            self.feature = region.feature
+            self.start   = region.start
+            self.end     = region.end
+            self.score   = region.score
+            self.strand  = region.strand
+            self.frame   = region.frame
+            self.attrs   = dict(region.attrs)
+            self.comment = comment
+            
+        elif isinstance(region, str):
+            self.read(region)
+            
+        else:
+            raise Exception("Cannot parse argument of type '%s'" %
+                            str(type(region)))
     
     
     def set(self,
@@ -73,8 +95,52 @@ class Region:
         else:
             self.attrs = attrs
 
-        self.comment = comment        
+        self.comment = comment
+    
+    
+    def read(self, line):
+        # parse comment
+        if "#" in line:
+            pos = line.index("#")
+            self.comment = line[pos+1:]
+            line = line[:pos]
+        else:
+            self.comment = ""
+        
+        # split into columns
+        tokens = line.split("\t")
+        assert len(tokens) == 9, Exception("line does not have 9 columns")
+        
+        # parse fields
+        self.seqname = tokens[0]
+        self.source  = tokens[1]
+        self.feature = tokens[2]
+        self.start   = int(tokens[3])
+        self.end     = int(tokens[4])
+        
+        # parse score
+        if tokens[5] == ".":
+            self.score = None
+        else:
+            self.score = float(tokens[5])
+        
+        # parse strand
+        if tokens[6] == "+":
+            self.strand = 1
+        elif tokens[6] == "-":
+            self.strand = -1
+        else:
+            self.strand = None
 
+        # parse frame
+        if tokens[7] == ".":
+            self.frame = None
+        else:
+            self.frame = int(tokens[7])
+
+        # parse attributes
+        self.attrs = self.parseAttrs(tokens[8])
+    
     
     def __str__(self):
         if self.score == None:
@@ -94,14 +160,7 @@ class Region:
         else:
             frame = str(self.frame)
         
-        attrs = []
-        if self.attrs.keys() == [None]:
-            # simple attribute
-            attr = self.attrs[None]
-        else:
-            for key, val in self.attrs.items():
-                attrs.append('%s "%s";' % (key, str(val)))
-            attr = " ".join(attrs)
+        attr = self.formatAttrs(self.attrs)
         
         if self.comment != "":
             comment = " #%s" % self.comment
@@ -121,9 +180,93 @@ class Region:
              attr,
              comment)
     
+    def formatAttrs(self, attrs):
+        # unparsed attribute
+        assert attrs.keys() == [None]
+        return attrs[None]
+    
+    def parseAttrs(self, text):    
+        return {None: text}
+    
     
     def __repr__(self):
         return self.__str__()
+
+
+
+class GtfRegion (Region):
+    """
+    GTF Region
+    
+    Parses and formats attributes field according to the GTF specification
+    """
+
+    def __init__(self, region=None):
+        Region.__init__(self, region)
+        
+
+    def formatAttrs(self, attrs):
+        lst = []
+        for key, val in attrs.items():
+            lst.append('%s "%s";' % (key, str(val)))
+        return " ".join(lst)
+    
+    
+    def parseAttrs(self, text):
+        """Parses an attribute field into a dict of key/value pairs"""
+
+        tokens = text.split(";")
+        attrs = {}
+
+        for attr in tokens[:-1]:
+            attr = attr.strip()
+
+            pos = attr.index(" ")
+
+            key = attr[:pos]
+            val = attr[pos+1:].split("\"")[1]
+
+            attrs[key] = val
+
+        return attrs
+
+
+class Gff3Region (Region):
+    """
+    GFF3 Region
+    
+    Parses and formats attributes field according to the GFF3 specification
+    """
+    
+    def __init__(self, region=None):
+        Region.__init__(self, region)
+
+
+    def formatAttrs(self, attrs):
+        lst = []
+        for key, val in attrs.items():
+            lst.append('%s=%s;' % (key, str(val)))
+        return "".join(lst)
+
+    def parseAttrs(self, text):
+        """Parses an attribute field into a dict of key/value pairs"""
+
+        tokens = text.split(";")
+        attrs = {}
+
+        for attr in tokens:
+            attr = attr.strip()
+            if len(attr) == 0:
+                continue
+
+            pos = attr.index("=")
+
+            key = attr[:pos]
+            val = attr[pos+1:]
+
+            attrs[key] = val
+
+        return attrs
 
 
 
@@ -166,77 +309,8 @@ class RegionIter:
 
 
 
-def readGffAttrs(attrstr):
-    """Parses an attribute field into a dict of key/value pairs"""
-    
-    tokens = attrstr.split(";")
-    attrs = {}
 
-    for attr in tokens[:-1]:
-        attr = attr.strip()
-
-        pos = attr.index(" ")
-
-        key = attr[:pos]
-        val = attr[pos+1:].split("\"")[1]
-
-        attrs[key] = val
-    
-    return attrs
-
-
-def readGffRegion(line, attrReader=readGffAttrs):
-    """
-    Reads a line from a gff file
-    
-    'attrReader' should take an attribute field and parse it into
-    a dict of key/value pairs
-    """
-    
-    region = Region()
-
-    if "#" in line:
-        pos = line.index("#")
-        region.comment = line[pos+1:]
-        line = line[:pos]
-    else:
-        region.comment = ""
-
-    tokens = line.split("\t")
-
-    region.seqname = tokens[0]
-    region.source  = tokens[1]
-    region.feature = tokens[2]
-    region.start   = int(tokens[3])
-    region.end     = int(tokens[4])
-    
-    if tokens[5] == ".":
-        region.score = None
-    else:
-        region.score = float(tokens[5])
-    
-    if tokens[6] == "+":
-        region.strand = 1
-    elif tokens[6] == "-":
-        region.strand = -1
-    else:
-        region.strand = None
-    
-    if tokens[7] == ".":
-        region.frame = None
-    else:
-        region.frame = int(tokens[7])
-    
-    if attrReader == None:
-        region.attrs = {None: tokens[8]}
-    else:
-        region.attrs = attrReader(tokens[8])
-    
-    return region
-
-
-
-def readGff(filename, attrReader=readGffAttrs, 
+def readGff(filename, format=Region, 
             lineFilter=lambda x: True,
             regionFilter=lambda x: True):
     """
@@ -244,7 +318,7 @@ def readGff(filename, attrReader=readGffAttrs,
     """
     
     infile = iterGff(filename,
-                     attrReader, 
+                     format, 
                      lineFilter,
                      regionFilter)
     
@@ -263,7 +337,7 @@ def writeGff(filename, regions):
         print >>out, region
 
 
-def iterGff(filename, attrReader=readGffAttrs, 
+def iterGff(filename, format=Region, 
             lineFilter=lambda x: True,
             regionFilter=lambda x: True):
     """
@@ -279,8 +353,8 @@ def iterGff(filename, attrReader=readGffAttrs,
         if len(line) == 0 or line[0] == "#" or not lineFilter(line):
             continue
         
-        # parse region
-        region = readGffRegion(line, attrReader=attrReader)
+        # parse region        
+        region = format(line)
         
         # only return region if region passes filter
         if regionFilter(region):

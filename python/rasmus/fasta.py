@@ -134,9 +134,17 @@ def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
         seqs.append(valuefunc(value))
     return (names, seqs)
 
+def _revcomp(seq):
+    """Reverse complement a sequence"""
 
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N"}
+    
+    seq2 = []
+    for i in xrange(len(seq)-1, -1, -1):
+        seq2.append(comp[seq[i]])
+    return "".join(seq2)
 
-def fastaGet(fastaFile, key, start=0, end=0):
+def fastaGet(fastaFile, key, start=0, end=0, strand=1):
     """Get a sequence from a fasta file that has been indexed by 'formatdb'"""
     
     stream = os.popen("fastacmd -d %s -s %s -L %d,%d 2>/dev/null" % 
@@ -149,6 +157,9 @@ def fastaGet(fastaFile, key, start=0, end=0):
     else:
         seq = val.split("\n")[1:]
         seq = "".join(seq)
+    
+    if strand == -1:
+        seq = _revcomp(seq)
     
     return seq
 

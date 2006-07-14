@@ -202,8 +202,9 @@ def revtranslate(aa, dna):
 
 def revcomp(seq):
     """Reverse complement a sequence"""
-
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", "n":"n"}
+    
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
+            "a":"t", "c":"g", "g":"c", "t":"a", "n":"n"}    
     
     seq2 = []
     for i in xrange(len(seq)-1, -1, -1):

@@ -16,6 +16,13 @@ using namespace std;
 
 #define MAXLINE 1000
 
+inline void chomp(char *line)
+{
+    int keylen = strlen(line);
+    if (line[keylen - 1] == '\n')
+        line[keylen - 1] = '\0';
+}
+
 
 bool indexFasta(string filename)
 {
@@ -23,6 +30,7 @@ bool indexFasta(string filename)
     FILE *outfile;
     
     char *line = new char [MAXLINE];
+    
     
     // create output filename from input
     string outfilename = filename + ".index";
@@ -52,9 +60,7 @@ bool indexFasta(string filename)
         
         if (line[0] == '>') {
             // chomp
-            int keylen = strlen(line);
-            if (line[keylen - 1] == '\n')
-                line[keylen - 1] = '\0';
+            chomp(line);
             fprintf(outfile, "%s\t%d\n", &line[1], ftell(infile));
         }
     }

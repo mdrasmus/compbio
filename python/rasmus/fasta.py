@@ -137,7 +137,7 @@ def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
 def _revcomp(seq):
     """Reverse complement a sequence"""
 
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N"}
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", "n":"n"}
     
     seq2 = []
     for i in xrange(len(seq)-1, -1, -1):
@@ -165,6 +165,8 @@ def fastaGet(fastaFile, key, start=0, end=0, strand=1):
 
 
 def hasFastaIndex(fastaFile):
+    """Check to see if fastaFile has a formatdb fasta index"""
+
     return os.path.exists(fastaFile + ".psd") and \
            os.path.exists(fastaFile + ".psi")
 
@@ -195,8 +197,8 @@ def writeFastaOrdered(filename, names, seqs, width=None):
         util.printwrap(seq, width, out=out)
 
 
-def getkey(key, field, delim="|"):
-    return key.split(delim)[field]
+#def getkey(key, field, delim="|"):
+#    return key.split(delim)[field]
 
 
 def array2dict(names, seqs):

@@ -5,12 +5,12 @@ import os, sys
 from rasmus import fasta, util
 
 
-if len(sys.argv) < 5:
+if len(sys.args) < 5:
     print "fasta-get.py <fasta> <key> <start> <end> [<strand>]"
     sys.exit(1)
 
 
-if len(sys.argv) == 6:
+if len(sys.args) == 6:
     fafile, key, start, end, strand = sys.argv[1:6]
     strand = int(strand)
 else:

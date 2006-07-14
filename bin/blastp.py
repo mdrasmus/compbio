@@ -29,7 +29,7 @@ else:
 if "resume" in param and \
     param["out"][-1] != "-" and \
     os.path.isfile(param["out"][-1]) and \
-    util.fileSize(param["out"][-1]) != 0:
+    util.filesize(param["out"][-1]) != 0:
     
     infile = os.popen("tail -n1 %s" % param["out"][-1], "r")
     resume = infile.next().split()[0]

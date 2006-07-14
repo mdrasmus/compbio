@@ -16,6 +16,10 @@ using namespace std;
 
 #define MAXLINE 1000
 
+
+// TODO:  verify that the fasta file has consistent wrapping
+
+
 inline void chomp(char *line)
 {
     int keylen = strlen(line);

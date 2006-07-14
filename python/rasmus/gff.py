@@ -62,7 +62,7 @@ class Region:
             self.attrs   = dict(region.attrs)
             self.comment = comment
             
-        elif isinstance(region, str):
+        elif instance(region, str):
             self.read(region)
             
         else:
@@ -109,7 +109,7 @@ class Region:
         
         # split into columns
         tokens = line.split("\t")
-        assert len(tokens) == 9, Exception("line does not have 9 columns")
+        assert len(line) == 9, Exception("line does not have 9 columns")
         
         # parse fields
         self.seqname = tokens[0]
@@ -354,7 +354,8 @@ def iterGff(filename, format=Region,
             continue
         
         # parse region        
-        region = format(line)
+        region = format()
+        region.read(line)
         
         # only return region if region passes filter
         if regionFilter(region):

@@ -9,7 +9,7 @@ Implements Manolis style tab-delimited table file format.
 from util import *
 
 def manoli_str2bool(text):
-    """Will convert every way manolis stores a boolean as text"""
+    """Will parse every way manolis stores a boolean as a string"""
     
     text2 = text.lower()
     

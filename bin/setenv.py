@@ -18,12 +18,18 @@ quiet = False
 for arg in sys.argv:
     if arg == "-q":
         quiet = True
+    elif arg == "-c":
+        dataenv = []
     elif arg.startswith("-"):
         name = arg[1:]
         if name in dataenv:
             dataenv.remove(name)
     elif arg.startswith("+"):
         name = arg[1:]
+        if name not in dataenv:
+            dataenv.append(name)
+    else:
+        name = arg
         if name not in dataenv:
             dataenv.append(name)
 
@@ -83,6 +89,7 @@ print "export DATAPATH=%s" % ":".join(datapath)
 
 
 if not quiet:
+    print >>sys.stderr
     print >>sys.stderr, "Data Environments"
     print >>sys.stderr, "  " + " ".join(dataenv)
     print >>sys.stderr 

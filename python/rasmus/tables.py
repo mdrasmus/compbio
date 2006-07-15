@@ -8,12 +8,24 @@ Implements Manolis style tab-delimited table file format.
 
 from util import *
 
+def manoli_str2bool(text):
+    """Will convert every way manolis stores a boolean as text"""
+    
+    text2 = text.lower()
+    
+    if text2 == "false":
+        return False
+    elif text2 == "true":
+        return True
+    else:
+        raise Exception("unknown string for bool '%s'" % text)
+
 
 tableTypesLookup = {
         "string": str,
         "int": int,
         "float": float,
-        "bool": str2bool,
+        "bool": manoli_str2bool,
         "unknown": str
     }
 

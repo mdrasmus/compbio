@@ -1,7 +1,8 @@
 /********************************************************************************
     formatfa
-    Matt Rasmussen    
-    Fri Jun 30 13:17:02 EDT 2006
+    Matt Rasmussen
+    Fri Jul 14 21:53:39 EDT 2006
+
 
 
     Creates convenient index files for fasta files
@@ -33,8 +34,6 @@ bool indexFasta(string filename)
     FILE *infile;
     FILE *outfile;
     
-    char *line = new char [MAXLINE];
-    
     
     // create output filename from input
     string outfilename = filename + ".index";
@@ -52,6 +51,7 @@ bool indexFasta(string filename)
     }
     
     int lineno = 0;
+    char *line = new char [MAXLINE];
     
     // process file
     while (fgets(line, MAXLINE, infile)) {
@@ -70,6 +70,7 @@ bool indexFasta(string filename)
     }
     
     // clean up
+    delete [] line;
     fclose(infile);
     fclose(outfile);
     

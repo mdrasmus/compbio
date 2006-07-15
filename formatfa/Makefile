@@ -7,10 +7,16 @@ CC = g++
 AR = ar
 COMPILE = -c -g
 
-OBJS = formatfa.o
+OBJS = formatfa.o verifyfa.o
 
-formatfff: $(OBJS)
-	$(CC) $(OBJS) -o formatfa
+all: formatfa verifyfa
+
+formatfa: formatfa.o
+	$(CC) formatfa.o -o formatfa
+
+verifyfa: verifyfa.o
+	$(CC) verifyfa.o -o verifyfa
+
 
 # basic compile rule
 $(OBJS): %.o: %.cpp

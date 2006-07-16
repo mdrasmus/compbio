@@ -708,8 +708,9 @@ class Matching:
             
             # don't add duplicate genes
             assert geneName not in self.genes
+            genomeName = gene2species(geneName)
             
-            self.addGene(geneName, region.seqname, 
+            self.addGene(geneName, genomeName, region.seqname, 
                          region.start, region.end, region.strand)
     
     
@@ -717,6 +718,7 @@ class Matching:
         infile = util.openStream(filename)
         for line in infile:
             geneName, chromName, start, end, strand = line.rstrip().split("\t")
+            genomeName = gene2species(geneName)
             
             start = int(start)
             end = int(end)
@@ -726,12 +728,11 @@ class Matching:
             else:
                 strand = -1
             
-            self.addGene(geneName, chromName, start, end, strand)
+            self.addGene(geneName, genomeName, chromName, start, end, strand)
             
     
-    def addGene(self, geneName, chromName, start, end, strand):
+    def addGene(self, geneName, genomeName, chromName, start, end, strand):
         # add genome if needed
-        genomeName = gene2species(geneName)
         if genomeName not in self.genomes:
             genome = Genome(genomeName)
             self.genomes[genomeName] = genome

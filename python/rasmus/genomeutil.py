@@ -750,7 +750,7 @@ class Matching:
         gene.chrom = genome.chroms[chromName]
         gene.start = start
         gene.end   = end
-        gene.strand = strand
+        gene.direction = strand
 
         genome.genes[geneName] = gene
         self.genes[geneName] = gene

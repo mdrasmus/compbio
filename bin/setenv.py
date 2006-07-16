@@ -15,7 +15,7 @@ else:
 quiet = False
 
 # process args
-for arg in sys.argv:
+for arg in sys.argv[1:]:
     if arg == "-q":
         quiet = True
     elif arg == "-c":

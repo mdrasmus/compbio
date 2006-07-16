@@ -4,34 +4,32 @@ import sys
 from rasmus import util, graph
 
 options = [
-    ("p:", "part=", "part", "[-p <part file>] [--part <part file>]"),
-    ("m:", "match=", "match", "[-m <match file>] [--match <match file>]")
+    ["p:", "part=", "part", "<part file>"],
+    ["m:", "match=", "match", "<match file>"]
     ]
 
-try:
-    param, rest = util.parseArgs(sys.argv, options)
-except:
-    sys.exit(1)
+
+conf = util.parseOptions(sys.argv, options, quit=True)
 
 
 vertices = {}
 
 
-restparts = filter(lambda x: not x.endswith(".match"), rest)
-restmatches = filter(lambda x: x.endswith(".match"), rest)
+restparts = filter(lambda x: not x.endswith(".match"), conf["REST"])
+restmatches = filter(lambda x: x.endswith(".match"), conf["REST"])
 
 
 i = 0
-if "part" in param:
-    for f in param["part"] + restparts:
+if "part" in conf:
+    for f in conf["part"] + restparts:
         for line in file(f):
             for word in line.split():
                 vertices.setdefault(word, {})[i] = 1
                 vertices.setdefault(i, {})[word] = 1
             i += 1
 
-if "match" in param:
-    for f in param["match"] + restmatches:
+if "match" in conf:
+    for f in conf["match"] + restmatches:
         for line in file(f):
             gene1, gene2 = line.rstrip().split()[:2]
             vertices.setdefault(gene1, {})[gene2] = 1

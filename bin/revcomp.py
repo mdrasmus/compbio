@@ -2,11 +2,11 @@
 
 
 import sys
-from rasmus import genomeutil
+from rasmus import alignlib
 
 seq = ""
 
 for line in sys.stdin:
     seq += line.rstrip()
 
-sys.stdout.write(genomeutil.reverseComplement(seq))
+sys.stdout.write(alignlib.revcomp(seq))

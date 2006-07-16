@@ -61,12 +61,15 @@ for tabfile in conf["REST"]:
     infile = file(tabfile)
     out = file(m8file, "w")
     
-    infile.next()
-    infile.next()
+    try:
+        infile.next()
+        infile.next()
     
-    for line in infile:
-        fields = line.rstrip().split("\t")
+        for line in infile:
+            fields = line.rstrip().split("\t")
         
-        print >>out, "\t".join(util.mget(fields, conversion))
+            print >>out, "\t".join(util.mget(fields, conversion))
+    except StopIteration:
+        pass
 
 

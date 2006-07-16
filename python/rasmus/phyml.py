@@ -4,7 +4,7 @@ import sys
 import phylip
 import fasta
 import util
-
+import treelib
 
 
 
@@ -20,7 +20,12 @@ def phyml(seqs, verbose=True, force = False, args=None,
     
     options = "y"
     
+    # only bootstrap when iterations are above 1
+    if bootiter == 1:
+        bootiter = 0
+    
     if usertree != None:
+        usertree = treelib.unroot(usertree)
         phylip.writeInTree("intree", usertree, labels)
         treefile = "intree"
         opttree = "n y"

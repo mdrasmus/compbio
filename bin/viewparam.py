@@ -16,7 +16,8 @@ options = [
   ["c:", "curves=", "curves", "<curve height>",
     {"single": True,
      "parser": int,
-     "default": 0}]
+     "default": 0}],
+  ["o", "output", "output", "", {"single": True}]
 ]
 
 
@@ -62,11 +63,18 @@ for name in stree.nodes:
         labels[name] = label + labels[name]
 
 
+# simply output species trees with mean nt sub/site
+if conf["output"]:
+    stree.write()
+    sys.exit(0)
+    
+
 # print params
 keys = util.sort(util.remove(params.keys(), "baserate", 1)) + ["baserate"]
 mat = [["Node", "Mean", "Sdev", "Mean/Sdev"]] + \
       [(key, params[key][0], params[key][1], params[key][0] / params[key][1])
        for key in keys]
+
 
 util.printcols(mat, spacing=3)
 print "avg. baserate:", params["baserate"][0] / params["baserate"][1]
@@ -84,3 +92,5 @@ else:
     treelib.drawTree(stree, labels=labels,
                      labelOffset=0,
                      scale=conf["scale"])
+
+

@@ -24,7 +24,7 @@ param = util.parseOptions(sys.argv, options, quit=True)
 def main(param):
     # setup paths
     env.addEnvPaths("DATAPATH")
-    env.addPaths(param["paths"])
+    env.addPaths(* param["paths"])
 
     # read species map
     if "smap" in param:

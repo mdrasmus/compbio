@@ -652,7 +652,7 @@ def plotfuncFit(func, paramsInit, xdata, ydata, start, end, step, plot = None):
 def plotdistribFit(func, paramsInit, data, start, end, step, plot = None):
     ndiv = int((end - start) / step)
     xdata, ydata = util.distrib(data, ndiv)
-    return plotfuncFit(func, paramsInit, xdata, ydata, start, end, step, plot)
+    return plotfuncFit(func, paramsInit, xdata, ydata, start, end, step/10, plot)
 
 
     

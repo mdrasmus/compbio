@@ -276,7 +276,7 @@ def removeEmptyColumns(seqs):
 
 def removeGappedColumns(aln):
     cols = zip(* aln.values())
-    ind = find(lambda col: "-" not in col, cols)
+    ind = util.find(lambda col: "-" not in col, cols)
     return subalign(aln, ind)
 
 

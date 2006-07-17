@@ -366,11 +366,12 @@ def runSynteny(config):
         comps = util.readDelim(config["synteny_refine"])
     
     # do final statistics
-    os.system("syntenystats.py -c %s -s %s -g %s -S %s > %s" % 
+    os.system("syntenystats.py -c %s -s %s -g %s -S %s -P %s > %s" % 
               (synPartFile(config),
                syntenyFile(config),
                ",".join(conf["genomes"]),
                conf["smap"],
+               ":".join(conf["paths"]),
                syntenyStatsFile(config)))
     
     util.toc()    

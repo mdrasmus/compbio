@@ -662,7 +662,9 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             xdir=1, ydir=1, 
             xmargin=0, ymargin=0,
             labelPadding=2,
-            labelSpacing=4):
+            labelSpacing=4,
+            showVals=False,
+            valColor=black):
     
     
     
@@ -716,6 +718,26 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             s.rect(xstart + xdir*j*width, 
                    ystart + ydir*i*height, 
                    xdir*width, ydir*height, color, color)
+    
+    # draw values
+    if showVals:
+        # find text size
+        textsize = []
+        for i in xrange(nrows):
+            for j in xrange(ncols):
+                strval = "%.2f" % matrix[i][j]
+                textsize.append(min(height, width/float(len(strval))))
+        textsize = min(textsize)
+    
+        for i in xrange(nrows):
+            for j in xrange(ncols):
+                strval = "%.2f" % matrix[i][j]
+                s.text(strval, 
+                       xstart + xdir*j*width, 
+                       ystart + ydir*i*height + 
+                       height/2.0 + textsize/2.0, 
+                       textsize,
+                       fillColor=valColor)
     
     # draw labels
     if rlabels != None:

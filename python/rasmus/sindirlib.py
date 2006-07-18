@@ -1132,8 +1132,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         if len(visited) >= conf["iters"]:
             break
         
-        tree2 = proposeTreeWeighted(tree)
-        #tree2 = proposeTree(tree2)
+        #tree2 = proposeTreeWeighted(tree)
+        tree2 = proposeTree(tree)
         
         # just for debug
         recon = phyloutil.reconcile(tree2, stree, gene2species)

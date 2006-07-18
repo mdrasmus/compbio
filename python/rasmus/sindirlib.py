@@ -1128,7 +1128,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
 
     # tree search
     lastl = top
-    for i in xrange(1, conf["iters"]):
+    for i in xrange(1, 100*conf["iters"]):
+        if len(visited) >= conf["iters"]:
+            break
+        
         tree2 = proposeTreeWeighted(tree)
         #tree2 = proposeTree(tree2)
         

@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 
 
-from rasmus import util, algorithms, phylip
+from rasmus import util, algorithms, phylip, fasta
 import sys
 
 options = [
-    ["t:", "tree=", "tree", "AUTO<top tree file>"],
-    ["l:", "label=", "label", "AUTO<label file>"]
+    ["t:", "tree=", "tree", "<top tree file>"],
+    ["l:", "label=", "label", "<label file>"]
 ]
 
-try:
-    param, rest = util.parseArgs(sys.argv, options)
-except:
-    sys.exit(1)
+
+param = util.parseOptions(sys.argv, options, quit=True)
 
 
-labels = util.readStrings(param["label"][-1])
+if file(param["label"][-1]).read()[0] == ">":
+    labels = fasta.readFasta(param["label"][-1]).keys()
+else:
+    labels = util.readStrings(param["label"][-1])
+    
 tree = algorithms.Tree()
 tree.readNewick(param["tree"][-1])
 

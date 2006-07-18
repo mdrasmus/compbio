@@ -123,7 +123,7 @@ for treefile in (conf[""] + conf["tree"]):
                 labels[node.name] = "%f" % node.dist
             
             # label bootstraps
-            if "boot" in node.data:
+            if "boot" in node.data and node.data["boot"] != 0:
                 labels[node.name] = "(%d) %s" % (node.data["boot"], 
                                                  labels[node.name])
         

@@ -1127,6 +1127,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
 
 
     # tree search
+    nold = 0
     lastl = top
     for i in xrange(1, 100*conf["iters"]):
         if len(visited) >= conf["iters"]:
@@ -1145,10 +1146,12 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         thash = phyloutil.hashTree(tree2)
         if thash in visited:
             logl, tree2 = visited[thash]
+            nold += 1
         else:
             setTreeDistances(conf, tree2, distmat, labels)      
             minerror = min(minerror, tree.data["error"])
             logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            nold = 0
             
         
         # store logl in visited
@@ -1184,7 +1187,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #DEBUG.flush()
         else:
             # accept with a chance
-            if logl - lastl > log(random.random()):
+            if logl - lastl > log(random.random()) - nold/10.:
             #    print >>DEBUG, "v",
                 tree = tree2
                 lastl = logl

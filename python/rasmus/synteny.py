@@ -73,9 +73,8 @@ def bestBidir(conf, genomes, matches):
     for genome in genomes:
         for gene in genome.genes.values():
             if gene.length() > conf["minGeneSize"]:
-                if len(gene.matches) > 0:
-                    besti = util.argmaxfunc(lambda x: x.score, gene.matches)
-                else:
+                besti = util.argmaxfunc(lambda x: x.score, gene.matches)
+                if besti != -1:
                     best[gene.matches[besti]] += 1
     
     for match in matches:

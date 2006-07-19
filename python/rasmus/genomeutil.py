@@ -1427,3 +1427,26 @@ def writeMultiBlocks(filename, multiblocks):
                                  str(segment.direction)]))
         out.write("\n")
   
+
+def iterMultiBlocks(filename):
+    """
+    Warning: this keeps genomes and chroms as names NOT objects
+    I think I will eventually convert everything to names.
+    But currently this read is incompatiable with writeMultiBlocks
+    """
+    
+    infile = util.openStream(filename, "r")
+    
+    for line in infile:
+        tokens = line.split("\t")
+        
+        segments = []
+        for i in range(0, len(tokens), 5):
+            genome, chrom, start, end, direction = tokens[i:i+5]
+            segments.append(Segment(genome, chrom, 
+                                    int(start), int(end), int(direction)))
+        
+        yield MultiBlock(segments)
+    
+        
+        

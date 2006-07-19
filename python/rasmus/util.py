@@ -517,8 +517,7 @@ def overlap(a, b, x, y, inc=True):
 
 
 def argmax(lst):
-    if len(lst) == 0:
-        return -1
+    assert len(lst) > 0
     top = 0
     for i in xrange(1, len(lst)):
         if lst[i] > lst[top]:
@@ -526,8 +525,7 @@ def argmax(lst):
     return top
 
 def argmin(lst):
-    if len(lst) == 0:
-        return -1
+    assert len(lst) > 0
     low = 0
     for i in xrange(1, len(lst)):
         if lst[i] < lst[low]:
@@ -536,23 +534,26 @@ def argmin(lst):
 
 def maxfunc(func, lst):
     top = -INF
+    topi = None
     for i in lst:
         val = func(i)
         if val > top:
             top = val
-    return top
+            topi = i
+    return topi
 
 def minfunc(func, lst):
     low = -INF
+    lowi = None
     for i in lst:
         val = func(i)
         if val < low:
             low = val
-    return low
+            lowi = i
+    return lowi
 
-def argmaxfunc(func, lst, index=True):
-    if len(lst) == 0:
-        return -1
+def argmaxfunc(func, lst):
+    assert len(lst) > 0
     top = 0
     topval = func(lst[top])
     for i in xrange(1,len(lst)):
@@ -560,14 +561,11 @@ def argmaxfunc(func, lst, index=True):
         if val > topval:
             topval = val
             top = i
-    if index:
-        return top
-    else:
-        return lst[top]
+    return top
+
     
-def argminfunc(func, lst, index=True):
-    if len(lst) == 0:
-        return -1
+def argminfunc(func, lst):
+    assert len(lst) > 0
     low = 0
     lowval = func(lst[low])
     for i in xrange(1, len(lst)):
@@ -575,10 +573,7 @@ def argminfunc(func, lst, index=True):
         if val < lowval:
             lowval = val
             low = i
-    if index:
-        return low
-    else:
-        return lst[low]
+    return low
 
 
 def eqfunc(a): return lambda x: x == a

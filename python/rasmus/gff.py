@@ -68,6 +68,9 @@ class Region:
         else:
             raise Exception("Cannot parse argument of type '%s'" %
                             str(type(region)))
+        
+        # initializes species to None
+        self.species = None
     
     
     def set(self,
@@ -109,7 +112,7 @@ class Region:
         
         # split into columns
         tokens = line.split("\t")
-        assert len(line) == 9, Exception("line does not have 9 columns")
+        assert len(tokens) == 9, Exception("line does not have 9 columns")
         
         # parse fields
         self.seqname = tokens[0]
@@ -307,6 +310,16 @@ class RegionIter:
         self.index += 1
         return gene
 
+
+
+def overlap(region1, region2):
+    return region1.seqname == region2.seqname and \
+           region1.species == region2.species and \
+           util.overlap(region1.start, region1.end,
+                        region2.start, region2.end)
+
+def overlaps(region1, regions):
+    return [x for x in regions if overlap(region1, x)]
 
 
 

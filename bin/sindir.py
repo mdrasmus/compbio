@@ -74,7 +74,11 @@ options = [
      "parser": int,
      "single": True}],
  ["T:", "tree=", "tree", "<propose tree>",
-    {"default": []}],     
+    {"default": []}],
+ ["", "speedup=", "speedup", "<speed up factor>",
+    {"single": True,
+     "default": 10.0,
+     "parser": float}],
 
  "Training options",
  ["t", "train", "train", "",

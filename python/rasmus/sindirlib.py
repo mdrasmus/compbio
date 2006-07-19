@@ -133,6 +133,8 @@ class SindirError (Exception):
 
 
 def printVisitedTrees(visited):
+    if len(visited) == 0:
+        return
     nleaves = len(visited.values()[0][1].leaves())
     
     debug("\n\nmost likily trees out of %d visited (%s total): " % \
@@ -1187,7 +1189,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #DEBUG.flush()
         else:
             # accept with a chance
-            if logl - lastl > log(random.random()) - nold/10.:
+            if logl - lastl > log(random.random()) - nold/conf["speedup"]:
             #    print >>DEBUG, "v",
                 tree = tree2
                 lastl = logl
@@ -1273,6 +1275,8 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
         
         
         debug()
+    
+    visited.update(visited2)
     
     return tree, toplogl
 

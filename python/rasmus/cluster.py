@@ -150,6 +150,20 @@ def partids2parts(partids, labels):
     return parts
 
 
+def filterOne2ones(parts, gene2species):
+    def isOne2one(part, gene2species):
+        counts = util.histDict(map(gene2species, part))
+        return (max(counts.values()) == 1)
+
+    # get one2ones
+    ones = [x for x in parts if isOne2one(x, gene2species)]
+
+    # find maximum one2one
+    maxsize = max(len(x) for x in ones)
+    ones = [util.sort(x) for x in ones if len(x) == maxsize]
+
+    return ones
+
 
 ####################################
 # Hierarchical clustering

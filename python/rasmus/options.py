@@ -91,6 +91,11 @@ def parseOptions(argv, options, quit=False, resthelp = ""):
 
 def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
               helpOption=True, configFileOption=True):
+    """
+    Do not call this directly.  This function name is being phased out.
+    All scripts should use parseOptions
+    """
+    
     
     # add config file option
     if configFileOption:
@@ -142,7 +147,10 @@ def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
         given[name] = 1
         
         # parse option value
-        value = option.parser(value)
+        try:
+            value = option.parser(value)
+        except:
+            raise OptionError("Error parsing option '%s'" % option.long)
         
         # save option to list
         conf.setdefault(option.name, []).append(value)

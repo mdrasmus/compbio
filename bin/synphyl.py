@@ -38,7 +38,8 @@ options = [
         {"help": "do quick processing"}],
     ["r:", "report=", "report", "<report type>", 
         {"help": "print a report"}],
-    ["P:",  "paths=", "paths", "<data path>"]
+    ["P:",  "paths=", "paths", "<data path>",
+        {"default": ["."]}]
 ]
 
 

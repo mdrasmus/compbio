@@ -48,6 +48,8 @@ options = [
      "help": "maximum gene family size to reconstruct"}],
   ["", "proghelp", "proghelp", "",
     {"single": True}],
+  ["", "skip", "skip", "",
+    {"single": True}],
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -61,6 +63,9 @@ options = [
   ["r", "resume", "resume", "",
     {"help": "resume execution (uses Pipeline status to resume)",
      "single": True}],
+  ["", "statusdir=", "statusdir", "<status directory>",
+    {"single": True, 
+     "default": "phyloall"}],
 
   "Output extensions",     
   ["F:", "fastaext=", "fastaext", "<fasta extension",
@@ -417,7 +422,7 @@ def main(conf):
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work
 
-        pipeline = depend.Pipeline("phyloall")
+        pipeline = depend.Pipeline(conf["statusdir"])
         pipeline.setMaxNumProc(conf["nproc"])
         
         prefix = " ".join(sys.argv[:-len(files)]) + " "

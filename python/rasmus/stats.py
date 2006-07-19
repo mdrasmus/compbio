@@ -22,7 +22,13 @@ def mean(vals):
     return sum(vals) / float(len(vals))
 
 def median(vals):
-    return util.sort(vals)[len(vals) / 2]
+    lenvals = len(vals)
+    sortvals = util.sort(vals)
+    
+    if lenvals % 2 == 0:
+        return (sortvals[lenvals / 2] + sortvals[lenvals / 2 - 1]) / 2.0
+    else:
+        return sortvals[lenvals / 2]
 
 def mode(vals):
     top = 0

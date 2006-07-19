@@ -372,7 +372,7 @@ def runSynteny(config):
                syntenyFile(config),
                ",".join(conf["genomes"]),
                conf["smap"],
-               ":".join(conf["paths"]),
+               ":".join(["."] + conf["paths"]),
                syntenyStatsFile(config)))
     
     util.toc()    

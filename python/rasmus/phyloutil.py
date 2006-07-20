@@ -438,7 +438,7 @@ def findOrthoNeighbors(parts, hits):
             # skip genes not in parts
             continue
         
-        # dont count hits with a cluster
+        # dont count hits within a cluster
         if part1 == part2:
             continue
         
@@ -447,8 +447,6 @@ def findOrthoNeighbors(parts, hits):
         
         if score > mat[part2][0]:
             mat[part2] = (score, part1)
-    
-    print mat.items()[:20]
     
     # find best bidirectional hits
     nbrs = []

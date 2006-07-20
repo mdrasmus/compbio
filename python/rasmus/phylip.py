@@ -240,6 +240,75 @@ def writeDistMatrix(mat, labels=None, out=sys.stdout):
         out.write("\n")
 
 
+def readAlignment(filename):
+    """
+    Read a PHYLIP alignment.  Can be interleaved or not.
+    
+    returns a FastaDict object.
+    """
+    
+    infile = util.openStream(filename)
+    
+    seqs = fasta.FastaDict()
+    
+    # read sequences and length
+    nseq, seqlen = infile.next().split()
+    nseq = int(nseq)
+    
+    i = 0
+    first = True
+    names = []
+    
+    # parse remaining lines
+    for line in infile:
+        line = line.rstrip()
+        print line
+    
+        if len(line) > 0:
+            if first:
+                (name, seq) = line.split()[:2]
+                names.append(name)
+            else:
+                seq = line.strip()
+                name = names[i]
+            i += 1                
+        
+            if not name in seqs:
+                seqs[name] = seq
+            else:
+                seqs[name] += seq
+        else:
+            i = 0
+            first = False
+    return seqs
+
+
+def writeAlignment(out, seqs):
+    """
+    Write a PHYLIP alignment.
+    
+    out - filestream or filename
+    seqs - dict (FastaDict) of sequences
+    
+    Sequence names CANNOT be longer than 8 characters for full compatibility.
+    Use fasta2phylip to convert names to numbers '_______0', '_______1', ...
+    Then use another file to store names in corresponding order.
+    
+    Returns order in which sequences were written.
+    """
+    
+    out = util.openStream(out, "w")
+    
+    validateSeq(seqs)
+    
+    i = 0
+    print >>out, len(seqs), len(seqs.values()[0])
+    for name in seqs.keys():
+        print >>out, "%8s  %s" % (name, seqs[name])
+        i += 1
+
+    return seqs.keys()
+
 
 
 #

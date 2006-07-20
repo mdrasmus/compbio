@@ -10,11 +10,7 @@ import algorithms
 
 
 
-# only import this module if available
-try:
-    import scipy
-except ImportError:
-    pass
+
 
 
 
@@ -623,6 +619,8 @@ def spearman(vec1, vec2):
 #   func          - a function of the form f(x, params)
 #
 def fitCurve(xdata, ydata, func, paramsInit):   
+    import scipy
+
     y = scipy.array(ydata)
     p0 = scipy.array(paramsInit)
     

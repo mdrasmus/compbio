@@ -773,6 +773,23 @@ def removeSingleChildren(tree):
     return map(lambda x: x.name, removed)
 
 
+def removeExposedInternalNodes(tree):
+    """
+    Remove all leaves that were internal nodes (e.g. node.name is an int)
+    """
+    
+    def walk(node):
+        children = copy.copy(node.children)
+        for child in children:
+            walk(child)
+
+        if len(node.children) == 0 and \
+           isinstance(node.name, int):
+            tree.remove(node)
+    walk(tree.root)
+    
+
+
 def unroot(tree):
     """Return an unrooted copy of tree"""
     
@@ -995,7 +1012,7 @@ def drawTree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
                         labels[node.name], width=labellen)
         
         if node.isLeaf():
-            canvas.text(xchildren +1, y+yscale-1, node.name)
+            canvas.text(xchildren +1, y+yscale-1, str(node.name))
         else:
             top = y + nodept[node.children[0]]
             bot = y + (sizes[node]-sizes[node.children[-1]]) * yscale + \

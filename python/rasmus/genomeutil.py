@@ -406,7 +406,18 @@ class Segment:
         self.start = start
         self.end = end
         self.direction = direction
+    
+    
+    def __str__(self):
+        if isinstance(self.genome, str):
+            return "%s\t%s\t%d\t%d\t%d" % \
+                   (self.genome, self.chrom, self.start, self.end, self.direction)
+        else:
+            return "%s\t%s\t%d\t%d\t%d" % \
+                   (self.genome.name, self.chrom.name, self.start, self.end, self.direction)
 
+    def __repr__(self):
+        return self.__str__()
 
 class MultiBlock:
     def __init__(self, segments=None):
@@ -418,6 +429,15 @@ class MultiBlock:
     def addSegments(self, segments):
         self.segments.extend(segments)   
     
+    
+    def __str__(self):
+        text = []
+        for seg in self.segments:
+            text.append(str(seg) + "\n")
+        return "".join(text)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class SyntenyBlock:
@@ -1430,7 +1450,9 @@ def writeMultiBlocks(filename, multiblocks):
 
 def iterMultiBlocks(filename):
     """
-    Warning: this keeps genomes and chroms as names NOT objects
+    iterates over multiblocks in a file
+    
+    Warning: this keeps genomes and chroms as names (strings) NOT objects
     I think I will eventually convert everything to names.
     But currently this read is incompatiable with writeMultiBlocks
     """
@@ -1448,5 +1470,35 @@ def iterMultiBlocks(filename):
         
         yield MultiBlock(segments)
     
-        
+
+
+def genesInMultiBlocks(genes, blocks):
+    """
+    Returns which (if any) multiblock a set of genes are in.
+    
+    genes must hit unique segments in multiblock.
+    
+    MultiBlocks must refer to genomes and chroms as strings.
+    
+    """
+
+    for block in blocks:
+        found = set()
+        for gene in genes:
+            for seg in block.segments:
+                if gene.chrom.genome.name == seg.genome and \
+                   gene.chrom.name == seg.chrom and \
+                   gene.start >= seg.start and \
+                   gene.end <= seg.end:
+                    found.add(seg)
+                    break
+            else:
+                # cannot find segment for gene, no match
+                break
+
+        # did we find a unique segment for each gene?
+        if len(found) == len(genes):
+            return block
+    return None
+
         

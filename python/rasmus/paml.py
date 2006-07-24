@@ -17,6 +17,7 @@ def dndsMatrix(seqs, saveOutput="", verbose=False):
 
     # create input
     labels = phylip.fasta2phylip(file("seqfile.phylip", "w"), seqs)
+    util.writeVector(file("labels", "w"), labels)    
     
     # create control file
     out = file("yn00.ctl", "w")

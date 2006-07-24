@@ -3,7 +3,8 @@ import os, StringIO
 
 
 
-def mrbayes(aln, nexfilename = "", format="pep", options=None, 
+def mrbayes(aln, nexfilename = "", seqtype="pep", options=None, 
+            usertree=None, bootiter=0,
             verbose=True, saveOutput=""):
     util.tic("mrbayes on %d of length %d" % (len(aln), len(aln.values()[0])))
     
@@ -24,7 +25,7 @@ def mrbayes(aln, nexfilename = "", format="pep", options=None,
     options["extra"] += "sumt;"
     
     # write input file
-    writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), format, options)
+    writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), seqtype, options)
     
     # exec mrbayes
     if verbose:

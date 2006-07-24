@@ -9,7 +9,7 @@ import treelib
 
 
 def phyml(seqs, verbose=True, force = False, args=None, 
-          usertree=None, seqtype="prot", saveOutput="", bootiter=0):
+          usertree=None, seqtype="pep", saveOutput="", bootiter=0):
     phylip.validateSeq(seqs)
     cwd = phylip.createTempDir()
     
@@ -17,6 +17,7 @@ def phyml(seqs, verbose=True, force = False, args=None,
 
     # create input
     labels = phylip.fasta2phylip(file("infile", "w"), seqs)
+    util.writeVector(file("labels", "w"), labels)
     
     options = "y"
     

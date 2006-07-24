@@ -65,6 +65,11 @@ pa = alignlib.printAlign
 pd = printDict
 
 
+def pl(lines, out=sys.stdout):
+    for line in lines:
+        print >>out, line
+
+
 
 # try to setup DATAPATH env
 RASMUS_COMMON_DATAPATH_LOADED = False

@@ -280,14 +280,17 @@ def align2tree(conf, prog, alignfile, basename):
                            args=conf["args"],
                            saveOutput=conf["extraoutput"])
     
-    elif prog == "mrbayes_dna":
+    elif prog in ["mrbayes_dna", "mrbayes_pep"]:
+        if prog == "mrbayes_dna":
+            seqtype = "dna"
+        else:
+            seqtype = "pep"
+        
         tree = mrbayes.mrbayes(aln, 
-                               format="dna",
-                               verbose=conf["verbose"])
-    elif prog == "mrbayes_pep":
-        tree = mrbayes.mrbayes(aln, 
-                               format="pep",
-                               verbose=conf["verbose"])
+                               seqtype=seqtype,
+                               verbose=conf["verbose"],
+                               saveOutput=conf["extraoutput"])
+        
     else:
         raise "unknown phylogeny program '%s'" % prog
     

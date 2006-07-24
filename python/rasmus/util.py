@@ -70,24 +70,40 @@ class Closure:
 class Dict (dict):
     """My personal nested Dictionary (with default values)"""
     
-    def __init__(self, dim=1, default=None):
-        """dim     - number of dimensions of the dictionary
-           default - default value of a dictionary item
+    
+    def __init__(self, items=None, dim=1, default=None, insert=True):
         """
+        items   - items to initialize Dict (can be dict, list, iter)
+        dim     - number of dimensions of the dictionary
+        default - default value of a dictionary item
+        """
+        
+        if isinstance(items, int):
+            # backwards compatiability
+            default = dim
+            dim = items            
+        elif items is not None:
+            dict.__init__(self, items)
+        
         self.dim = dim
         self.null = default
+        self.insert = insert
         
         # backwards compatiability
         self.data = self
     
+    
     def __getitem__(self, i):
         if not i in self:
             if self.dim > 1:
-                self[i] = Dict(self.dim - 1, self.null)
+                ret = Dict(self.dim - 1, self.null)
             else:
-                self[i] = copy.copy(self.null)
-                return self[i]
+                ret = copy.copy(self.null)
+            if self.insert:
+                self[i] = ret
+            return ret
         return dict.__getitem__(self, i)
+    
     
     def __len__(self):
         if self.dim == 1:
@@ -232,12 +248,13 @@ def sublist(lst, ind):
 
 
 def subdict(dic, keys):
-    """Returns a new dictionary dic2 such that
-       dic2[i] = dic[i] for all i in keys
-       
-       arguments:
-       dic  - a dictionary
-       keys - a list of keys
+    """
+    Returns a new dictionary dic2 such that
+    dic2[i] = dic[i] for all i in keys
+
+    arguments:
+    dic  - a dictionary
+    keys - a list of keys
     """
     dic2 = {}
     for key in keys:
@@ -247,8 +264,9 @@ def subdict(dic, keys):
 
 
 def revdict(dic, allowdups=False):
-    """Reverses a dict 'dic' such that the keys become values and the 
-       values become keys.
+    """
+    Reverses a dict 'dic' such that the keys become values and the 
+    values become keys.
     """
     
     dic2 = {}
@@ -264,7 +282,8 @@ def revdict(dic, allowdups=False):
 
 
 def list2lookup(lst):
-    """Creates a dict where each key is lst[i] and value is i
+    """
+    Creates a dict where each key is lst[i] and value is i
     """
     
     lookup = {}
@@ -274,7 +293,8 @@ def list2lookup(lst):
 
 
 def list2dict(lst, val=1):
-    """Creates a dict with keys from list 'lst' and values 'val'
+    """
+    Creates a dict with keys from list 'lst' and values 'val'
     """
     
     dic = {}
@@ -284,7 +304,8 @@ def list2dict(lst, val=1):
 
 
 def items2dict(items):
-    """Creates a dict from a list of key, value pairs
+    """
+    Creates a dict from a list of key, value pairs
     
     TODO: this is redundant with dict(items).  Should remove
     """
@@ -296,7 +317,8 @@ def items2dict(items):
 
 
 def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
-    """Creates a new dict where keys and values are mapped
+    """
+    Creates a new dict where keys and values are mapped
     """
     
     dic2 = {}
@@ -346,7 +368,10 @@ def unique(lst):
 
 
 def flatten(lst, depth=INF):
-    """Flattens nested lists into one list
+    """
+    Flattens nested lists into one list
+    
+    depth - specifies how deep flattening should occur
     """
     
     flat = []
@@ -361,7 +386,8 @@ def flatten(lst, depth=INF):
 
 
 def mapapply(funcs, lst):
-    """apply each function in funcs to one element in lst
+    """
+    apply each function in 'funcs' to one element in 'lst'
     """
     
     lst2 = []
@@ -601,7 +627,7 @@ def withinfunc(a, b, ainc=True, binc=True):
 
 def sign(num):
     """Returns the sign of a number"""
-    return cmp(num,0)
+    return cmp(num, 0)
 
 def lg(num):
     """Retruns the log_2 of a number"""

@@ -354,7 +354,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
 
     # create input
     labels = fasta2phylip(file("infile", "w"), seqs)
-    writeStrings(file("labels", "w"), labels)
+    util.writeVector(file("labels", "w"), labels)
 
     # initialize default arguments
     if args == None:

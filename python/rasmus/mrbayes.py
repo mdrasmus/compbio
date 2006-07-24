@@ -21,8 +21,8 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
         options = {}
     setDefaultOptions(options)
     
-    burnin = .25 * options["ngen"] / options["samplefreq"]
-    options["extra"] += "sumt;"
+    burnin = int(.25 * options["ngen"] / options["samplefreq"])
+    options["extra"] += "sumt burnin=%d;" % burnin
     
     # write input file
     writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), seqtype, options)

@@ -21,8 +21,9 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
         options = {}
     setDefaultOptions(options)
     
-    burnin = int(.25 * options["ngen"] / options["samplefreq"])
-    options["extra"] += "sumt burnin=%d;" % burnin
+    options["burninfrac"] = .25
+    options["relburnin"] = "yes"
+    options["extra"] += "sumt;"
     
     # write input file
     writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), seqtype, options)
@@ -140,7 +141,9 @@ def setDefaultOptions(options):
         "ngen": 10000,
         "samplefreq": 10,
         "extra": "",
-        "stoprule" : "yes"
+        "stoprule" : "yes",
+        "burninfrac": .25,
+        "relburnin": "yes"
     }
     
     # set defaults
@@ -162,7 +165,8 @@ begin mrbayes;
     prset aamodelpr = %(aamodelpr)s;
     
     [ begin MCMC run ]
-    mcmc ngen=%(ngen)d samplefreq=%(samplefreq)d stoprule=%(stoprule)s;
+    mcmc ngen=%(ngen)d samplefreq=%(samplefreq)d stoprule=%(stoprule)s
+         relburnin=%(relburnin)s burninfrac=%(burninfrac)f;
     %(extra)s
 end;
 """ % options
@@ -174,7 +178,7 @@ def readMrbayesProb(infile):
     data = None
     
     for line in infile:
-        # hack to handel comments
+        # hack to handle comments
         if line.startswith("["):
             data = []
             runs.append(data)

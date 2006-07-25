@@ -236,7 +236,7 @@ def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, rootby = "du
     
     # determine graph and possible roots
     mat = treelib.tree2graph(gtree)
-    newroots = gtree.nodes.keys()
+    newroots = util.sort(gtree.nodes.keys())
     newroots.remove(gtree.root.name)
 
     # try rooting on everything

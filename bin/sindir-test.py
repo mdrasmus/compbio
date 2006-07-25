@@ -100,7 +100,8 @@ def testAll(conf):
     jobs = filter(lambda x: x != None, jobs)
     
     groups = pipeline.addGroups("testgroup", jobs, int(conf["groups"][-1]))
-    alljobs = pipeline.add("testall", "echo all", groups)
+    alljobs = pipeline.add("testall", "echo all", groups, 
+                           dispatch=depend.BASH_DISPATCH)
     
     pipeline.reset()
     pipeline.run("testall")

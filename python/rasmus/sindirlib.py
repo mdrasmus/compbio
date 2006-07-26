@@ -427,17 +427,19 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
+    # force non-zero branch lengths
+    b = [max(float(x), 0) for x in makeVector(b)]
     
     
     for i in xrange(len(edges)):
         gene1, gene2 = edges[i]
         if tree.nodes[gene2].parent == tree.nodes[gene1]:
             gene1, gene2 = gene2, gene1
-        if len(b.shape) == 2:
-            tree.nodes[gene1].dist = float(b[i][0])
-        else:
-            tree.nodes[gene1].dist = float(b[i])
-
+            tree.nodes[gene1].dist = b[i]
+    
+    for node in tree.nodes.values():
+        assert node.dist >= 0
+    
     resids = makeVector(scipy.matrixmultiply(A, b)) - d
     tree.data["error"] = math.sqrt(scipy.dot(resids, resids)) / \
                                    sum(x.dist for x in tree.nodes.values())

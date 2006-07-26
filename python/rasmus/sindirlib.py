@@ -435,7 +435,7 @@ def setTreeDistances(conf, tree, distmat, genes):
         gene1, gene2 = edges[i]
         if tree.nodes[gene2].parent == tree.nodes[gene1]:
             gene1, gene2 = gene2, gene1
-            tree.nodes[gene1].dist = b[i]
+        tree.nodes[gene1].dist = b[i]
     
     for node in tree.nodes.values():
         assert node.dist >= 0

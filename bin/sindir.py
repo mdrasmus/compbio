@@ -83,6 +83,10 @@ options = [
     {"single": True,
      "default": 10.0,
      "parser": float}],
+ ["", "maxerror=", "maxerror", "<maximum allowed rel error>",
+    {"single": True,
+     "default": .2,
+     "parser": float}],
 
  "Training options",
  ["t", "train", "train", "",

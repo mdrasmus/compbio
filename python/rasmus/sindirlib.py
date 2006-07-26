@@ -141,9 +141,8 @@ def printVisitedTrees(visited):
           (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
     
     mat = [[key, logl, 
-           math.sqrt(tree.data["error"]) / 
-           sum(x.dist for x in tree.nodes.values()), 
-           tree.data["baserate"]] 
+           tree.data["error"], 
+           tree.data["baserate"]]
            for key, (logl, tree) in visited.iteritems()]
     mat.sort(key=lambda x: x[1], reverse=True)
     
@@ -1433,7 +1432,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         i = util.argmax([x[1].data["logl"] for x in goodtrees])
 
     if True:
-        errorcutoff = .2
+        errorcutoff = conf["maxerror"]
         trees = [x[1] for x in visited.values()]
         errors = [tree.data["error"] for tree in trees]
         

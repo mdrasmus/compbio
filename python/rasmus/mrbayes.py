@@ -23,7 +23,9 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     options["burninfrac"] = .25
     options["relburnin"] = "yes"
-    options["extra"] += "sumt;"
+    
+    # force best binary tree (if possible)
+    options["extra"] += "sumt contype=allcompat;"
     
     # write input file
     writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), seqtype, options)

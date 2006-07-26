@@ -219,13 +219,15 @@ def reconRoot2(gtree, stree, rootby = "loss"):
     return treelib.reroot(gtree, minroot, mat)
 
 
-def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, rootby = "dup"):
+def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, 
+              rootby = "duploss"):
     # find reconciliation that minimizes loss
     mincost = 1e1000
     minroot = None
     minrecon = None
     
     # make an unrooted copy of gene tree
+    gtree = treelib.reroot(gtree, util.sort(gtree.leaveNames())[0])
     gtree = treelib.unroot(gtree)
     
     # make recon root consistent for rerooting tree of the same names

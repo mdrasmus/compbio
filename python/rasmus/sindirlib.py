@@ -428,8 +428,6 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
-    resids = makeVector(scipy.matrixmultiply(A, b)) - d
-    tree.data["error"] = scipy.dot(resids, resids)
     
     
     for i in xrange(len(edges)):
@@ -440,8 +438,10 @@ def setTreeDistances(conf, tree, distmat, genes):
             tree.nodes[gene1].dist = float(b[i][0])
         else:
             tree.nodes[gene1].dist = float(b[i])
-    
-    
+
+    resids = makeVector(scipy.matrixmultiply(A, b)) - d
+    tree.data["error"] = math.sqrt(scipy.dot(resids, resids)) / \
+                                   sum(x.dist for x in tree.nodes.values())
     
     if len(tree.root.children) == 1:
         tree.root = tree.root.children[0]
@@ -1131,7 +1131,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     # tree search
     nold = 0
     lastl = top
-    for i in xrange(1, 100*conf["iters"]):
+    for i in xrange(1, conf["maxiters"]):
         if len(visited) >= conf["iters"]:
             break
         
@@ -1166,7 +1166,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
            tree.data["error"] < minerror * errorfactor:
             if isDebug(DEBUG_LOW):
                 debug("\n=======================================")
-                debug("i:", i, "logl:", logl, "top:", top)
+                debug("iter:", i, " visited:", len(visited), "logl:", logl, "top:", top)
                 drawTreeLogl(tree2, events=events)
                 debug()
                 debug()
@@ -1197,6 +1197,9 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #    print >>DEBUG, "_",
             #DEBUG.flush()
         
+        if nold > 0 and nold % 50 == 0:
+            debug("seen %d old trees in a row, visited: %d, iter: %d" % \
+                  (nold, len(visited), i))
 
 
     return toptree, top
@@ -1432,9 +1435,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     if True:
         errorcutoff = .2
         trees = [x[1] for x in visited.values()]
-        errors = [math.sqrt(tree.data["error"]) / 
-                  sum(x.dist for x in tree.nodes.values())
-                  for tree in trees]
+        errors = [tree.data["error"] for tree in trees]
         
 
         # find all tree with acceptable error
@@ -1443,6 +1444,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             goodtrees = util.mget(trees, goodind)
         else:
             # default to all trees if all errors are high
+            debug("WARNING: high error rate in all trees found")
             goodtrees = trees
 
         # find best tree as max logl in good trees

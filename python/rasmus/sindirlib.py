@@ -12,6 +12,7 @@ from rasmus import phyloutil
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
+from rasmus import phylip
 
 # python libs
 import math, StringIO, copy, random, sys
@@ -1385,8 +1386,13 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             debug("use distances from file")
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
-        visited[phyloutil.hashTree(tree)] = (logl, tree.copy())
-    
+        thash = phyloutil.hashTree(tree)
+        if thash in visited:
+            a, b, count = visited[thash]
+        else:
+            count = 0
+        visited[thash] = [logl, tree.copy(), count+1]
+        
         if isDebug(DEBUG_LOW):
             debug("\nuser given tree:")
             recon = phyloutil.reconcile(tree, stree, gene2species)
@@ -1433,7 +1439,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     
     # return ML tree
-    if True:
+    if False:
         trees = [x[1] for x in visited.itervalues()]
         i = util.argmax([x.data["logl"] for x in trees])
         return trees[i], trees[i].data["logl"]
@@ -1441,18 +1447,50 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     # find best consensus tree
     mat = [[x[1], x[2]] for x in visited.itervalues()]
     trees, counts = zip(* mat)
-    return consensusTree(trees, counts)
+    #return consensusTree(trees, counts)
+    
+    tree = phylip.consense(trees, verbose=False)
+    return tree, 0
 
 
 def consensusTree(trees, counts):
-    for tree in trees[:1]:
-        network = treelib.tree2graph(tree)
-        splits = findSplits(network, util.makeset(tree.leaveNames()))
-        
-        print splits
-        
+    splits = util.Dict(default=0)
     
-    return tree
+    genes = util.sort(trees[0].leaveNames())
+    
+    # count up splits
+    for tree, count in zip(trees, counts):
+        network = treelib.tree2graph(treelib.unroot(tree))
+        splits2 = findSplits(network, util.makeset(tree.leaveNames()))
+        
+        print len(splits2)
+        
+        for key, (set1, set2) in splits2.iteritems():
+            if len(set1) > len(set2):
+                set1, set2 = set2, set1
+            splitkey = tuple([int(gene in set1) for gene in genes])
+            splits[splitkey] += count
+    
+    splits = splits.items()
+    splits.sort(key=lambda x: x[1], reverse=True)
+    
+    half = len(trees) / 2.0
+    if util.count(lambda x: x[1] >= half, splits):
+        debug("consensus exists")
+    
+    # print splits
+    if isDebug(DEBUG_LOW):
+        mat = [genes + ["COUNT"]]
+        for key, val in splits:
+            mat.append(list(key))
+            mat[-1].append(val)
+        util.printcols(mat, out=DEBUG)
+    
+    
+    
+    
+    
+    return tree, tree.data["logl"]
 
 
 #

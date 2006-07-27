@@ -6,7 +6,7 @@ import sys, math
 
 # rasmus libs
 from rasmus import genomeio, util, fasta, clustalw, muscle, phylip
-from rasmus import algorithms, phyloutil
+from rasmus import algorithms, phyloutil, treelib
 
 # graphics libs
 from summon import *
@@ -22,7 +22,8 @@ options = sumtree.options + [
  ["f:", "fasta=", "fasta", "AUTO<fasta>"],
  ["v:", "visual=", "visual", "AUTO<outputfile>"],
  ["w:", "winsize=", "winsize", "AUTO<window width>x<window height>"],
- ["r:", "reconroot=", "reconroot", "AUTO<species tree>"]
+ ["r:", "reroot=", "reroot", "<root node>",
+    {"single": True}]
 ]
 
 
@@ -137,10 +138,10 @@ vis = VisTree()
 # read tree
 tree = vis.readTree(param)
 
-if "reconroot" in param:
-    stree = algorithms.Tree()
-    stree.readNewick(param["reconroot"][-1])
-    tree = phyloutil.reconRoot(tree, stree)
+if "reroot" in param:
+    if param["reroot"].isdigit():
+        param["reroot"] = int(param["reroot"])
+    tree = treelib.reroot(tree, param["reroot"])
     vis.setupTree(param, tree)
 
 

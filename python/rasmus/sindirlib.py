@@ -113,6 +113,7 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
     if "logl" in tree.data:
         debug("logl:      %f" % tree.data["logl"])
         debug("eventlogl: %f" % tree.data["eventlogl"])
+        debug("errorlogl: %f" % tree.data["errorlogl"])
     debug("baserate:  %f" % baserate)
     debug("treelen:   %f" % sum(x.dist for x in tree.nodes.values()))
     if "error" in tree.data:
@@ -142,16 +143,17 @@ def printVisitedTrees(visited):
     
     mat = [[key, logl, 
            tree.data["error"], 
-           tree.data["baserate"]]
-           for key, (logl, tree) in visited.iteritems()]
+           tree.data["baserate"],
+           count]
+           for key, (logl, tree, count) in visited.iteritems()]
     mat.sort(key=lambda x: x[1], reverse=True)
     
-    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
+    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE", "COUNT"]] + 
                    mat[:80], spacing=4, out=DEBUG)
     debug()
 
     mat.sort(key=lambda x: x[2])
-    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE"]] + 
+    util.printcols([["TREE", "LOGL", "ERROR", "BASERATE", "COUNT"]] + 
                    mat[:80], spacing=4, out=DEBUG)
     debug()
 
@@ -978,6 +980,9 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
     this.logl += tree.data["eventlogl"]
     
+    # calc penality of error
+    tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
+    this.logl += tree.data["errorlogl"]
     
     
     # debugging information
@@ -1113,7 +1118,11 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     toptree = tree.copy()
     thash = phyloutil.hashTree(tree)
     
-    visited[thash] = (top, tree.copy())
+    if thash in visited:
+        a, b, count = visited[thash]
+    else:
+        count = 0
+    visited[thash] = [top, tree.copy(), count+1]
     
     
     # just for debug
@@ -1136,19 +1145,16 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         if len(visited) >= conf["iters"]:
             break
         
-        #tree2 = proposeTreeWeighted(tree)
         tree2 = proposeTree(tree)
         
         # just for debug
         recon = phyloutil.reconcile(tree2, stree, gene2species)
         events = phyloutil.labelEvents(tree2, recon)
         
-        #tree2 = proposeTree(tree2)
-        #tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
-        
         thash = phyloutil.hashTree(tree2)
         if thash in visited:
-            logl, tree2 = visited[thash]
+            logl, tree2, count = visited[thash]
+            visited[thash][2] += 1
             nold += 1
         else:
             setTreeDistances(conf, tree2, distmat, labels)      
@@ -1159,7 +1165,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         
         # store logl in visited
         if thash not in visited or logl > visited[thash][0]:
-            visited[thash] = (logl, tree2.copy())
+            visited[thash] = [logl, tree2.copy(), 1]
         
         
         # best yet tree
@@ -1180,23 +1186,12 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         if logl > lastl:
             # accept new tree
             tree = tree2
-            lastl = logl
-            #if logl - top > log(.90):
-            #    print >>DEBUG, "#",
-            #elif logl - top > log(.50):
-            #    print >>DEBUG, "+",
-            #else:
-            #    print >>DEBUG, "^",
-            #DEBUG.flush()
         else:
             # accept with a chance
-            if logl - lastl > log(random.random()) - nold/conf["speedup"]:
-            #    print >>DEBUG, "v",
+            if logl - lastl > log(random.random()) - nold * conf["speedup"]:
                 tree = tree2
-                lastl = logl
-            #else:    
-            #    print >>DEBUG, "_",
-            #DEBUG.flush()
+        
+        lastl = logl
         
         if nold > 0 and nold % 50 == 0:
             debug("seen %d old trees in a row, visited: %d, iter: %d" % \
@@ -1297,7 +1292,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         setTreeDistances(conf, tree, distmat, labels)
         logl = treeLogLikelihood(conf, tree, stree, 
                                     gene2species, params)
-        visited[thash] = (logl, tree.copy())
+        visited[thash] = [logl, tree.copy(), 1]
         
         drawTreeLogl(tree)
     
@@ -1325,7 +1320,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                 setTreeDistances(conf, tree2, distmat, labels)
                 logl = treeLogLikelihood(conf, tree2, stree, 
                                          gene2species, params)
-                visited[thash] = (logl, tree2.copy())
+                visited[thash] = [logl, tree2.copy(), 1]
                 
                 
                 # dig deeper
@@ -1433,7 +1428,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         # find best tree as max logl in good trees
         i = util.argmax([x[1].data["logl"] for x in goodtrees])
 
-    if True:
+    if False:
         errorcutoff = conf["maxerror"]
         trees = [x[1] for x in visited.values()]
         errors = [tree.data["error"] for tree in trees]
@@ -1450,10 +1445,14 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
 
         # find best tree as max logl in good trees
         i = util.argmax([x.data["logl"] for x in goodtrees])
+        return goodtrees[i], goodtrees[i].data["logl"]
+
+    if True:
+        trees = [x[1] for x in visited.itervalues()]
+        i = util.argmax([x.data["logl"] for x in trees])
+        return trees[i], trees[i].data["logl"]
     
-    
-    
-    return goodtrees[i], goodtrees[i].data["logl"]
+
 
 
 

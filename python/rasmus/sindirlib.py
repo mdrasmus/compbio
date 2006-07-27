@@ -1177,9 +1177,9 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     
     # proposal function
     def propose(chain, tree):
-        tree2 = proposeTree(conf, tree)
-        #tree2 = proposeTree(conf, tree2)
-        
+        tree2 = tree
+        for i in range(random.randint(1, 4)):
+            tree2 = proposeTree(conf, tree2)
         #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, stree, 
         #                          gene2species, params, visited)
         

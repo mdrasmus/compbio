@@ -1449,7 +1449,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     trees, counts = zip(* mat)
     #return consensusTree(trees, counts)
     
-    tree = phylip.consense(trees, verbose=False)
+    tree = phylip.consense(trees, counts=counts, verbose=False)
     return tree, 0
 
 

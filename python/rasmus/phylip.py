@@ -127,10 +127,15 @@ def writeInTree(filename, tree, labels):
     tree2.writeNewick(filename)
 
 
-def writeBootTrees(filename, trees):
+def writeBootTrees(filename, trees, counts=None):
     out = util.openStream(filename, "w")
-    for tree in trees:
-        tree.writeNewick(out)
+    
+    if counts == None:
+        counts = [1] * len(trees)
+    
+    for tree, count in zip(trees, counts):
+        for i in range(count):
+            tree.writeNewick(out)
 
 
 
@@ -658,10 +663,10 @@ def consenseFromFile(intrees, verbose=True):
     cleanupTempDir(cwd)
     return tree
 
-def consense(trees, verbose=True):
+def consense(trees, counts=None, verbose=True):
     cwd = createTempDir()
     
-    writeBootTrees("intree", trees)
+    writeBootTrees("intree", trees, counts=counts)
     
     execPhylip("consense", "y", verbose)
     

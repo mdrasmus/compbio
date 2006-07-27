@@ -14,13 +14,13 @@ import StringIO
 import sys
 
 # rasmus libs
-from rasmus import algorithms
 from rasmus import genomeutil
 from rasmus import fasta
 from rasmus import phylip
 from rasmus import phyloutil
 from rasmus import sindirlib
 from rasmus import stats
+from rasmus import treelib
 from rasmus import util
 
 
@@ -87,6 +87,14 @@ options = [
     {"single": True,
      "default": .2,
      "parser": float}],
+ ["", "toptrees=", "toptrees", "<number of trees for consensus>",
+    {"single": True,
+     "default": 100,
+     "parser": int}],
+ ["", "rerootprob=", "rerootprob", "<probability of reroot>",
+    {"single": True,
+     "default": .1,
+     "parser": float}],
 
  "Training options",
  ["t", "train", "train", "",
@@ -118,6 +126,8 @@ options = [
      "parser": float}],
  
  "Miscellaneous options",
+ ["", "correcttree=", "correcttree", "<correct tree newick>",
+    {"single": True}],
  ["V:", "debug=", "debug", "<level>",
     {"single": True,
      "default": 0, 
@@ -175,7 +185,7 @@ def trainTree(conf, stree, gene2species):
     prog = util.ProgressBar(len(treefiles))
     for treefile in treefiles:
         prog.update()
-        trees.append(algorithms.readTree(treefile))
+        trees.append(treelib.readTree(treefile))
     util.toc()
     
     params = sindirlib.learnModel(trees, stree, gene2species, conf["trainstats"])
@@ -201,7 +211,27 @@ def buildTree(conf, stree, gene2species):
             tree, logl = sindirlib.sindir(conf, distmat, labels, stree, 
                                           gene2species, params)
             tree.write(sindirlib.outTreeFile(conf))
-
+            
+            # test for correctness
+            if "correcttree" in conf:
+                correctTree = treelib.readTree(conf["correcttree"])
+            
+                thash1 = phyloutil.hashTree(tree)
+                thash2 = phyloutil.hashTree(correctTree)
+                
+                print "sindir: "
+                treelib.drawTree(tree, maxlen=5, minlen=5)
+                print
+                
+                print "correct:"
+                treelib.drawTree(correctTree, maxlen=5, minlen=5)
+                print
+                
+                if thash1 == thash2:
+                    print "CORRECT TREE FOUND"
+                else:
+                    print "WRONG TREE FOUND"
+            
 
 
 #

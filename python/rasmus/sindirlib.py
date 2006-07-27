@@ -1053,8 +1053,13 @@ def proposeNni(tree, node1, node2, change=0):
         node1.children[change], node2.children[uncle]
 
 
-def proposeTree(tree):
+def proposeTree(conf, tree):
     tree2 = tree.copy()
+    
+    if random.random() < conf["rerootprob"]:
+        nodes = tree.nodes.values()
+        newnode = nodes[random.randint(0, len(nodes)-1)]
+        tree2 = treelib.reroot(tree2, newnode.name)
     
     # find edges for NNI
     nodes = tree2.nodes.values()
@@ -1146,7 +1151,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         if len(visited) >= conf["iters"]:
             break
         
-        tree2 = proposeTree(tree)
+        tree2 = proposeTree(conf, tree)
         
         thash = phyloutil.hashTree(tree2)
         if thash in visited:
@@ -1445,11 +1450,14 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         return trees[i], trees[i].data["logl"]
     
     # find best consensus tree
-    mat = [[x[1], x[2]] for x in visited.itervalues()]
+    items = visited.values()
+    items.sort(key=lambda x: x[1].data["logl"], reverse=True)
+    mat = [[x[1], x[2]] for x in items[:conf["toptrees"]]]
     trees, counts = zip(* mat)
     #return consensusTree(trees, counts)
     
-    tree = phylip.consense(trees, counts=counts, verbose=False)
+    phylip.writeBootTrees(conf["out"] + ".trees", trees, counts=counts)
+    tree = phylip.consense(trees, counts=counts, verbose=False, args="r\ny")
     return tree, 0
 
 

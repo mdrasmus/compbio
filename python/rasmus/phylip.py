@@ -649,13 +649,13 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
         return trees
 
 
-def consenseFromFile(intrees, verbose=True):
+def consenseFromFile(intrees, verbose=True, args="y"):
     validateSeq(seqs)
     cwd = createTempDir()
     
     shutil.copy(os.path.join("..", intrees), "intree")
     
-    execPhylip("consense", "y", verbose)
+    execPhylip("consense", args, verbose)
     
     tree = algorithms.Tree()
     tree.readNewick("outtree")
@@ -663,12 +663,12 @@ def consenseFromFile(intrees, verbose=True):
     cleanupTempDir(cwd)
     return tree
 
-def consense(trees, counts=None, verbose=True):
+def consense(trees, counts=None, verbose=True, args="y"):
     cwd = createTempDir()
     
     writeBootTrees("intree", trees, counts=counts)
     
-    execPhylip("consense", "y", verbose)
+    execPhylip("consense", args, verbose)
     
     tree = algorithms.Tree()
     tree.readNewick("outtree")

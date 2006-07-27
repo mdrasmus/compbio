@@ -139,8 +139,8 @@ def printVisitedTrees(visited):
         return
     nleaves = len(visited.values()[0][1].leaves())
     
-    debug("\n\nmost likily trees out of %d visited (%s total): " % \
-          (len(visited), util.int2pretty(numPossibleTrees(nleaves))))
+    debug("\n\nmost likily trees out of %d visited (%5.1f total): " % \
+          (len(visited), float(numPossibleTrees(nleaves))))
     
     mat = [[key, logl, 
            tree.data["error"], 
@@ -432,6 +432,7 @@ def setTreeDistances(conf, tree, distmat, genes):
     
     # force non-zero branch lengths
     b = [max(float(x), 0) for x in makeVector(b)]
+    #b = [float(x) for x in makeVector(b)]
     
     
     for i in xrange(len(edges)):
@@ -1114,7 +1115,121 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
         debug()
 
 
+class McmcChain:
+    def __init__(self, name, state, logl, propose):
+        self.name = name
+        self.state = state
+        self.logl = logl
+        self.propose = propose
+    
+    
+    def step(self):
+        nextState, nextLogl = self.propose(self, self.state)
+
+        # accept/reject
+        if nextLogl > self.logl or \
+           nextLogl - self.logl > log(random.random()):
+            # accept new state
+            self.state = nextState
+            self.logl = nextLogl
+
+
+
+def addVisited(visited, tree):
+    thash = phyloutil.hashTree(tree)
+    if thash in visited:
+        a, b, count = visited[thash]
+    else:
+        count = 0
+    visited[thash] = [tree.data["logl"], tree.copy(), count+1]
+
+
+
 def searchMCMC(conf, distmat, labels, stree, gene2species, params,
+               initTree=None, visited=None):
+    if visited == None:
+        visited = {}
+    
+    this = util.Closure(
+        nold=0,
+        toplogl = -util.INF,
+        toptree = None,
+        iter=0)
+    
+    
+    # init with NJ    
+    if initTree != None:
+        tree = initTree
+    else:
+        tree = neighborjoin(distmat, labels)
+        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        setTreeDistances(conf, tree, distmat, labels)
+
+    # init likelihood score
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+
+    # store tree in visited
+    addVisited(visited, tree)
+    
+    # show initial tree
+    printMCMC(conf, 0, tree, stree, gene2species, visited)
+    
+    
+    # proposal function
+    def propose(chain, tree):
+        tree2 = proposeTree(conf, tree)
+        #tree2 = proposeTree(conf, tree2)
+        
+        #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, stree, 
+        #                          gene2species, params, visited)
+        
+        # check visited dict
+        thash = phyloutil.hashTree(tree2)
+        if thash in visited:
+            logl, tree2, count = visited[thash]
+            visited[thash][2] += 1
+            this.nold += 1
+        else:
+            setTreeDistances(conf, tree2, distmat, labels)
+            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            this.nold = 0
+            visited[thash] = [logl, tree2.copy(), 1]
+        
+        
+        # best yet tree
+        if logl > this.toplogl:
+            printMCMC(conf, "%d:%d" % (chain.name, this.iter), 
+                      tree2, stree, gene2species, visited)
+            this.toplogl = logl
+            this.toptree = tree2.copy()
+        
+        # alter logl to influence search only
+        logl += conf["speedup"] * this.nold
+        
+        return tree2, logl
+        
+    # init chains    
+    chains = []
+    for i in range(conf["nchains"]):
+        chains.append(McmcChain(i, tree.copy(), logl, propose))
+    
+    
+    # run chains
+    for i in xrange(1, conf["maxiters"]):
+        if len(visited) >= conf["iters"]:
+            break
+        
+        this.iter += 1
+        
+        for chain in chains:
+            chain.step()   
+   
+
+    return this.toptree, this.toplogl
+
+
+
+def searchMCMC2(conf, distmat, labels, stree, gene2species, params,
                initTree=None, visited=None):
     if visited == None:
         visited = {}
@@ -1132,13 +1247,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     top = treeLogLikelihood(conf, tree, stree, gene2species, params)
     toptree = tree.copy()
     
-    # store tree in visisted
-    thash = phyloutil.hashTree(tree)
-    if thash in visited:
-        a, b, count = visited[thash]
-    else:
-        count = 0
-    visited[thash] = [top, tree.copy(), count+1]
+    # store tree in visited
+    addVisited(visited, tree)
     
     # show initial tree
     printMCMC(conf, 0, tree, stree, gene2species, visited)
@@ -1191,6 +1301,59 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     return toptree, top
 
 
+def replaceGeneInTree(conf, tree, badgene, distmat, labels, stree, gene2species,
+                    params, visited):
+    
+    if badgene == None:
+        nodes = tree.leaves()
+        weights = [x.data["logl"] for x in nodes]
+        
+        top = max(weights) + 1
+        weights = [top - x for x in weights]
+        
+        badgene = nodes[stats.sample(weights)].name
+    
+    tree2 = tree.copy()
+    tree2.remove(tree.nodes[badgene])
+    treelib.removeSingleChildren(tree2)
+    
+    return placeGeneInTree(conf, tree2, badgene, distmat, labels, stree, gene2species,
+                           params, visited)
+    
+
+def placeGeneInTree(conf, tree, newgene, distmat, labels, stree, gene2species,
+                    params, visited):
+    toplogl = -util.INF
+    toptree = None
+    
+    # loop over places to add newgene
+    for name in tree.nodes:
+        tree2 = tree.copy()
+        node = tree2.nodes[name]
+
+        if node == tree2.root:
+            newnode = treelib.TreeNode(tree2.newName())
+            tree2.addChild(newnode, tree2.root)
+            tree2.root = newnode
+            tree2.addChild(newnode, treelib.TreeNode(newgene))
+        else:
+            parent = node.parent
+            tree2.remove(node)
+            newnode = treelib.TreeNode(tree2.newName())
+            tree2.addChild(parent, newnode)
+            tree2.addChild(newnode, node)
+            tree2.addChild(newnode, treelib.TreeNode(newgene))
+        
+        setTreeDistances(conf, tree2, distmat, labels)
+        logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+        
+        addVisited(visited, tree2)
+        
+        if logl >= toplogl:
+            toplogl = logl
+            toptree = tree2
+    
+    return toptree
 
 
 
@@ -1328,7 +1491,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         items = visited.items()
         i = util.argmaxfunc(lambda x: x[1], items)
         
-        thash, (logl, tree) = items[i]
+        thash, (logl, tree, count) = items[i]
         
         return tree, logl
     else:
@@ -1444,21 +1607,23 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     
     # return ML tree
-    if False:
+    if True:
         trees = [x[1] for x in visited.itervalues()]
         i = util.argmax([x.data["logl"] for x in trees])
         return trees[i], trees[i].data["logl"]
     
-    # find best consensus tree
-    items = visited.values()
-    items.sort(key=lambda x: x[1].data["logl"], reverse=True)
-    mat = [[x[1], x[2]] for x in items[:conf["toptrees"]]]
-    trees, counts = zip(* mat)
-    #return consensusTree(trees, counts)
     
-    phylip.writeBootTrees(conf["out"] + ".trees", trees, counts=counts)
-    tree = phylip.consense(trees, counts=counts, verbose=False, args="r\ny")
-    return tree, 0
+    if False:
+        # find best consensus tree
+        items = visited.values()
+        items.sort(key=lambda x: x[1].data["logl"], reverse=True)
+        mat = [[x[1], x[2]] for x in items[:conf["toptrees"]]]
+        trees, counts = zip(* mat)
+
+        phylip.writeBootTrees(conf["out"] + ".trees", trees, counts=counts)
+        tree = phylip.consense(trees, counts=counts, verbose=False, args="r\ny")
+        return tree, 0
+
 
 
 def consensusTree(trees, counts):

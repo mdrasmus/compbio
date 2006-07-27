@@ -95,6 +95,10 @@ options = [
     {"single": True,
      "default": .1,
      "parser": float}],
+ ["", "nchains=", "nchains", "<number of chains>",
+    {"single": True,
+     "default": 4,
+     "parser": int}],
 
  "Training options",
  ["t", "train", "train", "",
@@ -215,7 +219,9 @@ def buildTree(conf, stree, gene2species):
             # test for correctness
             if "correcttree" in conf:
                 correctTree = treelib.readTree(conf["correcttree"])
-            
+                phyloutil.hashOrderTree(correctTree)
+                phyloutil.hashOrderTree(tree)
+                
                 thash1 = phyloutil.hashTree(tree)
                 thash2 = phyloutil.hashTree(correctTree)
                 

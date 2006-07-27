@@ -358,7 +358,7 @@ def hashTree(tree, smap = lambda x: x):
             return hashTreeCompose(childHashes)
     return walk(tree.root)
 
-def hashOrderTree(tree, smap):
+def hashOrderTree(tree, smap = lambda x: x):
     def walk(node):
         if node.isLeaf():
             return smap(node.name)

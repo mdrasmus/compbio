@@ -1149,13 +1149,19 @@ class McmcChain:
 
 
 
-def addVisited(visited, tree):
-    thash = phyloutil.hashTree(tree)
+def addVisited(conf, visited, tree, thash=None):
+    if thash is None:
+        thash = phyloutil.hashTree(tree)
+    
     if thash in visited:
-        a, b, count = visited[thash]
+        visited[thash][2] += 1
     else:
-        count = 0
-    visited[thash] = [tree.data["logl"], tree.copy(), count+1]
+        visited[thash] = [tree.data["logl"], tree.copy(), 1]
+
+    if "correcthash" in conf:
+        if thash == conf["correcthash"]:
+            debug("PROPOSED CORRECT TREE")
+
 
 
 def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
@@ -1177,7 +1183,7 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
 
     # store tree in visited
-    addVisited(visited, tree)
+    addVisited(conf, visited, tree)
     
     stuck = False
         
@@ -1219,21 +1225,20 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
             if thash not in visited:
                 setTreeDistances(conf, tree, distmat, labels)
                 logl2 = treeLogLikelihood(conf, tree, stree, 
-                                         gene2species, params)
-                visited[thash] = [logl2, tree.copy(), 1]
-                
+                                          gene2species, params)
                 stuck = False
             else:
-                visited[thash][2] += 1
                 logl2 = visited[thash][0]
                 
                 setTreeDistances(conf, tree, distmat, labels)
                 logl2 = treeLogLikelihood(conf, tree, stree, 
-                                         gene2species, params)
+                                          gene2species, params)
                 
                 if nproposals == 1:
                     stuck = True
-                
+            
+            addVisited(conf, visited, tree, thash)
+            
             
             debug("logl2", logl2)
             
@@ -1328,7 +1333,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
 
     # store tree in visited
-    addVisited(visited, tree)
+    addVisited(conf, visited, tree)
     
     # show initial tree
     printMCMC(conf, 0, tree, stree, gene2species, visited)
@@ -1347,14 +1352,15 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         thash = phyloutil.hashTree(tree2)
         if thash in visited:
             logl, tree2, count = visited[thash]
-            visited[thash][2] += 1
+            #visited[thash][2] += 1
             this.nold += 1
         else:
             setTreeDistances(conf, tree2, distmat, labels)
             logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
             this.nold = 0
-            visited[thash] = [logl, tree2.copy(), 1]
+            #visited[thash] = [logl, tree2.copy(), 1]
         
+        addVisited(conf, visited, tree, thash)
         
         # best yet tree
         if logl > this.toplogl:
@@ -1408,7 +1414,7 @@ def searchMCMC2(conf, distmat, labels, stree, gene2species, params,
     toptree = tree.copy()
     
     # store tree in visited
-    addVisited(visited, tree)
+    addVisited(conf, visited, tree)
     
     # show initial tree
     printMCMC(conf, 0, tree, stree, gene2species, visited)
@@ -1507,7 +1513,7 @@ def placeGeneInTree(conf, tree, newgene, distmat, labels, stree, gene2species,
         setTreeDistances(conf, tree2, distmat, labels)
         logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
         
-        addVisited(visited, tree2)
+        addVisited(conf, visited, tree2)
         
         if logl >= toplogl:
             toplogl = logl
@@ -1759,6 +1765,12 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         raise SindirError("No search or tree topologies given")
     
     
+    if "correcthash" in conf:
+        if conf["correcthash"] in visited:
+            debug("SEARCH: visited correct tree")
+        else:
+            debug("SEARCH: NEVER saw correct tree")
+
     
     # find best tree
     if False:

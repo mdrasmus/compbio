@@ -139,7 +139,8 @@ options = [
  
  "Miscellaneous options",
  ["", "correcttree=", "correcttree", "<correct tree newick>",
-    {"single": True}],
+    {"single": True,
+     "parser": treelib.readTree}],
  ["V:", "debug=", "debug", "<level>",
     {"single": True,
      "default": 0, 
@@ -210,6 +211,10 @@ def trainTree(conf, stree, gene2species):
 def buildTree(conf, stree, gene2species):
     params = sindirlib.readParams(conf["param"])
     
+    if "correcttree" in conf:
+        conf["correcthash"] = phyloutil.hashTree(conf["correcttree"])
+    
+    
     if "dist" in conf:
         for i in range(len(conf["dist"])):
             distfile = conf["dist"][i]
@@ -226,7 +231,7 @@ def buildTree(conf, stree, gene2species):
             
             # test for correctness
             if "correcttree" in conf:
-                correctTree = treelib.readTree(conf["correcttree"])
+                correctTree = conf["correcttree"]
                 phyloutil.hashOrderTree(correctTree)
                 phyloutil.hashOrderTree(tree)
                 

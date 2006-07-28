@@ -99,6 +99,10 @@ options = [
     {"single": True,
      "default": 4,
      "parser": int}],
+ ["", "hilliters=", "hilliters", "<number of hill climbs>",
+    {"single": True,
+     "default": 20,
+     "parser": int}],
 
  "Training options",
  ["t", "train", "train", "",

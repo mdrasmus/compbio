@@ -1121,6 +1121,7 @@ class McmcChain:
         self.state = state
         self.logl = logl
         self.propose = propose
+        self.relax = 0
     
     
     def step(self):
@@ -1128,7 +1129,7 @@ class McmcChain:
 
         # accept/reject
         if nextLogl > self.logl or \
-           nextLogl - self.logl > log(random.random()):
+           nextLogl - self.logl > log(random.random()) - self.relax:
             # accept new state
             self.state = nextState
             self.logl = nextLogl
@@ -1144,6 +1145,131 @@ def addVisited(visited, tree):
     visited[thash] = [tree.data["logl"], tree.copy(), count+1]
 
 
+def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
+               initTree=None, visited=None):
+
+    if visited == None:
+        visited = {}
+    
+    # init with NJ    
+    if initTree != None:
+        tree = initTree
+    else:
+        tree = neighborjoin(distmat, labels)
+        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        setTreeDistances(conf, tree, distmat, labels)
+
+    # init likelihood score
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+
+    # store tree in visited
+    addVisited(visited, tree)
+    
+    
+    heat = .75
+    
+    for i in range(conf["hilliters"]):
+        printMCMC(conf, i, tree, stree, gene2species, visited)
+        
+        proposals = getProposals(conf, tree, distmat, labels, 
+                                 stree, gene2species, params, visited)
+        
+        #util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals))
+        #print
+        
+        # determine which proposals to use
+        vset = set()
+        proposals2 = []
+        for logl2, edge, change in proposals:
+            if edge[0] in vset or edge[1] in vset:
+                continue
+            proposals2.append([logl2, edge, change])
+            vset.add(edge[0])
+            vset.add(edge[1])
+        
+        #util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals2))
+        #print
+        
+        start = 0
+        while start < len(proposals2):
+            nproposals = int(math.ceil(len(proposals2) * heat))
+            
+            # apply proposals
+            for logl3, edge, change in proposals2[start:start+nproposals]:
+                proposeNni(tree, edge[0], edge[1], change)
+            
+            # calc likelihood
+            thash = phyloutil.hashTree(tree)
+            if thash not in visited:
+                setTreeDistances(conf, tree, distmat, labels)
+                logl2 = treeLogLikelihood(conf, tree, stree, 
+                                         gene2species, params)
+                visited[thash] = [logl2, tree.copy(), 1]
+            else:
+                visited[thash][2] += 1
+                logl2 = visited[thash][0]
+            
+            
+            if logl2 > logl or nproposals == 1:
+                logl = logl2
+                break
+            
+            heat *= .9
+            
+            # undo reversals
+            for logl3, edge, change in util.reverse(proposals2[start:nproposals]):
+                proposeNni(tree, edge[0], edge[1], change)
+            
+        
+        debug("start:", start)
+        debug("swaps:", nproposals)
+        debug("heat:", heat)
+
+    
+    items = visited.items()
+    i = util.argmaxfunc(lambda x: x[1][0], items)
+    thash, (logl, tree, count) = items[i]
+    return tree, logl
+
+            
+        
+        
+        
+    
+
+
+def getProposals(conf, tree, distmat, labels, stree, 
+                 gene2species, params, visited):
+    # try all NNI
+    # find edges for NNI
+    nodes = tree.nodes.values()
+    nodes = filter(lambda x: not x.isLeaf() and 
+                             x != tree.root, nodes)
+    edges = [(node, node.parent) for node in nodes]
+    
+    proposals = []
+    for edge in edges:
+        for change in (0,1):
+            proposeNni(tree, edge[0], edge[1], change)
+            
+            thash = phyloutil.hashTree(tree)
+            if thash not in visited:
+                setTreeDistances(conf, tree, distmat, labels)
+                logl = treeLogLikelihood(conf, tree, stree, 
+                                         gene2species, params)
+                visited[thash] = [logl, tree.copy(), 1]
+            else:
+                visited[thash][2] += 1
+                logl = visited[thash][0]
+            
+            proposals.append([logl, edge, change])
+            
+            # switch branch back
+            proposeNni(tree, edge[0], edge[1], change)
+    
+    proposals.sort(key=lambda x: x[0], reverse=True)
+    return proposals
+    
 
 def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                initTree=None, visited=None):
@@ -1178,8 +1304,9 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     # proposal function
     def propose(chain, tree):
         tree2 = tree
-        for i in range(random.randint(1, 4)):
+        for i in range(random.randint(1, 3)):
             tree2 = proposeTree(conf, tree2)
+    
         #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, stree, 
         #                          gene2species, params, visited)
         
@@ -1204,8 +1331,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             this.toptree = tree2.copy()
         
         # alter logl to influence search only
-        logl += conf["speedup"] * this.nold
-        
+        chain.relax = conf["speedup"] * this.nold
+               
         return tree2, logl
         
     # init chains    
@@ -1435,9 +1562,11 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
 
 
 def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
-                     depth=2, visited=None, topDepth=True):
+                     depth=2, visited=None, visited2=None, topDepth=True):
     if visited == None:
         visited = {}
+    if visited2 == None:
+        visited2 = {}
     
     # find initial logl
     thash = phyloutil.hashTree(tree)
@@ -1464,32 +1593,33 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
             
-            tree2 = tree
-            #tree2 = phyloutil.reconRoot(tree, stree, gene2species,
-            #                            rootby="duploss")
-            
-            thash = phyloutil.hashTree(tree2)
+            thash = phyloutil.hashTree(tree)
             if thash not in visited:
-                setTreeDistances(conf, tree2, distmat, labels)
-                logl = treeLogLikelihood(conf, tree2, stree, 
+                setTreeDistances(conf, tree, distmat, labels)
+                logl = treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
-                visited[thash] = [logl, tree2.copy(), 1]
+                visited[thash] = [logl, tree.copy(), 1]
                 
+            
+            if thash not in visited2 or \
+               depth > visited2[thash]:
+                visited2[thash] = depth
                 
                 # dig deeper
                 if depth > 1:
                     searchExhaustive(conf, distmat, labels, 
-                                     tree2, stree, gene2species, params,
+                                     tree, stree, gene2species, params,
                                      depth=depth-1, visited=visited,
+                                     visited2=visited2,
                                      topDepth=False)
             
             # switch branch back
             proposeNni(tree, edge[0], edge[1], change)
     
     # debug
-    if topDepth and isDebug(DEBUG_LOW):
+    if topDepth:
         items = visited.items()
-        i = util.argmaxfunc(lambda x: x[1], items)
+        i = util.argmaxfunc(lambda x: x[1][0], items)
         
         thash, (logl, tree, count) = items[i]
         
@@ -1535,6 +1665,10 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
                                           gene2species, params, 
                                           depth=conf["depth"],
                                           visited=visited)
+        elif search == "hillclimb":
+            tree, logl = searchHillClimb(conf, distmat, labels, stree, 
+                                         gene2species, params, initTree=tree,
+                                         visited=visited)
         elif search == "none":
             break
         else:

@@ -103,6 +103,10 @@ options = [
     {"single": True,
      "default": 20,
      "parser": int}],
+ ["", "eprune=", "eprune", "<exhaustive prune>",
+    {"single": True,
+     "default": -10,
+     "parser": float}],
 
  "Training options",
  ["t", "train", "train", "",

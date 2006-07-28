@@ -5,7 +5,7 @@
 
 
 # rasmus libs
-#from rasmus import algorithms
+from rasmus import bionj
 from rasmus import fasta
 from rasmus import matrix
 from rasmus import phyloutil
@@ -1054,6 +1054,19 @@ def proposeNni(tree, node1, node2, change=0):
         node1.children[change], node2.children[uncle]
 
 
+def getNniUncle(node1, node2):
+    if node1.parent != node2:
+        node1, node2 = node2, node1
+    assert node1.parent == node2
+    
+    # find uncle
+    uncle = 0 
+    if node2.children[uncle] == node1:
+        uncle = 1
+    
+    return node2.children[uncle]
+    
+
 def proposeTree(conf, tree):
     tree2 = tree.copy()
     
@@ -1155,7 +1168,8 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = neighborjoin(distmat, labels)
+        tree = bionj.bionj(labels=labels, distmat=distmat, verbose=False)
+        #tree = neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
         setTreeDistances(conf, tree, distmat, labels)
 
@@ -1165,31 +1179,32 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     # store tree in visited
     addVisited(visited, tree)
     
-    
-    heat = .75
-    
+        
     for i in range(conf["hilliters"]):
         printMCMC(conf, i, tree, stree, gene2species, visited)
         
         proposals = getProposals(conf, tree, distmat, labels, 
                                  stree, gene2species, params, visited)
         
-        #util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals))
-        #print
+        util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals))
+        print
         
         # determine which proposals to use
-        vset = set()
+        edgeset = set()
         proposals2 = []
         for logl2, edge, change in proposals:
-            if edge[0] in vset or edge[1] in vset:
+            if edge in edgeset:
                 continue
             proposals2.append([logl2, edge, change])
-            vset.add(edge[0])
-            vset.add(edge[1])
+            
+            edgeset.add((getNniUncle(edge[0], edge[1]), edge[1]))
+            edgeset.add((edge[0].children[change], edge[0]))
+            edgeset.add((edge[0], edge[1]))
         
-        #util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals2))
-        #print
+        util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals2))
+        print
         
+        heat = 1.0
         start = 0
         while start < len(proposals2):
             nproposals = int(math.ceil(len(proposals2) * heat))
@@ -1208,18 +1223,30 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
             else:
                 visited[thash][2] += 1
                 logl2 = visited[thash][0]
+                
+                setTreeDistances(conf, tree, distmat, labels)
+                logl2 = treeLogLikelihood(conf, tree, stree, 
+                                         gene2species, params)
+                
             
+            debug("logl2", logl2)
             
-            if logl2 > logl or nproposals == 1:
+            if nproposals == 1: # and thash not in visited:
                 logl = logl2
                 break
             
-            heat *= .9
+            if logl2 > logl:
+                logl = logl2
+                break
+            
+            heat *= .5
             
             # undo reversals
-            for logl3, edge, change in util.reverse(proposals2[start:nproposals]):
+            for logl3, edge, change in util.reverse(proposals2[start:start+nproposals]):
                 proposeNni(tree, edge[0], edge[1], change)
             
+            #if nproposals == 1:
+            #    start += 1
         
         debug("start:", start)
         debug("swaps:", nproposals)
@@ -1231,9 +1258,6 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     thash, (logl, tree, count) = items[i]
     return tree, logl
 
-            
-        
-        
         
     
 
@@ -1562,11 +1586,14 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
 
 
 def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
-                     depth=2, visited=None, visited2=None, topDepth=True):
+                     depth=2, visited=None, visited2=None, topDepth=True,
+                     toplogl=None):
     if visited == None:
         visited = {}
     if visited2 == None:
         visited2 = {}
+    
+    tree = tree.copy()
     
     # find initial logl
     thash = phyloutil.hashTree(tree)
@@ -1577,6 +1604,11 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         visited[thash] = [logl, tree.copy(), 1]
         
         drawTreeLogl(tree)
+    else:
+        logl = visited[thash][0]
+        
+    if toplogl == None:
+        toplogl = [logl]
     
     
     debug(" " * (depth*2), "(%d)" % len(visited))
@@ -1588,7 +1620,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     nodes = filter(lambda x: not x.isLeaf() and 
                              x != tree.root, nodes)
     edges = [(node, node.parent) for node in nodes]
-
+    
     for edge in edges:
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
@@ -1599,10 +1631,17 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                 logl = treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
                 visited[thash] = [logl, tree.copy(), 1]
+            else:
+                logl = visited[thash][0]
+            
+            if logl > toplogl[0]:
+                toplogl[0] = logl
+                printMCMC(conf, "N/A", tree, stree, gene2species, visited)
                 
             
-            if thash not in visited2 or \
-               depth > visited2[thash]:
+            if (thash not in visited2 or \
+                depth > visited2[thash]) and \
+                logl - toplogl[0] >= conf["eprune"]:
                 visited2[thash] = depth
                 
                 # dig deeper
@@ -1611,7 +1650,8 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                                      tree, stree, gene2species, params,
                                      depth=depth-1, visited=visited,
                                      visited2=visited2,
-                                     topDepth=False)
+                                     topDepth=False,
+                                     toplogl=toplogl)
             
             # switch branch back
             proposeNni(tree, edge[0], edge[1], change)
@@ -1673,7 +1713,10 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             break
         else:
             raise SindirError("unknown search '%s'" % search)
-               
+        
+        debug("logl:", logl)
+        printMCMC(conf, "N/A", tree, stree, gene2species, visited)
+        
         printVisitedTrees(visited)
         
     

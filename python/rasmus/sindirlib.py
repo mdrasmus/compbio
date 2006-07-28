@@ -431,8 +431,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
     # force non-zero branch lengths
-    b = [max(float(x), 0) for x in makeVector(b)]
-    #b = [float(x) for x in makeVector(b)]
+    #b = [max(float(x), 0) for x in makeVector(b)]
+    b = [float(x) for x in makeVector(b)]
     
     
     for i in xrange(len(edges)):
@@ -441,8 +441,8 @@ def setTreeDistances(conf, tree, distmat, genes):
             gene1, gene2 = gene2, gene1
         tree.nodes[gene1].dist = b[i]
     
-    for node in tree.nodes.values():
-        assert node.dist >= 0
+    #for node in tree.nodes.values():
+    #    assert node.dist >= 0
     
     resids = makeVector(scipy.matrixmultiply(A, b)) - d
     tree.data["error"] = math.sqrt(scipy.dot(resids, resids)) / \
@@ -1179,12 +1179,13 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     # store tree in visited
     addVisited(visited, tree)
     
+    stuck = False
         
     for i in range(conf["hilliters"]):
         printMCMC(conf, i, tree, stree, gene2species, visited)
         
         proposals = getProposals(conf, tree, distmat, labels, 
-                                 stree, gene2species, params, visited)
+                                 stree, gene2species, params, visited, stuck)
         
         util.printcols(map(lambda (a,(b,c),d): [a, b.name, c.name, d], proposals))
         print
@@ -1220,6 +1221,8 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
                 logl2 = treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
                 visited[thash] = [logl2, tree.copy(), 1]
+                
+                stuck = False
             else:
                 visited[thash][2] += 1
                 logl2 = visited[thash][0]
@@ -1228,14 +1231,17 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
                 logl2 = treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
                 
+                if nproposals == 1:
+                    stuck = True
+                
             
             debug("logl2", logl2)
             
-            if nproposals == 1: # and thash not in visited:
+            if logl2 > logl:
                 logl = logl2
                 break
             
-            if logl2 > logl:
+            if nproposals == 1:
                 logl = logl2
                 break
             
@@ -1244,13 +1250,11 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
             # undo reversals
             for logl3, edge, change in util.reverse(proposals2[start:start+nproposals]):
                 proposeNni(tree, edge[0], edge[1], change)
-            
-            #if nproposals == 1:
-            #    start += 1
         
         debug("start:", start)
         debug("swaps:", nproposals)
         debug("heat:", heat)
+        debug("stuck:", stuck)
 
     
     items = visited.items()
@@ -1263,7 +1267,7 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
 
 
 def getProposals(conf, tree, distmat, labels, stree, 
-                 gene2species, params, visited):
+                 gene2species, params, visited, stuck=False):
     # try all NNI
     # find edges for NNI
     nodes = tree.nodes.values()
@@ -1282,11 +1286,16 @@ def getProposals(conf, tree, distmat, labels, stree,
                 logl = treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
                 visited[thash] = [logl, tree.copy(), 1]
+                
+                proposals.append([logl, edge, change])
             else:
                 visited[thash][2] += 1
                 logl = visited[thash][0]
+                
+                if not stuck:
+                    proposals.append([logl, edge, change])
             
-            proposals.append([logl, edge, change])
+            
             
             # switch branch back
             proposeNni(tree, edge[0], edge[1], change)

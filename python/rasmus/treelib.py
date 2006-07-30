@@ -153,8 +153,8 @@ class Tree:
             walk(tree.root)
         
         # copy extra data
-        tree.defaultData = copy.copy(self.defaultData)
-        tree.data = copy.copy(self.data)
+        #tree.defaultData = copy.copy(self.defaultData)
+        #tree.data = copy.copy(self.data)
         tree.copyData(self)
         
         return tree
@@ -162,6 +162,7 @@ class Tree:
     
     def copyData(self, tree):
         self.defaultData = copy.copy(tree.defaultData)
+        self.data = copy.copy(tree.data)
         for name, node in self.nodes.iteritems():
             if name in tree.nodes:
                 node.data = copy.copy(tree.nodes[name].data)

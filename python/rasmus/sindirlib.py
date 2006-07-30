@@ -1001,6 +1001,38 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
 
 
 
+def treeLogLikelihoodAllRoots(conf, tree, stree, gene2species, params, 
+                              baserate=None):
+        
+    # find reconciliation that minimizes loss
+    toplogl = -util.INF
+    toproot = None
+    
+    # make an unrooted copy of gene tree
+    tree = treelib.unroot(tree)
+    
+    # determine graph and possible roots
+    mat = treelib.tree2graph(tree)
+    newroots = util.sort(tree.nodes.keys())
+    newroots.remove(tree.root.name)
+    
+    # try rooting on everything
+    for root in newroots:
+        tree2 = treelib.reroot(tree, root, mat)
+        
+        logl = treeLogLikelihood(conf, tree, stree, gene2species, params, 
+                                 baserate=baserate)
+        
+        # keep track of min loss
+        if logl > toplogl:
+            toplogl = log
+            toproot = root
+        
+    # root tree by minroot
+    toptree = treelib.reroot(tree, toproot)
+    toplogl = treeLogLikelihood(conf, toptree, stree, gene2species, params, 
+                                baserate=baserate)
+    return toptree, toplogl
 
 
 
@@ -1127,25 +1159,6 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
         debug()
         debug()
 
-
-class McmcChain:
-    def __init__(self, name, state, logl, propose):
-        self.name = name
-        self.state = state
-        self.logl = logl
-        self.propose = propose
-        self.relax = 0
-    
-    
-    def step(self):
-        nextState, nextLogl = self.propose(self, self.state)
-
-        # accept/reject
-        if nextLogl > self.logl or \
-           nextLogl - self.logl > log(random.random()) - self.relax:
-            # accept new state
-            self.state = nextState
-            self.logl = nextLogl
 
 
 
@@ -1307,6 +1320,28 @@ def getProposals(conf, tree, distmat, labels, stree,
     
     proposals.sort(key=lambda x: x[0], reverse=True)
     return proposals
+
+
+class McmcChain:
+    def __init__(self, name, state, logl, propose):
+        self.name = name
+        self.state = state
+        self.logl = logl
+        self.propose = propose
+        self.relax = 0
+    
+    
+    def step(self):
+        nextState, nextLogl = self.propose(self, self.state)
+
+        # accept/reject
+        if nextLogl > self.logl or \
+           nextLogl - self.logl > log(random.random()) - self.relax:
+            # accept new state
+            self.state = nextState
+            self.logl = nextLogl
+
+
     
 
 def searchMCMC(conf, distmat, labels, stree, gene2species, params,
@@ -1341,6 +1376,14 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     
     # proposal function
     def propose(chain, tree):
+        #if this.nold == 0:
+        #    tree2, logl2 = searchExhaustive(conf, distmat, labels, 
+        #                                    tree, stree, gene2species, params,
+        #                                    depth=3, visited=visited,
+        #                                    toplogl=[this.toplogl],
+        #                                    short=True)
+        #else:
+        
         tree2 = tree
         for i in range(random.randint(1, 3)):
             tree2 = proposeTree(conf, tree2)
@@ -1352,13 +1395,14 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         thash = phyloutil.hashTree(tree2)
         if thash in visited:
             logl, tree2, count = visited[thash]
-            #visited[thash][2] += 1
             this.nold += 1
         else:
             setTreeDistances(conf, tree2, distmat, labels)
-            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            #logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            
+            tree, logl = treeLogLikelihoodAllRoots(conf, tree, stree, 
+                                                   gene2species, params)
             this.nold = 0
-            #visited[thash] = [logl, tree2.copy(), 1]
         
         addVisited(conf, visited, tree, thash)
         
@@ -1602,7 +1646,7 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
 
 def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                      depth=2, visited=None, visited2=None, topDepth=True,
-                     toplogl=None):
+                     toplogl=None, short=False):
     if visited == None:
         visited = {}
     if visited2 == None:
@@ -1651,7 +1695,11 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
             
             if logl > toplogl[0]:
                 toplogl[0] = logl
-                printMCMC(conf, "N/A", tree, stree, gene2species, visited)
+                
+                if short:
+                    return tree, logl
+                else:
+                    printMCMC(conf, "N/A", tree, stree, gene2species, visited)
                 
             
             if (thash not in visited2 or \
@@ -1661,12 +1709,16 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
                 
                 # dig deeper
                 if depth > 1:
-                    searchExhaustive(conf, distmat, labels, 
+                    tree2, logl2 = searchExhaustive(conf, distmat, labels, 
                                      tree, stree, gene2species, params,
                                      depth=depth-1, visited=visited,
                                      visited2=visited2,
                                      topDepth=False,
-                                     toplogl=toplogl)
+                                     toplogl=toplogl, short=short)
+                    
+                    if short and tree2 != None:
+                        return tree2, logl2
+                    
             
             # switch branch back
             proposeNni(tree, edge[0], edge[1], change)

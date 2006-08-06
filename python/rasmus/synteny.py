@@ -16,7 +16,11 @@ import phylip
 import phyloutil
 import stats
 import util
+import treelib
 
+
+# TODO: remove algorithms.<tree func> calls
+# make them treelib.<tree func>
 
 
 def initConf(conf = None):
@@ -997,7 +1001,7 @@ def partOrthoComponents(hitdata, conf, comps, outputDir, outprefix):
     # load sprecies tree (use only the subtree needed for these genomes)
     stree = algorithms.Tree()
     stree.readNewick(env.findFile(conf["species_tree"]))
-    stree = stree.subtree(stree.lca(genomes))
+    stree = treelib.subtree(stree, stree.lca(genomes))
     
     # filter components
     for i in xrange(len(comps)):

@@ -82,7 +82,7 @@ class TreeNode:
         self.data = {}
     
     
-    def copy(self, parent=None):
+    def copy(self, parent=None, copyChildren=True):
         """ Returns a copy of a TreeNode and all of its children"""
         
         node = TreeNode(self.name)
@@ -91,8 +91,9 @@ class TreeNode:
         node.parent = parent
         node.data = copy.copy(self.data)
         
-        for child in self.children:
-            node.children.append(child.copy(node))
+        if copyChildren:
+            for child in self.children:
+                node.children.append(child.copy(node))
         
         return node
     
@@ -116,8 +117,11 @@ class TreeNode:
         return leaves
 
     def leaveNames(self):
+        """DEPRECATED BAD NAME: use leafNames()"""
         return map(lambda x: x.name, self.leaves())
     
+    def leafNames(self):
+        return map(lambda x: x.name, self.leaves())
     
     def writeData(self, out):
         out.write(str(self.dist))        
@@ -156,13 +160,18 @@ class Tree:
         #tree.defaultData = copy.copy(self.defaultData)
         #tree.data = copy.copy(self.data)
         tree.copyData(self)
+        tree.copyNodeData(self)
         
         return tree
     
     
     def copyData(self, tree):
+        # copy tree data
         self.defaultData = copy.copy(tree.defaultData)
         self.data = copy.copy(tree.data)
+    
+    
+    def copyNodeData(self, tree):
         for name, node in self.nodes.iteritems():
             if name in tree.nodes:
                 node.data = copy.copy(tree.nodes[name].data)
@@ -205,12 +214,22 @@ class Tree:
 
 
     def remove(self, node):
+        """
+        Removes a node from a tree.
+        Notifies parent (if it exists) that node has been removed.
+        """
+        
         if node.parent:
             node.parent.children.remove(node)
         del self.nodes[node.name]
     
     
     def removeTree(self, node):
+        """
+        Removes subtree rooted at 'node' from tree.
+        Notifies parent (if it exists) that node has been removed.
+        """
+        
         def walk(node):
             if node.name in self.nodes:
                 del self.nodes[node.name]
@@ -280,9 +299,11 @@ class Tree:
     
     
     def leaveNames(self, node = None):
+        """DEPRECATED BAD NAME: use leafNames()"""
         return map(lambda x: x.name, self.leaves(node))
 
-
+    def leafNames(self, node = None):
+        return map(lambda x: x.name, self.leaves(node))
 
     #
     # input and output
@@ -582,7 +603,10 @@ class Tree:
     
 
     def lca(self, names, depths = None):
-        """Least Common Ancestor"""
+        """
+        Least Common Ancestor
+        DEPRECATED:  will soon remove
+        """
         
         if not depths:
             depths = self.findDepths(self.root)
@@ -600,19 +624,50 @@ class Tree:
         return self.nodes[markers.keys()[0]]
 
 
-    
-    def subtree(self, node):
-        tree = Tree(nextname = self.newName())
-        tree.root = node
+def lca(nodes):
+    if len(nodes) == 1:
+        return nodes[0]
+    elif len(nodes) > 2:
+        return lca([lca(nodes[:2])] + nodes[2:])
+    elif len(nodes) == 2:
+        node1, node2 = nodes
+        set1 = set([node1])
+        set2 = set([node2])
         
-        def walk(node):
-            tree.add(node)
-            for child in node.children:
-                walk(child)
+        while True:
+            if node1 in set2:
+                return node1
+            if node2 in set1:
+                return node1
+            if node1.parent != None:
+                node1 = node1.parent
+            if node2.parent != None:
+                node2 = node2.parent
+            
+            set1.add(node1)
+            set2.add(node2)
+    else:
+        raise Exception("No nodes given")
+        
 
-        walk(node)
-        return tree
+
+def subtree(tree, node):
+    """Return a copy of a subtree of 'tree' rooted at 'node'"""
     
+    # make new tree
+    tree2 = Tree(nextname = tree.newName())
+    
+    # copy nodes and data
+    tree2.root = node.copy()    
+    tree2.copyData(tree)
+    
+    # add nodes
+    def walk(node):
+        tree2.add(node)
+        node.recurse(walk)
+    walk(tree2.root)
+    
+    return tree2
 
 
 def findDist(tree, name1, name2):
@@ -671,7 +726,7 @@ def smallSubtrees(tree, maxsize):
     
     def walk(node):
         if node.size <= maxsize:
-            trees.append(tree.subtree(node))
+            trees.append(subtree(tree, node))
         else:
             # if too big keep digging
             for child in node.children:
@@ -758,10 +813,10 @@ def removeSingleChildren(tree):
     # actually remove children
     for node in removed:
         dist = node.dist        
-        subtree = tree.subtree(node.children[0])
+        tree2 = subtree(tree, node.children[0])
         node.children[0].dist += node.dist
         tree.removeTree(node.children[0])
-        tree.replaceTree(node, subtree)
+        tree.replaceTree(node, tree2)
 
     # remove singleton from root
     if len(tree.root.children) == 1:
@@ -791,10 +846,12 @@ def removeExposedInternalNodes(tree):
     
 
 
-def unroot(tree):
+def unroot(tree, newCopy = True):
     """Return an unrooted copy of tree"""
     
-    tree = tree.copy()
+    if newCopy:
+        tree = tree.copy()
+    
     if len(tree.root.children) == 2:
         nodes = tree.root.children
         dist = nodes[0].dist + nodes[1].dist
@@ -823,16 +880,23 @@ def assertTree(tree):
         assert node.name not in visited
         visited[node.name] = 1
         if node.parent:
-            node in node.parent.children
+            assert node in node.parent.children
         for child in node.children:
-            child.parent == node
+            assert child.parent == node
         node.recurse(walk)
     walk(tree.root)
     
     assert len(tree.nodes) == len(visited)
     
 
-def reroot(tree, newroot, mat = None, onBranch=True):
+def reroot(tree, newroot, mat = None, onBranch=True, newCopy=True):
+
+    # speed up, while old reroot alg is phased out
+    if mat is None:
+        if newCopy:
+            tree = tree.copy()
+        return reroot2(tree, newroot, onBranch=onBranch)
+
     # handle trivial case
     if tree.root.name == newroot or \
        (newroot in map(lambda x: x.name, tree.root.children) and \
@@ -878,6 +942,7 @@ def reroot(tree, newroot, mat = None, onBranch=True):
             if not child in closedset:
                 childNode = TreeNode(child)
                 childNode.dist = mat[child][node]
+                childNode.data = copy.copy(tree.nodes[child].data)
                 tree2.addChild(tree2.nodes[node], childNode)
                 closedset[child] = 1
                 walk(child)
@@ -905,6 +970,65 @@ def reroot(tree, newroot, mat = None, onBranch=True):
     
     return tree2
 
+
+def reroot2(tree, newroot, onBranch=True):
+    """
+    Modifies tree to reroot it
+    """
+
+    # handle trivial case
+    if tree.root.name == newroot or \
+       (newroot in [x.name for x in tree.root.children] and \
+        len(tree.root.children) == 2):
+        return tree        
+    
+    
+    unroot(tree, newCopy=False)
+    
+    if onBranch:
+        # add new root in middle of branch
+        newNode = TreeNode(tree.newName())
+        node1 = tree.nodes[newroot]
+        rootdist = node1.dist
+        node1.dist = rootdist / 2.0
+        newNode.dist = rootdist / 2.0
+        node2 = node1.parent
+        node2.children.remove(node1)
+        tree.addChild(newNode, node1)
+        tree.addChild(node2, newNode)
+        
+        ptr = node2
+        ptr2 = newNode
+        newRoot = newNode
+    else:
+        # root directly on root
+        ptr2 = tree.nodes[newroot]
+        ptr = ptr2.parent
+        newRoot = ptr2
+    
+    newRoot.parent = None
+    
+    # reverse parent child relationship of all nodes on path node1 to root
+    oldroot = tree.root    
+    nextDist = ptr2.dist
+    ptr2.dist = 0
+    while True:
+        nextPtr = ptr.parent
+        ptr.children.remove(ptr2)
+        tree.addChild(ptr2, ptr)
+        
+        tmp = ptr.dist
+        ptr.dist = nextDist
+        nextDist = tmp
+        
+        ptr2 = ptr
+        ptr = nextPtr
+        
+        if nextPtr is None:
+            break
+    tree.root = newRoot
+    
+    return tree
 
 
 def outgroupRoot(tree, outgroup, closedset = None):
@@ -1069,3 +1193,14 @@ def drawTreeNames(tree, *args, **kargs):
     
     drawTree(tree, labels, *args, **kargs)
 
+
+def drawTreeNameLens(tree, *args, **kargs):
+    labels = {}
+    for node in tree.nodes.values():
+        if not node.isLeaf():
+            labels[node.name] = "%s " % node.name
+        else:
+            labels[node.name] =""
+        labels[node.name] += "%f" % node.dist
+    
+    drawTree(tree, labels, *args, **kargs)

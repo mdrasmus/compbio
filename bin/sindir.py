@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythonwin.py
 #
 # SINDIR - Species INformed DIstance-based Reconciliation
 # Matt Rasmussen
@@ -107,6 +107,8 @@ options = [
     {"single": True,
      "default": -10,
      "parser": float}],
+ ["", "searchtest", "searchtest", "",
+    {"single": True}],
 
  "Training options",
  ["t", "train", "train", "",

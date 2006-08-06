@@ -42,16 +42,14 @@ def reconcile(gtree, stree, gene2species = genomeutil.gene2species):
         
         if not node.isLeaf():
             # this node's species is lca of children species        
-            names = map(lambda x: recon[x].name, node.children)
-            recon[node] = stree.lca(names)
+            recon[node] = treelib.lca(util.mget(recon, node.children))
     walk(gtree.root)
     
     return recon
 
 
 def reconcileNode(node, stree, recon):
-    names = map(lambda x: recon[x].name, node.children)
-    return stree.lca(names)
+    return treelib.lca(util.mget(recon, node.children))
 
 
 def labelEvents(gtree, recon):
@@ -134,99 +132,128 @@ def countDup(gtree, events, node=None):
     return var["dups"]
         
 
-def countDupLoss(gtree, stree, recon):
+def countDupLoss(gtree, stree, recon, events=None):
+    if events is None:
+        events = labelEvents(gtree, recon)
+    
     nloss = len(findLoss(gtree, stree, recon))
-    ndups = countDup(gtree, labelEvents(gtree, recon))
+    ndups = countDup(gtree, events)
     return nloss + ndups
     
 
 
-def reconRoot2(gtree, stree, rootby = "loss"):
-    # find reconciliation that minimizes cost (loss/dup)
+def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, 
+               rootby = "duploss", newCopy=True):
+    # make a consistent unrooted copy of gene tree
+    if newCopy:
+        gtree = gtree.copy()
+    treelib.unroot(gtree, newCopy=False)
+    treelib.reroot(gtree, 
+                   gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 
+                   onBranch=False, newCopy=False)
     
-    # determine cost function
-    if rootby == "loss":
-        findcost = lambda node, recon, events:  \
-            len(findLossNode(node, recon))
-    elif rootby == "dup":
-        findcost = lambda node, recon, events: \
-            countDupNode(node, events)
+    
+    # make recon root consistent for rerooting tree of the same names
+    # TODO: there is the possibility of ties, they are currently broken
+    # arbitrarily.  In order to make comparison of reconRooted trees with 
+    # same gene names accurate, hashOrdering must be done, for now.
+    hashOrderTree(gtree, gene2species)
+    
+    # get list of edges to root on
+    edges = []
+    def walk(node):
+        edges.append((node, node.parent))
+        if not node.isLeaf():
+            node.recurse(walk)
+            edges.append((node, node.parent))
+    for child in gtree.root.children:
+        walk(child)
+    
+    
+    # try initial root and recon    
+    treelib.reroot(gtree, edges[0][0].name, newCopy=False)
+    recon = reconcile(gtree, stree, gene2species)
+    events = labelEvents(gtree, recon)     
+    
+    # find reconciliation that minimizes loss
+    minroot = edges[0]
+    rootedge = sorted(edges[0])
+    if rootby == "dup": 
+        cost = countDup(gtree, events)
+    elif rootby == "loss":
+        cost = len(findLoss(gtree, stree, recon))
+    elif rootby == "duploss":
+        cost = countDupLoss(gtree, stree, recon, events)
     else:
         raise "unknown rootby value '%s'"  % rootby
+    mincost = cost
     
     
-    # give gtree an arbitray rooting if needed    
-    if not treelib.isRooted(gtree):
-        gtree = treelib.reroot(gtree, gtree.leaves()[0])
-    
-    # find initial recon and events
-    recon = reconcile(gtree, stree)
-    events = labelEvents(gtree, recon)
-    
-    # determine graph
-    mat = treelib.tree2graph(gtree)
-    
-    # build cost lookup
-    lookup = {}
-    for node in gtree.nodes.values():
-        lookup[node.name] = findcost(node, recon, events)
-
-    print lookup
-    
-    mincost = cost = sum(lookup.values())
-    minrecon = recon
-    minroot = gtree.children
-    
-    def walk(root1, root2):
-        # update recon and events
-        del recon[gtree.root.name]
-        del events[gtree.root.name]
-    
-        for node1 in [root1, root2]:
-            for node2 in node.children:
-                gtree = treelib.reroot(gtree, node2)
-                recon[gtree.root.name] = reconcileNode(gtree.root, recon)
-                
-                
-    assert len(gtree.root.children) == 2
-    walk(map(lambda x: x.name, gtree.root.children))
-    
-    return gtree
-    
-
     # try rooting on everything
-    for root in newroots:
-        gtree2 = treelib.reroot(gtree, root, mat)
-        #print "-----", root
-        #gtree2.write()
+    for edge in edges[1:-1]:
+        if sorted(edge) == rootedge:
+            continue
+        rootedge = sorted(edge)
         
+        node1, node2 = edge
+        if node1.parent != node2:
+            node1, node2 = node2, node1
+        assert node1.parent == node2, "%s %s" % (node1.name, node2.name)
         
-        recon = reconcile(gtree2, stree)
+        # uncount cost
+        if rootby in ["dup", "duploss"]:
+            if events[gtree.root] == "dup":
+                cost -= 1
+            if events[node2] == "dup":
+                cost -= 1
+        if rootby in ["loss", "duploss"]:
+            cost -= len(findLossNode(gtree.root, recon))
+            cost -= len(findLossNode(node2, recon))
         
-        util.log("cost", cost)
+        # new root and recon
+        treelib.reroot(gtree, node1.name, newCopy=False)        
         
-        # keep track of min loss
+        recon[node2] = reconcileNode(node2, stree, recon)
+        recon[gtree.root] = reconcileNode(gtree.root, stree, recon)
+        events[node2] = labelEventsNode(node2, recon)
+        events[gtree.root] = labelEventsNode(gtree.root, recon)
+        
+        if rootby in ["dup", "duploss"]:
+            if events[node2] ==  "dup":
+                cost += 1
+            if events[gtree.root] ==  "dup":
+                cost += 1
+        if rootby in ["loss", "duploss"]:
+            cost += len(findLossNode(gtree.root, recon))
+            cost += len(findLossNode(node2, recon))
+        
+        #print edge[0].name, edge[1].name, cost
+        
+        # keep track of min cost
         if cost < mincost:
             mincost = cost
-            minroot = root
-            minrecon = recon
-    
-    # handle the case where no rerooting was attempted (nleaves == 1)
-    if minroot == None:
-        return gtree
+            minroot = edge
     
     # root tree by minroot
-    return treelib.reroot(gtree, minroot, mat)
+    if edge != minroot:
+        node1, node2 = minroot
+        if node1.parent != node2:
+            node1, node2 = node2, node1
+        assert node1.parent == node2
+        treelib.reroot(gtree, node1.name, newCopy=False)
+    
+    return gtree
 
 
-def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, 
+def reconRoot2(gtree, stree, gene2species = genomeutil.gene2species, 
               rootby = "duploss"):
     # find reconciliation that minimizes loss
-    mincost = 1e1000
+    mincost = util.INF
     minroot = None
     minrecon = None
     
     # make an unrooted copy of gene tree
+    # TODO: this can be simplified (root on node.parent)
     gtree = treelib.reroot(gtree, util.sort(gtree.leaveNames())[0])
     gtree = treelib.unroot(gtree)
     
@@ -281,7 +308,7 @@ def partitionTree(tree, stree, gene2species):
     # partition
     trees = []
     for sroot in sroots:
-        trees.append(tree.subtree(sroot))
+        trees.append(treelib.subtree(tree, sroot))
         trees[-1].root.parent = None
     
     return trees
@@ -516,7 +543,7 @@ def neighborjoin(distmat, genes):
     # join loop
     while len(leaves) > 2:
         # search for closest genes
-        low = 1e1000
+        low = util.INF
         lowpair = (None, None)
         leaveslst = leaves.keys()
 
@@ -597,7 +624,7 @@ def neighborjoinSparse(dists):
     # join loop
     while True:
         # search for closest genes
-        low = 1e1000
+        low = util.INF
         lowpair = (None, None)
 
         for gene1 in leaves:
@@ -618,7 +645,7 @@ def neighborjoinSparse(dists):
             # split partial tree into mutliple trees
             trees = []
             for leaf in leaves:
-                trees.append(tree.subtree(tree.nodes[leaf]))
+                trees.append(treelib.subtree(tree, tree.nodes[leaf]))
             
             return trees
         elif len(leaves) == 2:

@@ -25,8 +25,10 @@ import urllib2
 # see bottom of file for other imports
 #
 
-INF = 1e1000
 
+# Note: I had trouble using 1e1000 directly, because bytecode had trouble
+# representing infinity
+INF = float("1e1000") 
 
 
 def GLOBALS():
@@ -217,10 +219,7 @@ def mget(data, keys):
        sounds like it can't be used on dicts; but it can.
        
     """
-    lst = []
-    for key in keys:
-        lst.append(data[key])
-    return lst
+    return [data[key] for key in keys]
 
 
 def concat(* lists):

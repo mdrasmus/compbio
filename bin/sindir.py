@@ -1,4 +1,4 @@
-#!/usr/bin/env pythonwin.py
+#!/usr/bin/env python
 #
 # SINDIR - Species INformed DIstance-based Reconciliation
 # Matt Rasmussen

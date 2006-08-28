@@ -110,7 +110,7 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
         
         
         if "error" in node.data:
-            labels[node.name] += "\nerr %4f" % util.safelog(node.data["error"],10)
+            labels[node.name] += "\nerr %.4f" % node.data["error"]
         
         if node in events:
             labels[node.name] += " %s" % events[node]
@@ -1173,8 +1173,6 @@ def proposeNni(tree, node1, node2, change=0):
     
     """
     
-    print >>sys.stderr, ">>", node1.name, node2.name
-    
     # try to see if edge is one branch (not root edge)
     if node1.parent != node2:
         node1, node2 = node2, node1  
@@ -1186,9 +1184,7 @@ def proposeNni(tree, node1, node2, change=0):
             node2 = node2.children[1]
         else:
             node2 = node2.children[0]
-    
-    print >>sys.stderr, "p>>", node1.parent.name, node2.parent.name, tree.root.name
-    
+        
     if node1.parent == node2.parent == tree.root:
         uncle = 0
         
@@ -1264,14 +1260,40 @@ def splitTree(tree, node1, node2):
     assert node1.parent == node2
         
     # create new tree object
-    tree1 = treelib.Tree(nextname = tree.newName())
-    tree1.root = node1
-    node1.parent = None
-    tree1.copyData(tree)
+    tree2 = treelib.Tree(nextname = tree.newName())
+    tree2.root = node1  
+    tree2.copyData(tree)
+    
+    # add nodes
+    def walk(node):
+        tree2.add(node)
+        node.recurse(walk)
+    walk(tree2.root)
 
     # break subtree at node1 off of original tree
-    tree.removeTree(node1)
-    tree2 = tree
+    tree1 = tree
+    tree1.removeTree(node1)
+    
+    # remove single child node
+    if node2 != tree1.root:
+        node3 = node2.parent
+        tree1.remove(node2)
+        for n in node2.children:
+            tree1.addChild(node3, n)
+    else:
+        # special case
+        assert len(node2.children) == 1
+        tree1.remove(node2)
+        tree1.root = node2.children[0]
+        tree1.root.parent = None
+            
+    tree2.root.parent = None
+    
+    #treelib.drawTreeNames(tree1, minlen=5, maxlen=5)
+    #treelib.drawTreeNames(tree2, minlen=5, maxlen=5)
+    
+    #treelib.assertTree(tree1)
+    #treelib.assertTree(tree2)
     
     return tree1, tree2
 
@@ -1289,11 +1311,16 @@ def regraftTree(tree, subtree, node1, node2):
 
     # add new node on edge
     newNode = treelib.TreeNode(tree.newName())
-    tree.add(newNode)
-    node1.parent = newNode
+    tree.addChild(newNode, node1)
     node2.children[node2.children.index(node1)] = newNode
+    newNode.parent = node2
     
-    tree.addTree(newNode, subtree)    
+    tree.addTree(newNode, subtree)
+    
+    #debug("regraft>>")
+    #treelib.drawTreeNames(tree, minlen=5, maxlen=5)
+
+    #treelib.assertTree(tree)
 
 
 def proposeRegraft(tree, node1, node2):
@@ -1610,10 +1637,97 @@ class McmcChain:
             self.logl = nextLogl
 
 
+def proposeTree2(conf, tree,  distmat, labels, 
+                  stree, gene2species, params, visited):
+    tree2 = tree
+    for i in range(random.randint(1,3)):
+        #tree2 = proposeTree(conf, tree2)
+        tree2 = proposeTreeWeighted(tree2)
+
+    if random.random() < conf["rerootprob"]:
+        phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
+    return tree2
+
+
+def proposeTree3(conf, tree,  distmat, labels, 
+                  stree, gene2species, params, visited):
+    #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, 
+    #                          stree, gene2species, params, visited)
+    
+    toplogl = -util.INF
+    toptree = None
+    
+    tree = tree.copy()
+    
+    nodes = tree.nodes.values()
+    nodes.remove(tree.root)
+    weights = [x.data["error"] for x in nodes]        
+    badgene = nodes[stats.sample(weights)]
+    
+    tree1, tree2 = splitTree(tree, badgene, badgene.parent)
+    
+    names = tree1.nodes.keys()
+    names.remove(tree1.root.name)
+    
+    for name in names:
+        tree = tree1.copy()
+        node = tree.nodes[name]
+        
+        #print "p3>>", node.name, node.parent.name
+        regraftTree(tree, tree2.copy(), node, node.parent)
+        
+        thash = phyloutil.hashTree(tree)
+        
+        if thash not in visited:        
+            setTreeDistances(conf, tree, distmat, labels)
+            logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+        addVisited(conf, visited, tree, thash)
+        logl, tree, count = visited[thash]
+        
+        if logl > toplogl:
+            toplogl = logl
+            toptree = tree
+
+    
+    assert toptree != None
+    
+    return toptree
+
+
+def searchRegraft(conf, distmat, labels, stree, gene2species, params,
+                  initTree=None, visited=None, proposeFunc=proposeTree2):
+    if visited == None:
+        visited = {}
+    
+    # init with NJ    
+    if initTree != None:
+        tree = initTree
+    else:
+        tree = neighborjoin(distmat, labels)
+        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        setTreeDistances(conf, tree, distmat, labels)
+
+    # init likelihood score
+    logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+    
+    # store tree in visited
+    addVisited(conf, visited, tree)
+    
+    # show initial tree
+    printMCMC(conf, 0, tree, stree, gene2species, visited)    
+    
+    
+    for i in xrange(conf["regrafts"]):
+        tree = proposeTree3(conf, tree,  distmat, labels, 
+                               stree, gene2species, params, visited)
+        printMCMC(conf, i, tree, stree, gene2species, visited)
+    
+    return tree, logl
+    
     
 
 def searchMCMC(conf, distmat, labels, stree, gene2species, params,
-               initTree=None, visited=None):
+               initTree=None, visited=None, proposeFunc=proposeTree2):
     if visited == None:
         visited = {}
     
@@ -1645,25 +1759,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     
     # proposal function
     def propose(chain, tree):
-        #if this.nold == 0:
-        #    tree2, logl2 = searchExhaustive(conf, distmat, labels, 
-        #                                    tree, stree, gene2species, params,
-        #                                    depth=3, visited=visited,
-        #                                    toplogl=[this.toplogl],
-        #                                    short=True)
-        #else:
-        
-        tree2 = tree
-        for i in range(random.randint(1,3)):
-            #tree2 = proposeTree(conf, tree2)
-            tree2 = proposeTreeWeighted(tree2)
-        
-        if random.random() < conf["rerootprob"]:
-            phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
-        
-        if random.random() < conf["rerootprob"] * .25:
-            tree2 = replaceGeneInTree(conf, tree2, None, distmat, labels, stree, 
-                                      gene2species, params, visited)
+        tree2 = proposeFunc(conf, tree,  distmat, labels, 
+                            stree, gene2species, params, visited)
         
         # check visited dict
         thash = phyloutil.hashTree(tree2)
@@ -1717,78 +1814,6 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
 
     return this.toptree, this.toplogl
 
-
-
-def searchMCMC2(conf, distmat, labels, stree, gene2species, params,
-               initTree=None, visited=None):
-    if visited == None:
-        visited = {}
-    
-    
-    # init with NJ    
-    if initTree != None:
-        tree = initTree
-    else:
-        tree = neighborjoin(distmat, labels)
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
-        setTreeDistances(conf, tree, distmat, labels)
-    
-    # init likelihood score
-    top = treeLogLikelihood(conf, tree, stree, gene2species, params)
-    toptree = tree.copy()
-    
-    # store tree in visited
-    addVisited(conf, visited, tree)
-    
-    # show initial tree
-    printMCMC(conf, 0, tree, stree, gene2species, visited)
-    
-    
-    # tree search
-    nold = 0
-    lastl = top
-    for i in xrange(1, conf["maxiters"]):
-        if len(visited) >= conf["iters"]:
-            break
-        
-        tree2 = proposeTree(conf, tree)
-        
-        thash = phyloutil.hashTree(tree2)
-        if thash in visited:
-            logl, tree2, count = visited[thash]
-            visited[thash][2] += 1
-            nold += 1
-        else:
-            setTreeDistances(conf, tree2, distmat, labels)
-            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
-            nold = 0
-            visited[thash] = [logl, tree2.copy(), 1]
-        
-        
-        # best yet tree
-        if logl > top:
-            printMCMC(conf, i, tree2, stree, gene2species, visited)
-            top = logl
-            toptree = tree2.copy()
-
-
-        # accept/reject
-        if logl > lastl:
-            # accept new tree
-            tree = tree2
-            lastl = logl
-        else:
-            # accept with a chance
-            if logl - lastl > log(random.random()) - (nold * conf["speedup"]):
-                tree = tree2
-                lastl = logl
-        
-        if nold > 0 and nold % 50 == 0:
-            debug("seen %d old trees in a row, visited: %d, iter: %d" % \
-                  (nold, len(visited), i))
-
-
-    return toptree, top
 
 
 def replaceGeneInTree(conf, tree, badgene, distmat, labels, stree, gene2species,
@@ -2011,6 +2036,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         return None, None
 
 
+
 #-------------------------------------------------------------------------------
 # Main SINDIR algorithm function
 #-------------------------------------------------------------------------------
@@ -2039,6 +2065,12 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             tree, logl = searchMCMC(conf, distmat, labels, stree, 
                                     gene2species, params, initTree=tree,
                                     visited=visited)
+                                    
+        elif search == "regraft":
+            tree, logl = searchRegraft(conf, distmat, labels, stree, 
+                                    gene2species, params, initTree=tree,
+                                    visited=visited, proposeFunc=proposeTree3)
+                                    
         elif search == "exhaustive":
             if tree == None:
                 tree = neighborjoin(distmat, labels)
@@ -2184,10 +2216,7 @@ def consensusTree(trees, counts):
             mat.append(list(key))
             mat[-1].append(val)
         util.printcols(mat, out=DEBUG)
-    
-    
-    
-    
+
     
     return tree, tree.data["logl"]
 

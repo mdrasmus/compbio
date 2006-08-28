@@ -886,7 +886,8 @@ def assertTree(tree):
         node.recurse(walk)
     walk(tree.root)
     
-    assert len(tree.nodes) == len(visited)
+    assert tree.root.parent == None
+    assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
     
 
 def reroot(tree, newroot, mat = None, onBranch=True, newCopy=True):

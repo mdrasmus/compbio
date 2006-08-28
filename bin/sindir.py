@@ -109,6 +109,9 @@ options = [
      "parser": float}],
  ["", "searchtest", "searchtest", "",
     {"single": True}],
+ ["", "regrafts=", "regrafts", "<regraph iterations>",
+    {"single": True,
+     "parser": int}],
 
  "Training options",
  ["t", "train", "train", "",

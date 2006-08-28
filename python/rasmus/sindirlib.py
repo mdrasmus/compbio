@@ -2055,7 +2055,8 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     # do auto searches
     for search in conf["search"]:
-
+        util.tic("Search by %s" % search)
+        
         if search == "greedy":
             tree, logl = searchGreedy(conf, distmat, labels, stree, 
                                       gene2species, params,
@@ -2089,10 +2090,13 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         else:
             raise SindirError("unknown search '%s'" % search)
         
+        util.toc()
+        
         debug("logl:", logl)
         printMCMC(conf, "N/A", tree, stree, gene2species, visited)
         
         printVisitedTrees(visited)
+        
         
     
     # eval the user given trees

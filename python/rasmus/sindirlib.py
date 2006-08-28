@@ -1173,10 +1173,10 @@ def proposeNni(tree, node1, node2, change=0):
     
     """
     
-    # try to see if edge is one branch (not root edge)
     if node1.parent != node2:
         node1, node2 = node2, node1  
     
+    # try to see if edge is one branch (not root edge)
     if treelib.isRooted(tree) and \
        node2 == tree.root:
         # special case of specifying root edge
@@ -1184,6 +1184,10 @@ def proposeNni(tree, node1, node2, change=0):
             node2 = node2.children[1]
         else:
             node2 = node2.children[0]
+        
+        # edge is not an internal edge, give up
+        if len(node2.children) < 2:
+            return
         
     if node1.parent == node2.parent == tree.root:
         uncle = 0

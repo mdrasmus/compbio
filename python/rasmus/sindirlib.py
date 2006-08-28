@@ -1645,8 +1645,8 @@ def proposeTree2(conf, tree,  distmat, labels,
                   stree, gene2species, params, visited):
     tree2 = tree
     for i in range(random.randint(1,3)):
-        #tree2 = proposeTree(conf, tree2)
-        tree2 = proposeTreeWeighted(tree2)
+        tree2 = proposeTree(conf, tree2)
+        #tree2 = proposeTreeWeighted(tree2)
 
     if random.random() < conf["rerootprob"]:
         phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)

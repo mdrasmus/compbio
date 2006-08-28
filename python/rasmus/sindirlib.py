@@ -1654,8 +1654,8 @@ def proposeTree3(conf, tree,  distmat, labels,
     #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, 
     #                          stree, gene2species, params, visited)
     
-    toplogl = -util.INF
-    toptree = None
+    toplogl = tree.data["logl"]
+    toptree = tree.copy()
     
     tree = tree.copy()
     

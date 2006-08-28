@@ -1724,9 +1724,11 @@ def searchRegraft(conf, distmat, labels, stree, gene2species, params,
     for i in xrange(conf["regrafts"]):
         tree = proposeTree3(conf, tree,  distmat, labels, 
                                stree, gene2species, params, visited)
-        printMCMC(conf, i, tree, stree, gene2species, visited)
+        if tree.data["logl"] > logl:
+            printMCMC(conf, i, tree, stree, gene2species, visited)
+            logl = tree.data["logl"]
     
-    return tree, logl
+    return tree, tree.data["logl"]
     
     
 

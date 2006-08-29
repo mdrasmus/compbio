@@ -764,8 +764,13 @@ def learnModel2(lengths, gene2species, niters=10, fit=True):
 
 def mleBaserate2(lens, means, sdevs, baserateparam):
     vars = util.vmul(sdevs, sdevs)
-    return sum(util.vdiv(util.vmul(lens, lens), vars)) / \
-           sum(util.vdiv(util.vmul(means, lens), vars))
+    denom = sum(util.vdiv(util.vmul(means, lens), vars))
+    
+    if denom != 0:
+        return sum(util.vdiv(util.vmul(lens, lens), vars)) / denom
+    else:
+        return 1.0
+           
 
 
 def mleBaserate(lens, means, sdevs, baserateparam):

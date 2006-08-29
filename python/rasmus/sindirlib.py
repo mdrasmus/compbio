@@ -1326,66 +1326,6 @@ def regraftTree(tree, subtree, node1, node2):
 
     #treelib.assertTree(tree)
 
-
-def proposeRegraft(tree, node1, node2):
-    pass
-
-"""
-    for ngenes in xrange(2, totalgenes):
-        debug("adding", labels[ngenes])
-        
-        toplogl = -util.INF
-        toptree = None
-        
-        distmat2 = matrix.submatrix(distmat, range(ngenes+1), range(ngenes+1))
-        labels2  = labels[:ngenes+1]
-        
-        
-        # place new gene on every branch
-        for name in tree.nodes:
-            tree2 = tree.copy()
-            node = tree2.nodes[name]
-
-            if node == tree2.root:
-                newnode = treelib.TreeNode(tree2.newName())
-                tree2.addChild(newnode, tree2.root)
-                tree2.root = newnode
-                tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
-            else:
-                parent = node.parent
-                tree2.remove(node)
-                newnode = treelib.TreeNode(tree2.newName())
-                tree2.addChild(parent, newnode)
-                tree2.addChild(newnode, node)
-                tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
-            
-            #tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
-            setTreeDistances(conf, tree2, distmat2, labels2)
-            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
-
-            if logl >= toplogl:
-                toplogl = logl
-                toptree = tree2
-        tree = toptree
-
-        # only use visited hash table if all genes are present        
-        if ngenes == totalgenes:
-            visited2 = visited
-        else:
-            # otherwise use a new temp hash table
-            visited2 = {}
-        
-        tree, logl = searchExhaustive(conf, distmat2, labels2, 
-                                      tree, stree, gene2species, params,
-                                      visited=visited2)
-            
-            
-        if logl >= toplogl:
-            toplogl = logl
-            toptree = tree
-        tree = toptree
-    
-"""    
     
 
 def proposeTree(conf, tree):
@@ -1645,8 +1585,8 @@ def proposeTree2(conf, tree,  distmat, labels,
                   stree, gene2species, params, visited):
     tree2 = tree
     for i in range(random.randint(1,3)):
-        tree2 = proposeTree(conf, tree2)
-        #tree2 = proposeTreeWeighted(tree2)
+        #tree2 = proposeTree(conf, tree2)
+        tree2 = proposeTreeWeighted(tree2)
 
     if random.random() < conf["rerootprob"]:
         phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
@@ -1655,9 +1595,6 @@ def proposeTree2(conf, tree,  distmat, labels,
 
 def proposeTree3(conf, tree,  distmat, labels, 
                   stree, gene2species, params, visited):
-    #tree2 = replaceGeneInTree(conf, tree, None, distmat, labels, 
-    #                          stree, gene2species, params, visited)
-    
     toplogl = tree.data["logl"]
     toptree = tree.copy()
     
@@ -1665,7 +1602,7 @@ def proposeTree3(conf, tree,  distmat, labels,
     
     nodes = tree.nodes.values()
     nodes.remove(tree.root)
-    weights = [x.data["error"] for x in nodes]        
+    weights = [x.data["error"] for x in nodes]
     badgene = nodes[stats.sample(weights)]
     
     tree1, tree2 = splitTree(tree, badgene, badgene.parent)
@@ -1819,58 +1756,6 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
    
 
     return this.toptree, this.toplogl
-
-
-
-def replaceGeneInTree(conf, tree, badgene, distmat, labels, stree, gene2species,
-                    params, visited):
-    
-    if badgene == None:
-        nodes = tree.leaves()
-        weights = [x.data["error"] for x in nodes]        
-        badgene = nodes[stats.sample(weights)].name
-    
-    tree2 = tree.copy()
-    tree2.remove(tree2.nodes[badgene])
-    treelib.removeSingleChildren(tree2)
-    
-    return placeGeneInTree(conf, tree2, badgene, distmat, labels, stree, gene2species,
-                           params, visited)
-    
-
-def placeGeneInTree(conf, tree, newgene, distmat, labels, stree, gene2species,
-                    params, visited):
-    toplogl = -util.INF
-    toptree = None
-    
-    # loop over places to add newgene
-    for name in tree.nodes:
-        tree2 = tree.copy()
-        node = tree2.nodes[name]
-
-        if node == tree2.root:
-            newnode = treelib.TreeNode(tree2.newName())
-            tree2.addChild(newnode, tree2.root)
-            tree2.root = newnode
-            tree2.addChild(newnode, treelib.TreeNode(newgene))
-        else:
-            parent = node.parent
-            tree2.remove(node)
-            newnode = treelib.TreeNode(tree2.newName())
-            tree2.addChild(parent, newnode)
-            tree2.addChild(newnode, node)
-            tree2.addChild(newnode, treelib.TreeNode(newgene))
-        
-        setTreeDistances(conf, tree2, distmat, labels)
-        logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
-        
-        addVisited(conf, visited, tree2)
-        
-        if logl >= toplogl:
-            toplogl = logl
-            toptree = tree2
-    
-    return toptree
 
 
 
@@ -2300,3 +2185,54 @@ if __name__ == "__main__":
 
 
 
+"""
+def replaceGeneInTree(conf, tree, badgene, distmat, labels, stree, gene2species,
+                    params, visited):
+    
+    if badgene == None:
+        nodes = tree.leaves()
+        weights = [x.data["error"] for x in nodes]        
+        badgene = nodes[stats.sample(weights)].name
+    
+    tree2 = tree.copy()
+    tree2.remove(tree2.nodes[badgene])
+    treelib.removeSingleChildren(tree2)
+    
+    return placeGeneInTree(conf, tree2, badgene, distmat, labels, stree, gene2species,
+                           params, visited)
+    
+
+def placeGeneInTree(conf, tree, newgene, distmat, labels, stree, gene2species,
+                    params, visited):
+    toplogl = -util.INF
+    toptree = None
+    
+    # loop over places to add newgene
+    for name in tree.nodes:
+        tree2 = tree.copy()
+        node = tree2.nodes[name]
+
+        if node == tree2.root:
+            newnode = treelib.TreeNode(tree2.newName())
+            tree2.addChild(newnode, tree2.root)
+            tree2.root = newnode
+            tree2.addChild(newnode, treelib.TreeNode(newgene))
+        else:
+            parent = node.parent
+            tree2.remove(node)
+            newnode = treelib.TreeNode(tree2.newName())
+            tree2.addChild(parent, newnode)
+            tree2.addChild(newnode, node)
+            tree2.addChild(newnode, treelib.TreeNode(newgene))
+        
+        setTreeDistances(conf, tree2, distmat, labels)
+        logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+        
+        addVisited(conf, visited, tree2)
+        
+        if logl >= toplogl:
+            toplogl = logl
+            toptree = tree2
+    
+    return toptree
+"""

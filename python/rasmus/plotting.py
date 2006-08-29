@@ -180,7 +180,8 @@ class Gnuplot:
     def setTerminal(self, filename = "", format="x11"):
         if not self.enable:
             return
-    
+        
+        # auto detect format from filename
         if filename != "":
             print >>self.stream, "set output \"%s\"" % filename
         
@@ -201,7 +202,7 @@ class Gnuplot:
             return tmpfile
         
         
-        # set format
+        # set terminal format
         if format == "ps":
             print >>self.stream, "set terminal postscript color"
         elif format == "pdf":
@@ -431,12 +432,16 @@ class Gnuplot:
             self.replot()
     
     
-    # all syntax should be valid GNUPLOT syntax
-    # func - a string of the function call i.e. "f(x)"
-    # eqn  - a string of a GNUPLOT equation  "a*x**b"
-    # params - a dictionary of parameters in eqn and their initial values
-    #        ex: {"a": 1, "b": 3}
+    
     def gfit(self, func, eqn, params, list1, list2=[], list3=[], ** options):
+        """
+        all syntax should be valid GNUPLOT syntax
+            func - a string of the function call i.e. "f(x)"
+            eqn  - a string of a GNUPLOT equation  "a*x**b"
+            params - a dictionary of parameters in eqn and their initial values
+                   ex: {"a": 1, "b": 3}        
+        """
+        
         self.set(** options)
     
         print len(list1), len(list2), len(list3)
@@ -537,9 +542,11 @@ def gfit(func, eqn, params, list1, list2=[], list3=[], ** options):
     return g
 
 
-class MultiPlot:
+class MultiPlot (Gnuplot):
     def __init__(self, plots, ncols=None, nrows=None, direction="row",
         width=800, height=800):
+        Gnuplot.__init__(self)
+        
         self.plots = plots
         self.stream = os.popen("gnuplot -geometry %dx%d" % (width, height), "w")
         
@@ -570,6 +577,8 @@ class MultiPlot:
         xorigin = 0.0
         yorigin = 1.0
         
+        print >>self.stream, "set origin 0, 0"
+        print >>self.stream, "set size 1, 1"
         print >>self.stream, "set multiplot"
         for plot in self.plots:
             xpt = xorigin + xpos * xstep
@@ -593,9 +602,12 @@ class MultiPlot:
             if ypos >= self.nrows:
                 ypos = 0
                 xpos += 1
-            
         
         print >>self.stream, "unset multiplot"
+        
+    
+    
+    
 
 
 # common colors

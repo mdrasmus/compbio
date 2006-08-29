@@ -1750,10 +1750,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     
     
     # run chains
-    for i in xrange(1, conf["maxiters"]):
-        if len(visited) >= conf["iters"]:
-            break
-        
+    for i in xrange(1, conf["iters"]):
         this.iter += 1
         
         for chain in chains:

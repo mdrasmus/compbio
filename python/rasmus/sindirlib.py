@@ -1869,7 +1869,8 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     # find edges for NNI
     nodes = tree.nodes.values()
     nodes = filter(lambda x: not x.isLeaf() and 
-                             x != tree.root, nodes)
+                             x != tree.root and \
+                             x.parent != tree.root, nodes)
     edges = [(node, node.parent) for node in nodes]
     
     for edge in edges:

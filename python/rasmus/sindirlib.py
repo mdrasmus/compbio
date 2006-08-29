@@ -1728,10 +1728,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             this.toptree = tree2.copy()
             
             # move some other chains to best state
-            chains2 = sorted(chains, key=lambda x: x.logl)
-            for chain in chains2[:1]:
-                chain.state = this.toptree.copy()
-                chain.logl = this.toplogl
+            #chains2 = sorted(chains, key=lambda x: x.logl)
+            #for chain in chains2[:1]:
+            #    chain.state = this.toptree.copy()
+            #    chain.logl = this.toplogl
         
         # alter logl to influence search only
         chain.relax = conf["speedup"] * this.nold

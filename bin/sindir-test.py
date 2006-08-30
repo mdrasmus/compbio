@@ -168,7 +168,7 @@ def makeReport(conf):
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
         
-        error = sindirlib.robinsinFouldsError(tree1, tree2)
+        error = sindirlib.robinsonFouldsError(tree1, tree2)
         
         if tree1 == None:
             continue

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from rasmus import algorithms, stats, util, phylip, fasta
+from rasmus import algorithms, stats, util, phylip, fasta, sindirlib
 from rasmus import ensembl, phyloutil, genomeutil, env
 import sys, os
 import math, StringIO, copy, random

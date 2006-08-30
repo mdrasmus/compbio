@@ -552,7 +552,7 @@ def setBranchError2(conf, tree, pathErrors, edges, topmat):
 
 
 def getSplit(tree):
-    splits = sindirlib.findSplits(tree2graph(tree), tree.leafNames())
+    splits = findSplits(treelib.tree2graph(tree), tree.leafNames())
     splits2 = set()
     
     for edge, sets in splits.iteritems():

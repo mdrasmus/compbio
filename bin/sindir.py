@@ -251,10 +251,12 @@ def buildTree(conf, stree, gene2species):
                 treelib.drawTree(correctTree, maxlen=5, minlen=5)
                 print
                 
+                rferror = sindirlib.robinsonFouldsError(correctTree, tree)
+                
                 if thash1 == thash2:
                     print "CORRECT TREE FOUND"
                 else:
-                    print "WRONG TREE FOUND"
+                    print "WRONG TREE FOUND (RF: %f)" % rferror
             
 
 

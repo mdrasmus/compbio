@@ -2041,7 +2041,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     # eval correcttree for debug only
     if "correcttree" in conf:
-        tree = treelib.readTree(treefile)
+        tree = conf["correcttree"]
         setTreeDistances(conf, tree, distmat, labels)
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         

@@ -549,7 +549,28 @@ def setBranchError2(conf, tree, pathErrors, edges, topmat):
         if node.name in npaths:
             node.data["error"] /= npaths[node.name]
         
+
+
+def getSplit(tree):
+    splits = sindirlib.findSplits(tree2graph(tree), tree.leafNames())
+    splits2 = set()
     
+    for edge, sets in splits.iteritems():
+        s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
+        splits2.add(s)
+
+    return splits2
+              
+
+def robinsonFouldsError(tree1, tree2):
+    splits1 = getSplit(tree1)
+    splits2 = getSplit(tree2)
+
+    overlap = splits1 & splits2    
+
+    assert len(splits1) == len(splits2)
+
+    return 1 - (len(overlap) / float(len(splits1)))
 
 
 #-------------------------------------------------------------------------------
@@ -2016,6 +2037,20 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             recon = phyloutil.reconcile(tree, stree, gene2species)
             events = phyloutil.labelEvents(tree, recon)
             drawTreeLogl(tree, events=events)
+    
+    
+    # eval correcttree for debug only
+    if "correcttree" in conf:
+        tree = treelib.readTree(treefile)
+        setTreeDistances(conf, tree, distmat, labels)
+        logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+        
+        if isDebug(DEBUG_LOW):
+            debug("\ncorrect tree:")
+            recon = phyloutil.reconcile(tree, stree, gene2species)
+            events = phyloutil.labelEvents(tree, recon)
+            drawTreeLogl(tree, events=events)
+    
     
     util.toc()
     

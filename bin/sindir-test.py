@@ -168,6 +168,8 @@ def makeReport(conf):
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
         
+        error = sindirlib.robinsinFouldsError(tree1, tree2)
+        
         if tree1 == None:
             continue
         
@@ -180,9 +182,9 @@ def makeReport(conf):
         counts[(shash1,shash2)] += 1
         
         if hash1 == hash2:
-            results.append([basefile, True])
+            results.append([basefile, True, error])
         else:
-            results.append([basefile, False])
+            results.append([basefile, False, error])
         
         
         orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
@@ -195,11 +197,13 @@ def makeReport(conf):
     total = len(results)
     ncorrect = util.counteq(True, util.cget(results, 1))
     nwrong = util.counteq(False, util.cget(results, 1))
-
-
-    print >>out, "total:      %d" % total
-    print >>out, "#correct:   %d (%f%%)" % (ncorrect, 100*ncorrect / float(total))
-    print >>out, "#incorrect: %d (%f%%)" % (nwrong, 100*nwrong / float(total))
+    rferror = stats.mean(util.cget(results, 2))
+    
+    
+    print >>out, "total:         %d" % total
+    print >>out, "#correct:      %d (%f%%)" % (ncorrect, 100*ncorrect / float(total))
+    print >>out, "#incorrect:    %d (%f%%)" % (nwrong, 100*nwrong / float(total))
+    print >>out, "avg. RF error: %f" % rferror
     print >>out
     print >>out
 

@@ -271,6 +271,10 @@ def mergeAvg(conf, parts1, parts2, blastfiles):
     # value is [sum, total]
     hits = util.Dict(dim=2, default = [0, 0])
     
+    if "accept" in conf:
+        accept = conf["accept"]
+    else:
+        accept = False
     
     lastq = None
     util.tic("read hits")
@@ -287,6 +291,11 @@ def mergeAvg(conf, parts1, parts2, blastfiles):
             
             if blast.evalue(hit) > conf["signif"]:
                 continue
+            
+            if accept and \
+               (gene1 not in accept or
+                gene2 not in accept):
+                 continue
             
             # create a key for a partition: (side, index)
             if gene1 in lookup1:

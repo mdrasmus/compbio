@@ -26,7 +26,8 @@ options = [
          "help": "write all partitionings in the tree"}],
     ["m:", "merge=", "merge", "avg|buh",
         {"default": "avg",
-         "single": True}]
+         "single": True}],
+    ["a:", "accept=", "accept", "<accept list>"]
 ] + genomeutil.options
 
 
@@ -34,6 +35,13 @@ def main(conf):
     genomeutil.readOptions(conf)
     
     blastfiles = conf[""]
+    
+    accept = set()
+    for filename in conf["accept"]:
+        for row in util.delimReader(filename):
+            for gene in row:
+                accept.add(gene)
+    conf["accept"] = accept
     
     tree = cluster.mergeTree(conf, 
                               conf["stree"], 

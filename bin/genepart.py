@@ -27,7 +27,7 @@ options = [
     ["m:", "merge=", "merge", "avg|buh",
         {"default": "avg",
          "single": True}],
-    ["a:", "accept=", "accept", "<accept list>"]
+    ["", "accept=", "accept", "<accept list>"]
 ] + genomeutil.options
 
 
@@ -38,7 +38,7 @@ def main(conf):
     
     accept = set()
     for filename in conf["accept"]:
-        for row in util.delimReader(filename):
+        for row in util.DelimReader(filename):
             for gene in row:
                 accept.add(gene)
     conf["accept"] = accept

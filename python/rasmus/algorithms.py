@@ -14,12 +14,19 @@ class UnionFind:
     def __init__(self, items):
         self.parent = None    
         self.items = dict.fromkeys(items, 1)
+
+    def __contains__(self):
+        return item in self.root().items
+
+    def __len__(self):
+        return len(self.root().items)
+    
+    def __iter__(self):
+        return iter(self.root().items)
+    
     
     def add(self, item):
         self.root().items[item] = 1
-    
-    def has(self, item):
-        return item in self.members()
     
     def root(self):
         node = self
@@ -28,9 +35,6 @@ class UnionFind:
         if node != self:
             self.parent = node
         return node
-    
-    def size(self):
-        return len(self.root().items)
     
     def same(self, other):
         return self.root() == other.root()
@@ -47,8 +51,19 @@ class UnionFind:
     
     def members(self):
         return self.root().items.keys()
-        
-        
+    
+    
+    # old function DON'T USE
+    
+    def has(self, item):
+        """DEPRECATED: use x in set"""
+        return item in self.members()
+    
+    def size(self):
+        """DEPRECATED: use len(set)"""
+        return len(self.root().items)
+
+    
 class Rect:
     x1 = 0
     y1 = 0

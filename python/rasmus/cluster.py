@@ -170,6 +170,8 @@ def filterOne2ones(parts, gene2species):
 #
 
 def mergeBuh(conf, parts1, parts2, blastfiles):
+    """Merge by Best Unidirectional Hits"""
+    
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
     
@@ -261,12 +263,97 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
     return parts
 
 
+
+def mergeAvg(conf, parts1, parts2, blastfiles):
+    lookup1 = item2part(parts1)
+    lookup2 = item2part(parts2)
+    
+    # value is [sum, total]
+    hits = util.Dict(dim=2, default = [0, 0])
+    
+    
+    lastq = None
+    util.tic("read hits")
+    for blastfile, order in blastfiles:
+        util.tic("determine best hits '%s'" % os.path.basename(blastfile))
+        for hit in blast.BlastReader(blastfile):
+            if order:
+                gene1 = blast.query(hit)
+                gene2 = blast.subject(hit)
+            else:
+                gene2 = blast.query(hit)
+                gene1 = blast.subject(hit)            
+            score = blast.bitscore(hit)
+            
+            if blast.evalue(hit) > conf["signif"]:
+                continue
+            
+            # create a key for a partition: (side, index)
+            if gene1 in lookup1:
+                part1 = (0, lookup1[gene1])
+            else:
+                parts1.append([gene1])
+                lookup1[gene1] = len(parts1) - 1
+                part1 = (0, len(parts1) - 1)
+            
+            if gene2 in lookup2:
+                part2 = (1, lookup2[gene2])
+            else:
+                parts2.append([gene2])
+                lookup2[gene2] = len(parts2) - 1
+                part2 = (1, len(parts2) - 1)
+            
+            val = hits[part1][part2]
+            val[0] += score
+            val[1] += 1
+            hits[part2][part1] = val
+            
+        util.toc()
+    util.toc()
+    
+
+    util.tic("determine clusters")
+    sets = {}
+    for part in hits:
+        sets[part] = algorithms.UnionFind([part])
+    
+    # merge top avg hits
+    for part1 in hits:
+        top = 0
+        toppart = None
+        for part2, (tot, num) in hits[part1].iteritems():
+            avg = float(tot) / num
+            
+            if avg > top:
+                toppart = part2
+                top = avg
+        
+        if toppart:
+            sets[part1].union(sets[toppart])
+    
+    sets = util.unique([x.root() for x in sets.values()])
+    
+    # create partition of genes
+    parts = []
+    joining = (parts1, parts2)
+    for set in sets:
+        parts.append([])
+        for i, row in set:
+            parts[-1].extend(joining[i][row])
+    util.toc()
+
+    return parts
+
+
+
 def mergeTree(conf, stree, gene2species, blastFileLookup):
     util.tic("cluster all genes")
 
     for node in stree.nodes.values():
         node.parts = []
-
+    
+    
+    # walk up tree (post-order)
     def walk(node):
         for child in node.children:
             walk(child)
@@ -286,10 +373,17 @@ def mergeTree(conf, stree, gene2species, blastFileLookup):
             util.logger("leaves1: ", leaves1)
             util.logger("leaves2: ", leaves2)
             
-            node.parts = mergeBuh(conf,
-                                  node.children[0].parts,
-                                  node.children[1].parts,
-                                  blastfiles)
+            if "merge" in conf and \
+               conf["merge"] == "avg":
+                node.parts = mergeAvg(conf,
+                                      node.children[0].parts,
+                                      node.children[1].parts,
+                                      blastfiles)
+            else:
+                node.parts = mergeBuh(conf,
+                                      node.children[0].parts,
+                                      node.children[1].parts,
+                                      blastfiles)
 
             util.logger("number of parts: ", len(node.parts))
             if len(node.parts) > 0:

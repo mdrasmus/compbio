@@ -23,7 +23,10 @@ options = [
     ["a:", "all=", "all", "<output prefix>",
         {"single": True,
          "default": None,
-         "help": "write all partitionings in the tree"}]
+         "help": "write all partitionings in the tree"}],
+    ["m:", "merge=", "merge", "avg|buh",
+        {"default": "avg",
+         "single": True}]
 ] + genomeutil.options
 
 

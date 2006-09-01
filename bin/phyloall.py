@@ -41,7 +41,12 @@ options = [
     {"default": []}],
   ["v", "verbose", "verbose", "",
    {"single": True}],
-  ["x:", "maxsize=", "maxsize", "<maximum gene family size>",
+  ["m:", "minsize=", "minsize", "<minimum gene family size>",
+    {"single": True,
+     "default": 3,
+     "parser": int,
+     "help": "minimum gene family size to reconstruct"}],
+  ["M:", "maxsize=", "maxsize", "<maximum gene family size>",
     {"single": True,
      "default": util.INF,
      "parser": int,
@@ -148,16 +153,10 @@ def getFileType(conf, infile):
 
 
 def checkFamilySize(conf, size, filename):
-    if size > conf["maxsize"]:
-        print "skipping '%s'; family size %d exceeds %d" % \
-            (filename, size, conf["maxsize"])
+    if size < conf["minsize"] or size > conf["maxsize"]:
+        print "skipping '%s'; family size %d outside [%d, %d]" % \
+            (filename, size, conf["minsize"], conf["maxsize"])
         return False
-    
-    if size < 3:
-        print "skipping '%s'; family size %d is too small" % \
-            (filename, size)
-        return False
-    
     return True
 
 

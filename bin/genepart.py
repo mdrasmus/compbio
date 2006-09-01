@@ -37,11 +37,12 @@ def main(conf):
     blastfiles = conf[""]
     
     accept = set()
-    for filename in conf["accept"]:
-        for row in util.DelimReader(filename):
-            for gene in row:
-                accept.add(gene)
-    conf["accept"] = accept
+    if "accept" in conf:
+        for filename in conf["accept"]:
+            for row in util.DelimReader(filename):
+                for gene in row:
+                    accept.add(gene)                    
+        conf["accept"] = accept
     
     if conf["all"] != None:
         conf["output"] = conf["all"]

@@ -43,17 +43,15 @@ def main(conf):
                 accept.add(gene)
     conf["accept"] = accept
     
-    tree = cluster.mergeTree(conf, 
-                              conf["stree"], 
-                              conf["gene2species"],
-                              cluster.makeBlastFileLookup(blastfiles))
-    
     if conf["all"] != None:
-        for node in tree.nodes.values():
-            if "parts" in dir(node) and \
-               len(node.parts) > 0:
-                util.writeDelim(conf["all"] + str(node.name) + ".part", node.parts)
-    else:
+        conf["output"] = conf["all"]
+    
+    tree = cluster.mergeTree(conf, 
+                             conf["stree"], 
+                             conf["gene2species"],
+                             cluster.makeBlastFileLookup(blastfiles))
+    
+    if conf["all"] == None:    
         util.writeDelim(sys.stdout, tree.root.parts)
 
     

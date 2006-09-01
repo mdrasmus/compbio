@@ -395,7 +395,7 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
         for i, row in set:
             parts[-1].extend(joining[i][row])
     util.toc()
-
+        
     return parts
 
 
@@ -469,7 +469,12 @@ def mergeTree(conf, stree, gene2species, blastFileLookup):
                                       node.children[0].parts,
                                       node.children[1].parts,
                                       blastfiles)
-
+            
+            if "output" in conf and len(node.parts) > 0:
+                util.writeDelim(conf["output"] + 
+                                str(node.name) + 
+                                ".part", node.parts)
+            
             util.logger("number of parts: ", len(node.parts))
             if len(node.parts) > 0:
                 util.logger("largest part:", max(map(len, node.parts)))

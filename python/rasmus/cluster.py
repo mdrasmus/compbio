@@ -178,7 +178,6 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
     
     best = util.Dict(1, (0, None))
 
-    lastq = None
     util.tic("read hits")
     for blastfile, order in blastfiles:
         util.tic("determine best hits '%s'" % os.path.basename(blastfile))
@@ -264,7 +263,7 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
 
 
 
-def mergeAvg(conf, parts1, parts2, blastfiles):
+def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
     
@@ -275,8 +274,48 @@ def mergeAvg(conf, parts1, parts2, blastfiles):
         accept = conf["accept"]
     else:
         accept = False
+
+
+    util.tic("read outgroup hits")    
+    outbest = util.Dict(default=[0, 0])
+
+    for blastfile, order in outblastfiles:
+        util.tic("determine best hits '%s'" % os.path.basename(blastfile))
+        for hit in blast.BlastReader(blastfile):
+            if order:
+                gene1 = blast.query(hit)
+                gene2 = blast.subject(hit)
+            else:
+                gene2 = blast.query(hit)
+                gene1 = blast.subject(hit)            
+            score = blast.bitscore(hit)
+            
+            if blast.evalue(hit) > conf["signif"]:
+                continue
+            
+            # create a key for a partition: (side, index)
+            if gene1 in lookup1:
+                partin = (0, lookup1[gene1])
+            else:
+                parts1.append([gene1])
+                lookup1[gene1] = len(parts1) - 1
+                partin = (0, len(parts1) - 1)
+            
+            if gene1 in lookup2:
+                partin = (1, lookup2[gene2])
+            else:
+                parts2.append([gene2])
+                lookup2[gene2] = len(parts2) - 1
+                partin = (1, len(parts2) - 1)
+            
+            val = outbest[partin]
+            val[0] += score
+            val[1] += 1
+            
+        util.toc()
+    util.toc()
     
-    lastq = None
+    
     util.tic("read hits")
     for blastfile, order in blastfiles:
         util.tic("determine best hits '%s'" % os.path.basename(blastfile))
@@ -328,15 +367,21 @@ def mergeAvg(conf, parts1, parts2, blastfiles):
     
     # merge top avg hits
     for part1 in hits:
+        o1 = outbest[part1]
+        outavg1 = float(o1[0]) / max(o1[1], 1)
+        
         top = 0
         toppart = None
+        
         for part2, (tot, num) in hits[part1].iteritems():
             avg = float(tot) / num
+            o2 = outbest[part2]
+            outavg2 = float(o2[0]) / max(o2[1], 1)
             
-            if avg > top:
-                toppart = part2
+            if avg > outavg1 and avg > outavg2 and avg > top:
                 top = avg
-        
+                toppart = part2
+                
         if toppart:
             sets[part1].union(sets[toppart])
     
@@ -354,6 +399,22 @@ def mergeAvg(conf, parts1, parts2, blastfiles):
     return parts
 
 
+"""
+# merge top avg hits
+    for part1 in hits:
+        top = 0
+        toppart = None
+        for part2, (tot, num) in hits[part1].iteritems():
+            avg = float(tot) / num
+            
+            if avg > top:
+                toppart = part2
+                top = avg
+        
+        if toppart:
+            sets[part1].union(sets[toppart])
+"""
+
 
 def mergeTree(conf, stree, gene2species, blastFileLookup):
     util.tic("cluster all genes")
@@ -369,15 +430,29 @@ def mergeTree(conf, stree, gene2species, blastFileLookup):
 
         if not node.isLeaf():
             blastfiles = []
-            leaves1 = node.children[0].leaveNames()
-            leaves2 = node.children[1].leaveNames()
-
+            leaves1 = node.children[0].leafNames()
+            leaves2 = node.children[1].leafNames()
+            
+            # determine sibling blast files
             for leaf1 in leaves1:
                 for leaf2 in leaves2:
                     if leaf1 in blastFileLookup and \
                        leaf2 in blastFileLookup[leaf1]:
                         blastfiles.append(blastFileLookup[leaf1][leaf2])
-
+            
+            # determine outgroup blast files (all other files, potentially)
+            # go up one level, blastfiles for leaves, and subtract sibling files
+            outblastfiles = []
+            if node.parent:
+                inleaves = leaves1 + leaves2
+                outleaves = set(node.parent.leafNames()) - set(inleaves)
+                
+                for leaf1 in inleaves:
+                    for leaf2 in outleaves:
+                        if leaf1 in blastFileLookup and \
+                           leaf2 in blastFileLookup[leaf1]:
+                            outblastfiles.append(blastFileLookup[leaf1][leaf2])
+                        
             util.tic("merging")
             util.logger("leaves1: ", leaves1)
             util.logger("leaves2: ", leaves2)
@@ -387,7 +462,8 @@ def mergeTree(conf, stree, gene2species, blastFileLookup):
                 node.parts = mergeAvg(conf,
                                       node.children[0].parts,
                                       node.children[1].parts,
-                                      blastfiles)
+                                      blastfiles,
+                                      outblastfiles)
             else:
                 node.parts = mergeBuh(conf,
                                       node.children[0].parts,

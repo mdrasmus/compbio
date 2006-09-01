@@ -2,7 +2,7 @@
 from math import *
 import cmath
 import random
-
+import os
 
 # rasmus libs
 import util
@@ -180,8 +180,42 @@ def sample(weights):
     
     return low
     
+
     
+def chyper(m, n, M, N, report=0):
+    '''
+    calculates cumulative probability based on
+    hypergeometric distribution
+    over/under/both (report = 0/1/2)
+    (uses /seq/compbio02/software-Linux/misc/chyper)
+    '''
+
+    assert( (type(m) == type(n) == type(M) == type(N) == int)
+            and m <= n and m <= M and n <= N)
+
+    command = "chyper %d %d %d %d 2>/dev/null" % (m, n, M, N)
+    stream = os.popen(command)
+    val = stream.read()
+    if val == '':
+        raise Exception("error in chyper")
+    else:
+        val = val.strip()
+        vals = map(float, val.split(' ')[4:6])
+        
+    if report == 0:
+        #p-val for over-repr.
+        return vals[0]
+    elif report == 1:
+        #p-val for under-repr.
+        return vals[1]
+    elif report == 2:
+        #tuple (over, under)
+        return vals
+    else:
+        raise "unknown option"
     
+
+
 
 """
 #

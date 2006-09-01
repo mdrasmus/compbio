@@ -301,7 +301,7 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
                 lookup1[gene1] = len(parts1) - 1
                 partin = (0, len(parts1) - 1)
             
-            if gene1 in lookup2:
+            if gene2 in lookup2:
                 partin = (1, lookup2[gene2])
             else:
                 parts2.append([gene2])

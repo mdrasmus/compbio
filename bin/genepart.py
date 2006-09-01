@@ -60,3 +60,4 @@ def main(conf):
 
 conf = util.parseOptions(sys.argv, options, quit=True, resthelp="<blast files>")
 main(conf)
+

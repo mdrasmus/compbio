@@ -638,7 +638,7 @@ def lca(nodes):
             if node1 in set2:
                 return node1
             if node2 in set1:
-                return node1
+                return node2
             if node1.parent != None:
                 node1 = node1.parent
             if node2.parent != None:

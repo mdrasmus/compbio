@@ -48,7 +48,7 @@ options = [
      "help": "minimum gene family size to reconstruct"}],
   ["M:", "maxsize=", "maxsize", "<maximum gene family size>",
     {"single": True,
-     "default": util.INF,
+     "default": 1000000000, # no limit (effectively)
      "parser": int,
      "help": "maximum gene family size to reconstruct"}],
   ["", "proghelp", "proghelp", "",

@@ -702,12 +702,58 @@ def neighborjoinSparse(dists):
 
 
 
+#============================================================================
+# duplication loss counting
+#============================================================================
 
 
-#
+def initDupLossTree(stree):
+    # initalize counts to zero
+    def walk(node):
+        node.data['dup'] = 0
+        node.data['loss'] = 0
+        node.data['genes'] = 0
+        node.recurse(walk)
+    walk(stree.root)
+
+
+# count dup loss
+def countDupLossTree(tree, stree, gene2species):
+    reconRoot(tree, stree, gene2species, newCopy=False)
+    recon = reconcile(tree, stree, gene2species)
+    events = labelEvents(tree, recon)
+    losses = findLoss(tree, stree, recon)
+
+    # count dups
+    for node, event in events.iteritems():
+        if event == "dup":
+            recon[node].data['dup'] += 1
+        elif event == "gene":
+            recon[node].data['genes'] += 1
+
+    # count losses
+    for gnode, snode in losses:
+        snode.data['loss'] += 1
+
+
+# count ancestral genes
+def countAncestralGenes(stree):
+    def walk(node):
+        if not node.isLeaf():
+            counts = []
+            for child in node.children:
+                walk(child)
+                counts.append(child.data['genes'] -
+                              child.data['dup'] + child.data['loss'])
+            assert util.equal(* counts), str(counts)
+            node.data['genes'] = counts[0]
+    walk(stree.root)
+
+
+
+#============================================================================
 # old orthology stuff
-#    
-
+#============================================================================
             
 def orthologs(gene, otherGenome, gtree, stree, recon):
     genome = recon[gtree.nodes[gene]]

@@ -162,7 +162,7 @@ def checkFamilySize(conf, size, filename):
 
 def checkFileExists(filename):
     if not os.path.exists(filename):
-        print "skipping '%s'; file does not exist"
+        print "skipping '%s'; file does not exist" % filename
         return False
     else:
         return True

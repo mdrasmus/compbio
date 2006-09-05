@@ -8,11 +8,13 @@ if (len(sys.argv) == 1):
 
 skip = int(sys.argv[1])
 
-n = 0
-for line in sys.stdin:
-    n += 1
-    if (n == skip):
-        break
+
+if skip > 0:
+    n = 0
+    for line in sys.stdin:
+        n += 1
+        if (n >= skip):
+            break
 
 for line in sys.stdin:
     print line,

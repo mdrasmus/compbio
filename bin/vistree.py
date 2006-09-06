@@ -6,7 +6,7 @@ import sys, math
 
 # rasmus libs
 from rasmus import genomeio, util, fasta, clustalw, muscle, phylip
-from rasmus import algorithms, phyloutil, treelib
+from rasmus import algorithms, phyloutil, treelib, alignlib
 
 # graphics libs
 from summon import *
@@ -32,6 +32,7 @@ try:
 except:
     sys.exit(1)
 
+selnode = None
 
 class VisTree (sumtree.SumTree):
     def __init__(self):
@@ -49,6 +50,10 @@ class VisTree (sumtree.SumTree):
 
     # override node clicks
     def nodeClick(self, node):
+        global selnode
+        
+        selnode = node
+        
         print "-------------"
 
         if self.clickMode == "desc":
@@ -79,7 +84,8 @@ class VisTree (sumtree.SumTree):
         seqs2 = util.subdict(self.seqs, self.tree.leaveNames(node))
 
         self.selalign = self.alignfunc(seqs2, verbose = True)
-        clustalw.printAlign(self.selalign, order=tree.leaveNames(node))
+        self.selalign.names = tree.leaveNames(node)
+        alignlib.printAlign(self.selalign)
 
 
     def refine(self, node):

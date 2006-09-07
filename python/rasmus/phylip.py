@@ -201,10 +201,7 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
             return False
         except:
             return True
-    
-    nan = float("nan")
-    inf = float("inf")
-    
+        
     i = -1
     j = 0
     for line in infile:
@@ -220,11 +217,11 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
         
         assert i != -1
         for val in row:
-            val = float(val)
+            if val == "nan" or val == "inf":
+                val = None
+            else:
+                val = float(val)
             
-            # look for weird floats
-            if val == nan or val == inf:
-                val = -inf
             
             mat[i][j] = val
             mat[j][i] = val
@@ -234,7 +231,7 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     top = util.max2(mat)
     for i in range(size):
         for j in range(size):
-            if mat[i][j] == -inf:
+            if mat[i][j] == None:
                 mat[i][j] = 10 * top
     
     """

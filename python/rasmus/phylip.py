@@ -207,6 +207,9 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     j = 0
     for line in infile:
         row = line.split()
+        if len(row) == 0:
+            continue
+        
         if isName(row[0]):
             names.append(row[0])
             row = row[1:]

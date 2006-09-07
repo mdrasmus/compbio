@@ -719,7 +719,6 @@ def initDupLossTree(stree):
 
 # count dup loss
 def countDupLossTree(tree, stree, gene2species):
-    reconRoot(tree, stree, gene2species, newCopy=False)
     recon = reconcile(tree, stree, gene2species)
     events = labelEvents(tree, recon)
     losses = findLoss(tree, stree, recon)

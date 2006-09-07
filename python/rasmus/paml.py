@@ -5,10 +5,13 @@ import os
 # rasmus libs
 import phylip
 import util
+import alignlib
 
 
-
-def dndsMatrix(seqs, saveOutput="", verbose=False):
+def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
+    
+    if safe:
+        seqs = alignlib.mapalign(seqs, valfunc=removeStopCodons)
     
     phylip.validateSeq(seqs)
     cwd = phylip.createTempDir()
@@ -43,4 +46,19 @@ def dndsMatrix(seqs, saveOutput="", verbose=False):
     util.toc()
     
     return dnmat, dsmat
+
+
+
+def removeStopCodons(seq):
+    assert len(seq) % 3 == 0
+    
+    seq2 = []
+    
+    for i in range(0, len(seq), 3):
+        codon = seq[i:i+3]
+        if alignlib.translate(codon) == "*":
+            seq2.append("NNN")
+        else:
+            seq2.append(codon)
+    return "".join(seq2)
 

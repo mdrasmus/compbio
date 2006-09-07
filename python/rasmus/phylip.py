@@ -202,6 +202,8 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
         except:
             return True
     
+    nan = float("nan")
+    inf = float("inf")
     
     i = -1
     j = 0
@@ -218,9 +220,22 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
         
         assert i != -1
         for val in row:
-            mat[i][j] = float(val)
-            mat[j][i] = float(val)
+            val = float(val)
+            
+            # look for weird floats
+            if val == nan or val == inf:
+                val = -inf
+            
+            mat[i][j] = val
+            mat[j][i] = val
             j += 1
+    
+    # remove nasty infinities
+    top = util.max2(mat)
+    for i in range(size):
+        for j in range(size):
+            if mat[i][j] == -inf:
+                mat[i][j] = 10 * top
     
     """
     for i in xrange(size):

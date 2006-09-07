@@ -256,7 +256,7 @@ def writeDistMatrix(mat, labels=None, out=sys.stdout):
             out.write("%8s  " % labels[i])
         
         for val in mat[i]:
-            out.write("%10f" % val)
+            out.write("%10f " % val)
         out.write("\n")
 
 

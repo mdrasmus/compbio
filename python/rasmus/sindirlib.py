@@ -903,11 +903,11 @@ def getBaserate(tree, stree, params, recon=None, gene2species=None):
         walk(child, depths={tree.root: 0}, sroot=recon[tree.root], extra=False)
     
     
-    #baserate = mleBaserate(lens, means, sdevs, params["baserate"])
+    baserate = mleBaserate(lens, means, sdevs, params["baserate"])
     
     #util.printcols(zip(lens, means, sdevs, util.vdiv(lens, means)))
     
-    baserate = mleBaserate2(lens, means, sdevs, params["baserate"])
+    #baserate = mleBaserate2(lens, means, sdevs, params["baserate"])
         
     return baserate
 

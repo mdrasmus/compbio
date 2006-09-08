@@ -122,7 +122,7 @@ def writeTable(filename, table, header=None, delim="\t"):
         header = table[0].keys()
     
     # write types    
-    entry = table.values()[0]
+    entry = table[0]
     types = map(lambda x: type(entry[x]), header)
     out.write("#Types:" + formatTableTypes(types, delim) + "\n")
     

@@ -34,7 +34,6 @@ def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
     else:
         os.system("yn00 yn00.ctl > /dev/null")
     
-    print "done"
     try:
         dnmat = phylip.readDistMatrix("2YN.dN")
         dsmat = phylip.readDistMatrix("2YN.dS")
@@ -64,7 +63,7 @@ def removeStopCodons(seq):
     seq2 = []
     
     for i in range(0, len(seq), 3):
-        codon = seq[i:i+3]
+        codon = seq[i:i+3].upper()
         if alignlib.translate(codon) == "*":
             seq2.append("NNN")
         else:

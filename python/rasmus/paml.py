@@ -34,9 +34,18 @@ def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
     else:
         os.system("yn00 yn00.ctl > /dev/null")
     
-    dnmat = phylip.readDistMatrix("2YN.dN")
-    dsmat = phylip.readDistMatrix("2YN.dS")
-    
+    print "done"
+    try:
+        dnmat = phylip.readDistMatrix("2YN.dN")
+        dsmat = phylip.readDistMatrix("2YN.dS")
+    except:
+        # could not make distance matrix
+        if safe:
+            # make dummy matrix
+            dnmat = labels, [[0] * len(labels)] * len(labels)
+            dsmat = labels, [[0] * len(labels)] * len(labels)
+        else:
+            raise Exception("could not read dn or ds matrices")
     
     if saveOutput != "":
         phylip.saveTempDir(cwd, saveOutput)

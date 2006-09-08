@@ -1290,8 +1290,9 @@ def deldir(path):
         
         while True:
             try:
-                os.rmdir(dirs[-i])
-            except:
+                if os.path.exists(dirs[-i]):
+                    os.rmdir(dirs[-i])
+            except Exception, e:
                 continue
             break
 

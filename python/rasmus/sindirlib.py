@@ -556,6 +556,10 @@ def getSplit(tree):
     splits2 = set()
     
     for edge, sets in splits.iteritems():
+        # skip external edges
+        if len(sets[0]) == 1 or len(sets[1]) == 1:
+            continue
+        
         s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
         splits2.add(s)
 

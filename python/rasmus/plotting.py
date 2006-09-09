@@ -648,14 +648,16 @@ class ColorMap:
                         vmuls(self.table[i+1][1], part/tot))
 
 
-def rainbowColorMap(data):
-    low = min(data)
-    top = max(data)
+def rainbowColorMap(data=None, low=None, high=None):
+    if data != None:
+        low = min(data)
+        high = max(data)
+    assert low != None and high != None
     
     return ColorMap([[low, blue],
-                     [.5*low+.5*top, green],
-                     [.25*low + .75*top, yellow],
-                     [top, red]])
+                     [.5*low+.5*high, green],
+                     [.25*low + .75*high, yellow],
+                     [high, red]])
    
     
 def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):

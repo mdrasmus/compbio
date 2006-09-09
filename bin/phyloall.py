@@ -53,8 +53,9 @@ options = [
      "help": "maximum gene family size to reconstruct"}],
   ["", "proghelp", "proghelp", "",
     {"single": True}],
-  ["", "skip", "skip", "",
-    {"single": True}],
+  ["r", "resume", "resume", "",
+    {"help": "skip over files that already exist",
+     "single": True}],    
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -65,9 +66,6 @@ options = [
     {"single": True,
      "default": 10,
      "parser": int}],
-  ["r", "resume", "resume", "",
-    {"help": "resume execution (uses Pipeline status to resume)",
-     "single": True}],
   ["", "statusdir=", "statusdir", "<status directory>",
     {"single": True, 
      "default": "phyloall"}],
@@ -160,15 +158,49 @@ def checkFamilySize(conf, size, filename):
     return True
 
 
-def checkFileExists(filename):
-    if not os.path.exists(filename):
-        print "skipping '%s'; file does not exist" % filename
+def checkFileExists(conf, infilename, outfilename):
+    if infilename == None:
+        raise Exception("required file not given")
+    
+    if not os.path.exists(infilename):
+        print "skipping '%s'; input file does not exist" % infilename
+        return False
+    elif os.path.exists(outfilename) and conf["resume"]:
+        print "skipping '%s'; output file already exists" % outfilename
         return False
     else:
         return True
+
+
+def getDataFiles(conf, infile):
+    infileType, basename = getFileType(conf, infile)
+
+    if infileType == "fasta":
+        fastafile = infile
+        alignfile = getAlignFile(conf, basename)
+        distfile  = getDistFile(conf, basename)
+        labelfile = getLabelFile(conf, basename)
+        treefile  = getTreeFile(conf, basename)
+    elif infileType == "align":
+        fastafile = None
+        alignfile = infile
+        distfile  = getDistFile(conf, basename)
+        labelfile = getLabelFile(conf, basename)
+        treefile  = getTreeFile(conf, basename)
+    elif infileType == "dist":
+        fastafile = None
+        alginfile = None
+        distfile  = infile
+        labelfile = getLabelFile(conf, basename)
+        treefile  = getTreeFile(conf, basename)
+        
+        if not os.path.exists(labelfile):
+            labelfile = None
+    
+    return fastafile, alignfile, distfile, labelfile, treefile
     
 
-def run(conf, infile):
+def run(conf, infile, test=False):
     # determine infile type
     infileType, basename = getFileType(conf, infile)
 
@@ -176,51 +208,57 @@ def run(conf, infile):
     if conf["extraoutput"] != "":
         conf["extraoutput"] = basename + conf["extraoutput"]
     
-    if infileType == "fasta":
-        fastafile = infile
-        alignfile = getAlignFile(conf, basename)
-        distfile  = getDistFile(conf, basename)
-        labelfile = getLabelFile(conf, basename)
-    elif infileType == "align":
-        fastafile = None
-        alignfile = infile
-        distfile  = getDistFile(conf, basename)
-        labelfile = getLabelFile(conf, basename)
-    elif infileType == "dist":
-        fastafile = None
-        alginfile = None
-        distfile  = infile
-        labelfile = getLabelFile(conf, basename)
-        
-        if not os.path.exists(labelfile):
-            labelfile = None
+    fastafile, alignfile, distfile, labelfile, treefile = \
+        getDataFiles(conf, infile)
+    if not test:
+        util.logger("fasta:", fastafile)
+        util.logger("align:", alignfile)
+        util.logger("dist: ", distfile)
+        util.logger("label:", labelfile)
+        util.logger("tree: ",  treefile)
     
     progs = conf["prog"].split(",")
     
+    # set skip flag
+    executed = False
+    
+    # run each program
     for prog, args in zip(progs, conf["args2"]):
         conf["args"] = args
-    
+        
         if prog in fasta2alignProgs:
-            assert fastafile != None, "fasta required"
-            if not checkFileExists(fastafile): continue
-            fasta2align(conf, prog, fastafile, basename)
+            if not checkFileExists(conf, fastafile, alignfile): 
+                continue
+            if not test:
+                fasta2align(conf, prog, fastafile, basename)
         
         elif prog in align2treeProgs:
-            assert alignfile != None, "alignment required"
-            if not checkFileExists(alignfile): continue
-            align2tree(conf, prog, alignfile, basename)
+            if not checkFileExists(conf, alignfile, treefile): 
+                continue
+            if not test:
+                align2tree(conf, prog, alignfile, basename)
         
         elif prog in align2distProgs:
-            assert alignfile != None, "alignment required"
-            if not checkFileExists(alignfile): continue
-            align2dist(conf, prog, alignfile, basename)
+            if not checkFileExists(conf, alignfile, distfile): 
+                continue
+            if not test:
+                align2dist(conf, prog, alignfile, basename)
         
         elif prog in dist2treeProgs:
-            if not checkFileExists(distfile): continue
-            dist2tree(conf, prog, distfile, labelfile, basename)
+            if not checkFileExists(conf, distfile, treefile): 
+                continue
+            if not test:
+                dist2tree(conf, prog, distfile, labelfile, basename)
             
         else:
             raise "unknown program '%s'" % prog
+        
+        # if we are here, then a program has run and we should not
+        # skip this file
+        executed = True
+    
+    return executed
+            
 
 
 def fasta2align(conf, prog, fastafile, basename):
@@ -377,32 +415,30 @@ def align2dist(conf, prog, alignfile, basename):
 
     
 
+def displayHelp():
+    print >>sys.stderr, "SUPPORTED PROGRAMS\n"
+
+    print >>sys.stderr, "Fasta to alignment"
+    print >>sys.stderr, " ", " ".join(fasta2alignProgs)
+    print >>sys.stderr
+
+    print >>sys.stderr, "Alignment to tree"
+    print >>sys.stderr, " ", " ".join(align2treeProgs)
+    print >>sys.stderr
+
+    print >>sys.stderr, "Alignment to distance matrix"
+    print >>sys.stderr, " ", " ".join(align2distProgs)
+    print >>sys.stderr
+
+    print >>sys.stderr, "Distance matrix to tree"
+    print >>sys.stderr, " ", " ".join(dist2treeProgs)
+    print >>sys.stderr    
+
 
 def main(conf):
-    # parse conf
-    files = conf["REST"]
-
     # print program help    
     if conf["proghelp"]:
-        print >>sys.stderr, "SUPPORTED PROGRAMS\n"
-    
-        print >>sys.stderr, "Fasta to alignment"
-        print >>sys.stderr, " ", " ".join(fasta2alignProgs)
-        print >>sys.stderr
-        
-        print >>sys.stderr, "Alignment to tree"
-        print >>sys.stderr, " ", " ".join(align2treeProgs)
-        print >>sys.stderr
-
-        print >>sys.stderr, "Alignment to distance matrix"
-        print >>sys.stderr, " ", " ".join(align2distProgs)
-        print >>sys.stderr
-        
-        print >>sys.stderr, "Distance matrix to tree"
-        print >>sys.stderr, " ", " ".join(dist2treeProgs)
-        print >>sys.stderr
-
-        
+        displayHelp()
         sys.exit(1)
         
     
@@ -418,6 +454,12 @@ def main(conf):
             allArgs[i] = None
     
     conf["args2"] = allArgs
+    
+
+    # determine input files
+    files = conf["REST"]
+    files = filter(lambda x: run(conf, x, test=True), files)
+    
     
     util.tic("phyloall")
     
@@ -435,8 +477,8 @@ def main(conf):
                          prefix + " ".join(files[i:i+conf["groupsize"]])))
         pipeline.add("all", "echo all jobs complete", jobs)
         
-        if not conf["resume"]:
-            pipeline.reset()
+        
+        pipeline.reset()
         
         pipeline.run("all")
         pipeline.process()

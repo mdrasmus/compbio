@@ -5,14 +5,30 @@ Implements Manolis style tab-delimited table file format.
 
 """
 
+import sys
+import StringIO
 
 from util import *
 
 
 class Table (list):
-    def __init__(self):
-        self.headers = []
+    def __init__(self, rows=None, headers=None):
+        if headers == None:
+            self.headers = []
+        else:
+            self.headers = headers
+        
         self.types = []
+        
+        if rows != None:
+            self.extend(rows)
+            
+            if headers == None:
+                self.headers = sorted(self[0].keys())
+    
+    
+    def add(self, **kargs):
+        self.append(kargs)
     
     
     def read(self, filename, delim="\t"):
@@ -93,6 +109,35 @@ class Table (list):
             print >>out, delim.join(map(lambda x: str(row[x]), self.headers))
 
 
+    def lookup(self, *keys):
+        """return a lookup dict based on a column 'key'
+           or multiple keys"""
+        
+        lookup = Dict(dim=len(keys))
+        
+        for row in self:
+            keys2 = mget(row, keys)
+            ptr = lookup
+            for i in xrange(len(keys2) - 1):
+                ptr = lookup[keys2[i]]
+            if keys2[-1] in ptr:
+                raise Exception("duplicate key '%s'" % str(keys2[-1]))
+            ptr[keys2[-1]] = row
+        
+        lookup.insert = False
+        return lookup
+
+
+    def __repr__(self):
+        s = StringIO.StringIO("w")
+        self.write(s)
+        return s.getvalue()
+    
+    
+    def __str__(self):
+        return self.__repr__()
+
+
 def manoli_str2bool(text):
     """Will parse every way manolis stores a boolean as a string"""
     
@@ -148,42 +193,3 @@ def readTable(filename, delim="\t"):
 def writeTable(filename, table, delim="\t"):
     table.write(filename, delim)
 
-
-
-#
-# OLD CODE needs to be updated to use Table class
-#
-
-
-def lookupTable(table, key, index=False):
-    lookup = {}
-    if index:
-        for i in xrange(len(table)):
-            key2 = table[i][key]
-            if key2 in lookup:
-                raise Exception("duplicate key '%s'" % str(key2))
-            lookup[key2] = i
-    else:
-        for i in xrange(len(table)):
-            key2 = table[i][key]
-            if key2 in lookup:
-                raise Exception("duplicate key '%s'" % str(key2))
-            lookup[key2] = table[i]
-    return lookup
-
-
-def lookupTableMulti(table, * keys):
-    lookup = {}
-    key = keys[0]
-    for i in xrange(len(table)):
-        key2 = table[i][key]
-        if key2 not in lookup:
-            lookup[key2] = []
-        lookup[key2].append(table[i])
-    
-    if len(keys) > 1:
-        keys2 = keys[1:]
-        for key, value in lookup.iteritems():
-            lookup[key] = lookupTableMulti(value, * keys2)
-    
-    return lookup

@@ -255,6 +255,8 @@ def run(conf, infile, test=False):
         
         # if we are here, then a program has run and we should not
         # skip this file
+        if test:
+            return True
         executed = True
     
     return executed
@@ -457,8 +459,10 @@ def main(conf):
     
 
     # determine input files
-    files = conf["REST"]
-    files = filter(lambda x: run(conf, x, test=True), files)
+    files2 = conf["REST"]
+    files = filter(lambda x: run(conf, x, test=True), files2)
+    util.logger("will process %d input files" % len(files))
+    util.logger("will skip %d input files" % (len(files2) - len(files)))
     
     
     util.tic("phyloall")

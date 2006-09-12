@@ -19,6 +19,7 @@ class Table (list):
             self.headers = headers
         
         self.types = []
+        self.filename = None
         
         if rows != None:
             self.extend(rows)
@@ -52,6 +53,10 @@ class Table (list):
         """
 
         infile = openStream(filename)
+        
+        # remember filename for later saving
+        if isinstance(filename, str):
+            self.filename = filename
         
         self.headers = None
         self[:] = []
@@ -107,7 +112,14 @@ class Table (list):
         # write data
         for row in self:
             print >>out, delim.join(map(lambda x: str(row[x]), self.headers))
-
+    
+    
+    def save(self):
+        if self.filename != None:
+            self.write(self.filename)
+        else:
+            raise Exception("Table has no filename")
+    
 
     def lookup(self, *keys):
         """return a lookup dict based on a column 'key'
@@ -126,7 +138,18 @@ class Table (list):
         
         lookup.insert = False
         return lookup
-
+    
+    
+    def getMatrix(self):
+        """returns a copy of the table as a 2D list"""
+        
+        mat = [self.headers]
+        
+        for row in self:
+            mat.append(mget(row, self.headers))
+        
+        return mat
+    
 
     def __repr__(self):
         s = StringIO.StringIO("w")

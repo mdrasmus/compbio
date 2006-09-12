@@ -106,7 +106,7 @@ class Dict (dict):
             return ret
         return dict.__getitem__(self, i)
     
-    
+    """
     def __len__(self):
         if self.dim == 1:
             return dict.__len__(self)
@@ -115,6 +115,7 @@ class Dict (dict):
             for i in self:
                 nnz += len(self[i])
             return nnz
+    """
         
     def has_keys(self, *keys):
         if len(keys) == 0:

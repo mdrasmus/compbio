@@ -553,7 +553,7 @@ def setBranchError2(conf, tree, pathErrors, edges, topmat):
 
 def getSplit(tree):
     splits = findSplits(treelib.tree2graph(tree), tree.leafNames())
-    splits2 = set()
+    splits2 = {}
     
     for edge, sets in splits.iteritems():
         # skip external edges
@@ -561,7 +561,7 @@ def getSplit(tree):
             continue
         
         s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
-        splits2.add(s)
+        splits2[edge] = s
 
     return splits2
               
@@ -570,7 +570,7 @@ def robinsonFouldsError(tree1, tree2):
     splits1 = getSplit(tree1)
     splits2 = getSplit(tree2)
 
-    overlap = splits1 & splits2    
+    overlap = set(splits1.values()) & set(splits2.values())
 
     #assert len(splits1) == len(splits2)
 
@@ -1005,6 +1005,7 @@ def subtreeLikelihood(conf, tree, root, recon, events, stree, params, baserate):
             
             lognom = log(stats.normalPdf(dist/baserate, [mu, sigma]))
             
+            
             if logdenom == -util.INF or \
                lognom   == util.INF:
                 logl = -util.INF
@@ -1095,13 +1096,14 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     if isDebug(DEBUG_MED):
         util.tic("find logl")
 
-    
-    # top branch is "free"
-    #params[stree.root.name] = [0,0]
+
+    # calc branch length likelihoods
     this = util.Closure(logl=0.0)
     this.logl = branchLikelihoods(conf, tree, recon, events, 
                                   stree, params, baserate)
-        
+    
+    # calc baserate likelihood
+    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)

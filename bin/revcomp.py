@@ -4,9 +4,12 @@
 import sys
 from rasmus import alignlib
 
-seq = ""
-
+seq = []
 for line in sys.stdin:
-    seq += line.rstrip()
+    seq.append(line.rstrip())
+seq = "".join(seq)
 
-sys.stdout.write(alignlib.revcomp(seq))
+seq2 = alignlib.revcomp(seq)
+
+for i in xrange(0, len(seq2), 60):
+    print seq2[i:i+60]

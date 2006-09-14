@@ -353,7 +353,7 @@ def groupby(func, lst):
 def unique(lst):
     """
     Returns a copy of 'lst' with only unique entries.
-    The list is stable (the first occurance is kept.
+    The list is stable (the first occurance is kept).
     """
     
     found = set()

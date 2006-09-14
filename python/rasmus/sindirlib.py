@@ -612,6 +612,13 @@ def fitNormal2(lens):
     return param
 
 
+def mleNormal(lens):
+    mu = stats.mean(lens)
+    sigma = stats.sdev(lens)
+    return mu, sigma
+
+
+
 def fitParams(lengths, baserates, gene2species, fit=True):
     ntrees = len(lengths.values()[0])
     
@@ -679,6 +686,17 @@ def dataLikelihood(lenmat, baserates, means, sdevs, baserateparam):
     return logl
 
 
+def dataLikelihoodG(lenmat, baserates, alphas, betas, baserateparam):
+    logl = 0
+    
+    for i in range(len(lenmat)):
+        for j in range(len(lenmat[i])):
+            logl += log(stats.gammaPdf(lenmat[i][j]/baserates[i], 
+                                        [alphas[j], betas[j]]))
+    
+    return logl
+
+
 def mleBaserates(lengths, params, baserateparam):
     lenmat = zip(* lengths.values())
     keys = map(lambda x: x.name, lengths.keys())
@@ -714,12 +732,6 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
             continue
         
         util.tic("fitting params for " + str(node.name))
-        
-        #ndivs = int(max(lens) / .001)
-        #dist = util.distrib(lens, size=.001)
-        #param, resid = stats.fitCurve(dist[0], dist[1], stats.normalPdf, [1,1])
-        #param, resid = stats.fitCurve(dist[0], dist[1], stats.gammaDistrib, [1,1])
-        
         param = fitNormal2(util.vdiv(lens, totlens))
         
         params[node.name] = param
@@ -735,50 +747,64 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     sigma2 = stats.variance(lens)
     params["baserate"] = [mu*mu/sigma2, mu/sigma2]
     params[stree.root.name] = [0, 1]
-    #util.writeVector("treelens", lens)
     
     util.toc()
     
     return params
     
+    
+def mleGamma(vals):
+    mu = stats.mean(vals)
+    sigma2 = stats.variance(vals)
+    return [mu*mu/sigma2, mu/sigma2]
 
-def learnModel2(lengths, gene2species, niters=10, fit=True):
+
+def learnModel2(lengths, gene2species, niters=10):
     lenmat = zip(* lengths.values())
-    keys = map(lambda x: x.name, lengths.keys())
-
+    
+    debug = util.Closure(
+        baserates=[],
+        params=[],
+        logls=[])
+    
     # init base rates
     baserates = map(sum, lenmat)
-    
-    baseratesList = [baserates]
-    paramsList = []
-    
-    # fit baserate distribution
-    dist = util.distrib(baserates, width=.2)
-    baserateparam, resid = stats.fitCurve(dist[0], dist[1], stats.gammaPdf, [1,1])
+    debug.baserates.append(baserates)
+    mu = stats.mean(baserates)
+    sigma2 = stats.variance(baserates)
+    baserateparam = [mu*mu/sigma2, mu/sigma2]
     
     
     # do EM
     for i in range(niters):
-        params = fitParams(lengths, baserates, gene2species, fit=fit)
-        means, sdevs = zip(* util.sublist(params, keys))
+        print i
+        params = {}
+        for name, lens in lengths.items():
+            if len(lens) == 0 or max(lens) == min(lens):
+                continue
+            #params[name] = fitNormal2(util.vdiv(lens, baserates))
+            params[name] = mleNormal(util.vdiv(lens, baserates))
+            #params[name] = mleGamma(util.vdiv(lens, baserates))
+        debug.params.append(params)
         
-        paramsList.append(params)
+        means, sdevs = zip(* params.values())
         
         baserates = []
-        for i in xrange(len(lenmat)):
-            baserates.append(mleBaserate(lenmat[i], means, sdevs, baserateparam))
-        
-        
-        #factor = stats.mean(util.vdiv(baseratesList[0], baserates))
-        #baserates = [x*factor for x in baserates]
-        
-        baseratesList.append(baserates)
+        for j in xrange(len(lenmat)):
+            baserates.append(mleBaserate(lenmat[j], means, sdevs, 
+                                          baserateparam))
+        debug.baserates.append(baserates)
         
         # calc likelihood
-        util.log(dataLikelihood(lenmat, baserates, means, sdevs, baserateparam))
+        logl = dataLikelihood(lenmat, baserates, means, sdevs, 
+                                baserateparam)
+        util.log("log:", logl,
+                 "mean baserate:", stats.mean(baserates))
+        debug.logls.append(logl)
+
         
     
-    return paramsList, baseratesList
+    return debug
 
 
 
@@ -788,6 +814,13 @@ def learnModel2(lengths, gene2species, niters=10, fit=True):
 
 
 def mleBaserate2(lens, means, sdevs, baserateparam):
+    ind = range(len(means))
+    ind.sort(lambda a, b: cmp(means[b], means[a]))
+    ind = ind[:len(ind) / 2 + 1]
+    means = util.mget(means, ind)
+    sdevs = util.mget(sdevs, ind)
+    lens = util.mget(lens, ind)
+    
     vars = util.vmul(sdevs, sdevs)
     denom = sum(util.vdiv(util.vmul(means, lens), vars))
     
@@ -800,6 +833,14 @@ def mleBaserate2(lens, means, sdevs, baserateparam):
 
 def mleBaserate(lens, means, sdevs, baserateparam):
     [alpha, beta] = baserateparam
+    
+    # use only best means and sdevs (highest means)
+    ind = range(len(means))
+    ind.sort(lambda a, b: cmp(means[b], means[a]))
+    ind = ind[:len(ind) / 4 + 1]
+    means = util.mget(means, ind)
+    sdevs = util.mget(sdevs, ind)
+    lens = util.mget(lens, ind)
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
@@ -815,6 +856,27 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     #print filter(lambda x: x>0, stats.solveCubic(a, b, c))
     return max(stats.solveCubic(a, b, c))
+
+
+def mleBaserateG(lens, alphas, betas, baserateparam):
+    [alpha, beta] = baserateparam
+    
+    # protect against zero
+    #ind = util.findgt(.0001, sdevs)
+    #lens = util.sublist(lens, ind)
+    #alphas = util.sublist(means, ind)
+    #betas = util.sublist(sdevs, ind)
+    
+    nom = 0
+    denom = 0
+    
+    for i in xrange(len(lens)):
+        nom += lens[i] * betas[i]
+        denom += alphas[i] - 1
+    
+    b = nom / denom
+    return b
+
 
 
 def log(x):

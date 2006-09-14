@@ -33,6 +33,8 @@ options = [
  ["e:", "exec=", "exec", "<command to exec>"],     
  ["r", "results", "results", "", 
     {"help": "just compute results"}],
+ ["R", "noresults", "noresults", "",
+    {"single": True}],
  ["g:", "groups=", "groups", "<number of exec per group>",
     {"default": [4]}],
  ["P:", "statusdir=", "statusdir", "<status directory>",
@@ -84,7 +86,8 @@ def main(conf):
         makeReport(conf)
     else:
         testAll(conf)
-        makeReport(conf)
+        if not conf["noresults"]:
+            makeReport(conf)
 
 
 def testAll(conf):

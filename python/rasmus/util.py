@@ -39,10 +39,10 @@ def GLOBALS():
         globals()["RASMUS_GLOBALS"] = {}
     return globals()["RASMUS_GLOBALS"]
 
-    
+   
 
 
-class Closure:
+class Bundle (dict):
     """
     A small class for creating a closure of variables
     handy for nested functions that need to assign to variables in an 
@@ -66,7 +66,14 @@ class Closure:
     def __init__(self, **variables):
         for key, val in variables.iteritems():
             setattr(self, key, val)
-
+            dict.__setitem__(self, key, val)
+    
+    def __setitem__(self, key, val):
+        setattr(self, key, val)
+        dict.__setitem__(self, key, val)
+    
+    
+Closure = Bundle
 
 
 class Dict (dict):

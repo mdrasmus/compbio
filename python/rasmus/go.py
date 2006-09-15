@@ -3,6 +3,33 @@ from xml.sax.handler import feature_namespaces
 import xml.sax.handler
 
 
+def readGo(filename):
+    terms = Dict(default=[])
+    
+    for line in file(filename):
+        if "GI:" in line:# or "KEGG:" in line:
+            continue
+        tokens = line.rstrip().split("\t")
+        try:
+            terms[tokens[0]].append(tokens[4])
+        except:
+            print line
+    
+    return terms
+
+
+def readCommonNames(filename):
+    commonNames = {}
+
+    for line in file(filename):
+        tokens = line.rstrip().split("\t")
+
+        if tokens[1] != '-':
+            commonNames[tokens[0]] = tokens[1]
+    return commonNames
+
+
+
 class GoTerm:
     def __init__(self):
         self.accession = ""

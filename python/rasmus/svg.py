@@ -45,8 +45,10 @@ class Svg:
             xmlns='http://www.w3.org/2000/svg' version='1.1'>\n""" % \
             (width, height))
     
-    def endSvg(self):
+    def endSvg(self, close=True):
         self.out.write("</svg>")
+        if close:
+            self.close()
     
     
     
@@ -194,7 +196,32 @@ if __name__ == "__main__":
     svg.circle(150, 250, 30, white, blue)
     
     
-    svg.text("Hello", 0, 400, 50, blue, (1, 0, 0, .1))
+
+    svg.beginStyle("font-family: arial")
+    svg.beginTransform(('translate', 0, -200))
+    svg.beginTransform(('translate', 0, 400))
+    svg.text("A", 0, 0, 40, blue, (1, 0, 0, .1))
+    svg.endTransform()
+    
+    svg.beginTransform(('translate', 0, 440))
+    svg.text("C", 0, 0, 40, blue, (1, 0, 0, .1))
+    svg.endTransform()
+    svg.endTransform()
+    svg.endStyle()
+    
+    svg.beginStyle("font-family: helvetica")
+    svg.beginTransform(('translate', 0, -200))
+    svg.beginTransform(('translate', 0, 480), ('scale', 1, 1))
+    svg.text("T", 3, 0, 40, blue, (1, 0, 0, .1))
+    svg.endTransform()
+    
+    svg.beginTransform(('translate', 0, 520), ('scale', 1, .1))
+    svg.text("G", 0, 0, 40, blue, (1, 0, 0, .1))
+    svg.endTransform()
+    svg.endTransform()
+    svg.endStyle()
+    
+    svg.line(35, 200, 35, 400, red)
     
     
     for i in range(0, 300, 10):
@@ -202,6 +229,5 @@ if __name__ == "__main__":
         svg.rect(i, 450, 10, 50, color, color)
     
     svg.endSvg()
-    svg.close()
     
     convert("out.svg")

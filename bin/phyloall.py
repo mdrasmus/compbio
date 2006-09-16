@@ -36,7 +36,7 @@ options = [
   ["", "opttree=", "opttree", "",
     {"single": True,
      "default": True,
-     "parser": util.bool2str,
+     "parser": util.str2bool,
      "help": "optimize tree topology"}],
   ["b:", "bootiter=", "bootiter", "<# iterations>",
     {"parser": int,

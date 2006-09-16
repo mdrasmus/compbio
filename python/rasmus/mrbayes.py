@@ -201,14 +201,15 @@ def readMrbayesProb(infile):
 def readNexusConTree(infile):
     count = 0
     for line in infile:
-        if line.startswith("   tree con_50_majrule ="):
+        if line.startswith("   tree con_all_compat ="):
             count += 1
             
             # only read the second tree
             if count == 2:
-                line = line.replace("   tree con_50_majrule =", "")
+                line = line.replace("   tree con_all_compat =", "")
                 tree = treelib.Tree()
                 tree.readNewick(StringIO.StringIO(line))
                 
                 return tree
-        
+    raise Exception("No tree found in output file")
+

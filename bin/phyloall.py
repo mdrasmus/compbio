@@ -85,7 +85,7 @@ options = [
      "default": None}],
   ["D:", "distext=", "distext", "<distance matrix extension>",
     {"default": [".dist"]}],
-  ["O:", "extraoutput=", "extraoutput", "",
+  ["O:", "extraoutputext=", "extraoutputext", "",
     {"single": True,
      "default": ""}]
 ]
@@ -208,8 +208,11 @@ def run(conf, infile, test=False):
     infileType, basename = getFileType(conf, infile)
 
     # parse common options
-    if conf["extraoutput"] != "":
-        conf["extraoutput"] = basename + conf["extraoutput"]
+    if conf["extraoutputext"] != "":
+        conf["extraoutput"] = basename + conf["extraoutputext"]
+    else:
+        conf["extraoutput"] = ""
+    
     
     fastafile, alignfile, distfile, labelfile, treefile = \
         getDataFiles(conf, infile)

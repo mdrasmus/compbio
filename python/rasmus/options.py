@@ -21,9 +21,12 @@ class Option:
     
     def __init__(self, option_list):
         if isinstance(option_list, str):
+            # comments
             self.comment = option_list
             self.name = None
+            
         elif isinstance(option_list, list):
+            # options
             self.short = option_list[0]
             self.long = option_list[1]
             self.name = option_list[2]
@@ -37,7 +40,9 @@ class Option:
             self.help = ""
             self.defaultGiven = False
             self.parser = lambda x: x
-
+            
+            self.defaultGiven = False
+            
             # default option specifications
             if len(option_list) >= 5:
                 for key, value in option_list[4].items():
@@ -77,6 +82,16 @@ class Configuration (dict):
                     raise OptionError("Required option '%s' not given" % option.long)
             raise OptionError("Required option '%s' not given" % key)
 
+
+def shellparser(cmd):
+    if isinstance(cmd, str) and \
+       cmd.startswith("{") and \
+       cmd.endswith("}"):
+        cmd = cmd[1:-1]
+        
+        return os.popen(cmd).read()
+    else:
+        return cmd
 
 
 def parseOptions(argv, options, quit=False, resthelp = ""):

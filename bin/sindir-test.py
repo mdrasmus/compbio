@@ -43,7 +43,11 @@ options = [
  ["L", "local", "local", "",
     {"help": "Do not distribute jobs"}],
  ["F", "force", "force", "",
-    {"help": "Force rerun of all jobs"}]
+    {"help": "Force rerun of all jobs"}],
+ ["", "inputfiles=", "inputfiles", "{<files>}",
+    {"single": True, 
+     "parser": util.shellparser,
+     "default": ""}],
 ]
 
 
@@ -93,7 +97,8 @@ def main(conf):
 def testAll(conf):
     util.tic("testing")
     
-    files = conf[""]
+    files = conf["REST"] + conf["inputfiles"].split()
+        
     
     jobs = []
     start = int(conf["start"])
@@ -158,9 +163,7 @@ def makeReport(conf):
                                                      conf["smap"]))
     stree = algorithms.readTree(env.findFile(conf["stree"][-1]))
     
-    
-    outfiles = util.listFiles(conf["outdir"], ".tree")
-    infiles = conf[""]
+    infiles = conf["REST"] + conf["inputfiles"].split()
     
     results = []
     counts = util.Dict(1, 0)
@@ -200,7 +203,12 @@ def makeReport(conf):
     total = len(results)
     ncorrect = util.counteq(True, util.cget(results, 1))
     nwrong = util.counteq(False, util.cget(results, 1))
-    rferror = stats.mean(util.cget(results, 2))
+    
+    rfs = util.cget(results, 2)
+    if len(rfs) > 0:
+        rferror = stats.mean(rfs)
+    else:
+        rferror = -1
     
     
     print >>out, "total:         %d" % total

@@ -8,8 +8,10 @@ import treelib
 
 
 
-def phyml(seqs, verbose=True, force = False, args=None, 
-          usertree=None, seqtype="pep", saveOutput="", bootiter=0):
+def phyml(seqs, verbose=True, args=None, 
+          usertree=None, seqtype="pep", saveOutput="", bootiter=0,
+          opttree=True, optbranches=True):
+    
     phylip.validateSeq(seqs)
     cwd = phylip.createTempDir()
     
@@ -29,21 +31,33 @@ def phyml(seqs, verbose=True, force = False, args=None,
         usertree = treelib.unroot(usertree)
         phylip.writeInTree("intree", usertree, labels)
         treefile = "intree"
-        opttree = "n y"
     else:
         treefile = "BIONJ"
-        opttree = "y y"
+    
+    
+    optimize = ""
+    if opttree:
+        optimize += "y "
+    else:
+        optimize += "n "
+    
+    if optbranches:
+        optimize += "y "
+    else:
+        optimize += "n "
+    
     
     if args == None:
         if seqtype == "dna":
             args = "infile 0 s 1 %d HKY e e 2 e %s %s" % \
-                (bootiter, treefile, opttree)
+                (bootiter, treefile, optimize)
         elif seqtype == "pep":
             args = "infile 1 s 1 %d JTT e 2 e %s %s" % \
-                (bootiter, treefile, opttree)
+                (bootiter, treefile, optimize)
         else:
             assert False, "unknown sequence type '%s'" % seqtype
-        
+    
+    
     phylip.execPhylip("phyml %s" % args, options, verbose)
     
     # parse tree

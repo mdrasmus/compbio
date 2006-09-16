@@ -147,12 +147,9 @@ def checkOutput(conf, infile, stree, gene2species):
     tree1 = algorithms.readTree(outfile)
     tree2 = algorithms.readTree(correctTreefile)
 
-    tree1 = phyloutil.reconRoot(tree1, stree, gene2species)
-    tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
-
-    hash1 = phyloutil.hashTree(tree1)
-    hash2 = phyloutil.hashTree(tree2)
-    
+    phyloutil.reconRoot(tree1, stree, gene2species, newCopy=False)
+    phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
+        
     return tree1, tree2
 
 
@@ -171,6 +168,7 @@ def makeReport(conf):
     
     
     for infile in infiles:
+        util.logger(infile)
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
         
@@ -187,13 +185,9 @@ def makeReport(conf):
         shash2 = phyloutil.hashTree(tree2, gene2species)
         counts[(shash1,shash2)] += 1
         
-        if hash1 == hash2:
-            results.append([basefile, True, error])
-        else:
-            results.append([basefile, False, error])
+        results.append([basefile, hash1 == hash2, error])
         
-        
-        orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
+        #orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
     
     
     # print final results    

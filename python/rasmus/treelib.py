@@ -812,11 +812,18 @@ def removeSingleChildren(tree):
     
     # actually remove children
     for node in removed:
-        dist = node.dist        
-        tree2 = subtree(tree, node.children[0])
-        node.children[0].dist += node.dist
-        tree.removeTree(node.children[0])
-        tree.replaceTree(node, tree2)
+        newnode = node.children[0]
+        
+        # add distance
+        newnode.dist += node.dist
+        
+        # change parent and child pointers
+        newnode.parent = node.parent
+        index = node.parent.children.index(node)
+        node.parent.children[index] = newnode
+        
+        # remove old node
+        del tree.nodes[node.name]
 
     # remove singleton from root
     if len(tree.root.children) == 1:

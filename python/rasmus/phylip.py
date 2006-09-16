@@ -403,7 +403,8 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
         tree = readOutTree("outtree", labels, bootiter)
         
         # parse likelihood
-        tree.data["logl"] = readLogl("outfile")
+        if prog in ["dnaml", "proml"]:
+            tree.data["logl"] = readLogl("outfile")
         
     else:
         trees = readOutTree("outtree", labels, bootiter)

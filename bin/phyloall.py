@@ -310,9 +310,8 @@ def align2tree(conf, prog, alignfile, basename):
                                  verbose=conf["verbose"],
                                  saveOutput=conf["extraoutput"])
         
-        if tree != None:
-            if conf["bootiter"] > 1:
-                tree = phylip.consense(tree, verbose=conf["verbose"])
+        if conf["bootiter"] > 1:
+            tree = phylip.consense(tree, verbose=conf["verbose"])
     
     elif prog in ["phyml_dna", "phyml_pep"]:
         if prog == "phyml_dna":
@@ -343,8 +342,7 @@ def align2tree(conf, prog, alignfile, basename):
     else:
         raise "unknown phylogeny program '%s'" % prog
     
-    if tree != None:
-        tree.writeNewick(treefile)
+    tree.writeNewick(treefile)
 
 
 

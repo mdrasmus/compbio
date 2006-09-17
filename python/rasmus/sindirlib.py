@@ -482,6 +482,11 @@ def setTreeDistances(conf, tree, distmat, genes):
     #    assert node.dist >= 0
     
     
+    # catch unusual case that may occur in greedy search
+    if sum(x.dist for x in tree.nodes.values()) == 0:
+        for node in tree.nodes.values():
+            node.dist = .01
+    
     tree.data["error"] = math.sqrt(scipy.dot(resids, resids)) / \
                                    sum(x.dist for x in tree.nodes.values())
     

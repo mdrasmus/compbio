@@ -84,7 +84,7 @@ def getOutputTree(conf, infile):
 def main(conf):
     env.addEnvPaths("DATAPATH")
     
-    print "Pipeline is using dispatch: '%s'", pipeline.dispatch
+    print "Pipeline is using dispatch: '%s'" % pipeline.dispatch
     
     if "results" in conf:
         makeReport(conf)
@@ -172,10 +172,10 @@ def makeReport(conf):
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
         
-        error = sindirlib.robinsonFouldsError(tree1, tree2)
-        
         if tree1 == None:
             continue
+        
+        error = sindirlib.robinsonFouldsError(tree1, tree2)
         
         hash1 = phyloutil.hashTree(tree1)
         hash2 = phyloutil.hashTree(tree2)

@@ -398,16 +398,20 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     # run phylip
     execPhylip(prog, args, verbose)
     
-    # parse tree
-    if bootiter == 1:
-        tree = readOutTree("outtree", labels, bootiter)
-        
-        # parse likelihood
-        if prog in ["dnaml", "proml"]:
-            tree.data["logl"] = readLogl("outfile")
-        
+    # check for PHYLIP GIVE UP
+    if not isPhylipGiveUp("outfile"):
+        # parse tree
+        if bootiter == 1:
+            tree = readOutTree("outtree", labels, bootiter)
+
+            # parse likelihood
+            if prog in ["dnaml", "proml"]:
+                tree.data["logl"] = readLogl("outfile")
+
+        else:
+            trees = readOutTree("outtree", labels, bootiter)
     else:
-        trees = readOutTree("outtree", labels, bootiter)
+        tree = None
     
     
     if saveOutput != "":
@@ -422,6 +426,14 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
         return tree
     else:
         return trees
+
+
+def isPhylipGiveUp(filename):
+    for line in file(filename):
+        if "0 trees in all found" in line:
+            return True
+    return False
+    
 
 
 def bootNeighbor(seqs, iters=100, seed=1, output=None, 

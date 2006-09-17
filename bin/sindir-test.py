@@ -231,11 +231,13 @@ def makeReport(conf):
     
     
     # find ortholog sn, sp
+    """
     [tp, fn, fp, tn] = orths
     print >>out
     print >>out, "ortholog detection:"
     print >>out, "sensitivity:", tp / float(tp + fn)
     print >>out, "specificity:", tn / float(fp + tn)
+    """
 
     util.toc()
 

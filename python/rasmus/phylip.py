@@ -6,7 +6,7 @@ import algorithms
 import fasta
 import matrix
 import util
-
+import treelib
 
 
 def validateSeq(seqs):
@@ -399,7 +399,15 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     execPhylip(prog, args, verbose)
     
     # check for PHYLIP GIVE UP
-    if not isPhylipGiveUp("outfile"):
+    if isPhylipGiveUp("outfile"):
+        tree = treelib.Tree()
+        tree.makeRoot()
+        
+        # make star tree
+        for key in seqs:
+            tree.addChild(tree.root, treelib.TreeNode(key))
+        
+    else:
         # parse tree
         if bootiter == 1:
             tree = readOutTree("outtree", labels, bootiter)
@@ -410,8 +418,6 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
 
         else:
             trees = readOutTree("outtree", labels, bootiter)
-    else:
-        tree = None
     
     
     if saveOutput != "":

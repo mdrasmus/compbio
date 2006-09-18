@@ -671,6 +671,26 @@ def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
 
 
 
+def makeColorLegend(filename, colormap, start, end, step, 
+                    width=100, height=10):
+    s = svg.Svg(openStream(filename, "w"))    
+    s.beginSvg(width, height)
+    
+    xscale =  float(width) / (end + step - start)
+    
+    for i in frange(start, end + step, step):
+        color = colormap.get(i)
+        s.rect((i-start) * xscale, 
+               0, 
+               step*xscale, height, 
+               color, color)
+    
+    s.endSvg()
+    
+    
+    
+
+
 def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             rlabels=None, clabels=None, display=True, 
             xdir=1, ydir=1, 

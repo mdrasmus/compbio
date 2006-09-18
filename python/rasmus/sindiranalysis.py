@@ -25,10 +25,10 @@ def showstree(g):
 def showcorr(data, keys):
     heatmap(corrmatrix(data), 
             colormap=ColorMap([[-1,red],
-                               [-.4, yellow],
+                               [-.4, blue],
                                [0,black],
-                               [.4,green],
-                               [1, blue]]), 
+                               [.4, blue],
+                               [1, red]]), 
     rlabels=keys,
     clabels=keys, 
     xmargin=100, 

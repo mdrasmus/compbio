@@ -49,6 +49,9 @@ def main(param):
     # process alignments
     util.tic("process alignments")
     for alnFile in param[""]:
+        if not os.path.exists(alnFile):
+            util.log("skipping '%s', does not exist" % alnFile)
+        
         newfile = alnFile.replace(param["oldext"], param["newext"])
         util.log(alnFile, "===>", newfile)
         aln = fasta.readFasta(alnFile)

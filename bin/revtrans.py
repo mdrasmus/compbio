@@ -51,6 +51,7 @@ def main(param):
     for alnFile in param[""]:
         if not os.path.exists(alnFile):
             util.log("skipping '%s', does not exist" % alnFile)
+            continue
         
         newfile = alnFile.replace(param["oldext"], param["newext"])
         util.log(alnFile, "===>", newfile)

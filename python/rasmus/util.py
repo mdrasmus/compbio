@@ -384,7 +384,9 @@ def flatten(lst, depth=INF):
     flat = []
     
     for i in lst:
-        if isinstance(i, list) and depth > 0:
+        if (isinstance(i, list) or \
+            isinstance(i, tuple)) \
+           and depth > 0:
             flat.extend(flatten(i, depth-1))
         else:
             flat.append(i)

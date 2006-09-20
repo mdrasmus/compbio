@@ -52,7 +52,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
 
-def writeNexus(out, names, seqs, format="pep", options=None):
+def writeNexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
     # setup options
     if options is None:
         options = {}
@@ -74,9 +74,14 @@ format datatype=%s interleave=yes gap=-;
 matrix
 """ % (len(seqs), len(seqs[0]), format)
     
+    totalsize = len(seqs[0])
+    size = 0
+    
     # write sequences
-    for name, seq in zip(names, seqs):
-        print >>out, "%s\t%s" % (name, seq)
+    while size < totalsize:
+        for name, seq in zip(names, seqs):
+            print >>out, "%s\t%s" % (name, seq[size:size+seqwidth])
+        size += seqwidth
     
     print >>out, """\
 ;

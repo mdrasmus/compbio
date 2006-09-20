@@ -44,6 +44,17 @@ def var(vals):
 """
 
 
+def msqerr(vals1, vals2):
+    """Mean squared error"""
+    
+    assert len(vals1) == len(vals2), "lists are not the same length"
+    
+    
+    return mean([(vals1[i] - vals2[i]) ** 2 
+                 for i in xrange(len(vals1))])
+    
+    
+
 def variance(vals):
     u = mean(vals)
     return sum(map(lambda x: (x - u)**2, vals)) / float(len(vals)-1)

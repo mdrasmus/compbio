@@ -362,7 +362,8 @@ def simBranchLen(conf, baserate, param, midpoint, endpoint):
     frac = endpoint - midpoint
     
     while blen <= 0:
-        blen = baserate * random.normalvariate(frac * param[0], frac * param[1])
+        blen = baserate * random.normalvariate(frac * param[0], 
+                                               math.sqrt(frac) * param[1])
     
     return blen
 

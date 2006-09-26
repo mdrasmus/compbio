@@ -34,7 +34,11 @@ options = [
     ["n:", "ntrees=", "ntrees", "<number of trees to produce>",
         {"single": True,
          "default": 1,
-         "parser": int}],    
+         "parser": int}], 
+    ["", "start=", "start", "<starting number>",
+        {"single": True,
+         "default": 0,
+         "parser": int}],
     ["l:", "seqlen=", "seqlen", "<length of starting sequence>",
         {"single": True,
          "default": 0,
@@ -169,7 +173,7 @@ def main(conf):
     
     # simulate
     util.tic("simulating %d sequences" % conf["ntrees"])
-    for i in range(conf["ntrees"]):
+    for i in range(conf["start"], conf["ntrees"]):
         util.log("simulating", i)
         
         # create initial sequence

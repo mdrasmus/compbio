@@ -574,7 +574,8 @@ def getSplit(tree):
         edge2 = sorted([tree.root.name, tree.root.children[1].name])
         if edge1 > edge2:
             edge1, edge2 = edge2, edge1
-        del splits2[tuple(edge1)]
+        if edge1 in splits2 and edge2 in splits2:
+            del splits2[tuple(edge1)]
     
     return splits2
               

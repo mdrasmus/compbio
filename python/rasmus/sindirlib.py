@@ -585,10 +585,6 @@ def robinsonFouldsError(tree1, tree2):
 
     overlap = set(splits1.values()) & set(splits2.values())
     
-    print splits1
-    print splits2
-    print overlap
-    
     #assert len(splits1) == len(splits2)
 
     return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))

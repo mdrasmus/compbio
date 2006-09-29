@@ -5,15 +5,6 @@
 """
 
 import os, copy
-#from socket import getfqdn
-
-
-#hostname = getfqdn()
-
-# paths (NOT USED, REMOVE SOON)
-datapath = "/afs/csail.mit.edu/u/r/rasmus/data/"
-data = datapath
-genomepath = "/afs/csail.mit.edu/u/r/rasmus/data/genomes/"
 
 
 

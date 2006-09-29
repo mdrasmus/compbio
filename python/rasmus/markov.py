@@ -4,6 +4,7 @@ import random
 def metropolis(proposal, density, initState, steps):
     states = [initState]
     p = density(initState)
+    
     for i in xrange(steps):
         while True:
             state = proposal(states[-1])

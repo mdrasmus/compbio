@@ -567,7 +567,15 @@ def getSplit(tree):
         
         s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
         splits2[edge] = s
-
+    
+    # if tree is rooted, remove duplicate edge
+    if treelib.isRooted(tree):
+        edge1 = sorted([tree.root.name, tree.root.children[0].name])
+        edge2 = sorted([tree.root.name, tree.root.children[1].name])
+        if edge1 > edge2:
+            edge1, edge2 = edge2, edge1
+        del splits2[tuple(edge1)]
+    
     return splits2
               
 
@@ -576,7 +584,11 @@ def robinsonFouldsError(tree1, tree2):
     splits2 = getSplit(tree2)
 
     overlap = set(splits1.values()) & set(splits2.values())
-
+    
+    print splits1
+    print splits2
+    print overlap
+    
     #assert len(splits1) == len(splits2)
 
     return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))

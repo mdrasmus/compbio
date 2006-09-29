@@ -1,5 +1,10 @@
-###############################################################################
-# Graph plot class (GNUPLOT wrapper)
+"""
+ file: plotting.py 
+ authors: Matt Rasmussen
+ date: 11/30/05
+
+ Plotting classes and functions: GNUPLOT wrapper, heatmaps
+"""
 
 import sys, os
 

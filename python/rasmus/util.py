@@ -1466,7 +1466,22 @@ def hist2(array1, array2,
                                i * width2 + low2])
     return labels, h
     
-  
+
+def histbins(bins):
+    """Adjust the bins from starts to centers, this will allow GNUPLOT to plot
+       histograms correctly"""
+    
+    bins2 = []
+    
+    if len(bins) == 1:
+        bins2 = [bins[0]]
+    else:
+        for i in range(len(bins) - 1):
+            bins2.append((bins[i] + bins[i+1]) / 2.0)
+        bins2.append(bins[-1] + (bins[-1] - bins[-2]) / 2.0)
+    
+    return bins2
+    
 
 def distrib(array, ndivs=None, low=None, width=None):
     """Find the distribution of 'array' using 'ndivs' buckets"""
@@ -1487,7 +1502,7 @@ def plothist(array, ndivs=None, low=None, width=None, **options):
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes")
     
-    p.plot(h[0], h[1], **options)
+    p.plot(histbins(h[0]), h[1], **options)
     return p
 
 def plotdistrib(array, ndivs=None, low=None, width=None, **options):
@@ -1496,7 +1511,7 @@ def plotdistrib(array, ndivs=None, low=None, width=None, **options):
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes")
     
-    p.plot(d[0], d[1], **options)
+    p.plot(histbins(d[0]), d[1], **options)
     return p
 
 def histInt(array):

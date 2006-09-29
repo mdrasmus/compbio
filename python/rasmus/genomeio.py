@@ -37,7 +37,8 @@ def genefile(genome):
     return "%s.gff" % genome
 
 
-
+# REMOVE ME
+env.genomepath = ""
 
 
 """

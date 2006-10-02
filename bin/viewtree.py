@@ -140,7 +140,7 @@ for treefile in (conf[""] + conf["tree"]):
 
 # display topology histogram
 if conf["hist"]:
-    mat = map(list, counts.items())
+    mat = counts.items()
     mat.sort(key=lambda x: x[1], reverse=True)
     tot = float(sum(util.cget(mat, 1)))
     

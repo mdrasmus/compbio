@@ -3,6 +3,26 @@ tables.py
 
 Implements Manolis style tab-delimited table file format.
 
+
+
+#types:string int
+#default:'none' 0
+#expect:
+#delim:whitespace,space,tab,',',';'
+#author:
+#header:1
+#
+#
+#
+#
+#
+#
+name num
+data1 data2
+
+
+
+
 """
 
 import sys

@@ -805,7 +805,7 @@ def learnModel2(lengths, gene2species, niters=10):
         
         baserates = []
         for j in xrange(len(lenmat)):
-            baserates.append(mleBaserate(lenmat[j], means, sdevs, 
+            baserates.append(mleBaserate3(lenmat[j], means, sdevs, 
                                           baserateparam))
         debug.baserates.append(baserates)
         
@@ -857,6 +857,35 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)
     """
+    
+    # protect against zero
+    ind = util.findgt(.0001, sdevs)
+    lens = util.sublist(lens, ind)
+    means = util.sublist(means, ind)
+    sdevs = util.sublist(sdevs, ind)
+    
+    a = (1 - alpha) / beta
+    b = sum(means[i] * lens[i] / sdevs[i]**2
+            for i in range(len(lens))) / beta
+    c = - sum(lens[i] ** 2 / sdevs[i] ** 2
+              for i in range(len(lens))) / beta
+    
+    #print filter(lambda x: x>0, stats.solveCubic(a, b, c))
+    return max(stats.solveCubic(a, b, c))
+
+
+def mleBaserate3(lens, means, sdevs, baserateparam):
+    [alpha, beta] = baserateparam
+    
+    # use only best means and sdevs (highest means)
+    
+    ind = range(len(means))
+    ind.sort(lambda a, b: cmp(means[b], means[a]))
+    ind = ind[:len(ind) / 4 + 1]
+    means = util.mget(means, ind)
+    sdevs = util.mget(sdevs, ind)
+    lens = util.mget(lens, ind)
+    
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)

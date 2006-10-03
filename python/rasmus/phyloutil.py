@@ -722,17 +722,24 @@ def countDupLossTree(tree, stree, gene2species):
     recon = reconcile(tree, stree, gene2species)
     events = labelEvents(tree, recon)
     losses = findLoss(tree, stree, recon)
+    
+    dup = 0
+    loss = 0
 
     # count dups
     for node, event in events.iteritems():
         if event == "dup":
             recon[node].data['dup'] += 1
+            dup += 1
         elif event == "gene":
             recon[node].data['genes'] += 1
 
     # count losses
     for gnode, snode in losses:
         snode.data['loss'] += 1
+        loss += 1
+    
+    return dup, loss
 
 
 # count ancestral genes

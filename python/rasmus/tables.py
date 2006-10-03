@@ -170,15 +170,35 @@ class Table (list):
         
         return mat
     
+    
+    def filter(self, cond):
+        tab = Table(headers = self.headers)
+        
+        for row in self:
+            if cond(row):
+                tab.append(row)
+        
+        return tab
+    
+    
+    def sort(self, cmp=cmp, key=None, reverse=False, field=None):
+        if field != None:
+            key = lambda row: row[field]        
+        list.sort(self, cmp=cmp, key=key, reverse=reverse)
+        
 
     def __repr__(self):
+        s = StringIO.StringIO("w")
+        printcols(self.getMatrix(), spacing=2, out=s)
+        return s.getvalue()
+    
+    
+    def __str__(self):
         s = StringIO.StringIO("w")
         self.write(s)
         return s.getvalue()
     
     
-    def __str__(self):
-        return self.__repr__()
 
 
 def manoli_str2bool(text):

@@ -77,7 +77,7 @@ m = None
 gene2species = None
 vis = None
 conf = {}
-seqs = {}
+seqs = FastaDict()
 
 
 
@@ -189,7 +189,7 @@ def readAllSeqs():
             seqs.read(seqfile)
             util.toc()
         except: 
-            util.log("cannot read fasta '%s'" % seqfile)
+            util.log("cannot read fasta '%s.fasta'" % genome)
     util.toc()
 
 

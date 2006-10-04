@@ -401,7 +401,9 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
         for i, row in set:
             parts[-1].extend(joining[i][row])
     util.toc()
-        
+    
+    assert len(parts) == len(unionPart(parts))
+    
     return parts
 
 

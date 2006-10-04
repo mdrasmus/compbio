@@ -362,10 +362,8 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
 
     util.tic("determine clusters")
     sets = {}
-    for i in xrange(len(parts1)):
-        sets[(0, i)] = algorithms.UnionFind([(0, i)])
-    for i in xrange(len(parts1)):
-        sets[(1, i)] = algorithms.UnionFind([(1, i)])
+    for part in hits:
+        sets[part] = algorithms.UnionFind([part])
 
     
     # merge top avg hits

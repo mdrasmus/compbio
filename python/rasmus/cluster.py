@@ -266,7 +266,6 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
 def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
-    lookup3 = {}
     
     # value is [sum, total]
     hits = util.Dict(dim=2, default = [0, 0])
@@ -275,11 +274,6 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
         accept = conf["accept"]
     else:
         accept = False
-
-
-    
-
-
     
     
     util.tic("read hits")
@@ -335,8 +329,8 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
                 genein  = blast.query(hit)
                 geneout = blast.subject(hit)
             else:
-                genein = blast.query(hit)
-                geneout = blast.subject(hit)            
+                geneout = blast.query(hit)
+                genein = blast.subject(hit)            
             score = blast.bitscore(hit)
             
             if blast.evalue(hit) > conf["signif"]:

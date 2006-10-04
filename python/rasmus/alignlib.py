@@ -411,6 +411,27 @@ def countTransitions(seq1, seq2, counts=None):
     return counts
 
 
+def checkAlignOverlap(aln, overlap):
+    mat = aln.values()
+    
+    for i in range(len(mat)):
+        for j in range(i+1, len(mat)):
+            overlaps = 0
+            
+            for k in range(aln.alignlen()):
+                gap1 = (mat[i][k] == '-')
+                gap2 = (mat[j][k] == '-')
+                
+                if gap1 == gap2 == False:
+                    overlaps += 1
+            
+            if overlaps < overlap * aln.alignlen():
+                print "%s\t%s\toverlap %d (%2.0f%%) out of %d" % \
+                    (aln.keys()[i], aln.keys()[j], overlaps, 
+                     100 * (overlaps / float(aln.alignlen())),
+                     aln.alignlen())
+
+
 #-------------------------------------------------------------------------------
 # Ka, Ks, four fold degeneracy
 #-------------------------------------------------------------------------------

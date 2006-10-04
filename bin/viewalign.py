@@ -11,6 +11,10 @@ options = [
         {"single": True,
          "default": 59,
          "parser": int}],
+    ["c:", "check=", "check", "<overlap percent>", 
+        {"single": True,
+         "default": None,
+         "parser": float}],
     ]
 
 
@@ -32,7 +36,13 @@ def printAlign(conf, alnfile):
     alignlib.printAlign(aln, seqwidth=conf["width"])
 
 
+
+# main
 for alnfile in alnfiles:
-    printAlign(conf, alnfile)
+    if conf['check'] != None:
+        aln = fasta.readFasta(alnfile)
+        alignlib.checkAlignOverlap(aln, conf['check'])
+    else:
+        printAlign(conf, alnfile)
     
  

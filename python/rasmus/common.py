@@ -18,8 +18,10 @@ import env, svg, alignlib
 
 # bio tools
 import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast
+import tablelib
 
 from phyloutil import viewTree
+from tablelib import Table
 
 # common compbio imports
 try:

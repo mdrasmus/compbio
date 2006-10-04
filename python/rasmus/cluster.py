@@ -364,7 +364,7 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
     sets = {}
     for i in xrange(len(parts1)):
         sets[(0, i)] = algorithms.UnionFind([(0, i)])
-    for i in xrange(len(parts2)):
+    for i in xrange(len(parts1)):
         sets[(1, i)] = algorithms.UnionFind([(1, i)])
 
     

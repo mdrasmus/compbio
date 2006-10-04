@@ -481,7 +481,7 @@ def main(conf):
         pipeline = depend.Pipeline(conf["statusdir"])
         pipeline.setMaxNumProc(conf["nproc"])
         
-        prefix = " ".join(sys.argv[:-len(files)]) + " "
+        prefix = " ".join(sys.argv[:-len(files2)]) + " "
         jobs = []
         
         for i in range(0, len(files), conf["groupsize"]):

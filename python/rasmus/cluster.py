@@ -359,6 +359,9 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
         util.toc()
     util.toc()
     
+    assert len(parts1) == len(unionPart(parts1))
+    assert len(parts2) == len(unionPart(parts2))
+    
 
     util.tic("determine clusters")
     sets = {}

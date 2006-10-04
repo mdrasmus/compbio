@@ -266,6 +266,7 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
 def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
+    lookup3 = {}
     
     # value is [sum, total]
     hits = util.Dict(dim=2, default = [0, 0])
@@ -276,44 +277,9 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
         accept = False
 
 
-    util.tic("read outgroup hits")    
-    outbest = util.Dict(default=[0, 0])
+    
 
-    for blastfile, order in outblastfiles:
-        util.tic("determine best hits '%s'" % os.path.basename(blastfile))
-        for hit in blast.BlastReader(blastfile):
-            if order:
-                gene1 = blast.query(hit)
-                gene2 = blast.subject(hit)
-            else:
-                gene2 = blast.query(hit)
-                gene1 = blast.subject(hit)            
-            score = blast.bitscore(hit)
-            
-            if blast.evalue(hit) > conf["signif"]:
-                continue
-            
-            # create a key for a partition: (side, index)
-            if gene1 in lookup1:
-                partin = (0, lookup1[gene1])
-            else:
-                parts1.append([gene1])
-                lookup1[gene1] = len(parts1) - 1
-                partin = (0, len(parts1) - 1)
-            
-            if gene2 in lookup2:
-                partin = (1, lookup2[gene2])
-            else:
-                parts2.append([gene2])
-                lookup2[gene2] = len(parts2) - 1
-                partin = (1, len(parts2) - 1)
-            
-            val = outbest[partin]
-            val[0] += score
-            val[1] += 1
-            
-        util.toc()
-    util.toc()
+
     
     
     util.tic("read hits")
@@ -355,6 +321,38 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
             val[0] += score
             val[1] += 1
             hits[part2][part1] = val
+            
+        util.toc()
+    util.toc()
+    
+    
+    util.tic("read outgroup hits")    
+    outbest = util.Dict(default=[0, 0])
+    for blastfile, order in outblastfiles:
+        util.tic("determine best hits '%s'" % os.path.basename(blastfile))
+        for hit in blast.BlastReader(blastfile):
+            if order:
+                genein  = blast.query(hit)
+                geneout = blast.subject(hit)
+            else:
+                genein = blast.query(hit)
+                geneout = blast.subject(hit)            
+            score = blast.bitscore(hit)
+            
+            if blast.evalue(hit) > conf["signif"]:
+                continue
+            
+            # create a key for a partition: (side, index)
+            if genein in lookup1:
+                partin = (0, lookup1[genein])
+            elif gene1 in lookup2:
+                partin = (1, lookup2[genein])
+            else:
+                continue
+            
+            val = outbest[partin]
+            val[0] += score
+            val[1] += 1
             
         util.toc()
     util.toc()

@@ -364,7 +364,6 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
     sets = {}
     for part in hits:
         sets[part] = algorithms.UnionFind([part])
-
     
     # merge top avg hits
     for part1 in hits:

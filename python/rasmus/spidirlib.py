@@ -1,6 +1,7 @@
 #
-# SINDIR library
+# SPIDIR library
 #
+# note: SPIDIR was a codename, it may still be present in the code.
 #
 
 
@@ -168,7 +169,7 @@ def printVisitedTrees(visited):
 #-------------------------------------------------------------------------------
 
 def writeParams(filename, params):
-    """Write SINDIR model parameters to a file"""
+    """Write SPIDIR model parameters to a file"""
     
     out = file(filename, "w")
     
@@ -180,7 +181,7 @@ def writeParams(filename, params):
 
 
 def readParams(filename):
-    """Read SINDIR model parameters to a file"""
+    """Read SPIDIR model parameters to a file"""
     
     infile = file(filename)
     params = {}
@@ -2066,11 +2067,11 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
 
 
 #-------------------------------------------------------------------------------
-# Main SINDIR algorithm function
+# Main SPIDIR algorithm function
 #-------------------------------------------------------------------------------
 
 def sindir(conf, distmat, labels, stree, gene2species, params):
-    """Main function for the SINDIR algorithm"""
+    """Main function for the SPIDIR algorithm"""
     
     setDebug(conf["debug"])
     
@@ -2079,7 +2080,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     tree = None
     visited = {}
     
-    util.tic("SINDIR")
+    util.tic("SPIDIR")
     
     # do auto searches
     for search in conf["search"]:
@@ -2178,6 +2179,16 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             debug("SEARCH: NEVER saw correct tree")
 
     
+    
+    
+    
+    # return ML tree
+    if True:
+        trees = [x[1] for x in visited.itervalues()]
+        i = util.argmax([x.data["logl"] for x in trees])
+        return trees[i], trees[i].data["logl"]
+    
+    """
     # find best tree
     if False:
         errorfactor = 1.3
@@ -2209,14 +2220,6 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         i = util.argmax([x.data["logl"] for x in goodtrees])
         return goodtrees[i], goodtrees[i].data["logl"]
     
-    
-    # return ML tree
-    if True:
-        trees = [x[1] for x in visited.itervalues()]
-        i = util.argmax([x.data["logl"] for x in trees])
-        return trees[i], trees[i].data["logl"]
-    
-    
     if False:
         # find best consensus tree
         items = visited.values()
@@ -2227,7 +2230,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         phylip.writeBootTrees(conf["out"] + ".trees", trees, counts=counts)
         tree = phylip.consense(trees, counts=counts, verbose=False, args="r\ny")
         return tree, 0
-
+    """
 
 
 def consensusTree(trees, counts):

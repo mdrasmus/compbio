@@ -20,6 +20,7 @@ from rasmus import paml
 from rasmus import phylip
 from rasmus import phyml
 from rasmus import puzzletree
+from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 
@@ -61,6 +62,9 @@ options = [
   ["r", "resume", "resume", "",
     {"help": "skip over files that already exist",
      "single": True}],    
+  ["", "status=", "status", "<ext1,ext2,...>",
+    {"single": True,
+     "help": "report the existance of each file with ext1 or ext2 ..."}],
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -445,13 +449,39 @@ def displayHelp():
     print >>sys.stderr    
 
 
+def reportStatus(conf, infiles):
+    exts = conf["status"].split(",")
+    
+    tab = tablelib.Table(headers=["name"])
+    for ext in exts:
+        tab.headers.append(ext)
+    
+    for infile in infiles:
+        infileType, basename = getFileType(conf, infile)
+        
+        row = {"name": basename}
+        
+        for ext in exts:
+            row[ext] = os.path.exists(basename + ext)
+        tab.append(row)
+    
+    tab.write(sys.stdout)
+    return
+
+
 def main(conf):
     # print program help    
     if conf["proghelp"]:
         displayHelp()
         sys.exit(1)
-        
     
+    
+    # file status
+    if "status" in conf:
+        reportStatus(conf, conf["REST"])
+        return
+
+
     # save arguments for each program
     allArgs = conf["args"]
     progs = conf["prog"].split(",")
@@ -464,8 +494,8 @@ def main(conf):
             allArgs[i] = None
     
     conf["args2"] = allArgs
+        
     
-
     # determine input files
     files2 = conf["REST"]
     files = filter(lambda x: run(conf, x, test=True), files2)
@@ -474,7 +504,6 @@ def main(conf):
     
     
     util.tic("phyloall")
-    
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work
 

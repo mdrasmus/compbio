@@ -72,7 +72,7 @@ class Table (list):
                     self.append(dict(zip(self.headers, row)))
             
             # set types
-            if len(self.types) == 0:
+            if self.types == None:
                 self.types = map(type, util.mget(self[0], self.headers))
     
     
@@ -171,12 +171,16 @@ class Table (list):
     
     
     def write(self, filename, delim="\t"):
-        out = openStream(filename, "w")
+        out = util.openStream(filename, "w")
 
         # set default header if needed
         if not self.headers:
             self.headers = self[0].keys()
-
+        
+        # set default types if needed
+        if not self.types:
+            self.types = map(type, util.mget(self[0], self.headers))
+        
         # ensure types are in directives
         if DIR_TYPES not in self.comments:
             self.comments = [DIR_TYPES] + self.comments
@@ -288,7 +292,7 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
-        printcols(self.getMatrix(), spacing=2, out=s)
+        util.printcols(self.getMatrix(), spacing=2, out=s)
         return s.getvalue()
     
     
@@ -325,7 +329,7 @@ tableTypesLookup = {
 
 
 def parseTableTypes(line, delim):
-    names = line.replace("#types:", "").split(delim)
+    names = line.replace("#types:", "").replace("#Types:", "").split(delim)
     types = []
     
     for name in names:

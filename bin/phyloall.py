@@ -198,7 +198,7 @@ def getDataFiles(conf, infile):
         treefile  = getTreeFile(conf, basename)
     elif infileType == "dist":
         fastafile = None
-        alginfile = None
+        alignfile = None
         distfile  = infile
         labelfile = getLabelFile(conf, basename)
         treefile  = getTreeFile(conf, basename)

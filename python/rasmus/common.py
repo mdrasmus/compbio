@@ -21,7 +21,7 @@ import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast
 import tablelib
 
 from phyloutil import viewTree
-from tablelib import Table
+from tablelib import Table, readTable
 
 # common compbio imports
 try:

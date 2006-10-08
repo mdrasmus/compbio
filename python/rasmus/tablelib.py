@@ -43,14 +43,14 @@ DIR_DELIM    = 3
 class Table (list):
     def __init__(self, rows=[], 
                        headers=None,
-                       defaults=None,
-                       types=None,
+                       defaults={},
+                       types={},
                        filename=None):
         
         # set table info
-        self.headers = headers
-        self.defaults = defaults
-        self.types = types
+        self.headers = copy.copy(headers)
+        self.defaults = copy.copy(defaults)
+        self.types = copy.copy(types)
         self.filename = filename
         self.comments = []
         
@@ -71,24 +71,30 @@ class Table (list):
                 for row in rows:
                     self.append(dict(zip(self.headers, row)))
             
-            # set types
-            if self.types == None:
-                self.types = map(type, util.mget(self[0], self.headers))
+            # set info
+            for key in self.headers:
+                # set types
+                if key not in self.types:
+                    self.types[key] = type(self[0][key])
+            
+                # set defaults
+                if key not in self.defaults:
+                    self.defaults[key] = self.types[key]()
+                    
     
     
     def new(self):
         """return a new table with the same info"""
         
-        tab = Table(headers=copy.copy(self.headers),
-                    types=copy.copy(self.types),
-                    defaults=copy.copy(self.defaults),                    
-                    filename=copy.copy(self.filename))
+        tab = Table(headers=self.headers,
+                    types=self.types,
+                    defaults=self.defaults,
+                    filename=self.filename)
         
         tab.comments = self.comments
         
-        return tab
+        return tab        
     
-            
     
     def add(self, **kargs):
         self.append(kargs)
@@ -122,8 +128,11 @@ class Table (list):
         
         # clear table
         self.headers = None
-        self.types = []        
+        self.types = {}
+        self.defaults = {}
         self[:] = []
+        types = None
+        
         
         for line in infile:
             line = line.rstrip()
@@ -136,7 +145,7 @@ class Table (list):
             if line[0] == "#":
                 if line.startswith("#Types:") or \
                    line.startswith("#types:"):
-                    self.types = parseTableTypes(line, delim)
+                    types = parseTableTypes(line, delim)
                     self.comments.append(DIR_TYPES)
                 else:
                     self.comments.append(line)
@@ -144,42 +153,39 @@ class Table (list):
             
             # split row            
             tokens = line.split(delim)
-            
-            # check types (use string as default type)
-            while len(self.types) < len(tokens):
-                self.types.append(str)
-                
+
             
             if not self.headers:
                 # parse header
                 self.headers = tokens
+                if types:
+                    assert len(types) == len(self.headers)
+                    self.types = dict(zip(self.headers, types))
+                else:
+                    self.types = {}.fromkeys(self.headers, str)
+                self.defaults = util.mapdict(self.types,
+                                             valfunc=lambda x: x())
             else:
                 # parse data
                 row = {}
                 for i in xrange(len(tokens)):
+                    key = self.headers[i]
+                    
                     if len(tokens[i]) == 0:
                         # default value
-                        row[self.headers[i]] = self.types[i]()
+                        row[key] = self.defaults[key]
                     else:
-                        row[self.headers[i]] = self.types[i](tokens[i])
+                        row[key] = self.types[key](tokens[i])
                     
-                # default values
+                # default values for incomplete rows
                 for i in xrange(len(tokens), len(self.headers)):
-                    row[self.headers[i]] = self.types[i]()
+                    row[key] = self.defaults[self.headers[i]]
                 
                 self.append(row)
     
     
     def write(self, filename, delim="\t"):
         out = util.openStream(filename, "w")
-
-        # set default header if needed
-        if not self.headers:
-            self.headers = self[0].keys()
-        
-        # set default types if needed
-        if not self.types:
-            self.types = map(type, util.mget(self[0], self.headers))
         
         # ensure types are in directives
         if DIR_TYPES not in self.comments:
@@ -191,7 +197,10 @@ class Table (list):
                 print >>out, line
             elif line == DIR_TYPES:
                 entry = self[0]
-                out.write("#types:" + formatTableTypes(self.types, delim) + "\n")
+                out.write("#types:" +
+                          formatTableTypes(util.mget(self.types,
+                                                     self.headers),
+                                           delim) + "\n")
         
 
         # write header
@@ -263,10 +272,8 @@ class Table (list):
         
         # copy over info
         tab.headers = copy.copy(cols)
-        colOrder = util.mget(util.list2lookup(self.headers), cols)
-        tab.types = util.mget(self.types, colOrder)
-        if self.defaults:
-            tab.defaults = util.mget(self.defaults, colOrder)
+        tab.types = util.subdict(self.types, cols)
+        tab.defaults = util.subdict(self.defaults, cols)
         
         # copy data        
         for i in rows:
@@ -360,3 +367,21 @@ def readTable(filename, delim="\t"):
 def writeTable(filename, table, delim="\t"):
     table.write(filename, delim)
 
+
+
+
+if __name__ == "__main__":
+    import StringIO
+    
+    text="""\
+#
+#types:str	int
+name	num
+matt	123
+alex	456
+mike	789
+"""
+
+    tab = readTable(StringIO.StringIO(text))
+
+    

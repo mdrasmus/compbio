@@ -144,7 +144,7 @@ def printVisitedTrees(visited):
     nleaves = len(visited.values()[0][1].leaves())
     
     debug("\n\nmost likily trees out of %d visited (%5.1f total): " % \
-          (len(visited), float(numPossibleTrees(nleaves))))
+          (len(visited), numPossibleTrees(nleaves)))
     
     mat = [[key, logl, 
            tree.data["error"], 
@@ -1281,7 +1281,7 @@ def treeLogLikelihoodAllRoots(conf, tree, stree, gene2species, params,
 
 
 def numPossibleTrees(nleaves):
-    n = 1
+    n = 1.0
     
     for i in range(3, 2*nleaves-5+1, 2):
         n *= i

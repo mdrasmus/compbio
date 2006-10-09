@@ -187,6 +187,18 @@ class Table (list):
     def write(self, filename, delim="\t"):
         out = util.openStream(filename, "w")
         
+        # ensure all info is complete
+        for key in self.headers:
+            if key not in self.types:
+                if len(self) > 0:
+                    self.types[key] = type(self[0][key])
+                else:
+                    self.types[key] = str
+            
+            if key not in self.defaults:
+                self.defaults[key] = self.types[key]()
+            
+        
         # ensure types are in directives
         if DIR_TYPES not in self.comments:
             self.comments = [DIR_TYPES] + self.comments

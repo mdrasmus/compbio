@@ -611,17 +611,17 @@ class Tree:
         if not depths:
             depths = self.findDepths(self.root)
 
-        markers = util.list2dict(names)
+        markers = set(names)
 
         while len(markers) > 1:
-            names = markers.keys()
+            names = list(markers)
             ind = util.argmaxfunc(lambda x: depths[x], names)
             deepest = names[ind]
 
-            del markers[deepest]
-            markers[self.nodes[deepest].parent.name] = 1
+            markers.remove(deepest)
+            markers.add(self.nodes[deepest].parent.name)
 
-        return self.nodes[markers.keys()[0]]
+        return self.nodes[markers.members()[0]]
 
 
 def lca(nodes):

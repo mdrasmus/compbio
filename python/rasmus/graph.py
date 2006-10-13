@@ -101,13 +101,13 @@ def neighborhood(vertex, getNeighbors, radius):
 def subgraph(vertices, outEdges):
     # create empty matrix
     mat = {}
-    set = util.list2dict(vertices)
+    vertices = set(vertices)
         
     for v in vertices:
         mat[v] = {}
         edges = outEdges(v)
         for (u, edge) in edges:
-            if u in set:
+            if u in vertices:
                 mat[v][u] = edge
     
     return mat

@@ -72,7 +72,8 @@ class Bundle (dict):
         setattr(self, key, val)
         dict.__setitem__(self, key, val)
     
-    
+
+# backwards compatiable (remove soon)
 Closure = Bundle
 
 
@@ -189,6 +190,8 @@ def remove(lst, *vals):
 def sort(lst, compare=cmp):
     """Returns a sorted copy of a list
        
+       python2.5 now has sorted which fulfills the same purpose
+       
        arguments:
        lst     - a list to sort
        compare - a function for comparing items (default: cmp)
@@ -299,28 +302,20 @@ def list2lookup(lst):
     return lookup
 
 
+"""
 def list2dict(lst, val=1):
-    """
+    '''
     Creates a dict with keys from list 'lst' and values 'val'
-    """
+    
+    DEPRECATED: redundant with dict.fromkeys()
+    
+    '''
     
     dic = {}
     for i in lst:
         dic[i] = val
     return dic
-
-
-def items2dict(items):
-    """
-    Creates a dict from a list of key, value pairs
-    
-    TODO: this is redundant with dict(items).  Should remove
-    """
-    
-    dic = {}
-    for key, val in items:
-        dic[key] = val
-    return dic
+"""
 
 
 def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
@@ -700,7 +695,7 @@ def compose(* funcs):
 #
 
 def makeset(lst):
-    return list2dict(lst)
+    return dict.fromkeys(lst, 1)
 
 def union(set1, set2):
     set = {}
@@ -843,7 +838,7 @@ def openStream(filename, mode = "r"):
 
 
 #################################################################################
-# printting functions
+# printing functions
 #
 
 def defaultJustify(val):
@@ -1060,49 +1055,37 @@ def str2bool(val):
 class DelimReader:
     """Reads delimited files"""
 
-    def __init__(self, filename, delim=None, header=False, useDict=True):
+    def __init__(self, filename, delim=None):
         """Constructor for DelimReader
             
            arguments:
            filename  - filename or stream to read from
            delim     - delimiting character
-           header    - a bool specifying if the first row is a header
         """
         
         self.infile = openStream(filename)
         self.header = header
         self.delim = delim
-        self.useDict = useDict
-        self.headers = []
         
-        if self.header:
-            self.headers = self.split(self.infile.next())
-
     def __iter__(self):
         return self
     
     def next(self):
         line = self.infile.next()
         fields = self.split(line)
-        
-        if self.header and self.useDict:
-            row = {}
-            for i,j in zip(self.headers, fields):
-                row[i] = j
-            return row
-        else:
-            return fields
+        return fields
 
     def split(self, line):
         return line.rstrip().split(self.delim)
 
 
-def readDelim(filename, delim=None, header=False):
+def readDelim(filename, delim=None):
     """Read an entire delimited file into memory as a 2D list"""
     
-    reader = DelimReader(filename, delim, header)
+    reader = DelimReader(filename, delim)
     data = [row for row in reader]
     return data
+    
 
 def writeDelim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
@@ -1111,6 +1094,8 @@ def writeDelim(filename, data, delim="\t"):
     for line in data:
         print >>out, delim.join(map(str, line))
 
+"""
+DEPRECATED
 
 class IterFunc:
     def __init__(self, func):
@@ -1144,7 +1129,14 @@ def filesize(filename):
 def openZip(filename):
     (infile, outfile) = os.popen2("zcat '"+filename+"' ")
     return outfile
+    
+def linecount(filename):
+    count = 0
+    for line in openStream(filename):
+        count += 1
+    return count
 
+"""
 
 class SafeReadIter:
     def __init__(self, infile):
@@ -1159,12 +1151,6 @@ class SafeReadIter:
             raise StopIteration
         else:
             return line
-
-def linecount(filename):
-    count = 0
-    for line in openStream(filename):
-        count += 1
-    return count
 
 def readWord(infile, delims = [" ", "\t", "\n"]):
     word = ""
@@ -1318,6 +1304,8 @@ def replaceExt(filename, oldext, newext):
 ###############################################################################
 # sorting
 #
+
+
 def sortInd(array, compare = cmp):
     """Returns list of indices into 'array' sorted by 'compare'"""
     ind = range(len(array))
@@ -1330,7 +1318,7 @@ def sortPerm(array, compare = cmp):
     perm = sortInd(array, compare)
     sorted = permute(array, perm)
     return sorted, perm
-
+    
 def sortTogether(compare, array, *others):
     ind = sortInd(array, compare)
     arrays = [permute(array, ind)]

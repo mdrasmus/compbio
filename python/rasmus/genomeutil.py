@@ -1040,7 +1040,7 @@ class Matching:
 
 
     def readHomology(self, homologyFile, labelFile = None):
-        def list2dict(lst):
+        def list 2dict(lst):
             d = {}
             for item in lst:
                 d[item] = True

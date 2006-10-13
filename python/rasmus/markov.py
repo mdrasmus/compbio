@@ -36,9 +36,9 @@ if __name__ == "__main__":
     # gauss_sample = map(lambda x: random.gauss(0, 1), range(10000))
     # d, p = util.plotdistrib(gauss_sample)
     
-    func = lambda x: (stats.normal(x, 5, 1) + \
-                      stats.normal(x, -2, 1) + \
-                      stats.normal(x, 2, 1)) * .33333
+    func = lambda x: (stats.normalPdf(x, [5, 1]) + \
+                      stats.normalPdf(x, [-2, 1]) + \
+                      stats.normalPdf(x, [2, 1])) * .33333
     #func = lambda x: stats.poisson(x, .1)
     #func = lambda x: stats.gamma(x, 20, 1)
     #func = lambda x: stats.bionomial(10, x, .6)

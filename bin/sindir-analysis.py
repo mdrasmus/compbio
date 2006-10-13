@@ -3,6 +3,8 @@
 import sys, os
 from rasmus import util, env, treelib, sindirlib, stats
 
+import rpy
+
 
 options = [
   ["s:", "stree=", "stree", "<species tree>",
@@ -34,12 +36,40 @@ rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 def plotAbsLens(name, lens, low, high, step):
     p = util.Gnuplot()
     p.enableOutput(False)
-    p, prms, resid = stats.plotdistribFit(stats.gammaPdf, [1,1], 
-                                          lens, low, high, step, plot=p)
+    
+    lens = filter(util.withinfunc(low, high), lens)
+    
+    lens2 = filter(util.gtfunc(.001), lens)
+    mu = stats.mean(lens2)
+    sigma2 = stats.variance(lens2)
+    prms = [mu*mu/sigma2, mu/sigma2]
+    
+    prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
+                                   lens2, low, high, step)
+    
+    util.plotdistrib(lens, low=low, width=step, plot=p)
+    p.plotfunc(lambda x: stats.gammaPdf(x, prms), low, high, step/4.)
+    
+    
+    bins, obs = util.hist(lens, low=low, width=step)
+    tot = len(lens)
+    ext = map(lambda x: tot * (stats.gammaCdf(x+step, prms) - 
+                               stats.gammaCdf(x, prms)), bins)
+    
+    ind = util.find(lambda x: x>5, ext)
+    ind = ind[1:]
+    obs = util.mget(obs, ind)
+    bins = util.mget(bins, ind)
+    ext = util.mget(ext, ind)
+    
+    chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
+    pval =chisq["p.value"]
+    print name, "%f" % pval, pval > .05
+    
     p.set(xmin=low, xmax=high, 
           xlab="sub/site",
-          main="%s absolute branch lengths (a=%f, b=%f, resid=%f)" % 
-          (str(name), prms[0], prms[1], resid))
+          main="%s absolute branch lengths (a=%f, b=%f, Pval=%e)" % 
+          (str(name), prms[0], prms[1], pval))
     
     return p
 
@@ -47,20 +77,43 @@ def plotAbsLens(name, lens, low, high, step):
 def plotRelLens(name, params, lens, low, high, step):
     p = util.Gnuplot()
     p.enableOutput(False)
-    p, prms, resid = stats.plotdistribFit(stats.normalPdf, params, 
-                                          lens, low, high, step, plot=p)
-    p.plotfunc(lambda x: stats.normalPdf(x, params), low, high, step,
-               plab = "sindir param")
-    p.data[1].options["plab"] = "best fit"
+    
+    lens = filter(util.withinfunc(low, high), lens)
+    lens2 = filter(util.withinfunc(.00001, high), lens)
+    
+    prms, resid = stats.fitDistrib(stats.normalPdf, params, 
+                                   lens2, low, high, step)    
+    util.plotdistrib(lens, low=low, width=step, plot=p)
+    p.plotfunc(lambda x: stats.normalPdf(x, prms), low, high, step/4.)
+    
+    bins, obs = util.hist(lens, low=low, width=step)
+    tot = len(lens)
+    ext = map(lambda x: tot * (stats.normalCdf(x+step, prms) - 
+                               stats.normalCdf(x, prms)), bins)
+    
+    ind = util.find(lambda x: x>5, ext)
+    ind = ind[1:]
+    obs = util.mget(obs, ind)
+    bins = util.mget(bins, ind)
+    ext = util.mget(ext, ind)
+    
+    
+    
+    chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
+    pval = chisq["p.value"]
+    print name, pval, pval > .05
+    
+    #p.data[1].options["plab"] = "best fit"
     p.set(xmin=low, xmax=high, 
           xlab="rel sub/site",
-          main="%s relative branch lengths (mean=%f, sdev=%f, resid=%f)" % 
-          (str(name), params[0], params[1], resid))
+          main="%s relative branch lengths (mean=%f, sdev=%f, pval=%e)" % 
+          (str(name), params[0], params[1], pval))
     
     return p
     
 
 # output params
+os.system("mkdir -p %s" % conf["outdir"])
 os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
           (conf["params"], conf["stree"], conf["outdir"]))
 
@@ -88,26 +141,30 @@ for name in stree.nodes:
     p = plotAbsLens(name, lens[name], low, high, step)
     p.enableOutput()
     p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
+    
+    
 util.toc()
+
 
 
 # plot all rel branch distributions
 util.tic("plot relative branch lengths")
 for name in stree.nodes:
     if name not in lens:
-        util.log("skipping abs '%s'" % str(name))
+        util.log("skipping rel '%s'" % str(name))
         continue
 
     util.log("plot rel '%s'" % str(name))
 
     low = 0
     high = 3 * stats.mean(rlens[name])
-    step = (high - low) / 50.
+    step = (high - low) / 100.
     p = plotRelLens(name, params[name], rlens[name], low, high, step)
     p.enableOutput()
     p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
 util.toc()
 
+sys.exit(1)
 
 
 # correlation matrix

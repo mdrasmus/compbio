@@ -850,14 +850,14 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     [alpha, beta] = baserateparam
     
     # use only best means and sdevs (highest means)
-    """
+    
     ind = range(len(means))
     ind.sort(lambda a, b: cmp(means[b], means[a]))
     ind = ind[:len(ind) / 4 + 1]
     means = util.mget(means, ind)
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)
-    """
+    
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)

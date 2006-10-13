@@ -4,13 +4,12 @@ tables.py
 Implements Manolis style tab-delimited table file format.
 
 
-
-#types:string int
-#default:'none' 0
-#expect:
-#delim:whitespace,space,tab,',',';'
-#author:
-#header:1
+##delim:whitespace,space,tab,',',';'
+##types:string int
+##default:'none' 0
+##expect:
+##author:
+##header:1
 #
 #
 #
@@ -36,7 +35,7 @@ import util
 DIR_TYPES    = 0
 DIR_HEADERS  = 1
 DIR_DEFAULTS = 2
-DIR_DELIM    = 3
+#DIR_DELIM    = 3
 
 
 
@@ -53,6 +52,8 @@ class Table (list):
         self.types = copy.copy(types)
         self.filename = filename
         self.comments = []
+        self.delim = "\t"
+        self.nheaders = 1
         
         
         # set data
@@ -67,7 +68,8 @@ class Table (list):
             # list of lists
             elif isinstance(rows[0], list):
                 if self.headers == None:
-                    raise Exception("must specify headers with 2D list")
+                    self.headers = range(len(rows[0]))
+                    self.nheaders = 0
                 for row in rows:
                     self.append(dict(zip(self.headers, row)))
             
@@ -92,12 +94,10 @@ class Table (list):
                     filename=self.filename)
         
         tab.comments = self.comments
+        tab.delim = self.delim
+        tab.nheaders = self.nheaders
         
-        return tab        
-    
-    
-    def add(self, **kargs):
-        self.append(kargs)
+        return tab
     
     
     def read(self, filename, delim="\t"):
@@ -127,11 +127,17 @@ class Table (list):
             self.filename = filename
         
         # clear table
+        self[:] = []
         self.headers = None
         self.types = {}
-        self.defaults = {}
-        self[:] = []
-        types = None
+        self.defaults = {}        
+        self.comments = []
+        self.delim = delim
+        self.nheaders = 1
+        
+        # temps for reading only
+        self.tmptypes = None
+        self.tmpdefaults = None
         
         
         for line in infile:
@@ -143,11 +149,7 @@ class Table (list):
 
             # handle comments
             if line[0] == "#":
-                if line.startswith("#Types:") or \
-                   line.startswith("#types:"):
-                    types = parseTableTypes(line, delim)
-                    self.comments.append(DIR_TYPES)
-                else:
+                if not self.readDirective(line):
                     self.comments.append(line)
                 continue
             
@@ -157,31 +159,49 @@ class Table (list):
             
             if not self.headers:
                 # parse header
-                self.headers = tokens
-                if types:
-                    assert len(types) == len(self.headers)
-                    self.types = dict(zip(self.headers, types))
+                if self.nheaders > 0:
+                    self.headers = tokens
+                else:
+                    self.headers = range(len(tokens))
+                
+                # populate types
+                if self.tmptypes:
+                    assert len(self.tmptypes) == len(self.headers)
+                    self.types = dict(zip(self.headers, self.tmptypes))
                 else:
                     self.types = {}.fromkeys(self.headers, str)
-                self.defaults = util.mapdict(self.types,
-                                             valfunc=lambda x: x())
-            else:
-                # parse data
-                row = {}
-                for i in xrange(len(tokens)):
-                    key = self.headers[i]
-                    
-                    if len(tokens[i]) == 0:
-                        # default value
-                        row[key] = self.defaults[key]
-                    else:
-                        row[key] = self.types[key](tokens[i])
-                    
-                # default values for incomplete rows
-                for i in xrange(len(tokens), len(self.headers)):
-                    row[key] = self.defaults[self.headers[i]]
                 
-                self.append(row)
+                # populate defaults
+                if self.tmpdefaults:
+                    self.defaults = {}
+                    for header, default in zip(self.headers, self.tmpdefaults):
+                        self.defaults[header] = self.types[header](default)
+                else:        
+                    self.defaults = util.mapdict(self.types,
+                                                 valfunc=lambda x: x())
+                
+                # if we used this line as a header then go to next line
+                if self.nheaders > 0:
+                    continue
+            
+            
+            # parse data
+            row = {}
+            for i in xrange(len(tokens)):
+                key = self.headers[i]
+
+                if len(tokens[i]) == 0:
+                    # default value
+                    row[key] = self.defaults[key]
+                else:
+                    row[key] = self.types[key](tokens[i])
+
+            # default values for incomplete rows
+            for i in xrange(len(tokens), len(self.headers)):
+                key = self.headers[i]
+                row[key] = self.defaults[key]
+
+            self.append(row)
     
     
     def write(self, filename, delim="\t"):
@@ -207,16 +227,13 @@ class Table (list):
         for line in self.comments:
             if isinstance(line, str):
                 print >>out, line
-            elif line == DIR_TYPES:
-                entry = self[0]
-                out.write("#types:" +
-                          formatTableTypes(util.mget(self.types,
-                                                     self.headers),
-                                           delim) + "\n")
+            else:
+                self.writeDirective(line, out, delim)
         
 
         # write header
-        print >>out, delim.join(self.headers)
+        if self.nheaders > 0:
+            print >>out, delim.join(self.headers)
 
         # write data
         for row in self:
@@ -229,7 +246,81 @@ class Table (list):
         else:
             raise Exception("Table has no filename")
     
+    
+        
+    
+    def determineDirective(self, line):
+        if line.startswith("#Types:") or \
+           line.startswith("#types:") or \
+           line.startswith("##types:"):
+            # backwards compatible
+            return DIR_TYPES
+            
+        elif line.startswith("##defaults:"):
+            return DIR_DEFAULTS
+            
+        elif line.startswith("##headers:"):
+            return DIR_HEADERS
+            
+        else:
+            return None
+    
+    
+    def readDirective(self, line):
+        """Attempt to read a line with a directive"""
+        
+        directive = self.determineDirective(line)
+        
+        if directive == None:
+            return False
+        
+        rest = line[line.index(":")+1:]
+        self.comments.append(directive)
+        
+        if directive == DIR_TYPES:
+            self.tmptypes = parseTableTypes(rest, self.delim)
+            return True
+            
+        elif directive == DIR_DEFAULTS:
+            self.tmpdefaults = rest.split(self.delim)
+            return True
+            
+        elif directive == DIR_HEADERS:
+            self.nheaders = int(rest)
+            if self.nheaders not in [0, 1]:
+                raise "Only 0 or 1 headers are allowed"
+            return True
+        
+        else:
+            return False
+    
+    
+    def writeDirective(self, line, out, delim):
+        """Write a directive"""
+        
+        if line == DIR_TYPES:
+            entry = self[0]
+            out.write("##types:" +
+                      formatTableTypes(util.mget(self.types,
+                                                 self.headers),
+                                       delim) + "\n")
+        elif line == DIR_DEFAULTS:
+            out.write("##defaults:" +
+                      delim.join(map(str, 
+                                util.mget(self.defaults, self.headers))) + "\n")
+        
+        elif line == DIR_HEADERS:
+            out.write("##header:%d\n" % self.nheaders)
+        
+        else:
+            raise "unknown directive:", line
+    
 
+    
+    def add(self, **kargs):
+        self.append(kargs)    
+    
+    
     def lookup(self, *keys):
         """return a lookup dict based on a column 'key'
            or multiple keys"""
@@ -323,6 +414,13 @@ class Table (list):
     
 
 
+
+
+
+#
+# Types handling
+#
+
 def manoli_str2bool(text):
     """Will parse every way manolis stores a boolean as a string"""
     
@@ -348,14 +446,14 @@ tableTypesLookup = {
 
 
 def parseTableTypes(line, delim):
-    names = line.replace("#types:", "").replace("#Types:", "").split(delim)
+    names = line.split(delim)
     types = []
     
     for name in names:
         if name in tableTypesLookup:
             types.append(tableTypesLookup[name])
         else:
-            types.append(eval(name))
+            raise "unknown type '%s'" % name
     return types
 
 
@@ -369,16 +467,17 @@ def formatTableTypes(types, delim):
         else:
             names.append(t.__name__)
     return delim.join(names)
-    
+
+
+
+#
+# convenience functions
+#
 
 def readTable(filename, delim="\t"):
     table = Table()
     table.read(filename, delim=delim)
     return table
-
-def writeTable(filename, table, delim="\t"):
-    table.write(filename, delim)
-
 
 
 
@@ -387,13 +486,41 @@ if __name__ == "__main__":
     
     text="""\
 #
-#types:str	int
-name	num
-matt	123
-alex	456
-mike	789
+#
+##types:str	int	int
+##defaults:none	0	0
+#
+# hello
+#
+name	num	num2
+matt	123	3
+alex	456	
+mike	789	1
 """
 
     tab = readTable(StringIO.StringIO(text))
-
     
+    print tab.defaults
+    print tab
+    
+
+    text="""\
+#
+#
+##types:str	int	int
+##defaults:none	0	0
+##headers:0
+#
+# hello
+#
+name	0	1
+matt	123	3
+alex	456	
+mike	789	1
+"""
+
+    tab = readTable(StringIO.StringIO(text))
+    
+    print tab.defaults
+    print tab
+    print tab[0][1]

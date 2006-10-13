@@ -547,6 +547,30 @@ def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
     util.toc()
     
     return logl, tree
+
+
+def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
+    cwd = createTempDir()
+    
+    fontfile = os.popen("which font4", "r").read().rstrip()
+    
+    # create input
+    tree.write("intree")
+    
+    # initialize default arguments
+    if args == None:
+        args = "%s\nv\nn\ny" % fontfile
+    
+    # run phylip
+    execPhylip("drawgram", args, verbose)
+    
+    os.rename("plotfile", "../" + plotfile)
+    
+    if saveOutput != "":
+        saveTempDir(cwd, saveOutput)
+    else:
+        cleanupTempDir(cwd)
+    
     
 
 #

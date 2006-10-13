@@ -681,8 +681,7 @@ def fitCurve(xdata, ydata, func, paramsInit):
 
     
 def fitDistrib(func, paramsInit, data, start, end, step):
-    ndiv = int((end - start) / step)
-    xdata, ydata = util.distrib(data, ndiv)
+    xdata, ydata = util.distrib(data, low=start, width=step)
     params, resid = fitCurve(xdata, ydata, func, paramsInit)
     return params, resid
     
@@ -692,15 +691,14 @@ def plotfuncFit(func, paramsInit, xdata, ydata, start, end, step, plot = None):
         plot = util.Gnuplot()
     
     params, resid = fitCurve(xdata, ydata, func, paramsInit)
-    plot.plot(xdata, ydata, style="boxes")
+    plot.plot(util.histbins(xdata), ydata, style="boxes")
     plot.plotfunc(lambda x: func(x, params), start, end, step)
     
     return plot, params, resid
     
 
 def plotdistribFit(func, paramsInit, data, start, end, step, plot = None):
-    ndiv = int((end - start) / step)
-    xdata, ydata = util.distrib(data, ndiv)
+    xdata, ydata = util.distrib(data, low=start, width=step)
     return plotfuncFit(func, paramsInit, xdata, ydata, start, end, step/10, plot)
 
 

@@ -56,6 +56,8 @@ class TableException (Exception):
     pass
 
 
+      
+
 
 class Table (list):
     """Class implementing the Portable Table Format"""
@@ -64,14 +66,14 @@ class Table (list):
                        headers=None,
                        defaults={},
                        types={},
-                       extraHeaders = {},
+                       extraHeaders = [],
                        filename=None):
         
         # set table info
         self.headers = copy.copy(headers)
         self.defaults = copy.copy(defaults)
         self.types = copy.copy(types)
-        self.extraHeaders = copy.copy(extraHeaders)
+        self.extraHeaders = []
         self.filename = filename
         self.comments = []
         self.delim = "\t"
@@ -81,14 +83,15 @@ class Table (list):
         
         # set data
         if len(rows) > 0:
-            # list of dicts
+            # data is a list of dicts
             if isinstance(rows[0], dict):
-                self.extend(rows)
+                for row in rows:
+                    self.append(copy.copy(row))
                 
                 if self.headers == None:
                     self.headers = sorted(self[0].keys())
         
-            # list of lists
+            # data is a list of lists
             elif isinstance(rows[0], list):
                 if self.headers == None:
                     self.headers = range(len(rows[0]))
@@ -96,7 +99,8 @@ class Table (list):
                 for row in rows:
                     self.append(dict(zip(self.headers, row)))
             
-            # set info
+            
+            # set table info
             for key in self.headers:
                 # set types
                 if key not in self.types:
@@ -105,6 +109,11 @@ class Table (list):
                 # set defaults
                 if key not in self.defaults:
                     self.defaults[key] = self.types[key]()
+        
+        # set extra headers
+        if len(extraHeaders) > 0:
+            for row in extraHeaders:
+                self.extraHeaders.append(copy.copy(row))
                 
                     
     
@@ -160,7 +169,7 @@ class Table (list):
         self.delim = delim
         self.nheaders = 1
         self.version = "1.0"
-        headerskip = 0
+        extraHeaders = []
         
         
         # temps for reading only
@@ -188,13 +197,14 @@ class Table (list):
                 # split row            
                 tokens = line.split(delim)
 
-
+                # if no headers read yet, use this line as a header
                 if not self.headers:
                     # parse header
                     if self.nheaders > 0:
-                        if headerskip >= self.nheaders - 1:
+                        # determine if extra headers exist
+                        if len(extraHeaders) >= self.nheaders - 1:
                             self.headers = tokens
-
+                            
                             # check that headers are unique
                             check = set()
                             for header in self.headers:
@@ -202,19 +212,22 @@ class Table (list):
                                     raise TableException("Duplicate header '%s'" % header)
                                 check.add(header)
                         else:
-                            self.comments.append(line)
-                            headerskip += 1
+                            # this line is an extra header
+                            extraHeaders.append(tokens)
                             continue
                     else:
+                        # default headers are numbers
                         self.headers = range(len(tokens))
-
+                    
+                    
                     # populate types
                     if self.tmptypes:
                         assert len(self.tmptypes) == len(self.headers)
                         self.types = dict(zip(self.headers, self.tmptypes))
                     else:
                         self.types = {}.fromkeys(self.headers, str)
-
+                    
+                    
                     # populate defaults
                     if self.tmpdefaults:
                         self.defaults = {}
@@ -246,10 +259,18 @@ class Table (list):
                     row[key] = self.defaults[key]
 
                 self.append(row)
-        
+                
         except Exception, e:
             e = TableException("line %d: %s" % (lineno, str(e)))
             raise e
+        
+        
+        # now that we know the headers we can process extra headers
+        for i, row in enumerate(extraHeaders):
+            if len(row) != len(self.headers):
+                raise TableException("wrong number of columns in extra header %d" % i)
+            self.extraHeaders.append(dict(zip(self.headers, row)))
+        
         
         # clear temps
         del self.tmptypes
@@ -258,6 +279,11 @@ class Table (list):
     
     
     def write(self, filename, delim="\t"):
+        """Write a table to a file or stream.
+           
+           If 'filename' is a string it will be opened as a file.
+           If 'filename' is a stream it will be written to directly.
+        """
         
         # remember filename for later saving
         if isinstance(filename, str):
@@ -275,7 +301,7 @@ class Table (list):
             
             if key not in self.defaults:
                 self.defaults[key] = self.types[key]()
-            
+        
                     
         # ensure types are in directives
         if DIR_TYPES not in self.comments:
@@ -293,7 +319,11 @@ class Table (list):
             else:
                 self.writeDirective(line, out, delim)
         
-
+        # write extra headers
+        for row in self.extraHeaders:
+            print >>out, delim.join(util.mget(row, self.headers))
+        
+        
         # write header
         if self.nheaders > 0:
             print >>out, delim.join(self.headers)
@@ -405,7 +435,7 @@ class Table (list):
     
     
     def addCol(self, header, coltype=str, default=NULL, pos=None):
-        """Add a column to the table
+        """Add a column to the table.  You must populate column data yourself.
         
            header  - name of the column
            coltype - type of the values in that column
@@ -424,6 +454,9 @@ class Table (list):
         self.headers.insert(pos, header)
         self.types[header] = coltype
         self.defaults[header] = default
+        
+        for row in self.extraHeaders:
+            row[header] = ''
     
     
     def removeCol(self, *cols):
@@ -433,11 +466,13 @@ class Table (list):
             self.headers.remove(col)
             del self.types[col]
             del self.defaults[col]
+
+            for row in self.extraHeaders:
+                del row[col]
             
             for row in self:
                 del row[col]
-        
-        
+    
     
     def renameCol(self, oldname, newname):
         """Renames a column"""
@@ -454,6 +489,11 @@ class Table (list):
         
         # change data
         for row in self:
+            row[newname] = row[oldname]
+            del row[oldname]
+        
+        # change extraHeaders
+        for row in self.extraHeaders:
             row[newname] = row[oldname]
             del row[oldname]
             
@@ -621,6 +661,14 @@ tableTypesLookup = {
     }
 
 
+tableTypesNames = {
+    str: "string",
+    int: "int",
+    float: "float",
+    bool: "bool"
+}
+
+
 
 def parseTableTypes(line, delim):
     names = line.split(delim)
@@ -635,7 +683,7 @@ def parseTableTypes(line, delim):
 
 
 def formatTableTypes(types, delim):
-    lookup = util.revdict(tableTypesLookup)
+    lookup = tableTypesNames
     names = []
     
     for t in types:
@@ -657,6 +705,9 @@ def readTable(filename, delim="\t"):
     return table
 
 
+#
+# testing
+#
 
 if __name__ == "__main__":
     import StringIO
@@ -693,11 +744,12 @@ mike	789	1
     text="""\
 ##types:str	int	int
 ##defaults:none	0	0
-##headers:2
+##headers:3
 #
 # hello
 #
-skip
+skip1	skip2	skip3
+skip4	skip5	skip6
 name	0	1
 matt	123	3
 alex	456	
@@ -706,8 +758,8 @@ mike	789	1
 
 
     tab = readTable(StringIO.StringIO(text))    
-    tab.renameCol('0', 'num')
-    tab.removeCol('1')
+    tab.renameCol('1', 'num')
+    tab.removeCol('0')
     
     print tab
     

@@ -568,7 +568,10 @@ class Table (list):
             for row in self:
                 newcol.append(row[col])
         
-        return ret
+        if len(ret) == 1:
+            return ret[0]
+        else:    
+            return ret
     
     
     

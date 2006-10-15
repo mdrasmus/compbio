@@ -6,7 +6,8 @@ from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
 
 options = [
   ["t:", "tree=", "tree", "<newick file>",
-    {"default": []}],
+    {"parser": util.shellparser,
+     "default": []}],
   ["l:", "scale=", "scale", "<scaling>",
     {"default": 20,
      "single": True,
@@ -140,7 +141,7 @@ for treefile in (conf[""] + conf["tree"]):
 
 # display topology histogram
 if conf["hist"]:
-    mat = counts.items()
+    mat = map(list, counts.items())
     mat.sort(key=lambda x: x[1], reverse=True)
     tot = float(sum(util.cget(mat, 1)))
     

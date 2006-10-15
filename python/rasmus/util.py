@@ -1064,7 +1064,6 @@ class DelimReader:
         """
         
         self.infile = openStream(filename)
-        self.header = header
         self.delim = delim
         
     def __iter__(self):

@@ -6,8 +6,7 @@ from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
 
 options = [
   ["t:", "tree=", "tree", "<newick file>",
-    {"parser": util.shellparser,
-     "default": []}],
+    {"default": []}],
   ["l:", "scale=", "scale", "<scaling>",
     {"default": 20,
      "single": True,
@@ -36,7 +35,11 @@ options = [
      "help": "covert to easy to parse format"}],
   ["H", "headings", "headings", "",
     {"single": True,
-     "help": "show heading information above each tree"}]
+     "help": "show heading information above each tree"}],
+  ["", "trees=", "trees", "{trees}",
+   {"single": True,
+    "parser": util.shellparser,
+    "default": ""}]
 ] + genomeutil.options
 
 
@@ -57,7 +60,7 @@ if "reroot" in conf:
         conf["reroot"] = int(conf["reroot"])
 
 
-for treefile in (conf[""] + conf["tree"]):
+for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
     try:
         tree = algorithms.readTree(treefile)
     except Exception, e:

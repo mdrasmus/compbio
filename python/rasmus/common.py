@@ -6,29 +6,32 @@
 """
 
 
-# rasmus imports
-from util import *
-from algorithms import *
-from fasta import *
-from matrix import *
-from stats import *
+# rasmus direct imports
+from rasmus.util import *
+from rasmus.algorithms import *
+from rasmus.fasta import *
+from rasmus.matrix import *
+from rasmus.stats import *
+from rasmus.progress import *
 
 # rasmus modules
-import env, svg, alignlib
+from rasmus import env, svg, tablelib
+from rasmus.tablelib import Table, readTable
 
 # bio tools
-import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast
-import tablelib
+from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib
+from rasmus.phyloutil import viewTree
 
-from phyloutil import viewTree
-from tablelib import Table, readTable
 
+
+"""
 # common compbio imports
 try:
     from compbio.tools import pp
     from compbio import tools
 except:
     pass
+"""
 
 # python imports
 import os, sys, re

@@ -1,8 +1,16 @@
+"""
+
+    PHYLIP Wrapper for python
+
+"""
+
+
+# python imports
 import os
 import shutil
 import sys
 
-import algorithms
+# rasmus imports
 import fasta
 import matrix
 import util
@@ -10,7 +18,8 @@ import treelib
 
 
 def validateSeq(seqs):
-    # ensure sequences are all same size
+    """Ensures sequences are all same size"""
+    
     sizes = map(len, seqs.values())
     assert max(sizes) == min(sizes), "sequences are not same length"
 
@@ -103,7 +112,7 @@ def readLogl(filename):
 def readOutTree(filename, labels, iters=1):
     if iters == 1:
         # parse output
-        tree = algorithms.Tree()
+        tree = treelib.Tree()
         tree.readNewick(filename)
         renameTreeWithNames(tree, labels)
         return tree
@@ -111,7 +120,7 @@ def readOutTree(filename, labels, iters=1):
         trees = []
         infile = file("outtree")
         for i in xrange(iters):
-            tree = algorithms.Tree()
+            tree = treelib.Tree()
             tree.readNewick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
@@ -470,7 +479,7 @@ def bootNeighbor(seqs, iters=100, seed=1, output=None,
         trees = []
         infile = file("outtree")
         for i in xrange(iters):
-            tree = algorithms.Tree()
+            tree = treelib.Tree()
             tree.readNewick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
@@ -664,7 +673,7 @@ def bootNeighbor(seqs, iters=100, seed=1, output=None,
         trees = []
         infile = file("outtree")
         for i in xrange(iters):
-            tree = algorithms.Tree()
+            tree = treelib.Tree()
             tree.readNewick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
@@ -698,7 +707,7 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
         trees = []
         infile = file("outtree")
         for i in xrange(iters):
-            tree = algorithms.Tree()
+            tree = treelib.Tree()
             tree.readNewick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
@@ -715,7 +724,7 @@ def consenseFromFile(intrees, verbose=True, args="y"):
     
     execPhylip("consense", args, verbose)
     
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick("outtree")
     
     cleanupTempDir(cwd)
@@ -728,74 +737,11 @@ def consense(trees, counts=None, verbose=True, args="y"):
     
     execPhylip("consense", args, verbose)
     
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick("outtree")
     
     cleanupTempDir(cwd)
     return tree
-
-
-
-
-
-"""
-old code
-
-
-def refine(tree, seqs, maxsize, phyfunc, alnfunc):
-    trees = algorithms.smallSubtrees(tree, maxsize)
-    prog = util.Progress(0, len(tree.leaves()), .01)
-    
-    for subtree in trees:
-        names = tree.leaveNames(subtree.root)
-        util.log("subtree size %d" % len(names))
-        for i in range(len(names)):
-            prog.update()
-    
-        refineNode(tree, subtree.root, seqs, phyfunc, alnfunc)
-
-
-
-def refineNode(tree, node, seqs, phyfunc, alnfunc):
-    # get names of sequences to refine
-    names = tree.leaveNames(node)
-    
-    # get outgroup sequence
-    if node.parent:
-        for child in node.parent.children:
-            if child != node:
-                while len(child.children) > 0:
-                    child = child.children[0]
-                outgroup = child.name
-                names.append(outgroup)
-                break
-    else:
-        outgroup = None
-    
-    print "outgroup:", outgroup
-    
-    if len(names) > 2:
-        seqs2 = util.getkeys(seqs, names)
-        aln   = alnfunc(seqs2)    
-        tree2 = phyfunc(aln, outgroup=outgroup)
-        
-        if outgroup:
-            tree2.remove(tree2.nodes[outgroup])
-            if len(tree2.root.children) == 1:
-                tree2.root = tree2.root.children[0]
-
-        # only replace tree if a new one is created
-        if len(tree2.nodes) != 0:
-            parent = node.parent
-            index = parent.children.index(node)
-            tree.removeTree(node)
-            tree.addTree(parent, tree2)
-            
-            # ensure new subtree appears in same spot as old subtree
-            parent.children = parent.children[:index] + [parent.children[-1]] + \
-                              parent.children[index:-1]
-"""
-
 
 
 
@@ -805,6 +751,5 @@ if __name__ == "__main__":
     seqs = fasta.readFasta("test/dna-align.fa")
     del seqs["target"]
 
-    reload(algorithms)
     tree = protpars(seqs, force=True, verbose=False)
     tree.write()

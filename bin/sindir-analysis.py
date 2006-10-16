@@ -137,7 +137,7 @@ for name in stree.nodes:
 
     low = 0
     high = 3 * stats.mean(lens[name])
-    step = (high - low) / 50.
+    step = (high - low) / 20. #50.
     p = plotAbsLens(name, lens[name], low, high, step)
     p.enableOutput()
     p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
@@ -158,7 +158,7 @@ for name in stree.nodes:
 
     low = 0
     high = 3 * stats.mean(rlens[name])
-    step = (high - low) / 100.
+    step = (high - low) / 20. #100.
     p = plotRelLens(name, params[name], rlens[name], low, high, step)
     p.enableOutput()
     p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))

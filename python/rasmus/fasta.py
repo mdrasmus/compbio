@@ -1,9 +1,10 @@
 import sys
 import os
 
-import util
-from seqlib import SeqDict
+from rasmus import util
+from rasmus.seqlib import SeqDict
 #from alignlib import printAlign
+
 
 
 def removestar(value):

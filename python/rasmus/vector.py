@@ -1,3 +1,9 @@
+"""
+
+ Simple vector library
+
+"""
+
 
 def vdot(u, v):
     assert len(u) == len(v)

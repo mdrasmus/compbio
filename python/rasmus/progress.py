@@ -1,7 +1,7 @@
 ###############################################################################
 # Progress classes
 
-from util import *
+from rasmus import timer
 
 
 class Progress:
@@ -30,7 +30,7 @@ class Progress:
             if stream != None:
                 print>>stream, msg % (100 * self.pos / self.end)
             else:
-                log(msg % (100 * self.pos / self.end))
+                timer.log(msg % (100 * self.pos / self.end))
 
 
 class ProgressBar (Progress):
@@ -45,9 +45,9 @@ class ProgressBar (Progress):
         else:
             title = "progress"
         
-        log("+-" + title + ("-"*(self.width-len(title)-1)) + "+")
-        indent()
-        logExact("|")
+        timer.log("+-" + title + ("-"*(self.width-len(title)-1)) + "+")
+        timer.indent()
+        timer.logExact("|")
         self.printBar()
     
     def update(self):
@@ -56,9 +56,9 @@ class ProgressBar (Progress):
             self.prog += int(self.step * self.end)
             self.printBar()
             if self.pos == self.end:
-                logExact("|\n")
+                timer.logExact("|\n")
     
     def printBar(self):
         amount = int((self.pos / self.end * self.width) - self.bar)
-        logExact("*" * amount)
+        timer.logExact("*" * amount)
         self.bar += amount

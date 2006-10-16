@@ -682,6 +682,7 @@ def fitCurve(xdata, ydata, func, paramsInit):
     
 def fitDistrib(func, paramsInit, data, start, end, step):
     xdata, ydata = util.distrib(data, low=start, width=step)
+    xdata = util.histbins(xdata)
     params, resid = fitCurve(xdata, ydata, func, paramsInit)
     return params, resid
     

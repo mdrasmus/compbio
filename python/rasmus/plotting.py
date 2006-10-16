@@ -536,10 +536,34 @@ def plot(list1, list2=[], list3=[], **options):
     g.plot(list1, list2, list3, **options)
     return g
 
+
 def plotfunc(func, start, end, step, **options):
+    """Plot a function 'func' over the range (start, end)"""
+    
     g = options.setdefault("plot", Gnuplot())
     g.plotfunc(func, start, end, step, ** options)
     return g
+
+
+def plothist(array, ndivs=None, low=None, width=None, **options):
+    """Plot a histogram of array"""
+    h = hist(array, ndivs, low, width)
+    p = options.setdefault("plot", Gnuplot())
+    options.setdefault("style", "boxes")
+    
+    p.plot(histbins(h[0]), h[1], **options)
+    return p
+
+
+def plotdistrib(array, ndivs=None, low=None, width=None, **options):
+    """Plot a distribution of array"""
+    d = distrib(array, ndivs, low, width)
+    p = options.setdefault("plot", Gnuplot())
+    options.setdefault("style", "boxes")
+    
+    p.plot(histbins(d[0]), d[1], **options)
+    return p
+
 
 def gfit(func, eqn, params, list1, list2=[], list3=[], ** options):
     g = options.setdefault("plot", Gnuplot())

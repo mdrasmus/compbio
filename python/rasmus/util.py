@@ -9,14 +9,11 @@
 
 # python libs
 import copy
-import cPickle
 import math
 import os
 import re
 import shutil
 import sys
-import time
-import traceback
 import urllib2
 
 
@@ -1240,12 +1237,14 @@ class IndentStream:
 #
 def listFiles(path, extension=""):
     """Returns a list of files in 'path' with ending with 'extension'"""
+    
     if path[-1] != "/":
         path += "/"
     files = filter(lambda x: x.endswith(extension), os.listdir(path))
     files.sort()
     files = map(lambda x: path + x, files)
     return files
+
 
 def tempfile(dir, prefix, ext):
     """Generates a a temp filename 'dir/prefix_XXXXXX.ext'"""
@@ -1293,6 +1292,8 @@ def deldir(path):
 
 
 def replaceExt(filename, oldext, newext):
+    """Safely replaces a file extension new a new one"""
+    
     if filename.endswith(oldext):
         return filename[:-len(oldext)] + newext
     else:
@@ -1483,24 +1484,6 @@ def distrib(array, ndivs=None, low=None, width=None):
     return (h[0], map(lambda x: (x/total)/width, h[1]))
 
 
-def plothist(array, ndivs=None, low=None, width=None, **options):
-    """Plot a histogram of array"""
-    h = hist(array, ndivs, low, width)
-    p = options.setdefault("plot", Gnuplot())
-    options.setdefault("style", "boxes")
-    
-    p.plot(histbins(h[0]), h[1], **options)
-    return p
-
-def plotdistrib(array, ndivs=None, low=None, width=None, **options):
-    """Plot a distribution of array"""
-    d = distrib(array, ndivs, low, width)
-    p = options.setdefault("plot", Gnuplot())
-    options.setdefault("style", "boxes")
-    
-    p.plot(histbins(d[0]), d[1], **options)
-    return p
-
 def histInt(array):
     """Returns a histogram of integers as a list of counts"""
     
@@ -1531,16 +1514,15 @@ def histDict(array):
 
 
 
-
 # import common functions from other files, 
 # so that only util needs to be included
 from timer import *
 from vector import *
-from progress import *
 from options import *
 from plotting import *
-from workspace import *
 
+
+#from progress import *
 
 
 

@@ -16,6 +16,7 @@ class OptionError (Exception):
     def __str__(self):
         return str(self.msg)
 
+
 class Option:
     """Class for commandline options"""
     

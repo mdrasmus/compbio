@@ -1,9 +1,14 @@
 ###############################################################################
 # Timer class for timing nested sections of code
 
-import os, sys, traceback
+import os, sys, traceback, time
 
-from util import *
+#from util import *
+
+
+# GLOBALS
+timer = None
+notes = None
 
 
 class Timer:
@@ -93,8 +98,7 @@ class Timer:
         self.streams.append((stream, maxdepth))
     
     def removeStream(self, stream):
-        indices = findneq(stream, cget(self.streams, 0))
-        self.streams = sublist(self.streams, indices)
+        self.streams = filter(lambda x: x[0] != stream, self.streams)
 
     def suppress(self):
         self.quiets += 1
@@ -104,9 +108,14 @@ class Timer:
 
 
 def globalTimer():
-    if not "timer" in GLOBALS():
-        GLOBALS()["timer"] = Timer()
-    return GLOBALS()["timer"]
+    global timer
+    if timer == None:
+        timer = Timer()
+    return timer
+    
+    #if not "timer" in GLOBALS():
+    #    GLOBALS()["timer"] = Timer()
+    #return GLOBALS()["timer"]
 
 def log(*text):
     return globalTimer().log(*text)
@@ -141,11 +150,13 @@ def noteflush():
     return notfile().flush()
 
 def notefile(out = None):
+    global notes
+
     if out == None:
         out = file("/dev/null", "w")
-    if "notes" not in GLOBALS():
-        GLOBALS()["notes"] = out
-    return GLOBALS()["notes"]
+    if notes == None:
+        notes = out
+    return notes
 
 
 

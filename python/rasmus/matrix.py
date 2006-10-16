@@ -2,6 +2,7 @@ import sys
 import util
 import copy
 
+from rasmus.progress import Progress
 
 class Smat:
    nrows = 0
@@ -78,7 +79,7 @@ class AdjMatrix:
 
        self.setDim(nrows, ncols, nnz)
 
-       progress = util.Progress(0, 0, self.nnz, .01)
+       progress = Progress(0, 0, self.nnz, .01)
 
        # read non-zeros
        for line in infile:

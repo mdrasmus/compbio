@@ -273,7 +273,7 @@ class Gnuplot:
             if right > bestRight:   bestRight = right
         
         # auto scale
-        if bestLeft >= .1e500:   bestLeft = "*"
+        if bestLeft >= 1e500:   bestLeft = "*"
         if bestRight <= -1e500:  bestRight = "*"
         if bestTop <= -1e500:     bestTop = "*"
         if bestBottom >= 1e500: bestBottom = "*"

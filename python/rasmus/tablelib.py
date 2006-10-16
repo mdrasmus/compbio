@@ -642,8 +642,11 @@ class Table (list):
 # Types handling
 #
 
-def manoli_str2bool(text):
+def manoli_str2bool(text=None):
     """Will parse every way manolis stores a boolean as a string"""
+    
+    if text == None:
+        return False
     
     text2 = text.lower()
     

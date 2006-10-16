@@ -92,7 +92,8 @@ class Table (list):
                     self.headers = sorted(self[0].keys())
         
             # data is a list of lists
-            elif isinstance(rows[0], list):
+            elif isinstance(rows[0], list) or \
+                 isinstance(rows[0], tuple):
                 if self.headers == None:
                     self.headers = range(len(rows[0]))
                     self.nheaders = 0

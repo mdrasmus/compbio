@@ -11,12 +11,11 @@ import xml.sax.handler
 # rasmus imports
 import blast
 import cluster
-import ensembl
-import genomeutil
 import graph
-import util
 import treelib
+import util
 
+from genomeutil import gene2species
 
 
 
@@ -28,7 +27,7 @@ def viewTree(tree, options = "-t 1"):
     
 
 
-def reconcile(gtree, stree, gene2species = genomeutil.gene2species):
+def reconcile(gtree, stree, gene2species = gene2species):
     recon = {}
     depths = stree.findDepths(stree.root)
     
@@ -142,7 +141,7 @@ def countDupLoss(gtree, stree, recon, events=None):
     
 
 
-def reconRoot(gtree, stree, gene2species = genomeutil.gene2species, 
+def reconRoot(gtree, stree, gene2species = gene2species, 
                rootby = "duploss", newCopy=True):
     # make a consistent unrooted copy of gene tree
     if newCopy:
@@ -245,7 +244,7 @@ def reconRoot(gtree, stree, gene2species = genomeutil.gene2species,
     return gtree
 
 
-def reconRoot2(gtree, stree, gene2species = genomeutil.gene2species, 
+def reconRoot2(gtree, stree, gene2species = gene2species, 
               rootby = "duploss"):
     # find reconciliation that minimizes loss
     mincost = util.INF
@@ -399,7 +398,7 @@ def hashOrderTree(tree, smap = lambda x: x):
 
 
 
-def findBranchDistrib(trees, stree, gene2species = genomeutil.gene2species, 
+def findBranchDistrib(trees, stree, gene2species = gene2species, 
                       relative = True):
     lengths = util.Dict(1, [])
     trees2 = []
@@ -798,7 +797,7 @@ def paralogs(gene, gtree, recon):
 
 
 def findBootTreeHomology(tree, stree, homology, niters, 
-                         gene2species=genomeutil.gene2species):
+                         gene2species=gene2species):
     genomes = stree.leaveNames()
     trees = partitionTree(tree, stree)
 
@@ -829,7 +828,7 @@ def findBootTreeHomology(tree, stree, homology, niters,
 
 
 def findSimplePartHomology(genes, homology,
-                         gene2species=genomeutil.gene2species):
+                         gene2species=gene2species):
     parts = util.Dict(1, [])
     for gene in genes:
         parts[gene2species(gene)].append(gene)

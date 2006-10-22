@@ -712,6 +712,60 @@ def readTable(filename, delim="\t"):
     return table
 
 
+
+def histTable(items, headers=["item", "count", "percent"]):
+    h = util.histDict(items)
+    tab = Table(headers=headers)
+    tot = float(len(items))
+
+    if len(headers) == 2:    
+        for key, val in h.items():
+            tab.append({headers[0]: key,
+                        headers[1]: val})
+    
+    elif len(headers) == 3:
+        for key, val in h.items():
+            tab.append({headers[0]: key,
+                        headers[1]: val,
+                        headers[2]: val / tot})
+    
+    else:
+        raise Exception("Wrong number of headers (2 or 3 only)")
+    
+    tab.sort(col=headers[1], reverse=True)
+    
+    return tab
+
+
+def matrix2table(matrix, rlabels=None, clabels=None, rowheader="labels"):
+    if clabels == None:
+        clabels = range(len(matrix[0]))
+        nheaders = 0
+    else:
+        nheaders = 1
+    
+    if rlabels == None:
+        tab = Table(headers=clabels)
+    else:
+        tab = Table(headers=[rowheader] + clabels)
+    tab.nheaders = nheaders
+    
+   
+    for i, row in enumerate(mat):
+        if rlabels != None:
+            row2 = {rowheader: rlabels[i]}
+        else:
+            row2 = {}
+            
+        for j in xrange(len(mat[i])):
+            row2[clabels[j]] = mat[i][j]
+        
+        tab.append(row2)
+    
+    return tab
+
+
+
 #
 # testing
 #

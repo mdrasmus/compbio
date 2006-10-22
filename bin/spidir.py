@@ -18,6 +18,7 @@ from rasmus import genomeutil
 from rasmus import fasta
 from rasmus import phylip
 from rasmus import phyloutil
+from rasmus import progress
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
@@ -206,7 +207,7 @@ def trainTree(conf, stree, gene2species):
 
     util.tic("reading trees")
     trees = []
-    prog = util.ProgressBar(len(treefiles))
+    prog = progress.ProgressBar(len(treefiles))
     for treefile in treefiles:
         prog.update()
         trees.append(treelib.readTree(treefile))

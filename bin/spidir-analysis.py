@@ -15,7 +15,11 @@ options = [
     {"single": True}],
   ["o:", "outdir=", "outdir", "<output directory>",
     {"single": True,
-     "default": "."}]
+     "default": "."}],
+  ["b:", "nbins=", "nbins", "<number of bins>",
+    {"single": True,
+     "parser": int,
+     "default": 20}]
 ]
 
 
@@ -125,44 +129,54 @@ os.system("mkdir -p %s/corr" % conf["outdir"])
 os.system("mkdir -p %s/corr/abs" % conf["outdir"])
 os.system("mkdir -p %s/corr/rel" % conf["outdir"])
 
+if 0:
+    # plot all abs branch distributions
+    util.tic("plot absolute branch lengths")
+    for name in stree.nodes:
+        if name not in lens:
+            util.log("skipping abs '%s'" % str(name))
+            continue
 
-# plot all abs branch distributions
-util.tic("plot absolute branch lengths")
-for name in stree.nodes:
-    if name not in lens:
-        util.log("skipping abs '%s'" % str(name))
-        continue
+        util.log("plot abs '%s'" % str(name))
 
-    util.log("plot abs '%s'" % str(name))
+        low = 0
+        high = 3 * stats.mean(lens[name])
+        step = (high - low) / conf["nbins"]
+        p = plotAbsLens(name, lens[name], low, high, step)
+        p.enableOutput()
+        p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
 
-    low = 0
-    high = 3 * stats.mean(lens[name])
-    step = (high - low) / 20. #50.
-    p = plotAbsLens(name, lens[name], low, high, step)
-    p.enableOutput()
-    p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
-    
-    
-util.toc()
+    util.toc()
 
+if 1:
 
+    # plot all rel branch distributions
+    util.tic("plot relative branch lengths")
+    for name in stree.nodes:
+        if name not in lens:
+            util.log("skipping rel '%s'" % str(name))
+            continue
 
-# plot all rel branch distributions
-util.tic("plot relative branch lengths")
-for name in stree.nodes:
-    if name not in lens:
-        util.log("skipping rel '%s'" % str(name))
-        continue
+        util.log("plot rel '%s'" % str(name))
 
-    util.log("plot rel '%s'" % str(name))
+        low = 0
+        high = 3 * stats.mean(rlens[name])
+        step = (high - low) / conf["nbins"]
+        p = plotRelLens(name, params[name], rlens[name], low, high, step)
+        p.enableOutput()
+        p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
+    util.toc()
 
-    low = 0
-    high = 3 * stats.mean(rlens[name])
-    step = (high - low) / 20. #100.
-    p = plotRelLens(name, params[name], rlens[name], low, high, step)
-    p.enableOutput()
-    p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
-util.toc()
+sys.exit(1)
+
+# total branch length
+util.log("plot total tree lengths")
+low = 0
+high = 3 * stats.mean(totals)
+step = (high - low) / conf["nbins"]
+p = plotAbsLens("family rate", totals, low, high, step)
+p.enableOutput()
+p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 
 sys.exit(1)
 

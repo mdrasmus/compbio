@@ -1422,7 +1422,10 @@ def hist(array, ndivs=None, low=None, width=None):
     
     # count items
     for i in array:
-        h[bucketBin(i, ndivs, low, width)] += 1
+        if i >= low:
+            j = bucketBin(i, ndivs, low, width)
+            if j < ndivs:
+                h[j] += 1
     for i in range(ndivs):
         x.append(i * width + low)
     return (x, h)

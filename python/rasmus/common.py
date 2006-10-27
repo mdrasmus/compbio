@@ -13,6 +13,7 @@ from rasmus.fasta import *
 from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
+from rasmus.vis.treevis import showTree
 
 # rasmus modules
 from rasmus import env, svg, tablelib
@@ -20,7 +21,7 @@ from rasmus.tablelib import Table, readTable
 
 # bio tools
 from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib
-from rasmus.phyloutil import viewTree
+#from rasmus.phyloutil import viewTree
 
 
 

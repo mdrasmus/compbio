@@ -409,8 +409,8 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
         events = labelEvents(tree, recon)
         
         # skip trees with duplications or with extremly long branch lengths
-        if "dup" in events.values() or \
-            max(x.dist for x in tree.nodes.values()) > 2:
+        if "dup" in events.values():# or \
+            #max(x.dist for x in tree.nodes.values()) > 2:
             continue
         else:
             trees2.append(tree)

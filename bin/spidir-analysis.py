@@ -129,7 +129,7 @@ os.system("mkdir -p %s/corr" % conf["outdir"])
 os.system("mkdir -p %s/corr/abs" % conf["outdir"])
 os.system("mkdir -p %s/corr/rel" % conf["outdir"])
 
-if 0:
+if 1:
     # plot all abs branch distributions
     util.tic("plot absolute branch lengths")
     for name in stree.nodes:
@@ -167,7 +167,7 @@ if 1:
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
     util.toc()
 
-sys.exit(1)
+#sys.exit(1)
 
 # total branch length
 util.log("plot total tree lengths")

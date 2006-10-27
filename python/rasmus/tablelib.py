@@ -128,7 +128,7 @@ class Table (list):
                     filename=self.filename,
                     extraHeaders=self.extraHeaders)
         
-        tab.comments = self.comments
+        tab.comments = copy.copy(self.comments)
         tab.delim = self.delim
         tab.nheaders = self.nheaders
         
@@ -530,6 +530,20 @@ class Table (list):
         return tab
     
     
+    def groupby(self, keyfunc):
+        groups = {}
+        
+        for row in self:
+            key = keyfunc(row)
+            
+            if key not in groups:
+                groups[key] = Table(headers=self.headers)
+            
+            groups[key].append(row)
+        
+        return groups
+    
+    
     def get(self, rows=None, cols=None):
         """Returns a table with a subset of the rows and columns"""
         
@@ -613,11 +627,21 @@ class Table (list):
         list.sort(self, cmp=cmp, key=key, reverse=reverse)
 
 
+    def __getitem__(self, key):
+        print key
+        if isinstance(key, slice):
+            # return another table if key is a slice
+            tab = self.new()
+            tab[:] = list.__getitem__(self, key)
+            return tab
+        else:
+            return list.__getitem__(self, key)
+    
+    
     def __getslice__(self, a, b):
-        tab = self.new()
-        tab[:] = list.__getslice__(self, a, b)
-        return tab
-        
+        # for python version compatibility
+        return self.__getitem__(slice(a, b))
+    
 
     def __repr__(self):
         s = StringIO.StringIO("w")

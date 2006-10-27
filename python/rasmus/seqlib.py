@@ -79,22 +79,17 @@ class SeqDict (dict):
         return [self[key] for key in self.iterkeys()]
     
     def itervalues(self):
-        keys = self.iterkeys()
-        
         def func():
-            key = keys.next()
-            return self[key]
+            for key in self.iterkeys():
+                yield self[key]
+        return func()
         
-        return util.IterFunc(func)
 
     def iteritems(self):
-        keys = self.iterkeys()
-        
         def func():
-            key = keys.next()
-            return (key, self[key])
-        
-        return util.IterFunc(func)
+            for key in self.iterkeys():
+                yield (key, self[key])
+        return func()
 
 
     

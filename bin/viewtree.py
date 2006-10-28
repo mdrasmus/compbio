@@ -2,6 +2,7 @@
 
 import sys
 from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
+from rasmus.vis import treevis
 
 
 options = [
@@ -36,6 +37,8 @@ options = [
   ["H", "headings", "headings", "",
     {"single": True,
      "help": "show heading information above each tree"}],
+  ["g", "graphical", "graphical", "",
+    {"single": True}],
   ["", "trees=", "trees", "{trees}",
    {"single": True,
     "parser": util.shellparser,
@@ -135,11 +138,17 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
             if conf["names"] and not node.isLeaf():
                 labels[node.name] = "[%s] %s" % (node.name, 
                                                  labels[node.name])
-            
-        algorithms.drawTree(tree, labels=labels,
-                            scale=conf["scale"],
-                            minlen=conf["minlen"],
-                            maxlen=conf["maxlen"])
+        
+        if conf["graphical"]:
+            treevis.showTree(tree, labels=labels,
+                                   xscale=conf["scale"],
+                                   minlen=conf["minlen"],
+                                   maxlen=conf["maxlen"])
+        else:
+            algorithms.drawTree(tree, labels=labels,
+                                scale=conf["scale"],
+                                minlen=conf["minlen"],
+                                maxlen=conf["maxlen"])
 
 
 # display topology histogram

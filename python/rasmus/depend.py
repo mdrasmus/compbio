@@ -24,7 +24,7 @@ VALID_STATUS = {
 
 DEFAULT_DISPATCH = "bash $SCRIPT"
 BASH_DISPATCH = "bash $SCRIPT"
-LSF_DISPATCH = "bsub -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
+LSF_DISPATCH = "bsub $BSUB_OPTIONS -o $STATUSDIR/$JOBNAME.output -K bash $SCRIPT"
 
 
 # autodetect dispatch

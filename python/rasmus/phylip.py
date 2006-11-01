@@ -110,15 +110,23 @@ def readLogl(filename):
 
 
 def readOutTree(filename, labels, iters=1):
+    infile = file(filename)
+    
+    # skip any numbers that may appear on the first line
+    line = infile.readline()
+    if not line[0].isdigit():
+        # reopen file
+        infile = file(filename)
+
+    
     if iters == 1:
         # parse output
         tree = treelib.Tree()
-        tree.readNewick(filename)
+        tree.readNewick(infile)
         renameTreeWithNames(tree, labels)
         return tree
     else:
         trees = []
-        infile = file("outtree")
         for i in xrange(iters):
             tree = treelib.Tree()
             tree.readNewick(infile)
@@ -451,8 +459,12 @@ def isPhylipGiveUp(filename):
     
 
 
-def bootNeighbor(seqs, iters=100, seed=1, output=None, 
+def bootNeighbor(seqs, iters=100, seed=None, output=None, 
                  verbose=True, force=False):
+    
+    if seed == None:
+        seed = random.randInt(0, 1000) * 2 + 1
+    
     validateSeq(seqs)
     cwd = createTempDir()
     util.tic("bootNeighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))

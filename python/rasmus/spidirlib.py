@@ -99,7 +99,7 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
             labels[node.name] = "[%s]\n%.3f (*) %s" % \
                 (node.name, node.dist, notes)
         
-        if False: #"params" in node.data:
+        if "params" in node.data:
             fracs = map(stats.mean, zip(* node.data["fracs"]))
             mean = sum(util.vmul(util.cget(node.data["params"], 0), fracs))
             sdev = sum(util.vmul(util.cget(node.data["params"], 1), fracs))
@@ -110,8 +110,8 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
             labels[node.name] += "\n%.3f %.3f" % (mean, sdev)
         
         
-        if "error" in node.data:
-            labels[node.name] += "\nerr %.4f" % node.data["error"]
+        #if "error" in node.data:
+        #    labels[node.name] += "\nerr %.4f" % node.data["error"]
         
         if node in events:
             labels[node.name] += " %s" % events[node]
@@ -1103,7 +1103,13 @@ def subtreeLikelihood(conf, tree, root, recon, events, stree, params, baserate):
                 shrink = dist - target
                 
                 # determine how much shrink is allowed
-                shrink = min(shrink, max(extra.dist, 0))
+                if "unfold" in extra.data:
+                    print "using extra"
+                    extradist = 2 * extra.dist
+                    dist += extra.dist
+                else:
+                    extradist = extra.dist
+                shrink = min(shrink, max(extradist, 0))
                 
                 if condDist == 0.0:
                     dist -= shrink

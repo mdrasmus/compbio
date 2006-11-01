@@ -628,7 +628,6 @@ class Table (list):
 
 
     def __getitem__(self, key):
-        print key
         if isinstance(key, slice):
             # return another table if key is a slice
             tab = self.new()

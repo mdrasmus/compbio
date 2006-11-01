@@ -200,6 +200,7 @@ class SyntenyVis:
     def __init__(self, conf, matching, rootid=get_root_id()):
         self.conf = None
         self.matching = None
+        self.refGenome     = None
         self.genes         = {}
         self.frags         = {}
         self.placedGenes   = {}
@@ -256,6 +257,7 @@ class SyntenyVis:
     def drawChromosome(self, refGenomeName, refChromName, start, end, direction=1):
         refGenome = self.matching.genomes[refGenomeName]
         refChrom  = refGenome.chroms[refChromName]
+        self.refGenome = refGenomeName
     
         # init reference fragment
         refFrag = Frag()
@@ -669,6 +671,16 @@ class SyntenyVis:
                                           conf['max-genome-sep'] / 2.0, 0,
                                           5, 20,
                                           "left", "top"))
+        elif conf['show-gene-labels'] == 'main_only':
+            if gene.chrom.genome.name == self.refGenome:
+                label = rotate(90, text_clip(gene.name, 
+                                             0, 0,
+                                             conf['max-genome-sep'] * 10000.0, 
+                                             -2*conf["gene-size"],
+                                             10, 10,
+                                             "left", "top"))
+            else:
+                label = group()
         else:
             label = group()
         

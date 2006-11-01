@@ -8,34 +8,62 @@ import os
 
 
 def layoutTree(tree, xscale, yscale, minlen, maxlen):
-    sizes = {}
-    nodept = {}
-    maxwidth = [0]
-    maxheight = len(tree.leaves()) * yscale
+    """\
+    Determines the x and y coordinates for every branch in the tree.    
+    """
     
-    def walk(node, y):
+    coords = {}
+    
+    """
+       /-----   ] 
+       |        ] nodept[node]
+    ---+ node   ]
+       |
+       |
+       \---------
+    """
+    
+    # first determine sizes and nodepts
+    sizes = {}          # number of descendents (leaves have size 1)
+    nodept = {}         # distance between node y-coord and top bracket y-coord
+    def walk(node, x):
+        # calculate new y-coordinate for node
         dist = min(maxlen, node.dist * xscale)
         dist = max(minlen, dist)
-        y = y + dist
+        x = x + dist
+        
+        # init sizes
+        sizes[node] = 0
+        
+        # recurse
+        for child in node.children:
+            sizes[node] += walk(child, x)
         
         if node.isLeaf():
             sizes[node] = 1
             nodept[node] = yscale - 1
-            maxwidth[0] = max(maxwidth[0], y)
         else:
-            sizes[node] = 0
-        for child in node.children:
-            sizes[node] += walk(child, y)
-        if not node.isLeaf():
             top = nodept[node.children[0]]
             bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
                   nodept[node.children[-1]]
             nodept[node] = (top + bot) / 2
+        
         return sizes[node]
     walk(tree.root, 0)
-    maxwidth = maxwidth[0]
     
-    return sizes, nodept, maxwidth, maxheight
+    # determine x, y coordinates
+    def walk(node, x, y):
+        xchildren = x+min(max(node.dist*xscale, minlen), maxlen)        
+        coords[node] = [xchildren, y + nodept[node]]
+                
+        if not node.isLeaf():
+            ychild = y
+            for child in node.children:
+                walk(child, xchildren, ychild)
+                ychild += sizes[child] * yscale
+    walk(tree.root, 0, 0)
+    
+    return coords
 
 
 def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
@@ -43,7 +71,9 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              minlen=1, maxlen=10000, filename=sys.stdout,
              rmargin=100, lmargin=10, tmargin=0, bmargin=None,
              legendScale=False, autoclose=None):
-
+    
+    # set defaults
+    fontRatio = 8. / 11.
     
     if labelSize == None:
         labelSize = .7 * fontSize
@@ -59,10 +89,15 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         minlen = yscale * 2
     
     
-    # determine node sizes
-    sizes, nodept, maxwidth, maxheight = layoutTree(tree, xscale, yscale, minlen, maxlen)
-    maxheight += labelOffset
+    # layout tree
+    coords = layoutTree(tree, xscale, yscale, minlen, maxlen)
     
+    xcoords, ycoords = zip(* coords.values())
+    maxwidth = max(xcoords)
+    maxheight = max(ycoords) + labelOffset
+    
+    
+    # initialize canvas
     if canvas == None:
         canvas = svg.Svg(util.openStream(filename, "w"))
         width = int(rmargin + maxwidth + lmargin)
@@ -77,47 +112,46 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
             autoclose = False
     
     
-    def walk(node, x, y):
-        # calc coords
-        xchildren = x+min(max(node.dist*xscale, minlen), maxlen)
+    # draw tree
+    def walk(node):
+        x, y = coords[node]
+        if node.parent:
+            parentx = coords[node.parent][0]
+        else:
+            parentx = 0
         
         # draw branch
-        canvas.line(x, y+nodept[node], xchildren, y+nodept[node])
+        canvas.line(parentx, y, x, y)
         if node.name in labels:
-            branchlen = xchildren - x
+            branchlen = x - parentx
             lines = str(labels[node.name]).split("\n")
             labelwidth = max(map(len, lines))
+            labellen = min(labelwidth * fontRatio * fontSize, 
+                           max(int(branchlen-1), 0))
             
-            labellen = min(labelwidth, 
-                           max(int(branchlen-1),0))
             canvas.text(labels[node.name],
-                        x + (branchlen - labellen)/2., 
-                        y+nodept[node] + labelOffset - labelSize,
+                        parentx + (branchlen - labellen)/2., 
+                        y + labelOffset - labelSize,
                         labelSize)
         
         if node.isLeaf():
-            canvas.text(str(node.name), xchildren + fontSize, y+yscale+fontSize/2., fontSize)
+            canvas.text(str(node.name), 
+                        x + fontSize, y+fontSize/2., fontSize)
         else:
-            top = y + nodept[node.children[0]]
-            bot = y + (sizes[node]-sizes[node.children[-1]]) * yscale + \
-                      nodept[node.children[-1]]
-        
+            top = coords[node.children[0]][1]
+            bot = coords[node.children[-1]][1]
+            
             # draw children
-            canvas.line(xchildren, top, xchildren, bot)
+            canvas.line(x, top, x, bot)
             
-            ychild = y
             for child in node.children:
-                walk(child, xchildren, ychild)
-                ychild += sizes[child] * yscale
-
-            
-            #canvas.set(xchildren, y+nodept[node], '+')
-            #canvas.set(xchildren, top, '/')
-            #canvas.set(xchildren, bot, '\\')
-        #canvas.set(x, y+nodept[node], '+')
-    walk(tree.root, lmargin, tmargin)
+                walk(child)
     
+    canvas.beginTransform(("translate", lmargin, tmargin))
+    walk(tree.root)
+    canvas.endTransform()
     
+    # draw legend
     if legendScale:
         if legendScale == True:
             # automatically choose a scale

@@ -43,7 +43,7 @@ options = [
     {"parser": int,
      "default": 1,
      "single": True}],
-  ["a:", "args=", "args", "<prog args>", 
+  ["a:", "args=", "args", "prog:<prog args>", 
     {"default": []}],
   ["v", "verbose", "verbose", "",
    {"single": True}],
@@ -235,8 +235,8 @@ def run(conf, infile, test=False):
     executed = False
     
     # run each program
-    for prog, args in zip(progs, conf["args2"]):
-        conf["args"] = args
+    for prog in progs:
+        conf["args"] = conf["argsLookup"][prog]
         
         if prog in fasta2alignProgs:
             if not checkFileExists(conf, fastafile, alignfile): 
@@ -364,7 +364,8 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         labels = fasta.readFasta(labelfile).keys()
     
     if prog == "bionj":
-        tree = bionj.bionj(labels=labels, distmat=mat, verbose=conf["verbose"])
+        tree = bionj.bionj(labels=labels, distmat=mat, 
+                           verbose=conf["verbose"])
         
     elif prog == "lse":
         if usertree == None:
@@ -483,18 +484,24 @@ def main(conf):
 
 
     # save arguments for each program
-    allArgs = conf["args"]
     progs = conf["prog"].split(",")
-    
-    while len(allArgs) < len(progs):
-        allArgs.append(" ")
-    
-    for i in range(len(allArgs)):
-        if len(allArgs[i].replace(" ", "")) == 0:
-            allArgs[i] = None
-    
-    conf["args2"] = allArgs
+    args = conf["args"]
+    conf["argsLookup"] = {}
+
+    for arg in args:
+        if ":" not in arg:
+            Exception("must specify program name. prog:args")
+        i = arg.index(":")
+        prog = arg[:i]
+        arg = arg[i+1:]
         
+        conf["argsLookup"][prog] = arg
+    
+    # set default arguments
+    for prog in progs:
+        if prog not in conf["argsLookup"]:
+            conf["argsLookup"][prog] = None
+            
     
     # determine input files
     files2 = conf["REST"]

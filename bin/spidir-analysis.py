@@ -120,7 +120,10 @@ def plotRelLens(name, params, lens, low, high, step):
 os.system("mkdir -p %s" % conf["outdir"])
 os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
           (conf["params"], conf["stree"], conf["outdir"]))
+spidirlib.drawParamTree(stree, params, xscale=2000, 
+                        filename="%s/params-tree.svg" % conf["outdir"])
 
+sys.exit(0)
 
 # make directories
 os.system("mkdir -p %s/abs" % conf["outdir"])

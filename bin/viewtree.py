@@ -31,13 +31,16 @@ options = [
      "help": "do not display branch length"}],
   ["r:", "reroot=", "reroot", "<branch to root tree>",
     {"single": True}],
+  ["", "rootby=", "rootby", "dup|loss|duploss",
+    {"single": True,
+     "default": "duploss"}],
   ["d", "dump", "dump", "",
     {"single": True,
      "help": "covert to easy to parse format"}],
   ["H", "headings", "headings", "",
     {"single": True,
      "help": "show heading information above each tree"}],
-  ["g", "graphical", "graphical", "",
+  ["g:", "graphical=", "graphical", "<filename>|-",
     {"single": True}],
   ["", "trees=", "trees", "{trees}",
    {"single": True,
@@ -71,9 +74,10 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
         continue
     
     if "stree" in conf and \
-       "smap" in conf and \
-       "tree" in conf:
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
+       "smap" in conf:
+        phyloutil.reconRoot(tree, stree, gene2species, 
+                            rootby=conf["rootby"],
+                            newCopy=False)
     
     
     if "reroot" in conf:
@@ -139,11 +143,19 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
                 labels[node.name] = "[%s] %s" % (node.name, 
                                                  labels[node.name])
         
-        if conf["graphical"]:
-            treevis.showTree(tree, labels=labels,
-                                   xscale=conf["scale"],
-                                   minlen=conf["minlen"],
-                                   maxlen=conf["maxlen"])
+        if "graphical" in conf:
+            if conf["graphical"] == "-":
+                treevis.showTree(tree, labels=labels,
+                                       xscale=conf["scale"],
+                                       minlen=conf["minlen"],
+                                       maxlen=conf["maxlen"])
+            else:
+                treevis.drawTree(tree, labels=labels,
+                                       xscale=conf["scale"],
+                                       minlen=conf["minlen"],
+                                       maxlen=conf["maxlen"],
+                                       filename=conf["graphical"],
+                                       legendScale=True)
         else:
             algorithms.drawTree(tree, labels=labels,
                                 scale=conf["scale"],

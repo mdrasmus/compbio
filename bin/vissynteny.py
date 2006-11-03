@@ -234,24 +234,28 @@ def visparts(parts, refGenome, outdir):
 #
 # Visualize windows across the genome
 #
-def viswindows(refGenome, windowSize, outdir):
+def viswindows(refGenome, windowSize, windowStep, outdir):
     chroms = m.genomes[refGenome].chroms.values()
     chroms.sort(lambda a,b: cmp(a.name, b.name))
     
     
     indexfile = file(param["chromWindows"][-1], "w")
+    print >>indexfile, "##version:1.0"
+    print >>indexfile, "##types:string\tstring\tstring\tint\tint\tstring"
+    print >>indexfile, "file\tgenome\tchrom\tstart\tend\tgenes"
+    
     
     for chrom in chroms:
         i = 0
-        for start in xrange(0, int(chrom.size), windowSize):        
+        for start in xrange(0, int(chrom.size), windowStep):
             end = start + windowSize
             draw(refGenome, chrom.name, start, end)
             #visgroup = vis.draw(conf, m, refGenome, chrom.name, start, end)
 
-            set_visible(start, 2*conf["gene-size"], end, 
+            set_visible(start, 10*conf["gene-size"], end, 
                         -conf["max-genome-sep"] * len(m.genomes))
             
-            filename = outdir + ("/%s_%s_%s-%s.svg" % 
+            filename = ("%s_%s_%s-%s.svg" % 
                 (refGenome, chrom.name, 
                  util.int2pretty(int(start)),
                  util.int2pretty(int(end))))
@@ -263,11 +267,16 @@ def viswindows(refGenome, windowSize, outdir):
             # record in lookup filename->genes
             #pdffile = os.path.split(filename)[1].replace(".svg", ".pdf")
             #lookup.append([pdffile] + [x.name for x in visgenes])
-            indexfile.write("\t".join([filename] + [x.name for x in visgenes])
+            indexfile.write("\t".join([filename,
+                                       refGenome,
+                                       chrom.name,
+                                       str(int(start)),
+                                       str(int(end)),
+                                       ",".join([x.name for x in visgenes])])
                             +"\n")
             
             # output svg 
-            svg.printScreen(filename) #, visgroup)
+            svg.printScreen(outdir + "/" + filename) #, visgroup)
             
             # conversion
             #grid.execute("svg2pdf.py %s -r" % filename)

@@ -23,6 +23,18 @@ options = [
     ["", "useTopNames=", "useTopNames", "",
      {"default": True,
       "parser": util.str2bool}],
+    ["", "dataTwoTiers=", "dataTwoTiers", "<bool>",
+     {"single": True,
+      "default": True,
+      "parser": bool}],
+    ["", "useGeneNames=", "useGeneNames", "<bool>",
+     {"single": True,
+      "default": True,
+      "parser": bool}],
+    ["", "useRfError=", "useRfError", "<bool>",
+     {"single": True,
+      "default": False,
+      "parser": bool}],
     
     "Extentions",
     ["", "ntAlign=", "ntAlign", "<nt alignment extension>",
@@ -56,13 +68,23 @@ options = [
 
 
 
+def color2html(r, g, b, a=1):
+    txt = "#"
+    digits = "0123456789abcdef"
+        
+    for val in [r, g, b]:
+        txt += digits[int(val * 15)]
+    
+    return txt
+
 
 def getGeneName(alignfile, mainspecies, gene2species):
-    for line in file(alignfile):
-        if line.startswith(">"):
-            gene = line[1:].rstrip()
-            if gene2species(gene) == mainspecies:
-                return gene
+    if conf["useGeneNames"]:
+        for line in file(alignfile):
+            if line.startswith(">"):
+                gene = line[1:].rstrip()
+                if gene2species(gene) == mainspecies:
+                    return gene
     return None
 
 ######################################
@@ -71,19 +93,26 @@ def getGeneName(alignfile, mainspecies, gene2species):
 
 def getAlignUrl(conf, dataurl, treename, seqtype = "nt"):
     if seqtype == "nt":
-        return os.path.join(dataurl, treename, treename + conf["ntAlign"])
-    elif seqtype == "pep":
-        return os.path.join(dataurl, treename, treename + conf["pepAlign"])
+        ext = conf["ntAlign"]
     else:
-        raise Exception("bad seqtype")
+        ext = conf["pepAlign"]
+    
+    if conf["dataTwoTiers"]:
+        return os.path.join(dataurl, treename, treename + ext)
+    else:
+        return os.path.join(dataurl, treename + ext)
+    
 
 def getAlignFile(conf, datadir, treename, seqtype = "nt"):
     if seqtype == "nt":
-        return os.path.join(datadir, treename, treename + conf["ntAlign"])    
-    elif seqtype == "pep":
-        return os.path.join(datadir, treename, treename + conf["pepAlign"])
+        ext = conf["ntAlign"]
     else:
-        raise Exception("bad seqtype")
+        ext = conf["pepAlign"]
+
+    if conf["dataTwoTiers"]:
+        return os.path.join(datadir, treename, treename + ext)
+    else:
+        return os.path.join(datadir, treename + ext)
 
 
 def getAlignVisFile(conf, treename, seqtype = "nt"):
@@ -97,15 +126,25 @@ def getAlignVisUrl(conf, treename, seqtype = "nt"):
 
 def getCorrectTreeFile(conf, datadir, treename, seqtype = "nt"):
     if seqtype == "nt":
-        return os.path.join(datadir, treename, treename + conf["correctNtTree"])
+        ext = conf["correctNtTree"]
     else:
-        return os.path.join(datadir, treename, treename + conf["correctPepTree"])
+        ext = conf["correctPepTree"]
+
+    if conf["dataTwoTiers"]:
+        return os.path.join(datadir, treename, treename + ext)
+    else:
+        return os.path.join(datadir, treename + ext)
 
 def getCorrectTreeUrl(conf, dataurl, treename, seqtype = "nt"):
     if seqtype == "nt":
-        return os.path.join(dataurl, treename, treename + conf["correctNtTree"])
+        ext = conf["correctNtTree"]
     else:
-        return os.path.join(dataurl, treename, treename + conf["correctPepTree"])
+        ext = conf["correctPepTree"]
+
+    if conf["dataTwoTiers"]:
+        return os.path.join(dataurl, treename, treename + ext)
+    else:
+        return os.path.join(dataurl, treename + ext)
 
 
 def getResultTreeFile(conf, resultdir, treename):
@@ -113,6 +152,10 @@ def getResultTreeFile(conf, resultdir, treename):
 
 def getResultTreeUrl(conf, resulturl, treename):
     return os.path.join(resulturl, treename + conf["resultTree"])
+
+
+def getSyntenyUrl(conf, filename):
+    return conf['syntenyUrl'] + "/" + filename
 
 
 def getTreeVisFile(conf, treename, kind):
@@ -123,9 +166,35 @@ def getTreeVisUrl(conf, treename, kind):
     return os.path.join(conf["weburl"], conf["treeVisDir"], 
                         treename + "." + kind + "." + conf["treeVisFormat"])
 
+
+
+
 #####################################
 # Web generation
 #
+
+def readSynteny(filename, genes):
+    tab = tablelib.readTable(filename)
+    
+    geneLookup = {}
+    
+    for row in tab:
+        rowGenes = row['genes'].split(',')
+        
+        for gene in rowGenes:
+            if gene not in genes:
+                continue
+            
+            dist = min(genes[gene]['start'] - row['start'],
+                       genes[gene]['end'] - row['start'])
+            if gene not in geneLookup or \
+               dist > geneLookup[gene][1]:
+                geneLookup[gene] = [row['file'], dist]
+    
+    # map directly to filename
+    geneLookup = util.mapdict(geneLookup, valfunc=lambda x: x[0])
+    
+    return geneLookup
 
 
 def readGeneCoords(filename):
@@ -177,7 +246,17 @@ def readResults(filename):
 
 
 def getTreeNames(conf, datadir):
-    treenames = os.listdir(datadir)
+    if conf["dataTwoTiers"]:
+        treenames = os.listdir(datadir)
+    else:
+        files = os.listdir(datadir)
+        nums = []
+        
+        for f in files:
+            if f[0].isdigit():
+                i = f.index(".")
+                nums.append(f[:i])
+        treenames = sorted(util.unique(nums))
     
     if "numtrees" in conf:
         numtrees = conf["numtrees"]
@@ -250,6 +329,11 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     topNames = conf["topNamesLookup"]
     genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
     
+    if "syntenyFile" in conf:
+        syntenyIndex = readSynteny(conf["syntenyFile"], genes)
+    else:
+        syntenyIndex = None
+    
     
     # create output
     os.system("mkdir -p %s" % conf["webdir"])
@@ -274,6 +358,9 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
             print >>out, "<td><b>%s</b></td>" % prog
     print >>out, "</tr>"
     
+    colormap = util.ColorMap([[0, (1, 1,1)],
+                              [.3, (1, 0, 0)]])
+    
     
     # table
     progbar = progress.ProgressBar(len(treenames))
@@ -286,8 +373,19 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
         gene = treeStats[treenum]['gene']        
         
         # get align files
-        alnnturl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "nt")
-        alnpepurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "pep")
+        if os.path.exists(getAlignFile(conf, datadir, treename, "nt")):
+            alnnturl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "nt")
+            alnntlink = "<a href='%s'>An</a> " % alnnturl
+        else:
+            alnntlink = ""
+        
+        if os.path.exists(getAlignFile(conf, datadir, treename, "pep")):
+            alnpepurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "pep")
+            alnpeplink = "<a href='%s'>Ap</a> " % alnpepurl
+        else:
+            alnpeplink = ""
+
+        
         
         # get tree files
         treefile = getCorrectTreeUrl(conf, dataurl, treename)
@@ -328,13 +426,22 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
         print >>out, "<td>%s</td><td>%d</td><td>%s</td>" % \
             (commonName, row["alignlen"], treelen)
         
+        # synteny
+        if syntenyIndex and gene in syntenyIndex:
+            syntenyfile = getSyntenyUrl(conf, syntenyIndex[gene])
+            syntenyurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=synteny&data=%s" % syntenyfile
+            syntenylink = "<a href='%s'>S</a> " % syntenyurl
+        else:
+            syntenylink = ""
+        
         
         # links
-        print >>out, ("<td><nobr><a href='%s'>An</a> " + \
-                          "<a href='%s'>Ap</a> " + \
-                          "<a href='%s'>S</a> " + \
+        print >>out, ("<td><nobr>" + \
+                          alnntlink +
+                          alnpeplink + \
+                          syntenylink + \
                           "<a href='%s'>T</a></nobr></td>") % \
-            (alnnturl, alnpepurl, "", treeurl)
+            (treeurl)
         
         
         for prog, resultdir, resulturl in resultdirs:
@@ -351,12 +458,20 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
                 else:
                     color = conf["topColors"][-1]
             else:
-                if treeStats[treenum][prog + "_correct"]:
+                if treeStats[treenum][prog + "_rferror"] == 0:
                     color = "#ccf"
-                    topname = "True"
+                    if conf["useRfError"]:
+                        topname = "0"
+                    else:
+                        topname = "True"
                 else:
-                    color = "#f55"
-                    topname = "False"
+                    if conf["useRfError"]:
+                        color = color2html(* colormap.get(
+                                treeStats[treenum][prog + "_rferror"]))
+                        topname = "%.3f" % treeStats[treenum][prog + "_rferror"]
+                    else:
+                        color =   "#f55"
+                        topname = "False"
             
             print >>out, "<td style='background-color: %s'><a href='%s'>%s</a></td>" % \
                 (color, resulttree, topname)
@@ -479,7 +594,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
     headers = ["treeid", "gene", "common", "alignlen", "treelen"]
     for prog in util.cget(resultdirs, 0):
         headers.append(prog)
-        headers.append(prog + "_correct")
+        headers.append(prog + "_rferror")
         
     
     treestats = tablelib.Table(headers=headers)
@@ -513,7 +628,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
             thash = phyloutil.hashTree(tree, conf["gene2species"])
             
             row[prog] = thash
-            row[prog + "_correct"] = results[prog][treename][0]
+            row[prog + "_rferror"] = results[prog][treename][1]
             counts[thash] += 1
         treestats.append(row)
     

@@ -1564,6 +1564,10 @@ def proposeTreeWeighted(tree):
     for edge in edges:
         weights.append(edge[0].data["error"])
     
+    if sum(weights) == 0:
+        l = float(len(weights))
+        weights = [1./l for x in weights]
+    
     # sample by weight
     edge = edges[stats.sample(weights)]
     

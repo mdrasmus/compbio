@@ -123,6 +123,7 @@ os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
 spidirlib.drawParamTree(stree, params, xscale=2000, 
                         filename="%s/params-tree.svg" % conf["outdir"])
 
+
 sys.exit(0)
 
 # make directories
@@ -170,7 +171,6 @@ if 1:
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
     util.toc()
 
-#sys.exit(1)
 
 # total branch length
 util.log("plot total tree lengths")
@@ -181,7 +181,7 @@ p = plotAbsLens("family rate", totals, low, high, step)
 p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 
-sys.exit(1)
+
 
 
 # correlation matrix
@@ -225,6 +225,9 @@ util.heatmap(stats.corrmatrix(mat), width=20, height=20,
              display=False,
              filename=os.path.join(conf["outdir"], "corr/abs.svg"))
 util.toc()
+
+
+sys.exit(0)
 
 util.tic("abs scatter plots")
 for i in range(len(keys)):

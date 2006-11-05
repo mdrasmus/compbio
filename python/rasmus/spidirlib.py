@@ -14,6 +14,7 @@ from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 from rasmus import phylip
+from rasmus.vis import treevis
 
 # python libs
 import math, StringIO, copy, random, sys
@@ -164,6 +165,7 @@ def printVisitedTrees(visited):
     debug()
 
 
+
 #-------------------------------------------------------------------------------
 # SINDIR input/output
 #-------------------------------------------------------------------------------
@@ -248,6 +250,59 @@ def debugFile(conf):
     return conf["out"] + ".debug"
 
 
+def drawParamTree(tree, params, *args, **kargs):
+    tree = tree.copy()
+    kargs.setdefault("legendScale", True)
+    kargs.setdefault("xscale", 100)
+    kargs.setdefault("yscale", 20)
+    kargs.setdefault("minlen", 0)
+    kargs.setdefault("maxlen", util.INF)
+    
+    if "labels" not in kargs:
+        kargs["labels"] = {}
+        
+        for name in tree.nodes:
+            if not tree.nodes[name].isLeaf():
+                kargs["labels"][name] = str(name)
+        
+    
+    # set branch lengths to means
+    for name in tree.nodes:
+        tree.nodes[name].dist = params[name][0]
+    
+    # draw basic tree
+    tmargin = 10
+    lmargin = 10
+    canvas = treevis.drawTree(tree, autoclose=False, 
+                              tmargin=tmargin, lmargin=lmargin,
+                              *args, **kargs)
+    
+    # draw variance
+    coords = treevis.layoutTree(tree, kargs["xscale"], kargs["yscale"],
+                                      kargs["minlen"], kargs["maxlen"])
+    
+    canvas.beginTransform(("translate", lmargin, tmargin))
+    canvas.beginStyle("stroke-width: 3")
+    for name, node in tree.nodes.iteritems():
+        if node == tree.root:
+            continue
+        x, y = coords[node]
+        
+        if node.parent:
+            parentx = coords[node.parent][0]
+        else:
+            parentx = 0
+        
+        varline = params[name][1] * (x - parentx) / params[name][0]
+        
+        canvas.line(x, y, max(parentx, x - varline), y, )
+    canvas.endStyle()
+    canvas.endTransform()
+    
+    canvas.endSvg()
+        
+    
+    
 
 #-------------------------------------------------------------------------------
 # Branch length fitting

@@ -68,7 +68,7 @@ def layoutTree(tree, xscale, yscale, minlen, maxlen):
 
 def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              labelOffset=None, fontSize=10, labelSize=None,
-             minlen=1, maxlen=10000, filename=sys.stdout,
+             minlen=1, maxlen=util.INF, filename=sys.stdout,
              rmargin=100, lmargin=10, tmargin=0, bmargin=None,
              legendScale=False, autoclose=None):
     

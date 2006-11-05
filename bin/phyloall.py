@@ -506,7 +506,7 @@ def main(conf):
             
     
     # determine input files
-    if "stdin" in conf:
+    if conf["stdin"]:
         files2 = []
         for line in sys.stdin:
             files2.append(line.rstrip())

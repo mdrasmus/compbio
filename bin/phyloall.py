@@ -65,6 +65,8 @@ options = [
   ["", "status=", "status", "<ext1,ext2,...>",
     {"single": True,
      "help": "report the existance of each file with ext1 or ext2 ..."}],
+  ["i", "stdin", "stdin", "",
+   {"single": True}],
   
   "Distributed arguments",
   ["g:", "groupsize=", "groupsize", "<group size>",
@@ -504,7 +506,15 @@ def main(conf):
             
     
     # determine input files
-    files2 = conf["REST"]
+    if "stdin" in conf:
+        files2 = []
+        for line in sys.stdin:
+            files2.append(line.rstrip())
+    else:
+        files2 = conf["REST"]
+    
+    
+    
     files = filter(lambda x: run(conf, x, test=True), files2)
     util.logger("will process %d input files" % len(files))
     util.logger("will skip %d input files" % (len(files2) - len(files)))

@@ -516,6 +516,7 @@ def main(conf):
     
     
     files = filter(lambda x: run(conf, x, test=True), files2)
+    
     util.logger("will process %d input files" % len(files))
     util.logger("will skip %d input files" % (len(files2) - len(files)))
     
@@ -527,7 +528,7 @@ def main(conf):
         pipeline = depend.Pipeline(conf["statusdir"])
         pipeline.setMaxNumProc(conf["nproc"])
         
-        prefix = " ".join(sys.argv[:-len(files2)]) + " "
+        prefix = " ".join(sys.argv[:-len(conf["REST"])]) + " "
         jobs = []
         
         for i in range(0, len(files), conf["groupsize"]):

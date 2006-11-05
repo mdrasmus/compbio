@@ -531,7 +531,7 @@ def main(conf):
         args = copy.copy(sys.argv[:-len(conf["REST"])])
         if "-i" in args:
             args.remove("-i")
-        if "--stdin":
+        if "--stdin" in args:
             args.remove("--stdin")
         prefix = " ".join(args) + " "
         jobs = []

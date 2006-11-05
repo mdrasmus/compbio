@@ -479,10 +479,6 @@ def main(conf):
         sys.exit(1)
     
     
-    # file status
-    if "status" in conf:
-        reportStatus(conf, conf["REST"])
-        return
 
 
     # save arguments for each program
@@ -513,6 +509,11 @@ def main(conf):
     else:
         files2 = conf["REST"]
     
+
+    # file status
+    if "status" in conf:
+        reportStatus(conf, files2)
+        return
     
     
     files = filter(lambda x: run(conf, x, test=True), files2)

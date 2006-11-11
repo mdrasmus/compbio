@@ -124,7 +124,7 @@ spidirlib.drawParamTree(stree, params, xscale=2000,
                         filename="%s/params-tree.svg" % conf["outdir"])
 
 
-sys.exit(0)
+
 
 # make directories
 os.system("mkdir -p %s/abs" % conf["outdir"])
@@ -182,7 +182,7 @@ p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 
 
-
+sys.exit(0)
 
 # correlation matrix
 
@@ -227,7 +227,24 @@ util.heatmap(stats.corrmatrix(mat), width=20, height=20,
 util.toc()
 
 
+
+util.tic("rel correlation")
+util.heatmap(stats.corrmatrix(rmat), width=20, height=20,
+             rlabels = keys, clabels=keys,
+             xmargin=100, ymargin=100,
+             labelSpacing=8,
+             labelPadding=4,
+             colormap=colormap,
+             showVals=True,
+             display=False,
+             filename=os.path.join(conf["outdir"], "corr/rel.svg"))
+util.toc()
+
+
 sys.exit(0)
+
+
+
 
 util.tic("abs scatter plots")
 for i in range(len(keys)):
@@ -248,19 +265,6 @@ for i in range(len(keys)):
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "corr/abs/%s_%s.ps" % 
                             (str(keys[i]), str(keys[j]))))
-util.toc()
-
-
-util.tic("rel correlation")
-util.heatmap(stats.corrmatrix(rmat), width=20, height=20,
-             rlabels = keys, clabels=keys,
-             xmargin=100, ymargin=100,
-             labelSpacing=8,
-             labelPadding=4,
-             colormap=colormap,
-             showVals=True,
-             display=False,
-             filename=os.path.join(conf["outdir"], "corr/rel.svg"))
 util.toc()
 
 

@@ -218,8 +218,11 @@ def writeTreeDistrib(out, lengths):
     for node, lens in lengths.items():
         if len(lens) == 0 or max(lens) == min(lens):
             continue
-
-        out.write(str(node.name))
+        
+        if isinstance(node, treelib.TreeNode):
+            out.write(str(node.name))
+        else:
+            out.write(str(node))
 
         for length in lens:
             out.write("\t%f" % length)
@@ -1153,18 +1156,19 @@ def subtreeLikelihood(conf, tree, root, recon, events, stree, params, baserate):
             
             # handle extra branches
             if extra != None:
+                if "unfold" in extra.data:
+                    dist += extra.dist
+                
                 # determine desired shrink
                 target = min(mu, max(dist/baserate,0)) * baserate
                 shrink = dist - target
                 
                 # determine how much shrink is allowed
                 if "unfold" in extra.data:
-                    print "using extra"
-                    extradist = 2 * extra.dist
-                    dist += extra.dist
+                    extradist = max(2 * extra.dist, 0)
                 else:
-                    extradist = extra.dist
-                shrink = min(shrink, max(extradist, 0))
+                    extradist = max(extra.dist, 0)
+                shrink = min(shrink, extradist)
                 
                 if condDist == 0.0:
                     dist -= shrink

@@ -158,6 +158,13 @@ class Percent (float):
         return str(self)
 
 
+def exceptDefault(func, val, exc=Exception):
+    try:
+        return func()
+    except exc:
+        return val
+
+
 #################################################################################
 # list and dict functions
 #

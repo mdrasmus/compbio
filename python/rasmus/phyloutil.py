@@ -404,7 +404,7 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
     trees2 = []
 
     for tree in trees:
-        tree = reconRoot(tree, stree, gene2species)
+        tree = reconRoot(tree, stree, gene2species, newCopy=False)
         recon = reconcile(tree, stree, gene2species)
         events = labelEvents(tree, recon)
         
@@ -415,13 +415,13 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
         else:
             trees2.append(tree)
         
-        # find total length of tree
-        totalLength = 0
-        for node in tree.nodes.values():
-            totalLength += node.dist
-        
         for node in tree.nodes.values():
             if relative:
+                # find total length of tree
+                totalLength = 0
+                for node in tree.nodes.values():
+                    totalLength += node.dist
+            
                 lengths[recon[node]].append(node.dist/totalLength)
             else:                
                 lengths[recon[node]].append(node.dist)
@@ -711,6 +711,7 @@ def initDupLossTree(stree):
     def walk(node):
         node.data['dup'] = 0
         node.data['loss'] = 0
+        node.data['appear'] = 0
         node.data['genes'] = 0
         node.recurse(walk)
     walk(stree.root)
@@ -724,7 +725,12 @@ def countDupLossTree(tree, stree, gene2species):
     
     dup = 0
     loss = 0
-
+    appear = 0
+    
+    # count appearance    
+    recon[tree.root].data["appear"] += 1
+    appear += 1
+    
     # count dups
     for node, event in events.iteritems():
         if event == "dup":
@@ -738,7 +744,7 @@ def countDupLossTree(tree, stree, gene2species):
         snode.data['loss'] += 1
         loss += 1
     
-    return dup, loss
+    return dup, loss, appear
 
 
 # count ancestral genes
@@ -748,8 +754,10 @@ def countAncestralGenes(stree):
             counts = []
             for child in node.children:
                 walk(child)
-                counts.append(child.data['genes'] -
-                              child.data['dup'] + child.data['loss'])
+                counts.append(child.data['genes'] 
+                              - child.data['appear']
+                              - child.data['dup'] 
+                              + child.data['loss'])
             assert util.equal(* counts), str(counts)
             node.data['genes'] = counts[0]
     walk(stree.root)

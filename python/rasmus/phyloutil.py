@@ -15,6 +15,7 @@ import graph
 import treelib
 import util
 
+
 from genomeutil import gene2species
 
 
@@ -761,6 +762,23 @@ def countAncestralGenes(stree):
             assert util.equal(* counts), str(counts)
             node.data['genes'] = counts[0]
     walk(stree.root)
+
+
+def writeEventTree(stree, out=sys.stdout):
+    labels = {}
+    for name, node in stree.nodes.iteritems():
+        labels[name] = "[%s]\nD=%d,L=%d;\nG=%d;" % \
+                       (str(name),
+                        node.data['dup'], node.data['loss'],
+                        node.data['genes'])
+
+    treelib.drawTree(stree, labels=labels, minlen=15, spacing=4, labelOffset=-3,
+                     out=out)
+
+
+
+
+
 
 
 

@@ -79,7 +79,7 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         labelSize = .7 * fontSize
     
     if labelOffset == None:
-        labelOffset = labelSize - 1
+        labelOffset = -1
     
     if bmargin == None:
         bmargin = yscale
@@ -129,10 +129,12 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
             labellen = min(labelwidth * fontRatio * fontSize, 
                            max(int(branchlen-1), 0))
             
-            canvas.text(labels[node.name],
-                        parentx + (branchlen - labellen)/2., 
-                        y + labelOffset - labelSize,
-                        labelSize)
+            for i, line in enumerate(lines):
+                canvas.text(line,
+                            parentx + (branchlen - labellen)/2., 
+                            y + labelOffset 
+                            +(-len(lines)+1+i)*(labelSize+1),
+                            labelSize)
         
         if node.isLeaf():
             canvas.text(str(node.name), 
@@ -176,6 +178,10 @@ def drawScale(x, y, length, xscale, fontSize, canvas=None):
     canvas.line(x + length * xscale, y+1, x + length * xscale, y-1)
     canvas.text("%.3f" % length, x, y-1, fontSize)
     
+
+
+
+
     
 
 

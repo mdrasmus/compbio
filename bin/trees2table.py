@@ -4,6 +4,7 @@ import os, sys
 
 from rasmus import phyloutil, tablelib, sindirlib, spidirlib, util
 from rasmus import treelib, genomeutil, env
+from rasmus.vis import treevis
 
 
 options = [
@@ -26,18 +27,6 @@ options = [
 
 conf = util.parseOptions(sys.argv, options, quit=True)
 
-
-
-def drawEventTree(stree, out=sys.stdout):
-    labels = {}
-    for name, node in stree.nodes.iteritems():
-        labels[name] = "[%s]\nD=%d,L=%d;\nG=%d;" % \
-                       (str(name),
-                        node.data['dup'], node.data['loss'],
-                        node.data['genes'])
-
-    treelib.drawTree(stree, labels=labels, minlen=15, spacing=4, labelOffset=-3,
-                     out=out)
 
 
 
@@ -192,6 +181,20 @@ if 0:
         row["dup/gene"] = row["dup"] / float(row["size"])
 
 
+def drawEventTree(etree, params, filename=sys.stdout):
+    labels = {}
+    for name, node in etree.nodes.iteritems():
+        labels[name] = "%s\n+%d,+%d,-%d;\n%d;" % \
+                       (str(name),
+                        node.data['appear'], 
+                        node.data['dup'], node.data['loss'],
+                        node.data['genes'])
+
+    spidirlib.drawParamTree(etree, params, labels=labels, yscale=30, 
+                            labelSize=7,
+                            xscale=5000,
+                            filename=filename)
+
 
 def main(conf):
     print "here"
@@ -203,6 +206,9 @@ def main(conf):
 
     if "params" in conf:
         params = sindirlib.readParams(env.findFile(conf["params"]))
+        
+        #for name, node in stree.nodes.items():
+        #    node.dist = params[name][0]
     else:
         params = None
     
@@ -232,7 +238,7 @@ def main(conf):
     tab.write(conf["output"] + ".tab")    
     tab2.write(conf["output"] + "-total.tab")
     
-    drawEventTree(totalTree, out=file(conf["output"] + ".txt", "w"))
+    drawEventTree(totalTree, params, filename=file(conf["output"] + ".svg", "w"))
 
 
 main(conf)

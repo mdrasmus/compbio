@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys, os
-from rasmus import util, env, treelib, spidirlib, stats
+from rasmus import util, env, treelib, spidirlib, stats, tablelib
 
 import rpy
 
@@ -35,6 +35,7 @@ lens = spidirlib.readTreeDistrib(env.findFile(conf["lens"]))
 totals = map(sum, zip(* lens.values()))
 rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 
+fitting = tablelib.Table(headers=["name", "type", "param1", "param2", "pval"])
 
 
 def plotAbsLens(name, lens, low, high, step):
@@ -67,7 +68,7 @@ def plotAbsLens(name, lens, low, high, step):
     ext = util.mget(ext, ind)
     
     chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-    pval =chisq["p.value"]
+    pval = chisq["p.value"]
     print name, "%f" % pval, pval > .05
     
     p.set(xmin=low, xmax=high, 
@@ -75,7 +76,7 @@ def plotAbsLens(name, lens, low, high, step):
           main="%s absolute branch lengths (a=%f, b=%f, Pval=%e)" % 
           (str(name), prms[0], prms[1], pval))
     
-    return p
+    return p, util.Bundle(pval=pval, prms=prms)
 
 
 def plotRelLens(name, params, lens, low, high, step):
@@ -105,6 +106,9 @@ def plotRelLens(name, params, lens, low, high, step):
     
     chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
     pval = chisq["p.value"]
+    
+    #pval = rpy.r.shapiro_test(lens2)["p.value"]
+    
     print name, pval, pval > .05
     
     #p.data[1].options["plab"] = "best fit"
@@ -113,7 +117,11 @@ def plotRelLens(name, params, lens, low, high, step):
           main="%s relative branch lengths (mean=%f, sdev=%f, pval=%e)" % 
           (str(name), params[0], params[1], pval))
     
-    return p
+    #q=util.plot(bins, obs, style="lines")
+    #q.plot(bins, ext, style="lines")
+    #q.save("tmp_" + str(name) + ".ps")
+    
+    return p, util.Bundle(pval=pval, prms=prms)
     
 
 # output params
@@ -146,10 +154,16 @@ if 1:
         low = 0
         high = 3 * stats.mean(lens[name])
         step = (high - low) / conf["nbins"]
-        p = plotAbsLens(name, lens[name], low, high, step)
+        p, fit = plotAbsLens(name, lens[name], low, high, step)
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
-
+        
+        fitting.append({"name": name,
+                        "type": "abs",
+                        "param1": fit.prms[0],
+                        "param2": fit.prms[1],
+                        "pval": fit.pval})
+        
     util.toc()
 
 if 1:
@@ -166,10 +180,20 @@ if 1:
         low = 0
         high = 3 * stats.mean(rlens[name])
         step = (high - low) / conf["nbins"]
-        p = plotRelLens(name, params[name], rlens[name], low, high, step)
+        p, fit = plotRelLens(name, params[name], rlens[name], low, high, step)
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
+        
+        fitting.append({"name": name,
+                        "type": "rel",
+                        "param1": fit.prms[0],
+                        "param2": fit.prms[1],
+                        "pval": fit.pval})
+        
     util.toc()
+
+
+fitting.write(os.path.join(conf["outdir"], "fitting.tab"))
 
 
 # total branch length
@@ -177,7 +201,7 @@ util.log("plot total tree lengths")
 low = 0
 high = 3 * stats.mean(totals)
 step = (high - low) / conf["nbins"]
-p = plotAbsLens("family rate", totals, low, high, step)
+p, fit = plotAbsLens("family rate", totals, low, high, step)
 p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 

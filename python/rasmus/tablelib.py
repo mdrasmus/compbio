@@ -409,7 +409,10 @@ class Table (list):
             out.write("##version:%s\n" % self.version)
         
         elif line == DIR_TYPES:
-            entry = self[0]
+            if len(self) > 0:
+                entry = self[0]
+            else:
+                entry = [""] * len(self.headers)
             out.write("##types:" +
                       formatTableTypes(util.mget(self.types,
                                                  self.headers),

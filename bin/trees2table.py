@@ -145,7 +145,9 @@ def tree2row(stree):
         row['appear'] += node.data['appear']
         row['dup'] += node.data['dup']
         row['loss'] += node.data['loss']
-        row['genes'] += node.data['genes']
+    
+    for leaf in stree.leaves():
+        row['genes'] += leaf.data['genes']
     
     return row, headers
     
@@ -197,8 +199,6 @@ def drawEventTree(etree, params, filename=sys.stdout):
 
 
 def main(conf):
-    print "here"
-
     # read data
     env.addEnvPaths("DATAPATH")
     gene2species = genomeutil.readGene2species(env.findFile(conf["smap"]))

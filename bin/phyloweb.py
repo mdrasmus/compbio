@@ -35,6 +35,13 @@ options = [
      {"single": True,
       "default": False,
       "parser": bool}],
+    ["", "skipNoAlign=", "skipNoAlign", "<bool>",
+     {"single": True,
+      "default": False,
+      "parser": bool}],
+    ["", "display=", "display", "eval|family",
+     {"single": True,
+      "default": "eval"}],
     
     "Extentions",
     ["", "ntAlign=", "ntAlign", "<nt alignment extension>",
@@ -124,16 +131,22 @@ def getAlignVisUrl(conf, treename, seqtype = "nt"):
                         treename + "." + seqtype + ".txt")
 
 
-def getCorrectTreeFile(conf, datadir, treename, seqtype = "nt"):
-    if seqtype == "nt":
+def getCorrectTreeFile(conf, datadir, treename, seqtype = None):
+    if seqtype == "nt" or seqtype == None:
         ext = conf["correctNtTree"]
     else:
         ext = conf["correctPepTree"]
-
+    
     if conf["dataTwoTiers"]:
-        return os.path.join(datadir, treename, treename + ext)
+        filename = os.path.join(datadir, treename, treename + ext)
     else:
-        return os.path.join(datadir, treename + ext)
+        filename = os.path.join(datadir, treename + ext)
+    
+    if not os.path.exists(filename) and seqtype == None:
+        return getCorrectTreeFile(conf, datadir, treename, "pep")
+    else:
+        return filename
+
 
 def getCorrectTreeUrl(conf, dataurl, treename, seqtype = "nt"):
     if seqtype == "nt":
@@ -145,6 +158,7 @@ def getCorrectTreeUrl(conf, dataurl, treename, seqtype = "nt"):
         return os.path.join(dataurl, treename, treename + ext)
     else:
         return os.path.join(dataurl, treename + ext)
+    
 
 
 def getResultTreeFile(conf, resultdir, treename):
@@ -313,9 +327,89 @@ def generateGeneTreeTables(conf, datadir, resultdirs):
     print >>out, "</ul></body></html>"
     
     out.close()
-    
+
+
+def writeGeneralStats(conf, datadir, genes, treename, out):
+    treenum = int(treename)
+    treeStats = conf["treeStatsLookup"]
+    gene = treeStats[treenum]['gene']
+          
+
+    # get align files
+    if os.path.exists(getAlignFile(conf, datadir, treename, "nt")):
+        alnnturl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "nt")
+        alnntlink = "<a href='%s'>An</a> " % alnnturl
+    else:
+        alnntlink = ""
+
+    if os.path.exists(getAlignFile(conf, datadir, treename, "pep")):
+        alnpepurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "pep")
+        alnpeplink = "<a href='%s'>Ap</a> " % alnpepurl
+    else:
+        alnpeplink = ""
+
+    # get tree files
+    treefile = getCorrectTreeUrl(conf, conf["dataurl"], treename)
+    treeurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
+
+    row = treeStats[treenum]
+
+    if gene == "":
+        genename = "-"
+        commonName = "-"
+        pos = "-"
+    else:
+        genename = gene
+        commonName = row["common"]
+        chromName = genes[gene]['chrom']
+        chromName = chromName.replace("chromosome", "chr")
+        if chromName[0] != "c":
+            chromName = "chr" + chromName
+        pos = chromName + ":" + util.int2pretty(genes[gene]['start'])
+
+
+    # gene name and tree ID
+    if "geneOutLink" in conf and gene != "":
+        genetext = "<a href='%s'>%s</a>" % \
+            (conf['geneOutLink'] % genename, genename)
+    else:
+        genetext = genename
+
+    if row["treelen"] == 0:
+        treelen = "-"
+    else:
+        treelen = "%.3f" % row["treelen"]
+
+    print >>out, "<tr><td><a href='%s'>%s</a></td>  <td>%s</td> <td>%s</td> " % \
+        (os.path.join(conf["dataurl"], treename), treename, 
+         pos, genetext)
+
+    print >>out, "<td>%s</td><td>%d</td><td>%s</td>" % \
+        (commonName, row["alignlen"], treelen)
+
+    # synteny
+    if conf["syntenyIndex"] and gene in conf["syntenyIndex"]:
+        syntenyfile = getSyntenyUrl(conf, conf["syntenyIndex"][gene])
+        syntenyurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=synteny&data=%s" % syntenyfile
+        syntenylink = "<a href='%s'>S</a> " % syntenyurl
+    else:
+        syntenylink = ""
+
+
+    # links
+    print >>out, ("<td><nobr>" + \
+                      alnntlink +
+                      alnpeplink + \
+                      syntenylink + \
+                      "<a href='%s'>T</a></nobr></td>") % \
+        (treeurl)
+
+
 
 def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
+    if conf["display"] == "family":
+        return generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs)
+
     util.tic("generate gene tree table '%s'" % filename)
     
     progs = util.cget(resultdirs, 0)    
@@ -330,9 +424,9 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
     
     if "syntenyFile" in conf:
-        syntenyIndex = readSynteny(conf["syntenyFile"], genes)
+        conf["syntenyIndex"] = readSynteny(conf["syntenyFile"], genes)
     else:
-        syntenyIndex = None
+        conf["syntenyIndex"] = None
     
     
     # create output
@@ -370,78 +464,7 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
         
         assert treenum in treeStats, treenum
         
-        gene = treeStats[treenum]['gene']        
-        
-        # get align files
-        if os.path.exists(getAlignFile(conf, datadir, treename, "nt")):
-            alnnturl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "nt")
-            alnntlink = "<a href='%s'>An</a> " % alnnturl
-        else:
-            alnntlink = ""
-        
-        if os.path.exists(getAlignFile(conf, datadir, treename, "pep")):
-            alnpepurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, dataurl, treename, "pep")
-            alnpeplink = "<a href='%s'>Ap</a> " % alnpepurl
-        else:
-            alnpeplink = ""
-
-        
-        
-        # get tree files
-        treefile = getCorrectTreeUrl(conf, dataurl, treename)
-        treeurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
-        
-        row = treeStats[treenum]
-        
-        if gene == "":
-            genename = "-"
-            commonName = "-"
-            pos = "-"
-        else:
-            genename = gene
-            commonName = row["common"]
-            chromName = genes[gene]['chrom']
-            chromName = chromName.replace("chromosome", "chr")
-            if chromName[0] != "c":
-                chromName = "chr" + chromName
-            pos = chromName + ":" + util.int2pretty(genes[gene]['start'])
-        
-        
-        # gene name and tree ID
-        if "geneOutLink" in conf and gene != "":
-            genetext = "<a href='%s'>%s</a>" % \
-                (conf['geneOutLink'] % genename, genename)
-        else:
-            genetext = genename
-        
-        if row["treelen"] == 0:
-            treelen = "-"
-        else:
-            treelen = "%.3f" % row["treelen"]
-        
-        print >>out, "<tr><td><a href='%s'>%s</a></td>  <td>%s</td> <td>%s</td> " % \
-            (os.path.join(dataurl, treename), treename, 
-             pos, genetext)
-        
-        print >>out, "<td>%s</td><td>%d</td><td>%s</td>" % \
-            (commonName, row["alignlen"], treelen)
-        
-        # synteny
-        if syntenyIndex and gene in syntenyIndex:
-            syntenyfile = getSyntenyUrl(conf, syntenyIndex[gene])
-            syntenyurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=synteny&data=%s" % syntenyfile
-            syntenylink = "<a href='%s'>S</a> " % syntenyurl
-        else:
-            syntenylink = ""
-        
-        
-        # links
-        print >>out, ("<td><nobr>" + \
-                          alnntlink +
-                          alnpeplink + \
-                          syntenylink + \
-                          "<a href='%s'>T</a></nobr></td>") % \
-            (treeurl)
+        writeGeneralStats(conf, datadir, genes, treename, out)
         
         
         for prog, resultdir, resulturl in resultdirs:
@@ -475,6 +498,8 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
             
             print >>out, "<td style='background-color: %s'><a href='%s'>%s</a></td>" % \
                 (color, resulttree, topname)
+        
+        print >>out, "</tr>"
     
     
     # footer
@@ -485,6 +510,85 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     
     out.close()
     util.toc()
+
+
+
+def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
+    util.tic("generate gene family table '%s'" % filename)
+    
+    progs = util.cget(resultdirs, 0)    
+    dataurl = conf["dataurl"]
+    
+    if treenames == None:
+        treenames = getTreeNames(conf, datadir)
+    
+    
+    treeStats = conf["treeStatsLookup"]
+    topNames = conf["topNamesLookup"]
+    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    
+    familyStats = conf["familyStatsLookup"]
+    
+    if "syntenyFile" in conf:
+        conf["syntenyIndex"] = readSynteny(conf["syntenyFile"], genes)
+    else:
+        conf["syntenyIndex"] = None
+    
+    
+    # create output
+    os.system("mkdir -p %s" % conf["webdir"])
+    out = file(os.path.join(conf["webdir"], filename), "w")    
+
+    writeHeader(out)
+
+    # header    
+    print >>out, """<table cellspacing='1' cellpadding='5'>
+                        <tr>
+                            <td><b>Tree ID</b></td>
+                            <td><b>Chrom pos</b></td>
+                            <td><b>Gene</b></td> 
+                            <td><b>Common</b></td>
+                            <td><b>Gene len</b></td>
+                            <td><b>Tree len</b></td>
+                            <td><b>Links</b></td>"""
+    
+    print >>out, """        <td><b>#genes</b></td>
+                            <td><b>#dup</b></td>
+                            <td><b>#loss</b></td>"""
+    
+    print >>out, "</tr>"
+    
+    colormap = util.ColorMap([[0, (1, 1,1)],
+                              [.3, (1, 0, 0)]])
+    
+    
+    # table
+    progbar = progress.ProgressBar(len(treenames))
+    for treename in treenames:
+        progbar.update()
+        treenum = int(treename)
+        
+        assert treenum in treeStats, treenum
+        
+        writeGeneralStats(conf, datadir, genes, treename, out)
+        
+        row = familyStats[treenum]
+        
+        print >>out, "<td>%d</td><td>%d</td><td>%d</td>" % \
+                     (row["genes"], row["dup"], row["loss"])
+        
+        print >>out, "</tr>"
+    
+    
+    # footer
+    print >>out, "</table>"
+    
+
+    writeFooter(out)
+    
+    out.close()
+    util.toc()
+
 
 
 def generateTopologyHistograms(conf, datadir, resultdirs):
@@ -605,7 +709,11 @@ def generateTopologyTable(conf, datadir, resultdirs):
     for treename in treenames:
         progbar.update()
         
-        alnfile = getAlignFile(conf, datadir, treename)
+        alnfile = getAlignFile(conf, datadir, treename, "nt")
+        if not os.path.exists(alnfile):
+            alnfile = getAlignFile(conf, datadir, treename, "pep")
+        if not os.path.exists(alnfile) and conf["skipNoAlign"]:
+            continue
         gene = getGeneName(alnfile, conf["mainspecies"], conf["gene2species"])
         
         if gene == None:
@@ -619,7 +727,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
         tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
         row["treelen"] = sum(x.dist for x in tree.nodes.values())
         
-        aln = fasta.readFasta(getAlignFile(conf, datadir, treename, "nt"))
+        aln = fasta.readFasta(alnfile)
         row["alignlen"] = aln.alignlen()
         
         for prog, resultdir, resulturl in resultdirs:
@@ -709,6 +817,9 @@ def main(conf):
     # load tree stats and names
     conf["treeStatsLookup"] = tablelib.readTable(conf["treeStats"]).lookup("treeid")
     conf["topNamesLookup"] = tablelib.readTable(conf["treeNames"]).lookup("tree")
+    
+    if "familyStats" in conf:
+        conf["familyStatsLookup"] = tablelib.readTable(conf["familyStats"]).lookup("partid")
     
     if conf["useTopNames"]:
         generateTopologyHistograms(conf, conf["datadir"], conf["resultdirs"])

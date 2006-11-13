@@ -535,6 +535,18 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
         conf["syntenyIndex"] = None
     
     
+    # order species
+    species = []
+    def walk(node):
+        if node.isLeaf():
+            species.append(node.name)
+        else:
+            walk(node.children[0])
+            species.append(node.name)
+            walk(node.children[1])
+    walk(conf["stree"].root)
+    
+    
     # create output
     os.system("mkdir -p %s" % conf["webdir"])
     out = file(os.path.join(conf["webdir"], filename), "w")    
@@ -556,10 +568,17 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
                             <td><b>#dup</b></td>
                             <td><b>#loss</b></td>"""
     
+    for sp in species:
+        print >>out, "<td><b>%s</b></td>" % str(sp)
+    
+    
     print >>out, "</tr>"
     
-    colormap = util.ColorMap([[0, (1, 1,1)],
-                              [.3, (1, 0, 0)]])
+    colormap = util.ColorMap([[0, (.5, .5, .5)],
+                              [1, (.7, .7, 1)],
+                              [2, (.7, 1, 1)],
+                              [4, (1, 1, 0)],
+                              [8, (1, 0, 0)]])
     
     
     # table
@@ -576,6 +595,13 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
         
         print >>out, "<td>%d</td><td>%d</td><td>%d</td>" % \
                      (row["genes"], row["dup"], row["loss"])
+        
+        for sp in species:
+            ngenes = row[str(sp) + "-genes"]
+            color = color2html(* colormap.get(ngenes))
+        
+            print >>out, "<td style='background-color: %s'>%d</td>" % \
+                         (color, ngenes)
         
         print >>out, "</tr>"
     

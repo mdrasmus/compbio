@@ -530,6 +530,8 @@ def main(conf):
         pipeline.setMaxNumProc(conf["nproc"])
         
         args = copy.copy(sys.argv[:-len(conf["REST"])])
+        print args
+        sys.exit(0)
         if "-i" in args:
             args.remove("-i")
         if "--stdin" in args:

@@ -529,9 +529,9 @@ def main(conf):
         pipeline = depend.Pipeline(conf["statusdir"])
         pipeline.setMaxNumProc(conf["nproc"])
         
-        args = copy.copy(sys.argv[:-len(conf["REST"])])
-        print args
-        sys.exit(0)
+        args = copy.copy(sys.argv)
+        if len(conf["REST"]) > 0:
+            args = args[:-len(conf["REST"])]
         if "-i" in args:
             args.remove("-i")
         if "--stdin" in args:

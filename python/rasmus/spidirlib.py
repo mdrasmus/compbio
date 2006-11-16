@@ -1858,6 +1858,9 @@ def proposeTree3(conf, tree,  distmat, labels,
         if logl > toplogl:
             toplogl = logl
             toptree = tree
+            
+            # try returning immediately
+            #return toptree
 
     
     assert toptree != None

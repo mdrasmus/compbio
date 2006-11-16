@@ -525,6 +525,7 @@ def main(conf):
     util.tic("phyloall")
     if len(files) > conf["groupsize"] and depend.hasLsf():
         # distribute the work
+        util.logger("distributing work")
 
         pipeline = depend.Pipeline(conf["statusdir"])
         pipeline.setMaxNumProc(conf["nproc"])

@@ -2072,6 +2072,10 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     debug(" " * (depth*2), "(%d)" % len(visited))
     sys.stdout.flush()
     
+    if depth < 1:
+        return tree, logl
+    
+    
     # try all NNI
     # find edges for NNI
     nodes = tree.nodes.values()

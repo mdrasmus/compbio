@@ -100,6 +100,10 @@ options = ["""\
     {"single": True,
      "parser": int,
      "default": 100}],
+ ["", "regraftloop=", "regraftloop", "<number of branches to try for each regraft>",
+    {"single": True,
+     "parser": int,
+     "default": 40}],
  
  # OLD search parameters
  #

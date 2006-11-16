@@ -1814,12 +1814,33 @@ def proposeTree3(conf, tree,  distmat, labels,
     weights = [x.data["error"] for x in nodes]
     badgene = nodes[stats.sample(weights)]
     
+    
+    # detemine distance from badgene to everyone else
+    dists = util.Dict(default=-util.INF)
+    def walk(node, dist):
+        dists[node.name] = dist
+        for child in node.children:
+            walk(child, dist + child.dist)
+    walk(badgene, 0)
+    seen = set([badgene])
+    node = badgene.parent
+    dist = badgene.dist
+    while node != None:        
+        for child in node.children:
+            if child not in seen:
+                walk(child, dist)
+        seen.add(node)
+        dist +=  node.dist
+        node = node.parent
+    
     tree1, tree2 = splitTree(tree, badgene, badgene.parent)
     
     names = tree1.nodes.keys()
     names.remove(tree1.root.name)
+    names.sort(key=lambda x: dists[x])
     
-    for name in names:
+    
+    for name in names[:min(len(names), conf["regraftloop"])]:
         tree = tree1.copy()
         node = tree.nodes[name]
         

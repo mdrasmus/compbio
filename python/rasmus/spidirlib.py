@@ -2025,7 +2025,8 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
         
         tree, logl = searchExhaustive(conf, distmat2, labels2, 
                                       tree, stree, gene2species, params,
-                                      visited=visited2)
+                                      visited=visited2,
+                                      depth=conf["depth"])
             
             
         if logl >= toplogl:

@@ -532,6 +532,7 @@ def main(conf):
         args = copy.copy(sys.argv)
         if len(conf["REST"]) > 0:
             args = args[:-len(conf["REST"])]
+
         if "-i" in args:
             args.remove("-i")
         if "--stdin" in args:

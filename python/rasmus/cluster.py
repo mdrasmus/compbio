@@ -54,21 +54,18 @@ def confusionMatrix(parts1, parts2):
     return confuse, list(diffset)
 
 
-def partCrossing(parts1, parts2):
-    """How often does part1 cross the boundries defined by part2"""
+def partLookup(parts1, parts2):
+    """For each part in part1, which parts in parts2 share the same items"""
     
-    lookup2 = util.Dict(1, -1)    
+    lookup2 = util.Dict(default=-1)    
     lookup2.update(item2part(parts2))
     splits = []
     
     for part1 in parts1:
-        collect = util.Dict(1, [])
+        hits = set()
         for item in part1:
-            collect[lookup2[item]].append(item)
-        keys = collect.keys()
-        keys.sort()
-        
-        splits.append(map(lambda key: collect[key], keys))
+            hits.add(lookup2[item])
+        splits.append(sorted(list(hits)))
     
     return splits
 

@@ -735,6 +735,9 @@ def generateTopologyTable(conf, datadir, resultdirs):
     for treename in treenames:
         progbar.update()
         
+        if treename in conf["filterNames"]:
+            continue
+        
         alnfile = getAlignFile(conf, datadir, treename, "nt")
         if not os.path.exists(alnfile):
             alnfile = getAlignFile(conf, datadir, treename, "pep")
@@ -836,6 +839,15 @@ def main(conf):
     env.addEnvPaths("DATAPATH")
     conf['gene2species'] = genomeutil.readGene2species(env.findFile(conf['smap']))
     conf['stree'] = treelib.readTree(env.findFile(conf['stree']))
+    
+    # produce filter for trees to ignore    
+    if "filterNames" in conf:
+        filtered = set()
+        for line in file(conf["filterNames"]):
+            filtered.add(line.rstrip())
+        conf["filterNames"] = filtered
+    else:
+        conf["filterNames"] = set()
     
     
     generateTopologyTable(conf, conf["datadir"], conf["resultdirs"])    

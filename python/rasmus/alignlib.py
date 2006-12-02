@@ -480,16 +480,25 @@ def findAlignCodons(aln):
 
     ind = []
     codon = []
+    gaps = util.Dict(default=0)
     for i in range(len(cols)):
 
-        if len(cols[i]) == 1 or \
-           len(cols[i]) == 2 and -1 in cols[i]:
+        if len(cols[i]) == 1:
+            codon.append(i)
+        elif len(cols[i]) == 2 and -1 in cols[i]:
+            for key, val in aln.iteritems():
+                if val[i] == "-":
+                    gaps[key] += 1 
             codon.append(i)
         else:
             codon = []
         if len(codon) == 3:
-            ind.extend(codon)
+            if len(gaps) == 0 or \
+               util.unique([x % 3 for x in gaps.values()]) == [0]:
+                ind.extend(codon)
             codon = []
+            for key in gaps:
+                gaps[key] = 0
 
     return ind
 

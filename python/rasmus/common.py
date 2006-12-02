@@ -70,6 +70,8 @@ pc = printcols
 pa = alignlib.printAlign
 pd = printDict
 
+histtab = tablelib.histTable
+
 
 def pl(lines, out=sys.stdout):
     for line in lines:

@@ -144,19 +144,19 @@ def getFileType(conf, infile):
     
     for ext in conf["fastaext"]:
         if infile.endswith(ext):
-            return "fasta", infile.replace(ext, "")
+            return "fasta", util.replaceExt(infile, ext, "")
     
     for ext in conf["alignext"]:
         if infile.endswith(ext):
-            return "align", infile.replace(ext, "")
+            return "align", util.replaceExt(infile, ext, "")
 
     for ext in conf["treeext"]:
         if infile.endswith(ext):
-            return "tree", infile.replace(ext, "")
+            return "tree", util.replaceExt(infile, ext, "")
     
     for ext in conf["distext"]:
         if infile.endswith(ext):
-            return "dist", infile.replace(ext, "")
+            return "dist", util.replaceExt(infile, ext, "")
     
     raise "unknown file type '%s'" % infile
 
@@ -520,7 +520,7 @@ def main(conf):
     
     util.logger("will process %d input files" % len(files))
     util.logger("will skip %d input files" % (len(files2) - len(files)))
-    
+
     
     util.tic("phyloall")
     if len(files) > conf["groupsize"] and depend.hasLsf():

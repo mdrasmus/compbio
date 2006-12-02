@@ -90,7 +90,10 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
             row["%s-genes" % str(name)] = node.data['genes']
         """
         
-        row["partid"] = i
+        if "treeext" in conf:
+            row["partid"] = util.replaceExt(os.path.basename(f), conf["treeext"], "")
+        else:
+            row["partid"] = i
         
         # add treelen
         row['treelen'] = sum(x.dist for x in tree.nodes.values())        

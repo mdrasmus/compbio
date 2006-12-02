@@ -1244,7 +1244,7 @@ def rareEventsLikelihood(conf, tree, stree, recon, events):
     logl = 0.0
     
     for node, event in events.items():
-        if recon[node] = stree.root and \
+        if recon[node] == stree.root and \
            event == "dup":
             logl += log(conf["dupprob"])
         

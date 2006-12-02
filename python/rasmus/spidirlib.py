@@ -1244,11 +1244,15 @@ def rareEventsLikelihood(conf, tree, stree, recon, events):
     logl = 0.0
     
     for node, event in events.items():
-        if event == "dup":
+        if recon[node] = stree.root and \
+           event == "dup":
             logl += log(conf["dupprob"])
         
-    nloss = len(phyloutil.findLoss(tree, stree, recon))
-    logl += nloss * log(conf["lossprob"])
+        #if event == "dup":
+        #    logl += log(conf["dupprob"])
+        
+    #nloss = len(phyloutil.findLoss(tree, stree, recon))
+    #logl += nloss * log(conf["lossprob"])
     
     return logl
 

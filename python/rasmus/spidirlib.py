@@ -496,9 +496,9 @@ def setTreeDistances(conf, tree, distmat, genes):
     d = scipy.array(dists)
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
-    # force non-zero branch lengths
-    #b = [max(float(x), 0) for x in makeVector(b)]
-    b = [float(x) for x in makeVector(b)]
+    # force non-negative branch lengths
+    b = [max(float(x), 0) for x in makeVector(b)]
+    #b = [float(x) for x in makeVector(b)]
     
     d2 = makeVector(scipy.dot(A, b))
     resids = (d2 - d).tolist()
@@ -1247,8 +1247,6 @@ def branchLikelihoods(conf, tree, recon, events, stree, params, baserate):
         
         ratio = spath1 / float(spath1 + spath2)
         tot = tree.root.children[0].dist + tree.root.children[1].dist
-        
-        print ratio
         
         tree.root.children[0].dist = tot * ratio
         tree.root.children[1].dist = tot * (1 - ratio)

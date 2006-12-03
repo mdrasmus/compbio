@@ -1236,17 +1236,19 @@ def branchLikelihoods(conf, tree, recon, events, stree, params, baserate):
         spath1 = 0
         snode1 = recon[tree.root.children[0]]
         while snode1 != stree.root:
-            spath1 += snode1.dist
+            spath1 += params[snode1.name][0]
             snode1 = snode1.parent
         
         spath2 = 0
         snode2 = recon[tree.root.children[1]]
         while snode2 != stree.root:
-            spath2 += snode2.dist
+            spath2 += params[snode2.name][0]
             snode2 = snode2.parent
         
         ratio = spath1 / float(spath1 + spath2)
         tot = tree.root.children[0].dist + tree.root.children[1].dist
+        
+        print ratio
         
         tree.root.children[0].dist = tot * ratio
         tree.root.children[1].dist = tot * (1 - ratio)

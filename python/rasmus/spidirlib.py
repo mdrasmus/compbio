@@ -1226,6 +1226,32 @@ def branchLikelihoods(conf, tree, recon, events, stree, params, baserate):
             if recon[child] != stree.root:
                 child.data["unfold"] = True    
     
+    # determine if top branch needs to slide root
+    if recon[tree.root] ==  stree.root and \
+       len(tree.root.children) == 2 and \
+       events[tree.root] == "spec" and \
+       events[tree.root.children[0]] == "spec" and \
+       events[tree.root.children[1]] == "spec":
+        
+        spath1 = 0
+        snode1 = recon[tree.root.children[0]]
+        while snode1 != stree.root:
+            spath1 += snode1.dist
+            snode1 = snode1.parent
+        
+        spath2 = 0
+        snode2 = recon[tree.root.children[1]]
+        while snode2 != stree.root:
+            spath2 += snode2.dist
+            snode2 = snode2.parent
+        
+        ratio = spath1 / float(spath1 + spath2)
+        tot = tree.root.children[0].dist + tree.root.children[1].dist
+        
+        tree.root.children[0].dist = tot * ratio
+        tree.root.children[1].dist = tot * (1 - ratio)
+    
+    
     # recurse through indep sub-trees
     def walk(node):
         if events[node] == "spec" or \

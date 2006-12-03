@@ -911,7 +911,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     ind = range(len(means))
     ind.sort(lambda a, b: cmp(means[b], means[a]))
-    ind = ind[:len(ind) / 4 + 1]
+    #ind = ind[:len(ind) / 4 + 1]
     means = util.mget(means, ind)
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)

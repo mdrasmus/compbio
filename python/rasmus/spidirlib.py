@@ -1300,11 +1300,8 @@ def treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None
         baserate = getBaserate(tree, stree, params, recon=recon)
     
     
-    # debug info
-    if isDebug(DEBUG_MED):
-        util.tic("find logl")
 
-
+    
     # calc branch length likelihoods
     this = util.Closure(logl=0.0)
     this.logl = branchLikelihoods(conf, tree, recon, events, 
@@ -1326,10 +1323,7 @@ def treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
     
-    if isDebug(DEBUG_MED):
-        util.toc()
-        debug("\n\n")
-        drawTreeLogl(tree, events=events)
+    
     
     
     return this.logl
@@ -1691,6 +1685,12 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         return estlogl
     printMCMC(conf, "est", tree, stree, gene2species, {})
 
+
+    # debug info
+    if isDebug(DEBUG_MED):
+        util.tic("find logl")
+    
+
     # derive relative branch lengths
     tree.clearData("logl", "extra", "fracs", "params", "unfold")
     recon = phyloutil.reconcile(tree, stree, gene2species)
@@ -1739,7 +1739,13 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     tree.data["logl"] = this.logl
     
     print >> conf["intcmp"], "%f\t%f" % (this.logl, estlogl)
+    conf["intcmp"].flush()
     
+    
+    if isDebug(DEBUG_MED):
+        util.toc()
+        debug("\n\n")
+        drawTreeLogl(tree, events=events)
     
     return this.logl
 

@@ -286,7 +286,7 @@ def gaussianPdf(x, params):
 
 def normalPdf(x, params):
     mu, sigma = params
-    return 1/(sigma * sqrt(2*pi)) * exp(- (x - mu)**2 / (2.0 * sigma**2))
+    return 1.0/(sigma * sqrt(2.0*pi)) * exp(- (x - mu)**2 / (2.0 * sigma**2))
 
 def normalCdf(x, params):
     mu, sigma = params

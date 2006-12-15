@@ -1454,8 +1454,9 @@ def hist2(array1, array2,
     labels = []
     
     for j,i in zip(array1, array2):
-        h[bucketBin(i, ndivs2, low2, width2)] \
-         [bucketBin(j, ndivs1, low1, width1)] += 1
+        if j > low1 and i > low2:
+            h[bucketBin(i, ndivs2, low2, width2)] \
+             [bucketBin(j, ndivs1, low1, width1)] += 1
     
     for i in range(ndivs2):
         labels.append([])

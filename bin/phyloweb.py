@@ -2,10 +2,13 @@
 
 import os
 import sys
+import math
+
+
 
 from rasmus import util, env, genomeutil, treelib, progress, phylip, phyloutil
 from rasmus.vis import treevis
-from rasmus import svg, tablelib, fasta
+from rasmus import svg, tablelib, fasta, spidirlib
 
 
 
@@ -77,10 +80,10 @@ options = [
 
 def color2html(r, g, b, a=1):
     txt = "#"
-    digits = "0123456789abcdef"
+    digits = "0123456789abcdeff"
         
     for val in [r, g, b]:
-        txt += digits[int(val * 15)]
+        txt += digits[int((val * 15) + .5)]
     
     return txt
 
@@ -329,7 +332,8 @@ def generateGeneTreeTables(conf, datadir, resultdirs):
     out.close()
 
 
-def writeGeneralStats(conf, datadir, genes, treename, out):
+def writeGeneralStats(conf, datadir, genes, treename, out, 
+                      famRate=None, treelenColormap=None):
     treenum = int(treename)
     treeStats = conf["treeStatsLookup"]
     gene = treeStats[treenum]['gene']
@@ -379,13 +383,23 @@ def writeGeneralStats(conf, datadir, genes, treename, out):
         treelen = "-"
     else:
         treelen = "%.3f" % row["treelen"]
-
+    
+    if famRate != None:
+        famRateMean = famRate[0] / famRate[1]
+        famRateSdev = math.sqrt(famRate[0] / (famRate[1] ** 2))
+        zscore = (row["treelen"] - famRateMean) / famRateSdev
+        
+        color = color2html(* treelenColormap.get(zscore))
+        treelenColor = "style='background-color: %s'" % color
+    else:
+        treelenColor = ""
+    
     print >>out, "<tr><td><a href='%s'>%s</a></td>  <td>%s</td> <td>%s</td> " % \
         (os.path.join(conf["dataurl"], treename), treename, 
          pos, genetext)
 
-    print >>out, "<td>%s</td><td>%d</td><td>%s</td>" % \
-        (commonName, row["alignlen"], treelen)
+    print >>out, "<td>%s</td><td>%d</td><td %s>%s</td>" % \
+        (commonName, row["alignlen"], treelenColor, treelen)
 
     # synteny
     if conf["syntenyIndex"] and gene in conf["syntenyIndex"]:
@@ -409,6 +423,8 @@ def writeGeneralStats(conf, datadir, genes, treename, out):
 def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     if conf["display"] == "family":
         return generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs)
+    elif conf["display"] == "rates":
+        return generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs)
 
     util.tic("generate gene tree table '%s'" % filename)
     
@@ -617,6 +633,166 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
 
 
 
+def getInorderSpecies(stree):
+    species = []
+    def walk(node):
+        if node.isLeaf():
+            species.append(node.name)
+        else:
+            walk(node.children[0])
+            species.append(node.name)
+            walk(node.children[1])
+    walk(stree)
+    
+    return species
+    
+    
+
+def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
+    util.tic("generate gene rates table '%s'" % filename)
+    
+    progs = util.cget(resultdirs, 0)    
+    dataurl = conf["dataurl"]
+    
+    if treenames == None:
+        treenames = getTreeNames(conf, datadir)
+    
+    
+    treeStats = conf["treeStatsLookup"]
+    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    
+    rateTable = conf["rateTable"].lookup("treeid")
+    params = spidirlib.readParams(conf["spidirParams"])
+    zscoreTable = conf["zscoreTable"].lookup("treeid")
+    
+    
+    if "syntenyFile" in conf:
+        conf["syntenyIndex"] = readSynteny(conf["syntenyFile"], genes)
+    else:
+        conf["syntenyIndex"] = None
+    
+    
+    # order species
+    species = getInorderSpecies(conf["stree"].root)
+    
+    
+    if "colDividers" in conf:
+        colDividers = set(conf["colDividers"])
+    else:
+        colDividers = set()
+    
+    
+    # create output
+    os.system("mkdir -p %s" % conf["webdir"])
+    out = file(os.path.join(conf["webdir"], filename), "w")    
+
+    writeHeader(out)
+
+    # header    
+    print >>out, """<table cellspacing='1' cellpadding='5'>
+                        <tr>
+                            <td><b>Tree ID</b></td>
+                            <td><b>Chrom pos</b></td>
+                            <td><b>Gene</b></td> 
+                            <td><b>Common</b></td>
+                            <td><b>Gene len</b></td>
+                            <td><b>Tree len</b></td>
+                            <td><b>Links</b></td>
+                            <td><b>Log Lk</b></td>"""
+    
+    
+    for sp in species:
+        if sp == species[0]:
+            border = "border-left: 1px black solid;"
+        elif str(sp) in colDividers:
+            border = "border-right: 1px black solid;"
+        else:
+            border = ""
+        
+        print >>out, "<td %s><b>%s</b></td>" % (border, str(sp))
+    
+    
+    print >>out, "</tr>"
+    
+    colormap = util.ColorMap([[-5, (0, 1, 0)],
+                              [-1.5, (1, 1, 1)],
+                              [0, (1, 1, 1)],
+                              [1.5, (1, 1, 1)],
+                              [5, (1, 0, 0)]])
+    
+    
+    treelenColormap = util.ColorMap([[-5, (0, 1, 0)],
+                                     [0, (1, 1, 1)],
+                                     [5, (1, 0, 0)]])
+    
+    
+    
+    # sort table
+    if "sortby" in conf:
+        if conf["sortby"][0] == "treelen":
+            conf["treeStats"].sort(col="treelen", reverse=not conf["sortby"][1])
+            treenames2 = map(str, conf["treeStats"].cget("treeid"))
+            lookup = util.list2lookup(treenames2)
+            treenames.sort(key=lambda x: lookup[x])
+            
+        elif conf["sortby"][0] == "loglk":
+            conf["zscoreTable"].sort(col="loglk", reverse=not conf["sortby"][1])
+            treenames2 = map(str, conf["zscoreTable"].cget("treeid"))
+            lookup = util.list2lookup(treenames2)
+            treenames.sort(key=lambda x: lookup[x])
+    
+    
+    # table
+    progbar = progress.ProgressBar(len(treenames))
+    for treename in treenames:
+        progbar.update()
+        treenum = int(treename)
+        
+        assert treenum in treeStats, treenum
+        
+        writeGeneralStats(conf, datadir, genes, treename, out,
+                          famRate = params["baserate"],
+                          treelenColormap=treelenColormap)
+        
+        
+        row = rateTable[treenum]
+        stats = treeStats[treenum]
+        
+        print >>out, "<td>%.2f</td>" % zscoreTable[treenum]["loglk"]
+        
+        for sp in species:
+            dist = row[str(sp)] / stats["treelen"]
+            zscore = (dist - params[sp][0]) / params[sp][1]
+            
+            color = color2html(* colormap.get(zscore))
+            
+            if sp == species[0]:
+                border = "border-left: 1px black solid;"
+            elif str(sp) in colDividers:
+                border = "border-right: 1px black solid;"
+            else:
+                border = ""
+            
+            print >>out, "<td style='background-color: %s; %s'>%.2f</td>" % \
+                         (color, border, zscore)
+        
+        
+        
+        print >>out, "</tr>"
+    
+    
+    # footer
+    print >>out, "</table>"
+    
+
+    writeFooter(out)
+    
+    out.close()
+    util.toc()
+
+
+
+
 def generateTopologyHistograms(conf, datadir, resultdirs):
     treeStats = tablelib.Table(conf["treeStatsLookup"].values())
     topNames = conf["topNamesLookup"]
@@ -639,7 +815,7 @@ def generateTopologyHistograms(conf, datadir, resultdirs):
         for prog, resultdir, resulturl in resultdirs:
             topname = topNames[row[prog]]['name']
             examples[topname] = [resulturl, str(row['treeid'])]
-
+    
     tophists = {}
     for prog, resultdir, resulturl in resultdirs:
         tops = treeStats.cget(prog)
@@ -657,7 +833,6 @@ def generateTopologyHistograms(conf, datadir, resultdirs):
     # table data
     for i in range(numtops):
         print >>out, "<tr>"
-        
         
         for prog, resultdir, resulturl in resultdirs:
             tab = tophists[prog]
@@ -783,6 +958,88 @@ def generateTopologyTable(conf, datadir, resultdirs):
     topnames.write(conf["treeNames"])
     
     util.toc()
+
+
+
+
+def generateRateTable(conf, datadir):
+    treenames = getTreeNames(conf, datadir)
+    
+    # skip is stats table already exists
+    if os.path.exists(conf["rateTable"]) and \
+       os.path.exists(conf["zscoreTable"]) and \
+       conf["resume"]:
+        rateTable = tablelib.readTable(conf["rateTable"])
+        zscoreTable = tablelib.readTable(conf["zscoreTable"])
+        
+        if len(rateTable) >= len(treenames):
+            conf["rateTable"] = rateTable
+            conf["zscoreTable"] = zscoreTable
+            return rateTable
+    
+    
+    util.tic("generate rate stats")
+    
+    # get order of species
+    species = getInorderSpecies(conf["stree"].root)      
+    
+    
+    # init tables
+    headers = ["treeid"]
+    for sp in species:
+        headers.append(str(sp))
+    rateTable = tablelib.Table(headers=headers)
+    zscoreTable = tablelib.Table(headers=headers + ["loglk"])
+    
+    params = spidirlib.readParams(conf["spidirParams"])
+    
+    
+    
+    # populate table
+    progbar = progress.ProgressBar(len(treenames))
+    for treename in treenames:
+        progbar.update()
+        
+        if treename in conf["filterNames"]:
+            continue
+        
+        row = {"treeid": int(treename)}
+        row2 = {"treeid": int(treename)}
+        
+        tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
+        recon = phyloutil.reconcile(tree, conf["stree"], conf["gene2species"])
+        events = phyloutil.labelEvents(tree, recon)
+        
+        
+        assert len(util.unique(recon.values())) == len(recon)
+        
+        treelen = sum(x.dist for x in tree.nodes.values())
+        
+        for node, snode in recon.iteritems():
+            row[str(snode.name)] = node.dist
+            row2[str(snode.name)] = ((node.dist / treelen) - params[snode.name][0]) \
+                                   / params[snode.name][1]
+        
+        row2["loglk"] = spidirlib.branchLikelihoods({}, tree, recon, events, 
+                                                 conf["stree"], params, treelen)
+        
+        rateTable.append(row)
+        zscoreTable.append(row2)
+    
+    
+    # save table
+    rateTable.write(conf["rateTable"])
+    zscoreTable.write(conf["zscoreTable"])
+    
+    conf["rateTable"] = rateTable
+    conf["zscoreTable"] = zscoreTable
+    
+    #print "bad trees", bad
+    
+    util.toc()
+    
+    return rateTable
+    
     
 
 def writeHeader(out):
@@ -853,11 +1110,17 @@ def main(conf):
     generateTopologyTable(conf, conf["datadir"], conf["resultdirs"])    
     
     # load tree stats and names
-    conf["treeStatsLookup"] = tablelib.readTable(conf["treeStats"]).lookup("treeid")
+    conf["treeStats"] = tablelib.readTable(conf["treeStats"])
+    conf["treeStatsLookup"] = conf["treeStats"].lookup("treeid")
     conf["topNamesLookup"] = tablelib.readTable(conf["treeNames"]).lookup("tree")
     
     if "familyStats" in conf:
         conf["familyStatsLookup"] = tablelib.readTable(conf["familyStats"]).lookup("partid")
+    
+    
+    if "rateTable" in conf:
+        generateRateTable(conf, conf["datadir"])
+    
     
     if conf["useTopNames"]:
         generateTopologyHistograms(conf, conf["datadir"], conf["resultdirs"])

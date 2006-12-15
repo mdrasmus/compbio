@@ -3,6 +3,7 @@ import copy
 import math
 import random
 import sys
+import os
 
 # rasmus libs
 import graph
@@ -484,8 +485,13 @@ class Tree:
         self.add(self.root)
     
 
-    def readParentTree(self, treeFile, labelFile):
-        labels = util.readStrings(labelFile)
+    def readParentTree(self, treeFile, labelFile=None):
+        if labelFile:
+            labels = util.readStrings(labelFile)
+        else:
+            nitems = (len(file(treeFile).readlines()) + 1)/ 2
+            labels = map(str, range(nitems))
+        
         self.makeRoot()
 
         i = 0
@@ -516,6 +522,38 @@ class Tree:
                 except:
                     print i, parentid
             i += 1
+        
+        # remove redunant root
+        if len(self.root.children) == 1:
+            self.root = self.root.children[0]
+            self.remove(self.root.parent)
+            self.root.parent = None
+    
+    
+    def writeParentTree(self, treeFile, labels):        
+        ids = {}
+        
+        # assign ids to leaves
+        for leafname in labels:
+            ids[self.nodes[leafname]] = len(ids)
+        
+        # assign ids to internal nodes
+        def walk(node):
+            node.recurse(walk)
+            if not node.isLeaf():
+                ids[node] = len(ids)
+        walk(self.root)
+        
+        # build ptree array
+        ptree = [0] * len(ids)
+        for node, idname in ids.iteritems():
+            if node.parent != None:
+                ptree[idname] = ids[node.parent]
+            else:
+                ptree[idname] = -1
+        
+        util.writeVector(treeFile, ptree)
+    
     
     
     #

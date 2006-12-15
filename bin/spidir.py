@@ -144,6 +144,10 @@ options = ["""\
     {"default": 1,
      "parser": float,
      "single": True}],
+ ["", "predupprob=", "predupprob", "<probability of pre-speciation duplication>",
+    {"default": .01,
+     "parser": float,
+     "single": True}],
  ["L:", "lossprob=", "lossprob", "<probability of loss>",
     {"default": 1,
      "parser": float,
@@ -162,6 +166,7 @@ options = ["""\
      "default": 0, 
      "parser": int,
      "help": "set SPIDIR debug level"}],
+ ["", "integrate", "integrate", ""],
 
  ["P:", "paths=", "paths", "<files path>",
     {"single": True,
@@ -262,7 +267,10 @@ def buildTree(conf, stree, gene2species):
                 treelib.drawTree(correctTree, maxlen=5, minlen=5)
                 print
                 
-                rferror = spidirlib.robinsonFouldsError(correctTree, tree)
+                if len(tree.leaves()) > 3:
+                    rferror = spidirlib.robinsonFouldsError(correctTree, tree)
+                else:
+                    rferror = 0.0
                 
                 if thash1 == thash2:
                     print "CORRECT TREE FOUND"

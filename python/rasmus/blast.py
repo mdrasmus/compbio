@@ -319,6 +319,7 @@ def filterBestHitPerTarget(reader, out, scorefunc=bitscore):
                 topscore = score
                 last = line
         lasthit = hit
+
         
 
 def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
@@ -326,7 +327,7 @@ def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
 
     if not split:
         # do blasting in one call
-        pipe = os.popen("blastall -p blastp -d %s -i %s -m 8 -e .1 %s" % \
+        pipe = os.popen("blastall -p blastp -d %s -i %s -m 8 %s" % \
             (databaseFile, queryFile, options))
         return BlastReader(pipe)
         
@@ -437,6 +438,32 @@ def findBlastFiles(genomes, ext="blastp", paths = env.datapaths):
             except:
                 pass
     return files
+
+
+
+def bestBidir(hits, scorefunc=bitscore):
+    "find best bidirectional hits"
+    
+    best = util.Dict(default=[None, 0, None])
+    
+    for hit in hits:
+        gene1 = query(hit)
+        gene2 = subject(hit)
+        score = scorefunc(hit)
+        if score > best[gene1][1]:
+            best[gene1] = [gene2, score, hit]
+        if score > best[gene2][1]:
+            best[gene2] = [gene1, score, hit]
+    
+    mark = set()
+    hits2 = []
+    for gene1, (gene2, score, hit) in best.iteritems():
+        if best[gene2][0] == gene1 and gene1 not in mark:
+            mark.add(gene1)
+            mark.add(gene2)
+            hits2.append(hit)
+    
+    return hits2
 
 
 

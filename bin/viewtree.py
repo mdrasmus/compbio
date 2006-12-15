@@ -42,6 +42,8 @@ options = [
      "help": "show heading information above each tree"}],
   ["g:", "graphical=", "graphical", "<filename>|-",
     {"single": True}],
+  ["G", "default-graphical", "default-graphical", "",
+    {"single": True}],
   ["", "trees=", "trees", "{trees}",
    {"single": True,
     "parser": util.shellparser,
@@ -120,7 +122,15 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
             print "filename: %s" % treefile
             print "treelen:  %f" % sum(x.dist for x in tree.nodes.values())
             print
-            
+        
+        
+        # set default graphical settings
+        if conf["default-graphical"]:
+            conf.setdefault("graphical", "-")
+            conf['scale'] = 500.0
+            conf['nolen'] = True
+
+
         
         labels = {}
         
@@ -143,7 +153,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
                 labels[node.name] = "[%s] %s" % (node.name, 
                                                  labels[node.name])
         
-        if "graphical" in conf:
+        if "graphical" in conf:            
             if conf["graphical"] == "-":
                 treevis.showTree(tree, labels=labels,
                                        xscale=conf["scale"],

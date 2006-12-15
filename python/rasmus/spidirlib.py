@@ -1675,6 +1675,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     return logl
 
 
+g_bestlogl = [-util.INF]
 
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
@@ -1683,6 +1684,12 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     if "integrate" not in conf:
         return estlogl
+    else:
+        # skip trees that are estimated to be very bad
+        if estlogl < g_bestlogl[0] - 50:
+            return estlogl
+        g_bestlogl[0] = max(g_bestlogl[0], estlogl)
+            
     printMCMC(conf, "est", tree, stree, gene2species, {})
 
 

@@ -320,15 +320,19 @@ def filterBestHitPerTarget(reader, out, scorefunc=bitscore):
                 last = line
         lasthit = hit
 
-        
+
 
 def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
+    return blast("blastp", databaseFile, queryFile, options = options, 
+                 split=split, resume=resume)
+
+def blast(prog, databaseFile, queryFile, options = "", split=100, resume = None):
     """Executes blastp in several smaller batches"""
 
     if not split:
         # do blasting in one call
-        pipe = os.popen("blastall -p blastp -d %s -i %s -m 8 %s" % \
-            (databaseFile, queryFile, options))
+        pipe = os.popen("blastall -p %s -d %s -i %s -m 8 %s" % \
+            (prog, databaseFile, queryFile, options))
         return BlastReader(pipe)
         
     else:
@@ -378,8 +382,8 @@ def blastp(databaseFile, queryFile, options = "", split=100, resume = None):
             # start blast
             tmpfile = util.tempfile(".", "blastp", ".fasta")
             seqs.write(tmpfile, names = names)
-            pipe = os.popen("blastall -p blastp -d %s -i %s -m 8 -e .1 %s" % \
-                (databaseFile, tmpfile, options))
+            pipe = os.popen("blastall -p %s -d %s -i %s -m 8 -e .1 %s" % \
+                (prog, databaseFile, tmpfile, options))
             
             # update variables
             closure["oldtmp"] = tmpfile

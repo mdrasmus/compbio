@@ -1582,9 +1582,9 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     this = util.Closure(ncalls=0, depth=0, printing=0)    
     
     
-    #quad = scipy.integrate.quad
+    quad = scipy.integrate.quad
     
-    def quad(func, start, end, epsrel=None):
+    def quad2(func, start, end, epsrel=None):
         tot = 0
         n = 0
         if end <= start:

@@ -1679,7 +1679,7 @@ g_bestlogl = [-util.INF]
 
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
-    conf["accuracy"] = .1
+    conf["accuracy"] = .01
 
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     if "integrate" not in conf:

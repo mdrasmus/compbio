@@ -2081,6 +2081,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
     
     util.tic("SINDIR")
     
+    
     # do auto searches
     for search in conf["search"]:
         util.tic("Search by %s" % search)
@@ -2153,6 +2154,8 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         evalUserTree(tree)
     
     
+    print "tops", conf["tops"]
+    
     for topfile in conf["tops"]:
         infile = file(topfile)
         strees = []
@@ -2182,8 +2185,6 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             recon = phyloutil.reconcile(tree, stree, gene2species)
             events = phyloutil.labelEvents(tree, recon)
             drawTreeLogl(tree, events=events)
-    
-    
     util.toc()
     
     if len(visited) == 0:

@@ -73,6 +73,8 @@ options = ["""\
         none   - no search"""}],
  ["T:", "tree=", "tree", "<propose tree>",
     {"default": []}],
+ ["", "tops=", "tops", "<proposed topologies>",
+    {"default": []}],
  ["i:", "iters=", "iters", "<MCMC iterations>", 
     {"default": 1000, 
      "parser": int,

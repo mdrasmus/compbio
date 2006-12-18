@@ -2125,12 +2125,8 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         
         printVisitedTrees(visited)
         
-        
-    
-    # eval the user given trees
-    for treefile in conf["tree"]:
-        tree = treelib.readTree(treefile)
-        
+
+    def evalUserTree(tree):
         if True: #sum(node.dist for node in tree.nodes.values()) == 0.0: # or True:
             debug("fitting distances")     
             setTreeDistances(conf, tree, distmat, labels)
@@ -2149,7 +2145,27 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
             debug("\nuser given tree:")
             recon = phyloutil.reconcile(tree, stree, gene2species)
             events = phyloutil.labelEvents(tree, recon)
-            drawTreeLogl(tree, events=events)
+            drawTreeLogl(tree, events=events)        
+    
+    # eval the user given trees
+    for treefile in conf["tree"]:
+        tree = treelib.readTree(treefile)
+        evalUserTree(tree)
+    
+    for topfile in conf["tops"]:
+        infile = file(topfile)
+        strees = []
+        
+        while True:
+            try:
+                strees.append(treelib.readTree(infile))
+            except:
+                break
+        
+        for top in strees:
+            tree = phyloutil.stree2gene(top, labels, gene2species)
+            evalUserTree(tree)
+            
     
     
     # eval correcttree for debug only

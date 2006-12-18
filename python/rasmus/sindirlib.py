@@ -2152,6 +2152,7 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
         tree = treelib.readTree(treefile)
         evalUserTree(tree)
     
+    
     for topfile in conf["tops"]:
         infile = file(topfile)
         strees = []
@@ -2161,6 +2162,8 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
                 strees.append(treelib.readTree(infile))
             except:
                 break
+        
+        print len(strees)
         
         for top in strees:
             tree = phyloutil.stree2gene(top, labels, gene2species)

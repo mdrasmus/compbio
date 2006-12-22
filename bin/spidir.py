@@ -24,7 +24,7 @@ from rasmus import treelib
 from rasmus import util
 
 # spidir lib
-from rasmus import spidirlib
+import Spidir
 
 
 
@@ -176,8 +176,8 @@ options = ["""\
      "default": "."}]
 ]
 
-# import spidirlib's debug function
-debug = spidirlib.debug
+# import Spidir's debug function
+debug = Spidir.debug
 
 
 def main(argv):   
@@ -185,14 +185,14 @@ def main(argv):
     conf = util.parseOptions(argv, options, quit=True)
 
     # setup debug output
-    #spidirlib.setDebugStream(file(spidirlib.debugFile(conf), "w"))
+    #Spidir.setDebugStream(file(Spidir.debugFile(conf), "w"))
     
     if conf["debug"] > 0:
         util.globalTimer().removeStream(sys.stderr)
         util.globalTimer().addStream(sys.stdout)
         debug("SPIDIR")
         debug("configuration:")
-        util.printDict(conf, justify=lambda x: "left", out=spidirlib.DEBUG)
+        util.printDict(conf, justify=lambda x: "left", out=Spidir.DEBUG)
         debug()
         debug()
     
@@ -224,15 +224,15 @@ def trainTree(conf, stree, gene2species):
         trees.append(treelib.readTree(treefile))
     util.toc()
     
-    params = spidirlib.learnModel(trees, stree, gene2species, conf["trainstats"])
+    params = Spidir.learnModel(trees, stree, gene2species, conf["trainstats"])
     
-    spidirlib.writeParams(conf["param"], params)
+    Spidir.writeParams(conf["param"], params)
     
     
 
 
 def buildTree(conf, stree, gene2species):
-    params = spidirlib.readParams(conf["param"])
+    params = Spidir.readParams(conf["param"])
     
     if "correcttree" in conf:
         conf["correcthash"] = phyloutil.hashTree(conf["correcttree"])
@@ -246,11 +246,11 @@ def buildTree(conf, stree, gene2species):
         
             # read in different labels if needed
             if "labels" in conf:
-                labels = spidirlib.readLabels(conf["labels"][i])
+                labels = Spidir.readLabels(conf["labels"][i])
             
-            tree, logl = spidirlib.sindir(conf, distmat, labels, stree, 
+            tree, logl = Spidir.spidir(conf, distmat, labels, stree, 
                                           gene2species, params)
-            tree.write(spidirlib.outTreeFile(conf))
+            tree.write(Spidir.outTreeFile(conf))
             
             # test for correctness
             if "correcttree" in conf:
@@ -270,7 +270,7 @@ def buildTree(conf, stree, gene2species):
                 print
                 
                 if len(tree.leaves()) > 3:
-                    rferror = spidirlib.robinsonFouldsError(correctTree, tree)
+                    rferror = Spidir.robinsonFouldsError(correctTree, tree)
                 else:
                     rferror = 0.0
                 

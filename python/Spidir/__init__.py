@@ -1442,8 +1442,16 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     this = util.Closure(ncalls=0, depth=0, printing=0)    
     
     
-    quad = scipy.integrate.quad
+    #quad = scipy.integrate.quad
     
+    def quad(func, start, end, n):
+        def func2(xs):
+            return map(func, xs)
+        val, err = scipy.integrate.fixed_quad(func2, start, end, n=n)
+        err = 0
+        return (val, err)
+        
+    """
     def quad2(func, start, end, epsrel=None):
         tot = 0
         n = 0
@@ -1454,6 +1462,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
             tot += func(i) * step
         
         return [tot, 666]
+    """
     
        
     def integrate(node, nvars):
@@ -1500,11 +1509,13 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 else:
                     lowk = kvars[korder[depnode]] + .0001
                 
-                ret = quad(func, lowk, .9999, epsrel=conf["accuracy"])[0] / \
+                n = max(5, 20 / (2**this.depth))
+                
+                ret = quad(func, lowk, .9999, n=n)[0] / \
                       (1.0 - lowk)
                 this.depth -= 1
                 return ret
-        return quad(func, .0001, .9999, epsrel=conf["accuracy"])
+        return quad(func, .0001, .9999, n=20)
     
     
     # process each child of subtree root

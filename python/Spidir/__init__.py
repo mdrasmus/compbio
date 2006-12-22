@@ -1444,10 +1444,10 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     
     #quad = scipy.integrate.quad
     
-    def quad(func, start, end):
+    def quad(func, start, end, n):
         def func2(xs):
             return map(func, xs)
-        val, err = scipy.integrate.fixed_quad(func2, start, end, n=20)
+        val, err = scipy.integrate.fixed_quad(func2, start, end, n=n)
         err = 0
         return (val, err)
         
@@ -1509,11 +1509,13 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 else:
                     lowk = kvars[korder[depnode]] + .0001
                 
-                ret = quad(func, lowk, .9999)[0] / \
+                n = max(5, 20 / (2**this.depth))
+                
+                ret = quad(func, lowk, .9999, n=n)[0] / \
                       (1.0 - lowk)
                 this.depth -= 1
                 return ret
-        return quad(func, .0001, .9999)
+        return quad(func, .0001, .9999, n=20)
     
     
     # process each child of subtree root
@@ -1556,6 +1558,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     else:
         # skip trees that are estimated to be very bad
         if estlogl < g_bestlogl[0] - 50:
+            debug("SKIP integration, est logl=%f" % estlogl)
             return estlogl
         g_bestlogl[0] = max(g_bestlogl[0], estlogl)
             

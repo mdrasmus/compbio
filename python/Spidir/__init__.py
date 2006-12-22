@@ -853,15 +853,6 @@ def mleBaserateG(lens, alphas, betas, baserateparam):
 
 
 
-def log(x):
-    """Safe logarithm function"""
-    
-    if x <= 0:
-        return -util.INF
-    else:
-        return math.log(x)
-
-
 def getExtraBranches(root, recon, events, stree):
     extraBranches = {}
 

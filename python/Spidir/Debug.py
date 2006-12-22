@@ -1,21 +1,30 @@
+#-------------------------------------------------------------------------------
+# debugging variables and functions
+#-------------------------------------------------------------------------------
+
+# python libs
+import sys
+import math
+
+# rasmus libs
 from rasmus import util
 from rasmus import stats
 from rasmus import treelib
 
-import sys
 
 
-#-------------------------------------------------------------------------------
-# debugging variables and functions
-#-------------------------------------------------------------------------------
+# globals
 DEBUG = sys.stdout
 
-DEBUG_LEVEL = 0
-
+# constants
 DEBUG_NONE = 0
 DEBUG_LOW = 1
 DEBUG_MED = 2
 DEBUG_HIGH = 3
+
+
+DEBUG_LEVEL = DEBUG_NONE
+
 
 
 def setDebug(level=DEBUG_NONE):
@@ -148,3 +157,12 @@ def numPossibleTrees(nleaves):
         n *= i
     
     return (2*nleaves - 3) * n
+
+
+def log(x):
+    """Safe logarithm function"""
+    
+    if x <= 0:
+        return -util.INF
+    else:
+        return math.log(x)

@@ -1,7 +1,11 @@
+import random
+import math
 
 from rasmus import phyloutil
 from rasmus import treelib
 from rasmus import stats
+from rasmus import matrix
+
 
 import Spidir
 from Spidir.Debug import *
@@ -9,7 +13,6 @@ from Spidir.Debug import *
 #-------------------------------------------------------------------------------
 # Tree search
 #-------------------------------------------------------------------------------
-
 
 
 
@@ -281,9 +284,9 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
         tree = initTree
     else:
         #tree = bionj.bionj(labels=labels, distmat=distmat, verbose=False)
-        tree = neighborjoin(distmat, labels)
+        tree = Spidir.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
-        setTreeDistances(conf, tree, distmat, labels)
+        Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
@@ -330,15 +333,15 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
             # calc likelihood
             thash = phyloutil.hashTree(tree2)
             if thash not in visited:
-                setTreeDistances(conf, tree2, distmat, labels)
-                logl2 = treeLogLikelihood(conf, tree2, stree, 
+                Spidir.setTreeDistances(conf, tree2, distmat, labels)
+                logl2 = Spidir.treeLogLikelihood(conf, tree2, stree, 
                                           gene2species, params)
                 stuck = False
             else:
                 logl2 = visited[thash][0]
                 
-                setTreeDistances(conf, tree2, distmat, labels)
-                logl2 = treeLogLikelihood(conf, tree2, stree, 
+                Spidir.setTreeDistances(conf, tree2, distmat, labels)
+                logl2 = Spidir.treeLogLikelihood(conf, tree2, stree, 
                                           gene2species, params)
                 
                 if nproposals == 1:
@@ -406,8 +409,8 @@ def getProposals(conf, tree, distmat, labels, stree,
             
             thash = phyloutil.hashTree(tree2)
             if thash not in visited:
-                setTreeDistances(conf, tree2, distmat, labels)
-                logl = treeLogLikelihood(conf, tree2, stree, 
+                Spidir.setTreeDistances(conf, tree2, distmat, labels)
+                logl = Spidir.treeLogLikelihood(conf, tree2, stree, 
                                          gene2species, params)
                 visited[thash] = [logl, tree2, 1]
                 
@@ -508,8 +511,8 @@ def proposeTree3(conf, tree,  distmat, labels,
         thash = phyloutil.hashTree(tree)
         
         if thash not in visited:        
-            setTreeDistances(conf, tree, distmat, labels)
-            logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+            Spidir.setTreeDistances(conf, tree, distmat, labels)
+            logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
         addVisited(conf, visited, tree, thash)
         logl, tree, count = visited[thash]
         
@@ -535,12 +538,12 @@ def searchRegraft(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = neighborjoin(distmat, labels)
+        tree = Spidir.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
-        setTreeDistances(conf, tree, distmat, labels)
+        Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
-    logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+    logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
     
     # store tree in visited
     addVisited(conf, visited, tree)
@@ -565,6 +568,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     if visited == None:
         visited = {}
     
+    
     this = util.Closure(
         nold=0,
         toplogl = -util.INF,
@@ -576,12 +580,12 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = neighborjoin(distmat, labels)
+        tree = Spidir.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
-        setTreeDistances(conf, tree, distmat, labels)
+        Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
-    this.toplogl = treeLogLikelihood(conf, tree, stree, gene2species, params)
+    this.toplogl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
     this.toptree = tree
     
     # store tree in visited
@@ -602,10 +606,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             logl, tree2, count = visited[thash]
             this.nold += 1
         else:
-            setTreeDistances(conf, tree2, distmat, labels)
-            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            Spidir.setTreeDistances(conf, tree2, distmat, labels)
+            logl = Spidir.treeLogLikelihood(conf, tree2, stree, gene2species, params)
             
-            #tree2, logl = treeLogLikelihoodAllRoots(conf, tree2, stree, 
+            #tree2, logl = Spidir.treeLogLikelihoodAllRoots(conf, tree2, stree, 
             #                                        gene2species, params)
             this.nold = 0
         
@@ -690,8 +694,8 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
                 tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
             
             #tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
-            setTreeDistances(conf, tree2, distmat2, labels2)
-            logl = treeLogLikelihood(conf, tree2, stree, gene2species, params)
+            Spidir.setTreeDistances(conf, tree2, distmat2, labels2)
+            logl = Spidir.treeLogLikelihood(conf, tree2, stree, gene2species, params)
 
             if logl >= toplogl:
                 toplogl = logl
@@ -738,8 +742,8 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     # find initial logl
     thash = phyloutil.hashTree(tree)
     if thash not in visited:
-        setTreeDistances(conf, tree, distmat, labels)
-        logl = treeLogLikelihood(conf, tree, stree, 
+        Spidir.setTreeDistances(conf, tree, distmat, labels)
+        logl = Spidir.treeLogLikelihood(conf, tree, stree, 
                                     gene2species, params)
         visited[thash] = [logl, tree.copy(), 1]
         
@@ -772,8 +776,8 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
             
             thash = phyloutil.hashTree(tree)
             if thash not in visited:
-                setTreeDistances(conf, tree, distmat, labels)
-                logl = treeLogLikelihood(conf, tree, stree, 
+                Spidir.setTreeDistances(conf, tree, distmat, labels)
+                logl = Spidir.treeLogLikelihood(conf, tree, stree, 
                                          gene2species, params)
                 visited[thash] = [logl, tree.copy(), 1]
             else:

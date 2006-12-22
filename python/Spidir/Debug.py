@@ -86,14 +86,17 @@ def drawTreeLogl(tree, out=None, events={}, baserate=1.0):
                 (node.name, node.dist, notes)
         
         if "params" in node.data:
-            fracs = map(stats.mean, zip(* node.data["fracs"]))
-            mean = sum(util.vmul(util.cget(node.data["params"], 0), fracs))
-            sdev = sum(util.vmul(util.cget(node.data["params"], 1), fracs))
+            try:
+                fracs = map(stats.mean, zip(* node.data["fracs"]))
+                mean = sum(util.vmul(util.cget(node.data["params"], 0), fracs))
+                sdev = sum(util.vmul(util.cget(node.data["params"], 1), fracs))
             
-            mean *= baserate
-            sdev *= baserate
+                mean *= baserate
+                sdev *= baserate
             
-            labels[node.name] += "\n%.3f %.3f" % (mean, sdev)
+                labels[node.name] += "\n%.3f %.3f" % (mean, sdev)
+            except:
+                print fracs, node.data['params']
         
         
         #if "error" in node.data:

@@ -1241,8 +1241,8 @@ def branchLikelihood(dist, fracs, params):
         totvar  += frac * sigma * sigma
     
     # don't let variance get too low
-    if abs(totvar) < .00000001:
-        return 0.0
+    if abs(totvar) < .0000000001:
+        return -util.INF
     
     return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
 

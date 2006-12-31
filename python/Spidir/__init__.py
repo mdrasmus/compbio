@@ -1237,7 +1237,8 @@ def branchLikelihood(dist, fracs, params):
     totvar = 0.0
     
     for frac, (mu, sigma) in zip(fracs, params):
-        assert frac > 0.0, frac
+        #assert frac > 0.0, frac
+        frac = max(0.0, frac)  # ensure frac greater than zero
         totmean += frac * mu
         totvar  += frac * sigma * sigma
     

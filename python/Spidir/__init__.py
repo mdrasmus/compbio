@@ -1236,8 +1236,8 @@ def branchLikelihood(dist, fracs, params):
     totmean = 0.0
     totvar = 0.0
     
-    for frac, (mean, sigma) in zip(fracs, params):
-        totmean += frac * mean
+    for frac, (mu, sigma) in zip(fracs, params):
+        totmean += frac * mu
         totvar  += frac * sigma * sigma
     
     # don't let variance get too low
@@ -1364,8 +1364,7 @@ def calcSubtreeLikelihood(root, recon, events, stree, params,
             node.data["params"] = params2
             if "fracs" not in node.data:
                 node.data["fracs"] = []
-            node.data["fracs"].append(fracs)
-            
+            node.data["fracs"].append(fracs)           
             
             
         # recurse within dup-only subtree
@@ -1378,26 +1377,27 @@ def calcSubtreeLikelihood(root, recon, events, stree, params,
 
 def setMidpoints(node, events, recon, midpoints, kvars):
     this = util.Closure(i = 0)
-
+    
     def walk(node):
         # determine this node's midpoint
         if events[node] == "dup":
-            if recon[node] == recon[node.parent]:
-                # if im the same species branch as my parent 
-                # then he is my last midpoint
-                lastpoint = midpoints[node.parent]
-            else:
-                # im the first on this branch so the last midpoint is zero
-                lastpoint = 0.0
+            #if recon[node] == recon[node.parent]:
+            #    # if im the same species branch as my parent 
+            #    # then he is my last midpoint
+            #    lastpoint = midpoints[node.parent]
+            #else:
+            #    # im the first on this branch so the last midpoint is zero
+            #    lastpoint = 0.0
             
             # pick a midpoint uniformly after the last one
-            midpoints[node] = lastpoint + \
-                        (kvars[this.i] * (1 - lastpoint))
+            #midpoints[node] = lastpoint + \
+            #            (kvars[this.i] * (1 - lastpoint))
+            midpoints[node] = kvars[this.i]
             this.i += 1
         else:
             # genes or speciations reconcile exactly to the end of the branch
             midpoints[node] = 1.0
-    
+        
         # recurse within dup-only subtree
         if events[node] == "dup":
             node.recurse(walk)
@@ -1509,7 +1509,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 else:
                     lowk = kvars[korder[depnode]] + .0001
                 
-                n = max(3, 20 / (2**this.depth))
+                n = max(3, 10 / (2**this.depth))
                 
                 ret = quad(func, lowk, .9999, n=n)[0] / \
                       (1.0 - lowk)

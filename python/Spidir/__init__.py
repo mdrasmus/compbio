@@ -366,8 +366,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
     # force non-negative branch lengths
-    b = [max(float(x), 0) for x in makeVector(b)]
-    #b = [float(x) for x in makeVector(b)]
+    #b = [max(float(x), 0) for x in makeVector(b)]
+    b = [float(x) for x in makeVector(b)]
     
     d2 = makeVector(scipy.dot(A, b))
     resids = (d2 - d).tolist()
@@ -1512,6 +1512,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                     lowk = kvars[korder[depnode]] + .0001
                 
                 n = max(3, 10 / (2**this.depth))
+                #n = 20
                 
                 ret = quad(func, lowk, .9999, n=n)[0] / \
                       (1.0 - lowk)

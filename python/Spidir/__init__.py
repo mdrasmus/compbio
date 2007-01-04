@@ -1565,7 +1565,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
             return estlogl
         g_bestlogl[0] = max(g_bestlogl[0], estlogl)
             
-    Search.printMCMC(conf, "est", tree, stree, gene2species, {})
+    #Search.printMCMC(conf, "est", tree, stree, gene2species, {})
 
 
     # debug info

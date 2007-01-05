@@ -3,7 +3,7 @@
 import sys
 from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
 from rasmus.vis import treevis
-from ramus import tablelib
+from rasmus import tablelib
 
 
 options = [

@@ -178,7 +178,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
 # display topology histogram
 if conf["hist"]:
     histogram = tablelib.histTable(hashes)
-    histogram.write()
+    histogram.write(sys.stdout)
 
 
 if conf["hashes"]:

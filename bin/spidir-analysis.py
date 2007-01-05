@@ -230,7 +230,7 @@ colormap = util.ColorMap([[-.1, util.blue],
                           [-.75, util.yellow],
                           [-1, util.red],
                           
-                          [0, (0, 0, .7, 1)],
+                          [0, (0, 0, 0, 1)],
                           [.1, util.blue],
                           [.5, util.green],
                           [.75, util.yellow],
@@ -238,8 +238,10 @@ colormap = util.ColorMap([[-.1, util.blue],
 
 
 
+
 util.tic("abs correlation")
-util.heatmap(stats.corrmatrix(mat), width=20, height=20,
+corrmat = stats.corrmatrix(mat)
+util.heatmap(corrmat, width=20, height=20,
              rlabels = keys, clabels=keys,
              xmargin=100, ymargin=100,
              labelSpacing=8,
@@ -253,7 +255,8 @@ util.toc()
 
 
 util.tic("rel correlation")
-util.heatmap(stats.corrmatrix(rmat), width=20, height=20,
+rcorrmat = stats.corrmatrix(rmat)
+util.heatmap(rcorrmat, width=20, height=20,
              rlabels = keys, clabels=keys,
              xmargin=100, ymargin=100,
              labelSpacing=8,
@@ -263,6 +266,7 @@ util.heatmap(stats.corrmatrix(rmat), width=20, height=20,
              display=False,
              filename=os.path.join(conf["outdir"], "corr/rel.svg"))
 util.toc()
+
 
 
 sys.exit(0)

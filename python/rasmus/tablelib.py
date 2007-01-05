@@ -279,7 +279,7 @@ class Table (list):
     
     
     
-    def write(self, filename, delim="\t"):
+    def write(self, filename=sys.stdout, delim="\t"):
         """Write a table to a file or stream.
            
            If 'filename' is a string it will be opened as a file.

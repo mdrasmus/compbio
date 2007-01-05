@@ -213,8 +213,16 @@ def main(argv):
 
 
 def trainTree(conf, stree, gene2species):
-    treefiles = conf[""] 
-    #util.listFiles(conf["traindir"], conf["trainext"])
+    args = conf[""]
+    treefiles = []
+    
+    for arg in args:
+        if arg.startswith("{"):
+            treefiles.extend(util.shellparser(arg).split())
+        else:
+            treefiles.append(arg)
+        
+    
 
     util.tic("reading trees")
     trees = []

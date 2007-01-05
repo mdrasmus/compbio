@@ -405,7 +405,7 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
     trees2 = []
 
     for tree in trees:
-        tree = reconRoot(tree, stree, gene2species, newCopy=False)
+        #tree = reconRoot(tree, stree, gene2species, newCopy=False)
         recon = reconcile(tree, stree, gene2species)
         events = labelEvents(tree, recon)
         

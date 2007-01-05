@@ -14,6 +14,7 @@ from rasmus import fasta
 from rasmus import matrix
 from rasmus import phyloutil
 from rasmus import stats
+from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 from rasmus import phylip

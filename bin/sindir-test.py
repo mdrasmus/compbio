@@ -47,7 +47,7 @@ options = [
  ["", "inputfiles=", "inputfiles", "{<files>}",
     {"single": True, 
      "parser": util.shellparser,
-     "default": ""}],
+     "default": []}],
 ]
 
 
@@ -97,7 +97,7 @@ def main(conf):
 def testAll(conf):
     util.tic("testing")
     
-    files = conf["REST"] + conf["inputfiles"].split()
+    files = conf["REST"] + conf["inputfiles"]
         
     
     jobs = []

@@ -47,7 +47,7 @@ options = [
   ["", "trees=", "trees", "{trees}",
    {"single": True,
     "parser": util.shellparser,
-    "default": ""}]
+    "default": []}]
 ] + genomeutil.options
 
 
@@ -68,7 +68,7 @@ if "reroot" in conf:
         conf["reroot"] = int(conf["reroot"])
 
 
-for treefile in (conf["REST"] + conf["tree"] + conf["trees"].split()):
+for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
     try:
         tree = algorithms.readTree(treefile)
     except Exception, e:

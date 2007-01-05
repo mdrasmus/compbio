@@ -5,6 +5,7 @@ from util import *
 
 import sys
 import getopt
+import shlex
 import __builtin__
 
 class OptionError (Exception):
@@ -84,15 +85,16 @@ class Configuration (dict):
             raise OptionError("Required option '%s' not given" % key)
 
 
-def shellparser(cmd):
-    if isinstance(cmd, str) and \
-       cmd.startswith("{") and \
-       cmd.endswith("}"):
-        cmd = cmd[1:-1]
+def shellparser(arg):
+    if isinstance(arg, str) and \
+       arg.startswith("{") and \
+       arg.endswith("}"):
+        cmd = arg[1:-1]
         
-        return os.popen(cmd).read()
+        result = os.popen(cmd).read()
+        return shlex.split(result)
     else:
-        return cmd
+        return [arg]
 
 
 def parseOptions(argv, options, quit=False, resthelp = ""):

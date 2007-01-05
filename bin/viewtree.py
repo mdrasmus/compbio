@@ -3,6 +3,7 @@
 import sys
 from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
 from rasmus.vis import treevis
+from ramus import tablelib
 
 
 options = [
@@ -23,6 +24,8 @@ options = [
   ["i", "hist", "hist", "",  
     {"single": True,
      "help": "output histogram of tree topologies"}],
+  ["", "hashes", "hashes", "",
+    {"single": True}], 
   ["n", "names", "names", "",
     {"single": True,
      "help": "display internal node names"}],
@@ -60,8 +63,7 @@ if "stree" in conf:
 
 
 
-counts = util.Dict(1, 0)
-
+hashes = []
 
 if "reroot" in conf:
     if conf["reroot"].isdigit():
@@ -86,11 +88,11 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         tree = treelib.reroot(tree, conf["reroot"])
         
     
-    if conf["hist"]:
+    if conf["hist"] or conf["hashes"]:
         # only count the tree in histogram mode
     
         thash = phyloutil.hashTree(tree, gene2species)
-        counts[thash] += 1
+        hashes.append(thash)
     
     
     elif conf["dump"]:
@@ -175,11 +177,12 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
 
 # display topology histogram
 if conf["hist"]:
-    mat = map(list, counts.items())
-    mat.sort(key=lambda x: x[1], reverse=True)
-    tot = float(sum(util.cget(mat, 1)))
+    histogram = tablelib.histTable(hashes)
     
-    for row in mat:
-        row.append(row[1] / tot)
-    
-    util.printcols(mat)
+    print repr(histogram)
+
+
+if conf["hashes"]:
+    for thash in hashes:
+        print thash
+

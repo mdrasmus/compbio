@@ -252,6 +252,10 @@ util.heatmap(corrmat, width=20, height=20,
              filename=os.path.join(conf["outdir"], "corr/abs.svg"))
 util.toc()
 
+# write table
+tab = tablelib.Table(corrmat, headers=map(str, keys))
+tab.write(os.path.join(conf["outdir"], "corr/abs.tab"))
+
 
 
 util.tic("rel correlation")
@@ -267,6 +271,9 @@ util.heatmap(rcorrmat, width=20, height=20,
              filename=os.path.join(conf["outdir"], "corr/rel.svg"))
 util.toc()
 
+# write table
+tab = tablelib.Table(rcorrmat, headers=map(str, keys))
+tab.write(os.path.join(conf["outdir"], "corr/abs.tab"))
 
 
 sys.exit(0)

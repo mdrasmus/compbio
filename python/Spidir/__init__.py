@@ -98,6 +98,31 @@ def writeTreeDistrib(out, lengths):
         out.write("\n")
 
 
+def treeDistrib2table(lengths):
+    keys = []
+    mat = []
+    
+    # build matrix of rates
+    for node, lens in lengths.iteritems():
+        if len(lens) == 0 or max(lens) == min(lens):
+            continue
+        
+        if isinstance(node, treelib.TreeNode):
+            keys.append(str(node.name))
+        else:
+            keys.append(str(node))
+        
+        mat.append(lens)
+
+    # transpose matrix
+    mat = zip(* mat)
+    
+    rates = tablelib.Table(mat, headers=keys)
+    
+    return rates
+    
+
+
 def readTreeDistrib(filename):
     infile = util.openStream(filename)
     lengths = {}
@@ -366,8 +391,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
     
     # force non-negative branch lengths
-    #b = [max(float(x), 0) for x in makeVector(b)]
-    b = [float(x) for x in makeVector(b)]
+    b = [max(float(x), 0) for x in makeVector(b)]
+    #b = [float(x) for x in makeVector(b)]
     
     d2 = makeVector(scipy.dot(A, b))
     resids = (d2 - d).tolist()
@@ -666,6 +691,8 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     # print output stats
     if statsprefix != "":
         writeTreeDistrib(file(statsprefix + ".lens", "w"), lengths)
+        rates = treeDistrib2table(lengths)
+        rates.write(statsprefix + "_rates.tab")
     
     
     util.tic("fitting params")
@@ -1606,10 +1633,6 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
     this.logl += tree.data["eventlogl"]
     
-    #nloss = len(phyloutil.findLoss(tree, stree, recon))
-    #this.logl += nloss * log(conf["lossprob"])
-    #this.logl += (len(tree.nodes) - 1) * log(1 - conf["lossprob"])
-
     # calc penality of error
     tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
     this.logl += tree.data["errorlogl"]

@@ -1,13 +1,25 @@
 #!/usr/bin/env python
+#
+# testing of SPIDIR and other phylogeny algorithms
+#
 
-from rasmus import algorithms, stats, util, phylip, fasta, sindirlib
-from rasmus import ensembl, phyloutil, genomeutil, env
+# python libs
 import sys, os
 import math, StringIO, copy, random
 
-from compbio.tools import pp
-
+# rasmus libs
+from rasmus import env
 from rasmus import depend
+from rasmus import genomeutil
+from rasmus import phyloutil
+from rasmus import stats
+from rasmus import tablelib
+from rasmus import treelib
+from rasmus import util
+
+# SPIDIR lib
+import Spidir
+
 
 
 
@@ -144,8 +156,8 @@ def checkOutput(conf, infile, stree, gene2species):
     if not os.path.exists(outfile):
         return None, None 
 
-    tree1 = algorithms.readTree(outfile)
-    tree2 = algorithms.readTree(correctTreefile)
+    tree1 = treelib.readTree(outfile)
+    tree2 = treelib.readTree(correctTreefile)
 
     phyloutil.reconRoot(tree1, stree, gene2species, newCopy=False)
     phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
@@ -158,13 +170,18 @@ def makeReport(conf):
 
     gene2species = genomeutil.readGene2species(* map(env.findFile, 
                                                      conf["smap"]))
-    stree = algorithms.readTree(env.findFile(conf["stree"][-1]))
+    stree = treelib.readTree(env.findFile(conf["stree"][-1]))
     
     infiles = conf["REST"] + conf["inputfiles"]
     
     results = []
     counts = util.Dict(1, 0)
-    orths = [0, 0, 0, 0]
+    
+    resultstab = tablelib.Table(
+                    headers=["treeid", "correct",
+                             "rferror", "tree", "correct_tree", 
+                             "species_hash"])
+    treehashes = []
     
     
     for infile in infiles:
@@ -175,7 +192,7 @@ def makeReport(conf):
         if tree1 == None:
             continue
         
-        error = sindirlib.robinsonFouldsError(tree1, tree2)
+        error = Spidir.robinsonFouldsError(tree1, tree2)
         
         hash1 = phyloutil.hashTree(tree1)
         hash2 = phyloutil.hashTree(tree2)
@@ -186,8 +203,13 @@ def makeReport(conf):
         counts[(shash1,shash2)] += 1
         
         results.append([basefile, hash1 == hash2, error])
+        resultstab.add(treeid=basefile,
+                       tree=hash1,
+                       correct_tree=hash2,
+                       correct= (hash1 == hash2),
+                       rferror=error,
+                       species_hash=shash1)
         
-        #orths = util.vadd(orths, testOrthologs(tree1, tree2, stree, gene2species))
     
     
     # print final results    
@@ -204,6 +226,8 @@ def makeReport(conf):
     else:
         rferror = -1
     
+    
+
     
     print >>out, "total:         %d" % total
     print >>out, "#correct:      %d (%f%%)" % (ncorrect, 100*ncorrect / float(total))
@@ -228,16 +252,20 @@ def makeReport(conf):
         mat.append(["", "", "", ""])
     
     util.printcols(mat, out=out)
+
     
+    resultstab.comments.extend([
+        "#",
+        "# total:         %d" % total,
+        "# correct:      %d (%f%%)" % (ncorrect, 100*ncorrect / float(total)),
+        "# incorrect:    %d (%f%%)" % (nwrong, 100*nwrong / float(total)),
+        "# avg. RF error: %f" % rferror,
+        "#"])
     
-    # find ortholog sn, sp
-    """
-    [tp, fn, fp, tn] = orths
-    print >>out
-    print >>out, "ortholog detection:"
-    print >>out, "sensitivity:", tp / float(tp + fn)
-    print >>out, "specificity:", tn / float(fp + tn)
-    """
+    resultstab.write(os.path.join(conf["outdir"], "results.tab"))
+    histtrees = tablelib.histTable(resultstab.cget("species_hash"))
+    histtrees.write(os.path.join(conf["outdir"], "histtrees.tab"))
+        
 
     util.toc()
 

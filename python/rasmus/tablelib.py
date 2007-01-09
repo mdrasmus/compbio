@@ -40,6 +40,8 @@ import copy
 import util
 
 
+TABLE_VERSION = "1.0"
+
 # table directives
 DIR_VERSION  = 0
 DIR_TYPES    = 1
@@ -103,11 +105,11 @@ class Table (list):
             
             # set table info
             for key in self.headers:
-                # set types
+                # guess any types not specified
                 if key not in self.types:
                     self.types[key] = type(self[0][key])
             
-                # set defaults
+                # guess any defaults not specified
                 if key not in self.defaults:
                     self.defaults[key] = self.types[key]()
         
@@ -115,18 +117,28 @@ class Table (list):
         if len(extraHeaders) > 0:
             for row in extraHeaders:
                 self.extraHeaders.append(copy.copy(row))
+            
                 
                     
     
     
-    def new(self):
-        """return a new table with the same info"""
+    def new(self, headers=None):
+        """
+        return a new table with the same info
+            
+        headers - if specified, only a subset of the headers will be copied
+        """
         
-        tab = Table(headers=self.headers,
-                    types=self.types,
-                    defaults=self.defaults,
-                    filename=self.filename,
-                    extraHeaders=self.extraHeaders)
+        if headers == None:
+            headers = self.headers
+        
+        tab = Table(headers=headers)
+        
+        tab.types = util.subdict(self.types, headers)
+        tab.defaults = util.subdict(self.defaults, headers)
+        tab.extraHeaders = []
+        for row in self.extraHeaders:
+            tab.extraHeaders.append(util.subdict(row, headers))
         
         tab.comments = copy.copy(self.comments)
         tab.delim = self.delim
@@ -135,7 +147,7 @@ class Table (list):
         return tab
     
     
-    def read(self, filename, delim="\t"):
+    def read(self, filename, delim="\t", nheaders=1):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -168,8 +180,8 @@ class Table (list):
         self.defaults = {}        
         self.comments = []
         self.delim = delim
-        self.nheaders = 1
-        self.version = "1.0"
+        self.nheaders = nheaders
+        self.version = TABLE_VERSION
         extraHeaders = []
         
         
@@ -438,7 +450,7 @@ class Table (list):
         self.append(kargs)
     
     
-    def addCol(self, header, coltype=str, default=NULL, pos=None):
+    def addCol(self, header, coltype=str, default=NULL, pos=None, data=None):
         """Add a column to the table.  You must populate column data yourself.
         
            header  - name of the column
@@ -461,6 +473,11 @@ class Table (list):
         
         for row in self.extraHeaders:
             row[header] = ''
+        
+        # add data
+        if data != None:
+            for i in xrange(len(self)):
+                self[i][header] = data[i]
     
     
     def removeCol(self, *cols):
@@ -501,6 +518,76 @@ class Table (list):
             row[newname] = row[oldname]
             del row[oldname]
             
+       
+    def getMatrix(self, rlabel="rlabels"):
+        """Returns mat, rlabels, clabels
+        
+           where mat is a copy of the table as a 2D list
+                 rlabels are the row labels
+                 clabels are the column labels
+        """
+        
+        # get labels
+        if rlabel != None and rlabel in self.headers:
+            rlabels = tab.cget(rlabel)
+            clabels = copy.copy(self.headers)
+            clabels.remove(rlabel)
+        else:
+            rlabels = range(len(self))
+            clabels = copy.copy(self.headers)
+
+        # get data
+        mat = []
+        for row in self:
+            mat.append(util.mget(row, clabels))
+        
+        return mat, rlabels, clabels
+    
+    
+    
+    
+    
+    def filter(self, cond):
+        """Returns a table with a subset of rows such that cond(row) == True"""
+        tab = self.new()
+        
+        for row in self:
+            if cond(row):
+                tab.append(row)
+        
+        return tab
+    
+    
+    def map(self, func):
+        """Returns a new table with the function 'func' applied to each row"""
+        
+        lst = []
+        
+        for row in self:
+            lst.append(func(row))
+        
+        return Table(lst)
+    
+    
+    def groupby(self, keyfunc=None, col=None):
+        groups = {}
+        
+        if col != None:
+            assert col != None, "must specify column name"
+            keyfunc = lambda x: x[col]
+        
+        assert keyfunc != None, "must specify keyfunc"
+        
+        for row in self:
+            key = keyfunc(row)
+            
+            # add new table if necessary
+            if key not in groups:
+                groups[key] = self.new()
+            
+            groups[key].append(row)
+        
+        return groups
     
     
     def lookup(self, *keys):
@@ -522,35 +609,8 @@ class Table (list):
         return lookup
     
     
-    def filter(self, cond):
-        """Returns a table with a subset of rows such that cond(row) == True"""
-        tab = self.new()
-        
-        for row in self:
-            if cond(row):
-                tab.append(row)
-        
-        return tab
-    
-    
-    def groupby(self, keyfunc):
-        groups = {}
-        
-        for row in self:
-            key = keyfunc(row)
-            
-            if key not in groups:
-                groups[key] = Table(headers=self.headers)
-            
-            groups[key].append(row)
-        
-        return groups
-    
-    
     def get(self, rows=None, cols=None):
         """Returns a table with a subset of the rows and columns"""
-        
-        tab = self.new()
         
         # determine rows and cols
         if rows == None:
@@ -558,11 +618,8 @@ class Table (list):
         
         if cols == None:
             cols = self.headers
-        
-        # copy over info
-        tab.headers = copy.copy(cols)
-        tab.types = util.subdict(self.types, cols)
-        tab.defaults = util.subdict(self.defaults, cols)
+            
+        tab = self.new(cols)
         
         # copy data        
         for i in rows:
@@ -593,31 +650,6 @@ class Table (list):
     
     
     
-    def getMatrix(self, rlabel=None):
-        """Returns mat, rlabels, clabels
-        
-           where mat is a copy of the table as a 2D list
-                 rlabels are the row labels
-                 clabels are the column labels
-        """
-        
-        # get labels
-        if rlabel != None:
-            rlabels = tab.cget(rlabel)
-            clabels = copy.copy(self.headers)
-            clabels.remove(rlabel)
-        else:
-            rlabels = range(len(self))
-            clabels = copy.copy(self.headers)
-
-        # get data
-        mat = []
-        for row in self:
-            mat.append(util.mget(row, clabels))
-        
-        return mat, rlabels, clabels
-    
-    
     def sort(self, cmp=None, key=None, reverse=False, col=None):
         """Sorts the table inplace"""
         
@@ -628,8 +660,8 @@ class Table (list):
             key = lambda row: row[self.headers[0]]
         
         list.sort(self, cmp=cmp, key=key, reverse=reverse)
-
-
+    
+    
     def __getitem__(self, key):
         if isinstance(key, slice):
             # return another table if key is a slice
@@ -647,8 +679,19 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
-        mat, rlabels, clabels = self.getMatrix()
-        mat = [clabels] + mat
+        mat2, rlabels, clabels = self.getMatrix()
+        
+        # get extra headers
+        mat = []
+        for row in self.extraHeaders:
+            mat.append(util.mget(row, clabels))
+        
+        # get headers
+        mat.append(clabels)
+        
+        # get data
+        mat.extend(mat2)
+        
         util.printcols(mat, spacing=2, out=s)
         return s.getvalue()
     
@@ -732,9 +775,9 @@ def formatTableTypes(types, delim):
 # convenience functions
 #
 
-def readTable(filename, delim="\t"):
+def readTable(filename, delim="\t", nheaders=1):
     table = Table()
-    table.read(filename, delim=delim)
+    table.read(filename, delim=delim, nheaders=nheaders)
     return table
 
 
@@ -763,7 +806,7 @@ def histTable(items, headers=["item", "count", "percent"]):
     return tab
 
 
-def matrix2table(matrix, rlabels=None, clabels=None, rowheader="labels"):
+def matrix2table(matrix, rlabels=None, clabels=None, rowheader="rlabels"):
     if clabels == None:
         clabels = range(len(matrix[0]))
         nheaders = 0
@@ -796,7 +839,7 @@ def matrix2table(matrix, rlabels=None, clabels=None, rowheader="labels"):
 # testing
 #
 
-if __name__ == "__main__":
+def _test():
     import StringIO
     
 
@@ -888,3 +931,7 @@ mike	789	1
         print tab.defaults
         print tab
         print tab.cget('name', 'num')
+
+
+if __name__ == "__main__":
+    _test()

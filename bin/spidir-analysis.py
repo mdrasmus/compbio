@@ -69,7 +69,7 @@ def plotAbsLens(name, lens, low, high, step):
     
     chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
     pval = chisq["p.value"]
-    print name, "%f" % pval, pval > .05
+    util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
     
     p.set(xmin=low, xmax=high, 
           xlab="sub/site",
@@ -109,7 +109,7 @@ def plotRelLens(name, params, lens, low, high, step):
     
     #pval = rpy.r.shapiro_test(lens2)["p.value"]
     
-    print name, pval, pval > .05
+    util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
     
     #p.data[1].options["plab"] = "best fit"
     p.set(xmin=low, xmax=high, 
@@ -122,6 +122,54 @@ def plotRelLens(name, params, lens, low, high, step):
     #q.save("tmp_" + str(name) + ".ps")
     
     return p, util.Bundle(pval=pval, prms=prms)
+
+
+def getCorrMatrix(lens, stree, leaves, useroot=True, get=None):
+    corrmat = []
+
+    ntrees = len(lens.values()[0])
+
+    for leaf1 in leaves:
+        corrmat.append([])
+    
+        for leaf2 in leaves:
+            node1 = stree.nodes[leaf1]
+            node2 = stree.nodes[leaf2]
+            ancester = treelib.lca([node1, node2])
+        
+            dists1 = [0] * ntrees
+            dists2 = [0] * ntrees
+
+            
+            stop = [ancester]
+            if not useroot:
+                stop.extend(stree.root.children)
+            
+
+            while node1 not in stop:
+                for i in range(ntrees):
+                    dists1[i] += lens[node1.name][i]
+                node1 = node1.parent
+
+            while node2 not in stop:
+                for i in range(ntrees):
+                    dists2[i] += lens[node2.name][i]
+                node2 = node2.parent
+
+            if get != None and \
+               get == (leaf1, leaf2):
+                return dists1, dists2
+            
+            c = stats.corr(dists1, dists2)
+
+            if c == util.INF:
+                c = 1
+            corrmat[-1].append(c)
+
+    return corrmat
+
+
+
     
 
 # output params
@@ -149,8 +197,6 @@ if 1:
             util.log("skipping abs '%s'" % str(name))
             continue
 
-        util.log("plot abs '%s'" % str(name))
-
         low = 0
         high = 3 * stats.mean(lens[name])
         step = (high - low) / conf["nbins"]
@@ -174,9 +220,7 @@ if 1:
         if name not in lens:
             util.log("skipping rel '%s'" % str(name))
             continue
-
-        util.log("plot rel '%s'" % str(name))
-
+        
         low = 0
         high = 3 * stats.mean(rlens[name])
         step = (high - low) / conf["nbins"]
@@ -206,8 +250,7 @@ p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 
 
-sys.exit(0)
-
+#####################################################
 # correlation matrix
 
 # get in order traversal of nodes
@@ -222,18 +265,22 @@ def walk(node):
         walk(node.children[1])
 walk(stree.root)
 
+#
+# abs all branches
+#
 mat = util.mget(lens, keys)
 rmat = util.mget(rlens, keys)
 
-colormap = util.ColorMap([[-.1, util.blue],
-                          [-.5, util.green],
-                          [-.75, util.yellow],
-                          [-1, util.red],
-                          
-                          [0, (0, 0, 0, 1)],
+colormap = util.ColorMap([[-1, util.red],
+                          [-.5, util.orange],
+                          [-.3, util.yellow],
+                          [-.2, util.green],
+                          [-.1, util.blue],
+                          [0, (1, 1, 1, 1)],
                           [.1, util.blue],
-                          [.5, util.green],
-                          [.75, util.yellow],
+                          [.2, util.green],
+                          [.3, util.yellow],
+                          [.5, util.orange],
                           [1, util.red]])
 
 
@@ -257,7 +304,9 @@ tab = tablelib.Table(corrmat, headers=map(str, keys))
 tab.write(os.path.join(conf["outdir"], "corr/abs.tab"))
 
 
-
+#
+# rel all branches
+#
 util.tic("rel correlation")
 rcorrmat = stats.corrmatrix(rmat)
 util.heatmap(rcorrmat, width=20, height=20,
@@ -273,14 +322,60 @@ util.toc()
 
 # write table
 tab = tablelib.Table(rcorrmat, headers=map(str, keys))
-tab.write(os.path.join(conf["outdir"], "corr/abs.tab"))
+tab.write(os.path.join(conf["outdir"], "corr/rel.tab"))
+
+
+
+#
+# abs paths
+#
+
+util.tic("abs paths correlation")
+keys = stree.leafNames()
+corrmat = getCorrMatrix(lens, stree, keys, False)
+util.heatmap(corrmat, width=20, height=20,
+             rlabels = keys, clabels=keys,
+             xmargin=100, ymargin=100,
+             labelSpacing=8,
+             labelPadding=4,
+             colormap=colormap,
+             showVals=True,
+             display=False,
+             filename=os.path.join(conf["outdir"], "corr/abs_paths.svg"))
+util.toc()
+
+# write table
+tab = tablelib.Table(corrmat, headers=map(str, keys))
+tab.write(os.path.join(conf["outdir"], "corr/abs_paths.tab"))
+
+
+#
+# rel paths
+#
+
+util.tic("abs rel correlation")
+keys = stree.leafNames()
+rcorrmat = getCorrMatrix(rlens, stree, keys, False)
+util.heatmap(rcorrmat, width=20, height=20,
+             rlabels = keys, clabels=keys,
+             xmargin=100, ymargin=100,
+             labelSpacing=8,
+             labelPadding=4,
+             colormap=colormap,
+             showVals=True,
+             display=False,
+             filename=os.path.join(conf["outdir"], "corr/rel_paths.svg"))
+util.toc()
+
+# write table
+tab = tablelib.Table(corrmat, headers=map(str, keys))
+tab.write(os.path.join(conf["outdir"], "corr/rel_paths.tab"))
+
 
 
 sys.exit(0)
 
-
-
-
+################################################################
 util.tic("abs scatter plots")
 for i in range(len(keys)):
     for j in range(i+1, len(keys)):

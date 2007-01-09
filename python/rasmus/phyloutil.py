@@ -519,8 +519,43 @@ def findAllOrthologs(gtree, stree, recon):
 
 
 
+#=============================================================================
+# Branch length analysis
+#
+
+def makeBranchZScores(rates, params):
+    zscores = rates.new()
+    
+    # determine column to species mapping
+    col2species = {}
+    for species in params:
+        col[str(species)] = species
+        
+    
+    for row in rates:
+        row2 = {}
+        for key, val in row.iteritems():
+            if key in col2species:
+                # compute zscore
+                mu, sigma = params[col2species[key]]
+                row2[key] = (val - mu) / sigma
+            else:
+                # not a branch, copy value unchanged
+                row2[key] = val
+        
+        zscores.append(row2)
+    
+    return zscores
+
+
+
+#=============================================================================
+# Phylogenetic reconstruction
+#
 
 def neighborjoin(distmat, genes):
+    """Neighbor joining algorithm"""
+    
     tree = treelib.Tree()
     leaves = {}
     dists = util.Dict(2, None)
@@ -595,116 +630,10 @@ def neighborjoin(distmat, genes):
 
 
 
-def neighborjoinSparse(dists):
-    """dists must be symmetric"""
-    
-    tree = treelib.Tree()
-    leaves = {}
-    restdists = {}
-    genes = dists.keys()
-    
-    
-    # initialize rest distances
-    for gene1 in genes:
-        r = 0
-        n = 0
-        for gene2 in genes:
-            edges = dists[gene1]
-            if gene2 in edges:
-                r += edges[gene2]
-                n += 1
-        restdists[gene1] = r / float(max(n-2, 1))
-    
-    
-    # initialize leaves
-    for gene in genes:
-        tree.add(treelib.TreeNode(gene))
-        leaves[gene] = 1
-    
-    # join loop
-    while True:
-        # search for closest genes
-        low = util.INF
-        lowpair = (None, None)
-
-        for gene1 in leaves:
-            for gene2 in dists[gene1]:
-                if gene2 not in leaves:
-                    continue
-                if gene1 in dists and gene2 in dists[gene1]:
-                    dist = dists[gene1][gene2] - restdists[gene1] \
-                                               - restdists[gene2]
-                    
-                    if dist < low:
-                        low = dist
-                        lowpair = (gene1, gene2)
-        
-        #print lowpair
-        
-        if lowpair == (None, None):
-            # split partial tree into mutliple trees
-            trees = []
-            for leaf in leaves:
-                trees.append(treelib.subtree(tree, tree.nodes[leaf]))
-            
-            return trees
-        elif len(leaves) == 2:
-            break
-        
-        # join gene1 and gene2
-        gene1, gene2 = lowpair
-        parent = treelib.TreeNode(tree.newName())
-        tree.addChild(parent, tree.nodes[gene1])
-        tree.addChild(parent, tree.nodes[gene2])
-        
-        
-        
-        # set distances
-        tree.nodes[gene1].dist = (dists[gene1][gene2] + restdists[gene1] - 
-                                  restdists[gene2]) / 2.0
-        tree.nodes[gene2].dist = dists[gene1][gene2] - tree.nodes[gene1].dist
-        
-        #print "----------"
-        #for leaf in leaves:
-        #    tree.writeNewickNode(tree.nodes[leaf])
-        
-        # gene1 and gene2 are no longer leaves
-        del leaves[gene1]
-        del leaves[gene2]
-        
-        gene3 = parent.name
-        r = 0
-        n = 0
-        for gene in leaves:
-            if gene1 in dists and \
-               gene in dists[gene1] and \
-               gene2 in dists and \
-               gene in dists[gene2]:
-                d = (dists[gene1][gene] + dists[gene2][gene] -
-                     dists[gene1][gene2]) / 2.0
-                dists[gene3][gene] = d
-                dists[gene][gene3] = d
-                r += d
-                n += 1
-        leaves[gene3] = 1
-        
-        restdists[gene3] = r / float(max(n - 2, 1))
-    
-    # join the last two genes into a tribranch
-    gene1, gene2 = leaves.keys()
-    if type(gene1) != int:
-        gene1, gene2 = gene2, gene1
-    tree.addChild(tree.nodes[gene1], tree.nodes[gene2])
-    tree.nodes[gene2].dist = dists[gene1][gene2]
-    tree.root = tree.nodes[gene1]
-    
-    return [tree]
-
-
 
 #============================================================================
 # duplication loss counting
-#============================================================================
+#
 
 
 def initDupLossTree(stree):
@@ -784,8 +713,9 @@ def writeEventTree(stree, out=sys.stdout):
 
 #============================================================================
 # old orthology stuff
-#============================================================================
-            
+#
+
+"""   
 def orthologs(gene, otherGenome, gtree, stree, recon):
     genome = recon[gtree.nodes[gene]]
     genome2 = stree.nodes[otherGenome]
@@ -1023,5 +953,5 @@ class HomologyHandler(xml.sax.handler.ContentHandler):
     def characters(self, text):
         pass
 
-
+"""
 

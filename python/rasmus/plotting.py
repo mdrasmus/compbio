@@ -785,11 +785,14 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     # draw values
     if showVals:
         # find text size
+        
+        fontwidth = 7/11.0
+        
         textsize = []
         for i in xrange(nrows):
             for j in xrange(ncols):
                 strval = "%.2f" % matrix[i][j]
-                textsize.append(min(height, width/float(len(strval))))
+                textsize.append(min(height, width/(float(len(strval)) * fontwidth)))
         textsize = min(textsize)
     
         for i in xrange(nrows):

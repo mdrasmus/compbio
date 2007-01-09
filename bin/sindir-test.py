@@ -160,7 +160,7 @@ def makeReport(conf):
                                                      conf["smap"]))
     stree = algorithms.readTree(env.findFile(conf["stree"][-1]))
     
-    infiles = conf["REST"] + conf["inputfiles"].split()
+    infiles = conf["REST"] + conf["inputfiles"]
     
     results = []
     counts = util.Dict(1, 0)

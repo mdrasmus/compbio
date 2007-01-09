@@ -334,9 +334,8 @@ def generateGeneTreeTables(conf, datadir, resultdirs):
 
 def writeGeneralStats(conf, datadir, genes, treename, out, 
                       famRate=None, treelenColormap=None):
-    treenum = int(treename)
     treeStats = conf["treeStatsLookup"]
-    gene = treeStats[treenum]['gene']
+    gene = treeStats[treename]['gene']
           
 
     # get align files
@@ -356,7 +355,7 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
     treefile = getCorrectTreeUrl(conf, conf["dataurl"], treename)
     treeurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
 
-    row = treeStats[treenum]
+    row = treeStats[treename]
 
     if gene == "":
         genename = "-"
@@ -365,11 +364,16 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
     else:
         genename = gene
         commonName = row["common"]
-        chromName = genes[gene]['chrom']
-        chromName = chromName.replace("chromosome", "chr")
-        if chromName[0] != "c":
-            chromName = "chr" + chromName
-        pos = chromName + ":" + util.int2pretty(genes[gene]['start'])
+        if genes:
+            chromName = genes[gene]['chrom']
+            chromName = chromName.replace("chromosome", "chr")
+            if chromName[0] != "c":
+                chromName = "chr" + chromName
+            
+            pos = chromName + ":" + util.int2pretty(genes[gene]['start'])
+        else:
+            chromName = "-"
+            pos = "-"
 
 
     # gene name and tree ID
@@ -437,7 +441,10 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     
     treeStats = conf["treeStatsLookup"]
     topNames = conf["topNamesLookup"]
-    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    if "mainspeciesCoords" in conf:
+        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    else:
+        genes = None
     
     if "syntenyFile" in conf:
         conf["syntenyIndex"] = readSynteny(conf["syntenyFile"], genes)
@@ -476,9 +483,8 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     progbar = progress.ProgressBar(len(treenames))
     for treename in treenames:
         progbar.update()
-        treenum = int(treename)
         
-        assert treenum in treeStats, treenum
+        assert treename in treeStats, treename
         
         writeGeneralStats(conf, datadir, genes, treename, out)
         
@@ -488,7 +494,7 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
             resulttree = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
             
             if conf["useTopNames"]:
-                top = treeStats[treenum][prog]
+                top = treeStats[treename][prog]
                 topname = topNames[top]["name"]
                 topnum = int(topname[1:]) - 1
             
@@ -497,7 +503,7 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
                 else:
                     color = conf["topColors"][-1]
             else:
-                if treeStats[treenum][prog + "_rferror"] == 0:
+                if treeStats[treename][prog + "_rferror"] == 0:
                     color = "#ccf"
                     if conf["useRfError"]:
                         topname = "0"
@@ -506,8 +512,8 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
                 else:
                     if conf["useRfError"]:
                         color = color2html(* colormap.get(
-                                treeStats[treenum][prog + "_rferror"]))
-                        topname = "%.3f" % treeStats[treenum][prog + "_rferror"]
+                                treeStats[treename][prog + "_rferror"]))
+                        topname = "%.3f" % treeStats[treename][prog + "_rferror"]
                     else:
                         color =   "#f55"
                         topname = "False"
@@ -541,7 +547,10 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
     
     treeStats = conf["treeStatsLookup"]
     topNames = conf["topNamesLookup"]
-    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    if "mainspeciesCoords" in conf:
+        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    else:
+        genes = None
     
     familyStats = conf["familyStatsLookup"]
     
@@ -601,13 +610,12 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
     progbar = progress.ProgressBar(len(treenames))
     for treename in treenames:
         progbar.update()
-        treenum = int(treename)
         
-        assert treenum in treeStats, treenum
+        assert treename in treeStats, treename
         
         writeGeneralStats(conf, datadir, genes, treename, out)
         
-        row = familyStats[treenum]
+        row = familyStats[treename]
         
         print >>out, "<td>%d</td><td>%d</td><td>%d</td>" % \
                      (row["genes"], row["dup"], row["loss"])
@@ -659,7 +667,10 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
     
     
     treeStats = conf["treeStatsLookup"]
-    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    if "mainspeciesCoords" in conf:
+        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+    else:
+        genes = None
     
     rateTable = conf["rateTable"].lookup("treeid")
     params = spidirlib.readParams(conf["spidirParams"])
@@ -746,19 +757,18 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
     progbar = progress.ProgressBar(len(treenames))
     for treename in treenames:
         progbar.update()
-        treenum = int(treename)
         
-        assert treenum in treeStats, treenum
+        assert treename in treeStats, treename
         
         writeGeneralStats(conf, datadir, genes, treename, out,
                           famRate = params["baserate"],
                           treelenColormap=treelenColormap)
         
         
-        row = rateTable[treenum]
-        stats = treeStats[treenum]
+        row = rateTable[treename]
+        stats = treeStats[treename]
         
-        print >>out, "<td>%.2f</td>" % zscoreTable[treenum]["loglk"]
+        print >>out, "<td>%.2f</td>" % zscoreTable[treename]["loglk"]
         
         for sp in species:
             dist = row[str(sp)] / stats["treelen"]
@@ -926,7 +936,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
         else:
             commonName = common[gene]
         
-        row = {"treeid": int(treename), "gene": gene, "common": commonName}
+        row = {"treeid": treename, "gene": gene, "common": commonName}
         
         tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
         row["treelen"] = sum(x.dist for x in tree.nodes.values())
@@ -1003,8 +1013,8 @@ def generateRateTable(conf, datadir):
         if treename in conf["filterNames"]:
             continue
         
-        row = {"treeid": int(treename)}
-        row2 = {"treeid": int(treename)}
+        row = {"treeid": treename}
+        row2 = {"treeid": treename}
         
         tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
         recon = phyloutil.reconcile(tree, conf["stree"], conf["gene2species"])

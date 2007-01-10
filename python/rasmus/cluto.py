@@ -4,6 +4,8 @@ from rasmus import treelib
 import os
 
 def writeDenseMatrix(filename, mat):
+    """Write a CLUTO formatted dense matrix file"""
+    
     out = util.openStream(filename, "w")
     
     print >>out, len(mat), len(mat[0])
@@ -15,6 +17,8 @@ def writeDenseMatrix(filename, mat):
 
 
 def writeSquareMatrix(filename, mat):
+    """Write a CLUTO formatted sparse matrix file"""
+    
     out = util.openStream(filename, "w")
     
     print >>out, len(mat)
@@ -26,6 +30,16 @@ def writeSquareMatrix(filename, mat):
     
 
 def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
+    """Cluster a matrix into 'nclusters'
+
+       prog - the program to use:
+              "vcluster" will treat the matrix as a series of row vectors
+              "scluster" will treat the matrix as a square matrix of
+                         similarities between objects
+
+       returns a partition id list (partid) which indicates the partition id
+       of each item (row) in the input matrix (mat)
+    """
     
     tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
     partfile = tmpfile + ".clustering.%d" % nclusters
@@ -49,6 +63,16 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
 
 
 def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
+    """Cluster a matrix into 'nclusters'
+    
+       prog - the program to use:
+              "vcluster" will treat the matrix as a series of row vectors
+              "scluster" will treat the matrix as a square matrix of
+                         similarities between objects
+
+       returns a hierarchical tree representing the clustering
+    """
+    
     
     # determine files
     tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
@@ -77,6 +101,12 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
 
 
 def reorderTree(tree, mat, prog="vcluster"):
+    """
+    Reorders a tree such that leaves appears in a visually pleasing order
+
+    returns a permutation list
+    """
+    
     matfile = util.tempfile("./", "tmpcluto_", ".mat")
     treefile = util.tempfile("./", "tmpcluto_", ".tree")
     
@@ -97,6 +127,13 @@ def reorderTree(tree, mat, prog="vcluster"):
 
 
 def reorderPartids(partids, mat, prog="vcluster"):
+    """
+    Reorders the rows of a matrix such that rows appears in a
+    visually pleasing order
+
+    returns a permutation list
+    """
+    
     matfile = util.tempfile("./", "tmpcluto_", ".mat")
     partidsfile = util.tempfile("./", "tmpcluto_", ".partids")
     
@@ -116,6 +153,8 @@ def reorderPartids(partids, mat, prog="vcluster"):
     return perm
 
 def partids2perm(partids):
+    """Trivially produce a permutation list from a partid list"""
+    
     perm = range(len(partids))
     perm.sort(key=lambda x: partids[x])
     
@@ -156,6 +195,8 @@ if __name__ == "__main__":
     # display shuffled matrix
     heatmap(mat)
 
+    #########################
+    # cluster by vcluster
     partids = cluster(mat, 2)
     perm = reorderPartids(partids, mat)
 
@@ -164,6 +205,25 @@ if __name__ == "__main__":
 
     # display clustered matrix
     heatmap(mat2)
+
+
+    #########################
+    # cluster by scluster
+    import stats, matrix
+    simmat = stats.corrmatrix(mat)
+    partids = cluster(simmat, 2, prog="scluster")
+    perm = reorderPartids(partids, mat)
+
+    # apply permutation to matrix
+    mat2 = mget(mat, perm)
+    simmat2 = matrix.submatrix(simmat, perm, perm)
+
+    # display similarity matrix
+    heatmap(simmat)
+
+    # display clustered similarity matrix
+    heatmap(simmat2)
+
 
 
     

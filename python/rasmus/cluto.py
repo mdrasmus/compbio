@@ -123,3 +123,49 @@ def partids2perm(partids):
 
 
 
+
+
+##############################
+# testing code
+#
+if __name__ == "__main__":
+    import random
+    
+    mat = []
+
+    cluster1 = [1,2,3,4,5, 4,3,2,1,0]
+    cluster2 = [5,4,3,2,1, 2,3,4,5,6]
+
+    # make cluster 1
+    for i in range(10):
+        mat.append([])
+
+        for j in range(10):
+            mat[-1].append(random.normalvariate(cluster1[j], .5))
+
+    # make cluster 2
+    for i in range(10):
+        mat.append([])
+
+        for j in range(10):
+            mat[-1].append(random.normalvariate(cluster2[j], .5))
+
+    # randomize matrix
+    random.shuffle(mat)
+    
+    # display shuffled matrix
+    heatmap(mat)
+
+    partids = cluster(mat, 2)
+    perm = reorderPartids(partids, mat)
+
+    # apply permutation to matrix
+    mat2 = mget(mat, perm)
+
+    # display clustered matrix
+    heatmap(mat2)
+
+
+    
+
+

@@ -180,14 +180,14 @@ if __name__ == "__main__":
         mat.append([])
 
         for j in range(10):
-            mat[-1].append(random.normalvariate(cluster1[j], .5))
+            mat[-1].append(random.normalvariate(cluster1[j], 1))
 
     # make cluster 2
     for i in range(10):
         mat.append([])
 
         for j in range(10):
-            mat[-1].append(random.normalvariate(cluster2[j], .5))
+            mat[-1].append(random.normalvariate(cluster2[j], 1))
 
     # randomize matrix
     random.shuffle(mat)

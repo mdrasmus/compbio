@@ -182,8 +182,7 @@ def makeReport(conf):
     resultstab = tablelib.Table(
                     headers=["treeid", "correct",
                              "rferror", "tree", "correct_tree", 
-                             "species_hash", "treelen", "alignlen",
-                             "alignlen_ungapped"])
+                             "species_hash"])
     treehashes = []
     
     

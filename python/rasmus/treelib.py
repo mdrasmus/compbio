@@ -83,6 +83,11 @@ class TreeNode:
         self.data = {}
     
     
+    def __iter__(self):
+        """Iterate through child nodes"""
+        return self.children
+    
+    
     def copy(self, parent=None, copyChildren=True):
         """ Returns a copy of a TreeNode and all of its children"""
         
@@ -139,6 +144,11 @@ class Tree:
         self.defaultData = {}
         self.data = {}
     
+    
+    def __iter__(self):
+        """Iterate through nodes of tree"""
+        return self.nodes.itervalues()
+        
 
     def hasData(self, dataname):
         return dataname in self.defaultData

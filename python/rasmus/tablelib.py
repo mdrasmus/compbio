@@ -124,7 +124,7 @@ class Table (list):
     
     def new(self, headers=None):
         """
-        return a new table with the same info
+        return a new table with the same info but no data
             
         headers - if specified, only a subset of the headers will be copied
         """

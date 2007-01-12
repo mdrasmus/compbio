@@ -10,6 +10,7 @@ import math, StringIO, copy, random
 # rasmus libs
 from rasmus import env
 from rasmus import depend
+from rasmus import fasta
 from rasmus import genomeutil
 from rasmus import phyloutil
 from rasmus import stats
@@ -180,7 +181,7 @@ def makeReport(conf):
     resultstab = tablelib.Table(
                     headers=["treeid", "correct",
                              "rferror", "tree", "correct_tree", 
-                             "species_hash"])
+                             "species_hash", "treelen", "alignlen"])
     treehashes = []
     
     
@@ -189,8 +190,11 @@ def makeReport(conf):
         basedir, basefile = getBasenames(conf, infile)
         tree1, tree2 = checkOutput(conf, infile, stree, gene2species)
         
+        
         if tree1 == None:
             continue
+            
+        align = fasta.readFasta(infile)
         
         error = Spidir.robinsonFouldsError(tree1, tree2)
         
@@ -208,7 +212,9 @@ def makeReport(conf):
                        correct_tree=hash2,
                        correct= (hash1 == hash2),
                        rferror=error,
-                       species_hash=shash1)
+                       species_hash=shash1,
+                       treelen = sum(x.dist for x in tree1),
+                       alignlen = align.alignlen())
         
     
     

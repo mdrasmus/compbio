@@ -17,7 +17,7 @@ def writeDenseMatrix(filename, mat):
 
 
 def writeSquareMatrix(filename, mat):
-    """Write a CLUTO formatted sparse matrix file"""
+    """Write a CLUTO formatted square matrix file"""
     
     out = util.openStream(filename, "w")
     
@@ -124,6 +124,10 @@ def reorderTree(tree, mat, prog="vcluster"):
     os.remove(treefile)
     
     return perm
+
+#
+# TODO: add a function that flips a tree based on a perm
+#
 
 
 def reorderPartids(partids, mat, prog="vcluster"):

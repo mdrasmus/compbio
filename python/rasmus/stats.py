@@ -136,16 +136,65 @@ def smooth(vals, radius):
     return an averaging of vals using a radius
     
     Note: not implemented as fast as possible
-    runtime: O(len(vals) * len(radius))
+    runtime: O(len(vals) * radius)
     """
     
     vals2 = []
     vlen = len(vals)
     
     for i in range(vlen):
-        vals2.append(mean(vals[max(0, i-radius):
-                               min(vlen, i+radius)]))
+        radius2 = min(i, vlen - i - 1, radius)
+        vals2.append(mean(vals[i-radius2:i+radius2+1]))
+    
     return vals2
+
+
+def smooth2(x, y, xradius):
+    """
+    return an averaging of x and y using xradius
+    
+    Note: not implemented as fast as possible
+    runtime: O(len(x) * radius)
+    """
+
+    vlen = len(x)
+    assert vlen == len(y)
+    
+    # simple case
+    if vlen == 0:
+        return [], []
+    
+    x2 = []
+    y2 = []
+    
+    start = min(x)
+    end = max(x)
+    xtot = x[0]
+    ytot = y[0]
+    
+    low = 0
+    high = 0
+    
+    for i in range(vlen):
+        xi = x[i]
+    
+        xradius2 = min(xi - start, end - xi, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            xtot -= x[low]
+            ytot -= y[low]
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            xtot += x[high]
+            ytot += y[high]
+        
+        denom = float(high - low + 1)
+        x2.append(xtot / denom)
+        y2.append(ytot / denom)
+    
+    return x2, y2
 
 
 

@@ -8,6 +8,7 @@ import sys, os
 import math, StringIO, copy, random
 
 # rasmus libs
+from rasmus import alignlib
 from rasmus import env
 from rasmus import depend
 from rasmus import fasta
@@ -181,7 +182,8 @@ def makeReport(conf):
     resultstab = tablelib.Table(
                     headers=["treeid", "correct",
                              "rferror", "tree", "correct_tree", 
-                             "species_hash", "treelen", "alignlen"])
+                             "species_hash", "treelen", "alignlen",
+                             "alignlen_ungapped"])
     treehashes = []
     
     
@@ -194,7 +196,9 @@ def makeReport(conf):
         if tree1 == None:
             continue
             
+        # find alignment lengths
         align = fasta.readFasta(infile)
+        align2 = alignlib.removeGappedColumns(align)
         
         error = Spidir.robinsonFouldsError(tree1, tree2)
         
@@ -214,7 +218,8 @@ def makeReport(conf):
                        rferror=error,
                        species_hash=shash1,
                        treelen = sum(x.dist for x in tree1),
-                       alignlen = align.alignlen())
+                       alignlen = align.alignlen(),
+                       alignlen_ungapped = align2.alignlen())
         
     
     

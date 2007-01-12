@@ -158,6 +158,10 @@ options = ["""\
     {"single": True,
      "default": -80,
      "parser": float}],
+ ["", "famprob=", "famprob", "True|False",
+    {"default": True,
+     "parser": util.str2bool,
+     "single": True}],
  
  "Miscellaneous options",
  ["", "correcttree=", "correcttree", "<correct tree newick>",

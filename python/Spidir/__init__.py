@@ -1639,7 +1639,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     this.logl += tree.data["errorlogl"]
 
     # family rate likelihood
-    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))    
+    if conf["famprob"]:
+        this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl

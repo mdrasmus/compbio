@@ -541,38 +541,9 @@ def reportStats(conf, statsfile, infiles):
                   
         
 
+def parseArguments(conf):
+    """Determines phylo-program specific arguments"""
 
-
-def main(conf):
-    # print program help    
-    if conf["proghelp"]:
-        displayHelp()
-        return 1
-    
-
-    # determine input files
-    if conf["stdin"]:
-        files2 = []
-        for line in sys.stdin:
-            files2.append(line.rstrip())
-    else:
-        files2 = conf["REST"]
-    
-
-    # report file status
-    if "status" in conf:
-        reportStatus(conf, files2)
-    
-    
-    # report stats
-    if "stats" in conf:
-        reportStats(conf, conf["stats"], files2)
-    
-    
-    if "prog" not in conf:
-        sys.stderr.write("phyloall.py: no programs '--prog' given")
-        return 1
-    
     # save arguments for each program
     progs = conf["prog"].split(",")
     args = conf["args"]
@@ -591,6 +562,37 @@ def main(conf):
     for prog in progs:
         if prog not in conf["argsLookup"]:
             conf["argsLookup"][prog] = None
+
+
+def main(conf):
+    # print program help    
+    if conf["proghelp"]:
+        displayHelp()
+        return 1
+    
+
+    # determine input files
+    files2 = conf["REST"]
+    if conf["stdin"]:
+        for line in sys.stdin:
+            files2.append(line.rstrip())
+    
+
+    # report file status
+    if "status" in conf:
+        reportStatus(conf, files2)
+    
+    
+    # report stats
+    if "stats" in conf:
+        reportStats(conf, conf["stats"], files2)
+    
+    
+    if "prog" not in conf:
+        sys.stderr.write("phyloall.py: no programs (--prog) given.  Quiting...")
+        return 0
+    
+    
     
     # filter input files that are already complete
     files = filter(lambda x: run(conf, x, test=True), files2)
@@ -610,7 +612,8 @@ def main(conf):
         args = copy.copy(sys.argv)
         if len(conf["REST"]) > 0:
             args = args[:-len(conf["REST"])]
-
+        
+        # remove arguments that give dispatched jobs trouble
         if "-i" in args:
             args.remove("-i")
         if "--stdin" in args:

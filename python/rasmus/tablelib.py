@@ -147,6 +147,8 @@ class Table (list):
         return tab
     
     
+    # TODO: make a readRow function for streamed reading
+    
     def read(self, filename, delim="\t", nheaders=1):
         """Reads a character delimited file and returns a list of dictionaries
             
@@ -270,7 +272,8 @@ class Table (list):
                 for i in xrange(len(tokens), len(self.headers)):
                     key = self.headers[i]
                     row[key] = self.defaults[key]
-
+                
+                # add row to table
                 self.append(row)
                 
         except Exception, e:

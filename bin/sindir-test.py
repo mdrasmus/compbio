@@ -196,9 +196,6 @@ def makeReport(conf):
         if tree1 == None:
             continue
             
-        # find alignment lengths
-        align = fasta.readFasta(infile)
-        align2 = alignlib.removeGappedColumns(align)
         
         error = Spidir.robinsonFouldsError(tree1, tree2)
         
@@ -216,10 +213,7 @@ def makeReport(conf):
                        correct_tree=hash2,
                        correct= (hash1 == hash2),
                        rferror=error,
-                       species_hash=shash1,
-                       treelen = sum(x.dist for x in tree1),
-                       alignlen = align.alignlen(),
-                       alignlen_ungapped = align2.alignlen())
+                       species_hash=shash1)
         
     
     

@@ -592,7 +592,7 @@ def main(conf):
         sys.stderr.write("phyloall.py: no programs (--prog) given.  Quiting...")
         return 0
     
-    
+    parseArguments(conf)
     
     # filter input files that are already complete
     files = filter(lambda x: run(conf, x, test=True), files2)

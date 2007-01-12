@@ -62,9 +62,6 @@ options = [
   ["r", "resume", "resume", "",
     {"help": "skip over files that already exist",
      "single": True}],    
-  ["", "status=", "status", "<ext1,ext2,...>",
-    {"single": True,
-     "help": "report the existance of each file with ext1 or ext2 ..."}],
   ["i", "stdin", "stdin", "",
    {"single": True}],
   
@@ -95,7 +92,16 @@ options = [
     {"default": [".dist"]}],
   ["O:", "extraoutputext=", "extraoutputext", "",
     {"single": True,
-     "default": ""}]
+     "default": ""}],
+
+  "Misc options",
+  ["", "status=", "status", "<ext1>,<ext2>,...",
+    {"single": True,
+     "help": "report the existance of each file with ext1, ext2, etc."}],
+  ["", "stats=", "stats", "<stats file>",
+    {"single": True,
+     "help": "report the basic stats about alignments and trees"}],
+
 ]
 
 conf = util.parseOptions(sys.argv, options, 
@@ -472,13 +478,77 @@ def reportStatus(conf, infiles):
     return
 
 
+def reportStats(conf, statsfile, infiles):
+    """Report basic stats about alignments and trees"""
+    
+    ## TODO: make tables stream
+    
+    stats = tablelib.Table(headers=["name", 
+                                    "nseqs",
+                                    "alignlen", 
+                                    "alignlen_ungapped", 
+                                    "percid",
+                                    "treelen"])
+    
+    util.tic("reporting stats")
+    
+    for infile in infiles:
+        fastafile, alignfile, distfile, labelfile, treefile = \
+            getDataFiles(conf, infile)
+        infileType, basename = getFileType(conf, infile)
+        
+        util.logger(basename)
+        
+        
+        # default values
+        nseqs = 0
+        alignlen = 0
+        alignlen_ungapped = 0
+        percid = 0.0
+        treelen = 0.0
+        
+        # get align stats
+        if os.path.exists(alignfile):
+            aln = fasta.readFasta(alignfile)
+            aln2 = alignlib.removeGappedColumns(aln)
+            nseqs = len(aln)
+            alignlen = aln.alignlen()
+            alignlen_ungapped = aln2.alignlen()
+            cons = alignlib.calcConservation(aln)
+            percid = util.counteq(1.0, cons) / float(alignlen)
+        
+        # get tree stats
+        if os.path.exists(treefile):
+            tree = treelib.readTree(treefile)
+            treelen = sum(x.dist for x in tree)
+            if nseqs > 0:
+                assert nseqs == len(tree.leaves())
+            else:
+                nseqs = len(tree.leaves())
+        
+        # record stats
+        stats.add(name = os.path.basename(basename),
+                  nseqs = nseqs,
+                  alignlen = alignlen,
+                  alignlen_ungapped = alignlen_ungapped,
+                  percid = percid,
+                  treelen = treelen)
+    
+    stats.write(statsfile)
+    
+    util.toc()
+        
+                  
+        
+
+
+
 def main(conf):
     # print program help    
     if conf["proghelp"]:
         displayHelp()
-        sys.exit(1)
+        return 1
     
-
 
     # determine input files
     if conf["stdin"]:
@@ -489,12 +559,20 @@ def main(conf):
         files2 = conf["REST"]
     
 
-    # file status
+    # report file status
     if "status" in conf:
         reportStatus(conf, files2)
-        return    
-
-
+    
+    
+    # report stats
+    if "stats" in conf:
+        reportStats(conf, conf["stats"], files2)
+    
+    
+    if "prog" not in conf:
+        sys.stderr.write("phyloall.py: no programs '--prog' given")
+        return 1
+    
     # save arguments for each program
     progs = conf["prog"].split(",")
     args = conf["args"]
@@ -559,9 +637,11 @@ def main(conf):
             util.toc()
     
     util.toc()
+    
+    return 0
         
         
         
     
-    
-main(conf)
+if __name__ == "__main__":
+    sys.exit(main(conf))

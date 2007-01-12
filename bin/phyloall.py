@@ -478,7 +478,21 @@ def main(conf):
         displayHelp()
         sys.exit(1)
     
+
+
+    # determine input files
+    if conf["stdin"]:
+        files2 = []
+        for line in sys.stdin:
+            files2.append(line.rstrip())
+    else:
+        files2 = conf["REST"]
     
+
+    # file status
+    if "status" in conf:
+        reportStatus(conf, files2)
+        return    
 
 
     # save arguments for each program
@@ -499,23 +513,8 @@ def main(conf):
     for prog in progs:
         if prog not in conf["argsLookup"]:
             conf["argsLookup"][prog] = None
-            
     
-    # determine input files
-    if conf["stdin"]:
-        files2 = []
-        for line in sys.stdin:
-            files2.append(line.rstrip())
-    else:
-        files2 = conf["REST"]
-    
-
-    # file status
-    if "status" in conf:
-        reportStatus(conf, files2)
-        return
-    
-    
+    # filter input files that are already complete
     files = filter(lambda x: run(conf, x, test=True), files2)
     
     util.logger("will process %d input files" % len(files))

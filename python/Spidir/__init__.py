@@ -370,7 +370,7 @@ def setTreeDistances(conf, tree, distmat, genes):
             dists.append(distmat[i][j])
     
     # find how edges split vertices
-    splits = findSplits(network, util.makeset(genes))
+    splits = findSplits(network, set(genes))
     edges = splits.keys()
     
     # create topology matrix
@@ -668,7 +668,7 @@ def dataLikelihoodG(lenmat, baserates, alphas, betas, baserateparam):
 def mleBaserates(lengths, params, baserateparam):
     lenmat = zip(* lengths.values())
     keys = map(lambda x: x.name, lengths.keys())
-    means, sdevs = zip(* util.sublist(params, keys))
+    means, sdevs = zip(* util.mget(params, keys))
     baserates = []
     for i in xrange(len(lenmat)):
         baserates.append(mleBaserate(lenmat[i], means, sdevs, baserateparam))
@@ -817,9 +817,9 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
-    lens = util.sublist(lens, ind)
-    means = util.sublist(means, ind)
-    sdevs = util.sublist(sdevs, ind)
+    lens = util.mget(lens, ind)
+    means = util.mget(means, ind)
+    sdevs = util.mget(sdevs, ind)
     
     a = (1 - alpha) / beta
     b = sum(means[i] * lens[i] / sdevs[i]**2
@@ -846,9 +846,9 @@ def mleBaserate3(lens, means, sdevs, baserateparam):
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
-    lens = util.sublist(lens, ind)
-    means = util.sublist(means, ind)
-    sdevs = util.sublist(sdevs, ind)
+    lens = util.mget(lens, ind)
+    means = util.mget(means, ind)
+    sdevs = util.mget(sdevs, ind)
     
     a = (1 - alpha) / beta
     b = sum(means[i] * lens[i] / sdevs[i]**2
@@ -865,9 +865,9 @@ def mleBaserateG(lens, alphas, betas, baserateparam):
     
     # protect against zero
     #ind = util.findgt(.0001, sdevs)
-    #lens = util.sublist(lens, ind)
-    #alphas = util.sublist(means, ind)
-    #betas = util.sublist(sdevs, ind)
+    #lens = util.mget(lens, ind)
+    #alphas = util.mget(means, ind)
+    #betas = util.mget(sdevs, ind)
     
     nom = 0
     denom = 0
@@ -1877,7 +1877,7 @@ def consensusTree(trees, counts):
     # count up splits
     for tree, count in zip(trees, counts):
         network = treelib.tree2graph(treelib.unroot(tree))
-        splits2 = findSplits(network, util.makeset(tree.leaveNames()))
+        splits2 = findSplits(network, set(tree.leaveNames()))
         
         print len(splits2)
         

@@ -1577,21 +1577,20 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     return logl
 
 
-g_bestlogl = [-util.INF]
-
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     conf["accuracy"] = .01
+    conf.setdefault["bestlogl"] = -util.INF
 
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     if "integrate" not in conf:
         return estlogl
     else:
         # skip trees that are estimated to be very bad
-        if estlogl < g_bestlogl[0] - 50:
+        if estlogl < conf["bestlogl"] - 50:
             debug("SKIP integration, est logl=%f" % estlogl)
             return estlogl
-        g_bestlogl[0] = max(g_bestlogl[0], estlogl)
+        conf["bestlogl"] = max(conf["bestlogl"], estlogl)
             
     #Search.printMCMC(conf, "est", tree, stree, gene2species, {})
 
@@ -1675,9 +1674,19 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
     setDebug(conf["debug"])
 
     
-    if "integrate" in conf:
+    if "integrate" in conf and "out" in conf:
         conf["intcmp"] = file(conf["out"] + ".int", "w")
         
+    if "out" in conf:
+        # create debug table
+        conf["debugfile"] = file(conf["out"] + ".debug.tab", "w")
+        
+        debugtab = tablelib.Table(headers=["logl", "treelen", "baserate", 
+            "error", "eventlogl", "tree"])
+        debugtab.writeHeader(conf["debugfile"])
+    else:
+        conf["debugfile"] = None
+    
     
     trees = []
     logls = []
@@ -1725,7 +1734,6 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
         util.toc()
         
-        debug("logl:", logl)
         Search.printMCMC(conf, "N/A", tree, stree, gene2species, visited)
         
         printVisitedTrees(visited)

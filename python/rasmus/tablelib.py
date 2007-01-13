@@ -307,6 +307,21 @@ class Table (list):
     
         out = util.openStream(filename, "w")
         
+        self.writeHeader(out, delim=delim)
+
+        # write data
+        for row in self:
+            # code is inlined here for speed
+            rowstr = []
+            for header in self.headers:
+                if header in row:
+                    rowstr.append(str(row[header]))
+                else:
+                    rowstr.append('')
+            print >>out, delim.join(rowstr)
+    
+    
+    def writeHeader(self, out=sys.stdout, delim="\t"):
         # ensure all info is complete
         for key in self.headers:
             if key not in self.types:
@@ -343,16 +358,16 @@ class Table (list):
         # write header
         if self.nheaders > 0:
             print >>out, delim.join(self.headers)
-
-        # write data
-        for row in self:
-            rowstr = []
-            for header in self.headers:
-                if header in row:
-                    rowstr.append(str(row[header]))
-                else:
-                    rowstr.append('')
-            print >>out, delim.join(rowstr)
+    
+    
+    def writeRow(self, row, out=sys.stdout):
+        rowstr = []
+        for header in self.headers:
+            if header in row:
+                rowstr.append(str(row[header]))
+            else:
+                rowstr.append('')
+        print >>out, delim.join(rowstr)
     
     
     def save(self):

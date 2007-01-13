@@ -1504,13 +1504,15 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 return node.name
             else:
                 return None
-        print util.mapdict(kdepend, 
-                           keyfunc=nodename,
-                           valfunc=nodename)
-        print util.mapdict(korder, 
-                           keyfunc=nodename)
-        print util.mapdict(korderrev, 
-                           valfunc=nodename)
+        
+        ## debugging integration
+        #print util.mapdict(kdepend, 
+        #                   keyfunc=nodename,
+        #                   valfunc=nodename)
+        #print util.mapdict(korder, 
+        #                   keyfunc=nodename)
+        #print util.mapdict(korderrev, 
+        #                   valfunc=nodename)
         
         
         def func(k):
@@ -1524,7 +1526,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 this.depth -= 1
                 
                 if this.printing < 0:
-                    print kvars
+                    debug("int:", kvars)
                     this.printing = 100
                 else:
                     this.printing -= 1
@@ -1565,21 +1567,21 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
             nvars = countMidpointParameters(child, events)
             val, err = integrate(child, nvars)
             if conf["debug"]:
-                debug("integration error:", (log(err + val) - log(val)))
-                debug("nvars:", nvars)
+                #debug("integration error:", (log(err + val) - log(val)))
+                debug("int nvars:", nvars)
             clogl = log(val)
             child.data["logl"] = clogl
             logl += clogl
     
     if conf["debug"]:
-        debug("logl calls:", this.ncalls)
+        debug("int logl calls:", this.ncalls)
     
     return logl
 
 
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
-    conf["accuracy"] = .01
+    #conf["accuracy"] = .01
     conf.setdefault["bestlogl"] = -util.INF
 
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)

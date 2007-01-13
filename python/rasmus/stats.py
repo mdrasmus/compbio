@@ -131,7 +131,50 @@ def fitLine(xlist, ylist):
     return (slope, inter)
 
 
-def smooth(vals, radius):
+def smooth(x, radius):
+    """
+    return an averaging of vals using a radius
+    
+    Note: not implemented as fast as possible
+    runtime: O(len(vals) * radius)
+    """
+    
+    vlen = len(x)
+    
+    # simple case
+    if vlen == 0:
+        return []
+    
+    x2 = []
+    
+    tot = x[0]
+    
+    low = 0
+    high = 0
+    
+    for i in range(vlen):
+        xi = x[i]
+    
+        xradius2 = min(xi - start, end - xi, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            xtot -= x[low]
+            ytot -= y[low]
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            xtot += x[high]
+            ytot += y[high]
+        
+        denom = float(high - low + 1)
+        x2.append(xtot / denom)
+        y2.append(ytot / denom)
+    
+    return x2, y2
+
+
+def smooth_old(vals, radius):
     """
     return an averaging of vals using a radius
     
@@ -152,6 +195,8 @@ def smooth(vals, radius):
 def smooth2(x, y, xradius):
     """
     return an averaging of x and y using xradius
+    
+    x must be sorted least to greatest
     
     Note: not implemented as fast as possible
     runtime: O(len(x) * radius)

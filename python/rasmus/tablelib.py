@@ -360,7 +360,7 @@ class Table (list):
             print >>out, delim.join(self.headers)
     
     
-    def writeRow(self, row, out=sys.stdout):
+    def writeRow(self, out, row):
         rowstr = []
         for header in self.headers:
             if header in row:

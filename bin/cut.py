@@ -12,7 +12,7 @@ cols = map(int, sys.argv[1:])
 
 for line in sys.stdin:
     tokens = line.rstrip().split("\t")
-    print "\t".join(util.sublist(tokens, cols))
+    print "\t".join(util.mget(tokens, cols))
 
 
 

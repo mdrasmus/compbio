@@ -13,7 +13,7 @@ except:
     sys.exit(1)
 
 keys = map(int, param["line"][-1].split(","))
-keyset = util.makeset(keys)
+keyset = set(keys)
 lines = {}
 
 if len(rest) == 0:

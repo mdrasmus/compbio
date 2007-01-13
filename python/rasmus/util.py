@@ -14,7 +14,7 @@ import os
 import re
 import shutil
 import sys
-import urllib2
+
 
 
 
@@ -24,7 +24,7 @@ import urllib2
 
 
 # Note: I had trouble using 1e1000 directly, because bytecode had trouble
-# representing infinity
+# representing infinity (possibly)
 INF = float("1e1000") 
 
 
@@ -184,7 +184,7 @@ def remove(lst, *vals):
     """Returns a copy of list 'lst' with values 'vals' removed
     """
     lst2 = []
-    delset = makeset(vals)
+    delset = set(vals)
     for i in lst:
         if i not in delset:
             lst2.append(i)
@@ -247,19 +247,6 @@ def concat(* lists):
     return lst
 
 
-def sublist(lst, ind):
-    """Returns a list 'lst2' such that lst2[i] = lst[ind[i]]
-       
-       Or in otherwords, get the subsequence of 'lst'.
-       Same as mget().  Use mget() instead.
-       
-       DEPRECATED
-    """
-    lst2 = []
-    for i in ind:
-        lst2.append(lst[i])
-    return lst2
-
 
 def subdict(dic, keys):
     """
@@ -304,22 +291,6 @@ def list2lookup(lst):
     for i in range(len(lst)):
         lookup[lst[i]] = i
     return lookup
-
-
-"""
-def list2dict(lst, val=1):
-    '''
-    Creates a dict with keys from list 'lst' and values 'val'
-    
-    DEPRECATED: redundant with dict.fromkeys()
-    
-    '''
-    
-    dic = {}
-    for i in lst:
-        dic[i] = val
-    return dic
-"""
 
 
 def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
@@ -691,43 +662,6 @@ def compose(* funcs):
     return f
 
 #
-# set operations
-#
-# Should use python set instead
-#
-# DEPRECATED
-#
-
-def makeset(lst):
-    return dict.fromkeys(lst, 1)
-
-def union(set1, set2):
-    set = {}
-    set.update(set1)
-    set.update(set2)
-    return set
-
-def intersect(set1, set2):
-    set = {}
-    for i in set1:
-        if i in set2:
-            set[i] = 1
-    return set
-
-def nonintersect(set1, set2):
-    diffset = setSubtract(set1, set2)
-    diffset.update(setSubtract(set2, set1))
-    return diffset
-
-def setSubtract(set1, set2):
-    set = {}
-    for i in set1:
-        if i not in set2:
-            set[i] = 1
-    return set
-
-
-#
 # regex
 #
 
@@ -818,6 +752,7 @@ def openStream(filename, mode = "r"):
     elif isinstance(filename, str):
         # open URLs
         if filename.startswith("http://"):
+            import urllib2
             return urllib2.urlopen(filename)
         
         # open stdin and stdout
@@ -1097,49 +1032,7 @@ def writeDelim(filename, data, delim="\t"):
     for line in data:
         print >>out, delim.join(map(str, line))
 
-"""
-DEPRECATED
 
-class IterFunc:
-    def __init__(self, func):
-        self.func = func
-    
-    def __iter__(self):
-        return self
-    
-    def next(self):
-        return self.func()
-    
-
-def selcolIter(myiter, cols):       
-    return IterFunc(lambda: sublist(myiter.next(), cols))
-
-def joinIter(myiter, delim):
-    return IterFunc(lambda: delim.join(myiter.next()))
-
-def cutIter(myiter, cols, delim=None):
-    return IterFunc(lambda: delim.join(sublist(myiter.next().split(delim), cols)))
-
-
-
-def clearFile(filename):
-    out = file(filename, "w")
-    out.close()
-
-def filesize(filename):
-    return os.stat(filename)[6]
-
-def openZip(filename):
-    (infile, outfile) = os.popen2("zcat '"+filename+"' ")
-    return outfile
-    
-def linecount(filename):
-    count = 0
-    for line in openStream(filename):
-        count += 1
-    return count
-
-"""
 
 class SafeReadIter:
     def __init__(self, infile):
@@ -1253,16 +1146,17 @@ def listFiles(path, extension=""):
     return files
 
 
-def tempfile(dir, prefix, ext):
-    """Generates a a temp filename 'dir/prefix_XXXXXX.ext'"""
+def tempfile(path, prefix, ext):
+    """Generates a a temp filename 'path/prefix_XXXXXX.ext'"""
     
     import warnings
     warnings.filterwarnings("ignore", ".*", RuntimeWarning)
-    filename = os.tempnam(dir, "____")      
+    filename = os.tempnam(path, "____")      
     filename = filename.replace("____", prefix) + ext
     warnings.filterwarnings("default", ".*", RuntimeWarning)
     
     return filename
+
 
 def deldir(path):
     """Recursively remove a directory"""
@@ -1533,8 +1427,86 @@ from options import *
 from plotting import *
 
 
-#from progress import *
+
+
+"""
+DEPRECATED
+
+class IterFunc:
+    def __init__(self, func):
+        self.func = func
+    
+    def __iter__(self):
+        return self
+    
+    def next(self):
+        return self.func()
+    
+
+def selcolIter(myiter, cols):       
+    return IterFunc(lambda: sublist(myiter.next(), cols))
+
+def joinIter(myiter, delim):
+    return IterFunc(lambda: delim.join(myiter.next()))
+
+def cutIter(myiter, cols, delim=None):
+    return IterFunc(lambda: delim.join(sublist(myiter.next().split(delim), cols)))
 
 
 
+def clearFile(filename):
+    out = file(filename, "w")
+    out.close()
 
+def filesize(filename):
+    return os.stat(filename)[6]
+
+def openZip(filename):
+    (infile, outfile) = os.popen2("zcat '"+filename+"' ")
+    return outfile
+    
+def linecount(filename):
+    count = 0
+    for line in openStream(filename):
+        count += 1
+    return count
+
+"""
+
+"""
+#
+# set operations
+#
+# Should use python set instead
+#
+# DEPRECATED
+#
+
+def makeset(lst):
+    return dict.fromkeys(lst, 1)
+
+def union(set1, set2):
+    set = {}
+    set.update(set1)
+    set.update(set2)
+    return set
+
+def intersect(set1, set2):
+    set = {}
+    for i in set1:
+        if i in set2:
+            set[i] = 1
+    return set
+
+def nonintersect(set1, set2):
+    diffset = setSubtract(set1, set2)
+    diffset.update(setSubtract(set2, set1))
+    return diffset
+
+def setSubtract(set1, set2):
+    set = {}
+    for i in set1:
+        if i not in set2:
+            set[i] = 1
+    return set
+"""

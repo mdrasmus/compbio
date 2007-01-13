@@ -617,8 +617,8 @@ def chiSquareFit(xbins, ybins, func, nsamples, nparams, minsamples=5):
         
     # ensure we have enough expected samples in each bin
     ind = util.find(util.gefunc(minsamples), expected)
-    counts = util.sublist(counts, ind)
-    expected = util.sublist(expected, ind)
+    counts = util.mget(counts, ind)
+    expected = util.mget(expected, ind)
     
     if len(counts) == 0:
         return [0, 1], counts, expected

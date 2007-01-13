@@ -42,11 +42,11 @@ def confusionMatrix(parts1, parts2):
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
     
-    items1 = util.makeset(util.flatten(parts1, 1))
-    items2 = util.makeset(util.flatten(parts2, 1))
+    items1 = set(util.flatten(parts1, 1))
+    items2 = set(util.flatten(parts2, 1))
     
-    sameset = util.intersect(items1, items2)
-    diffset = util.nonintersect(items1, items2)
+    sameset = items1 & items2
+    diffset = items1.symmetric_difference(items2)
     
     for item in sameset:
         confuse[lookup1[item]][lookup2[item]] += 1

@@ -741,7 +741,7 @@ def findAnchors(conf, matching, outprefix):
     
     
     # merge matches
-    bestset = util.makeset(matches)
+    bestset = set(matches)
     for match in matches2:
         if match not in bestset:
             matches.append(match)

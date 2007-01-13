@@ -282,14 +282,14 @@ def testOrthologs(tree1, tree2, stree, gene2species):
     orths1 = phyloutil.findAllOrthologs(tree1, stree, recon1)
     orths2 = phyloutil.findAllOrthologs(tree2, stree, recon2)
     
-    set1 = util.makeset(map(tuple, orths1))
-    set2 = util.makeset(map(tuple, orths2))
+    set1 = set(map(tuple, orths1))
+    set2 = set(map(tuple, orths2))
     
     ngenes = len(tree2.leaves())
     nonorths = ngenes * (ngenes + 1) / 2 - len(set2)
     
     # sensitivity and specificity
-    overlap = util.intersect(set1, set2)
+    overlap = set1 & set2
     tp = len(overlap)
     fp = len(set1) - len(overlap)
     fn = len(set2) - len(overlap)

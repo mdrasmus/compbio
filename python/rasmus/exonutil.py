@@ -305,7 +305,7 @@ def writeNexusIntrons(out, names, seqs, genes, lookup, slide=2, options={}):
     aln = fasta.array2dict(names, seqs)
     ialn = intronAlignment(aln, trans, slide)
     
-    iseqs = util.sublist(ialn, names)
+    iseqs = util.mget(ialn, names)
     
     if len(iseqs[0]) > 0:    
         mrbayes.writeNexusIntrons(out, names, seqs, iseqs, options=options)

@@ -253,12 +253,13 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
         debug()
     
     if "debugfile" in conf:    
-        conf["debugfile"].writeRow({"logl": tree.data["logl"], 
-                                    "treelen": sum(x.dist for x in tree), 
-                                    "baserate": tree.data["baserate"], 
-                                    "error": tree.data["error"], 
-                                    "eventlogl": tree.data["errorlogl"], 
-                                    "tree": phyloutil.hashTree(tree)})
+        conf["debugtab"].writeRow(conf["debugtab_file"],
+                                  {"logl": tree.data["logl"], 
+                                   "treelen": sum(x.dist for x in tree), 
+                                   "baserate": tree.data["baserate"], 
+                                   "error": tree.data["error"], 
+                                   "eventlogl": tree.data["errorlogl"], 
+                                   "tree": phyloutil.hashTree(tree)})
         
 
 

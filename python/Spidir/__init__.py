@@ -1681,11 +1681,12 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
     if "out" in conf:
         # create debug table
-        conf["debugfile"] = file(conf["out"] + ".debug.tab", "w")
+        conf["debugtab_file"] = file(conf["out"] + ".debug.tab", "w")
         
         debugtab = tablelib.Table(headers=["logl", "treelen", "baserate", 
             "error", "eventlogl", "tree"])
-        debugtab.writeHeader(conf["debugfile"])
+        debugtab.writeHeader(conf["debugtab_file"])
+        conf["debugtab"] = debugtab
     else:
         conf["debugfile"] = None
     

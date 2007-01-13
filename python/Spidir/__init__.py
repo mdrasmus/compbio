@@ -1582,7 +1582,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     #conf["accuracy"] = .01
-    conf.setdefault["bestlogl"] = -util.INF
+    conf.setdefault("bestlogl", -util.INF)
 
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     if "integrate" not in conf:

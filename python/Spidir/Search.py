@@ -624,7 +624,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                                    "treelen": sum(x.dist for x in tree), 
                                    "baserate": tree.data["baserate"], 
                                    "error": tree.data["error"], 
-                                   "eventlogl": tree.data["errorlogl"], 
+                                   "errorlogl": tree.data["error"],
+                                   "eventlogl": tree.data["eventlogl"], 
                                    "tree": phyloutil.hashTree(tree)})
         
         # best yet tree

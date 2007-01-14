@@ -857,7 +857,7 @@ def matrix2table(matrix, rlabels=None, clabels=None, rowheader="rlabels"):
 # testing
 #
 
-def _test():
+if __name__ == "__main__":
     import StringIO
     
 
@@ -951,5 +951,3 @@ mike	789	1
         print tab.cget('name', 'num')
 
 
-if __name__ == "__main__":
-    _test()

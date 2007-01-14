@@ -78,10 +78,10 @@ pipeline.setLogOutput()
 
 
 if depend.hasLsf():
-    depend.setMaxNumProc(conf["nproc"])
+    pipeline.setMaxNumProc(conf["nproc"])
 else:
     # no need for parallelism
-    depend.setMaxNumProc(1)
+    pipeline.setMaxNumProc(1)
 
 
 #

@@ -1685,8 +1685,12 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
         debugtab = tablelib.Table(headers=["logl", "treelen", "baserate", 
                                            "error", "eventlogl", "tree"],
-                                  types=[float, float, float, 
-                                         float, float, str])
+                                  types={"logl": float, 
+                                         "treelen": float, 
+                                         "baserate": float, 
+                                         "error": float, 
+                                         "eventlogl": float, 
+                                         "tree": str}])
         debugtab.writeHeader(conf["debugtab_file"])
         conf["debugtab"] = debugtab
     else:

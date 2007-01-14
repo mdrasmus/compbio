@@ -252,7 +252,7 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
         debug()
         debug()
     
-    if "debugfile" in conf:    
+    if "debugtab_file" in conf:    
         conf["debugtab"].writeRow(conf["debugtab_file"],
                                   {"logl": tree.data["logl"], 
                                    "treelen": sum(x.dist for x in tree), 

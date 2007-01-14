@@ -165,6 +165,7 @@ def filterOne2ones(parts, gene2species):
 ####################################
 # Hierarchical clustering
 #
+# TODO: move this to its own gene clustering-specific module
 
 def mergeBuh(conf, parts1, parts2, blastfiles):
     """Merge by Best Unidirectional Hits"""

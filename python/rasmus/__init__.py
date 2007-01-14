@@ -4,7 +4,6 @@
 # make bio modules visible directly under rasmus
 # for backwards compatibility
 
-#from rasmus.bio import fasta
-
 
 from rasmus.bio import bionj
+#from rasmus.bio import fasta

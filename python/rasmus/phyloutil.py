@@ -392,8 +392,8 @@ def hashOrderTree(tree, smap = lambda x: x):
         else:
             childHashes = map(walk, node.children)
             ind = util.sortInd(childHashes)
-            childHashes = util.permute(childHashes, ind)
-            node.children = util.permute(node.children, ind)
+            childHashes = util.mget(childHashes, ind)
+            node.children = util.mget(node.children, ind)
             return hashTreeCompose(childHashes)
     walk(tree.root)
 

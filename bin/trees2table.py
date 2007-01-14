@@ -2,9 +2,11 @@
 
 import os, sys
 
-from rasmus import phyloutil, tablelib, sindirlib, spidirlib, util
+from rasmus import phyloutil, tablelib, util
 from rasmus import treelib, genomeutil, env
 from rasmus.vis import treevis
+
+import Spidir
 
 
 options = [
@@ -100,8 +102,8 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         
         # add family rate
         if params:
-            row['famrate'] = spidirlib.getBaserate(tree, stree, params, \
-                                                   gene2species=gene2species)
+            row['famrate'] = Spidir.getBaserate(tree, stree, params, \
+                                                gene2species=gene2species)
         
         tab.append(row)
     util.toc()
@@ -195,7 +197,7 @@ def drawEventTree(etree, params, filename=sys.stdout):
                         node.data['dup'], node.data['loss'],
                         node.data['genes'])
 
-    spidirlib.drawParamTree(etree, params, labels=labels, yscale=30, 
+    Spidir.drawParamTree(etree, params, labels=labels, yscale=30, 
                             labelSize=7,
                             xscale=5000,
                             filename=filename)
@@ -208,7 +210,7 @@ def main(conf):
     stree = treelib.readTree(env.findFile(conf["stree"]))
 
     if "params" in conf:
-        params = sindirlib.readParams(env.findFile(conf["params"]))
+        params = Spidir.readParams(env.findFile(conf["params"]))
         
         #for name, node in stree.nodes.items():
         #    node.dist = params[name][0]

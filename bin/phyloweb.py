@@ -8,7 +8,8 @@ import math
 
 from rasmus import util, env, genomeutil, treelib, progress, phylip, phyloutil
 from rasmus.vis import treevis
-from rasmus import svg, tablelib, fasta, spidirlib
+from rasmus import svg, tablelib, fasta
+import Spidir
 
 
 

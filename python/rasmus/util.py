@@ -1212,36 +1212,34 @@ def sortInd(array, compare = cmp):
     ind = range(len(array))
     ind.sort(lambda x, y: compare(array[x], array[y]))
     return ind
-
-def sortPerm(array, compare = cmp):
-    """Returns a copy of list 'array' sorted by 'compare' and the 
-       resulting permutation"""
-    perm = sortInd(array, compare)
-    sorted = permute(array, perm)
-    return sorted, perm
     
 def sortTogether(compare, array, *others):
     ind = sortInd(array, compare)
-    arrays = [permute(array, ind)]
+    arrays = [mget(array, ind)]
     
     for other in others:
-        arrays.append(permute(other, ind))
+        arrays.append(mget(other, ind))
     
     return arrays
 
-def permute(lst, perm):
-    """Returns a copy of list 'lst' permuted by 'perm'"""
-    sorted = [0] * len(lst)
-    for i in range(len(sorted)):
-        sorted[i] = lst[perm[i]]
-    return sorted
-    
 def invPerm(perm):
     """Returns the inverse of a permutation 'perm'"""
     inv = [0] * len(perm)
     for i in range(len(perm)):
         inv[perm[i]] = i
     return inv
+    
+'''
+def permute(lst, perm):
+    """Returns a copy of list 'lst' permuted by 'perm'
+    
+       DEPRECATED: same as mget
+    """
+    sorted = [0] * len(lst)
+    for i in range(len(sorted)):
+        sorted[i] = lst[perm[i]]
+    return sorted
+'''
 
 
 ###############################################################################

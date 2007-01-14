@@ -5,8 +5,8 @@ import random
 import os
 
 # rasmus libs
-import util
-import algorithms
+from rasmus import util
+from rasmus import algorithms
 
 
 
@@ -131,7 +131,7 @@ def fitLine(xlist, ylist):
     return (slope, inter)
 
 
-def smooth(x, radius):
+def smooth_old(x, radius):
     """
     return an averaging of vals using a radius
     
@@ -155,7 +155,7 @@ def smooth(x, radius):
     for i in range(vlen):
         xi = x[i]
     
-        xradius2 = min(xi - start, end - xi, xradius)
+        xradius2 = min(i, vlen - i - 1, xradius)
     
         # move window
         while x[low] < xi - xradius2:
@@ -174,7 +174,7 @@ def smooth(x, radius):
     return x2, y2
 
 
-def smooth_old(vals, radius):
+def smooth(vals, radius):
     """
     return an averaging of vals using a radius
     

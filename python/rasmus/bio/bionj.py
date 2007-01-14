@@ -1,5 +1,5 @@
 import os
-import util, phylip, algorithms
+from rasmus import util, phylip, treelib
 
 
 
@@ -21,7 +21,7 @@ def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):
             labels = phylip.dnadist(aln, distfile, verbose=verbose)
     
     os.system("echo -n '%s\n%s' | bionj > /dev/null" % (distfile, treefile))
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick(treefile)
     phylip.renameTreeWithNames(tree, labels)
     

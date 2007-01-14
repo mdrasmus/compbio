@@ -5,3 +5,6 @@
 # for backwards compatibility
 
 #from rasmus.bio import fasta
+
+
+from rasmus.bio import bionj

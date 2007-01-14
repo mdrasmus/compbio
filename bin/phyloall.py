@@ -379,9 +379,9 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
-        from rasmus import sindirlib
-        sindirlib.setTreeDistances({"debug": 2}, 
-                                   usertree, mat, labels)
+        import Spidir
+        Spidir.setTreeDistances({"debug": 2}, 
+                                usertree, mat, labels)
         tree = usertree
     else:
         raise "unknown program '%s'" % prog

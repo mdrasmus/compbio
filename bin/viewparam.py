@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import util, env, treelib, sindirlib, stats
-
+from rasmus import util, env, treelib, stats
+import Spidir
 
 options = [
   ["s:", "stree=", "stree", "<species tree>",
     {"single": True}],
-  ["p:", "params=", "params", "<sindir params file>",
+  ["p:", "params=", "params", "<spidir params file>",
     {"single": True}],
   ["l:", "scale=", "scale", "<scaling>",
     {"default": 20,
@@ -28,7 +28,7 @@ conf = util.parseOptions(sys.argv, options, quit=True)
 # read data
 env.addEnvPaths("DATAPATH")
 stree = treelib.readTree(env.findFile(conf["stree"]))
-params = sindirlib.readParams(env.findFile(conf["params"]))
+params = Spidir.readParams(env.findFile(conf["params"]))
 
 
 labels = {}

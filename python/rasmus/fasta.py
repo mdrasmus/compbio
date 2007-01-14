@@ -3,8 +3,9 @@ import os
 
 from rasmus import util
 from rasmus.seqlib import SeqDict
-#from alignlib import printAlign
 
+
+# TODO: add a fasta file iterator
 
 
 def removestar(value):

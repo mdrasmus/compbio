@@ -7,6 +7,7 @@
 
 
 # rasmus direct imports
+import rasmus
 from rasmus.util import *
 from rasmus.algorithms import *
 from rasmus.fasta import *

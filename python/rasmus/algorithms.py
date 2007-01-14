@@ -187,6 +187,8 @@ class QuadTree:
 #    
 #
 
+# TODO: make a funtion based linear search
+
 def binsearch(lst, val, compare=cmp, order=1):
     """Performs binary search for val in lst using compare
     

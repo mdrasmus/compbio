@@ -618,15 +618,21 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         
         addVisited(conf, visited, tree2, thash)
         
-        if "debugtab_file" in conf:    
+        if "debugtab_file" in conf:
+            thash = phyloutil.hashTree(tree)
+            
+            if "correcthash" in conf:
+                correct = (conf["correcthash"] == "thash") 
+        
             conf["debugtab"].writeRow(conf["debugtab_file"],
-                                  {"logl": tree.data["logl"], 
+                                  {"correct": correct,
+                                   "logl": tree.data["logl"], 
                                    "treelen": sum(x.dist for x in tree), 
                                    "baserate": tree.data["baserate"], 
                                    "error": tree.data["error"], 
                                    "errorlogl": tree.data["errorlogl"],
                                    "eventlogl": tree.data["eventlogl"], 
-                                   "tree": phyloutil.hashTree(tree)})
+                                   "tree": thash})
         
         # best yet tree
         if logl > this.toplogl:

@@ -1683,10 +1683,12 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         # create debug table
         conf["debugtab_file"] = file(conf["out"] + ".debug.tab", "w")
         
-        debugtab = tablelib.Table(headers=["logl", "treelen", "baserate", 
+        debugtab = tablelib.Table(headers=["correct",
+                                           "logl", "treelen", "baserate", 
                                            "error", "errorlogl", 
                                            "eventlogl", "tree"],
-                                  types={"logl": float, 
+                                  types={"correct": bool,
+                                         "logl": float, 
                                          "treelen": float, 
                                          "baserate": float, 
                                          "error": float, 

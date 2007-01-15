@@ -341,39 +341,54 @@ class Tree:
         return string
     
     
-    def writeNewick(self, out = sys.stdout, writeData=None):
+    def writeNewick(self, out = sys.stdout, writeData=None, oneline=False):
         self.writeNewickNode(self.root, util.openStream(out, "w"), 
-                             writeData=writeData)
+                             writeData=writeData, oneline=oneline)
     
     
-    def write(self, out = sys.stdout, writeData=None):
-        self.writeNewick(util.openStream(out, "w"), writeData=writeData)
+    def write(self, out = sys.stdout, writeData=None, oneline=False):
+        self.writeNewick(util.openStream(out, "w"), writeData=writeData, 
+                         oneline=oneline)
 
     
-    def writeNewickNode(self, node, out = sys.stdout, depth = 0, writeData=None):
+    def writeNewickNode(self, node, out = sys.stdout, 
+                              depth = 0, writeData=None, oneline=False):
         # default data writer
         if writeData == None:
             writeData = self.writeData
         
-        print >>out, (" " * depth),
+        if not oneline:
+            out.write(" " * depth)
 
         if len(node.children) == 0:
             # leaf
-            print >>out, node.name,
+            out.write(node.name)
         else:
             # internal node
-            print >>out, "("
+            if oneline:
+                out.write("(")
+            else:
+                out.write("(\n")
             for child in node.children[:-1]:
-                self.writeNewickNode(child, out, depth+1)
-                print >>out, ","
-            self.writeNewickNode(node.children[-1], out, depth+1)            
-            print >>out
-            print >>out, (" " * depth),
-            print >>out, ")",
+                self.writeNewickNode(child, out, depth+1, 
+                                     writeData=writeData, oneline=oneline)
+                if oneline:
+                    out.write(",")
+                else:
+                    out.write(",\n")
+            self.writeNewickNode(node.children[-1], out, depth+1,
+                                 writeData=writeData, oneline=oneline)
+            if oneline:
+                out.write(")")
+            else:            
+                out.write("\n" + (" " * depth) + ")")
 
         # don't print data for root node
         if depth == 0:
-            print >>out, ";"
+            if oneline:
+                out.write(";")
+            else:
+                out.write(";\n")
         else:
             out.write(writeData(node))
     

@@ -1,5 +1,6 @@
 import random
 import math
+import StringIO
 
 from rasmus import phyloutil
 from rasmus import treelib
@@ -620,6 +621,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         
         if "debugtab_file" in conf:
             thash = phyloutil.hashTree(tree)
+            treestream = StringIO.StringIO("w")
+            tree.write(treestream, oneline=True)
             
             if "correcthash" in conf:
                 correct = (conf["correcthash"] == thash) 
@@ -632,7 +635,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                                    "error": tree.data["error"], 
                                    "errorlogl": tree.data["errorlogl"],
                                    "eventlogl": tree.data["eventlogl"], 
-                                   "tree": thash})
+                                   "tree": treestream.getvalue(),
+                                   "treehash": thash})
         
         # best yet tree
         if logl > this.toplogl:

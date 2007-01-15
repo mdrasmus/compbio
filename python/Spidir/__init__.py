@@ -1694,7 +1694,8 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
                                          "error": float, 
                                          "errorlogl": float,
                                          "eventlogl": float, 
-                                         "tree": str})
+                                         "tree": str,
+                                         "treehash": str})
         debugtab.writeHeader(conf["debugtab_file"])
         conf["debugtab"] = debugtab
     else:

@@ -622,7 +622,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             thash = phyloutil.hashTree(tree)
             
             if "correcthash" in conf:
-                correct = (conf["correcthash"] == "thash") 
+                correct = (conf["correcthash"] == thash) 
         
             conf["debugtab"].writeRow(conf["debugtab_file"],
                                   {"correct": correct,

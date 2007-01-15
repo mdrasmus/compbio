@@ -621,8 +621,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         
         if "debugtab_file" in conf:
             thash = phyloutil.hashTree(tree)
+            shash = phyloutil.hashTree(tree, gene2species)
             treestream = StringIO.StringIO("w")
             tree.write(treestream, oneline=True)
+            
             
             if "correcthash" in conf:
                 correct = (conf["correcthash"] == thash) 
@@ -636,7 +638,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                                    "errorlogl": tree.data["errorlogl"],
                                    "eventlogl": tree.data["eventlogl"], 
                                    "tree": treestream.getvalue(),
-                                   "treehash": thash})
+                                   "topology": thash,
+                                   "streehash": shash})
         
         # best yet tree
         if logl > this.toplogl:

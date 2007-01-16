@@ -611,6 +611,9 @@ class Tree:
         return stream.getvalue()
     
     
+
+    
+    
     #
     # should I make these external?
     #
@@ -707,9 +710,20 @@ class Tree:
     '''
 
 
+#============================================================================
+# Misc. functions for manipulating trees
+#
+
 def readTree(filename):
     tree = Tree()
     tree.readNewick(filename)
+    return tree
+
+
+def parseNewick(newick):
+    tree = Tree()
+    stream = StringIO.StringIO(newick)
+    tree.readNewick(stream)
     return tree
 
 

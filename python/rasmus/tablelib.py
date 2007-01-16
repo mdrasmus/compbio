@@ -55,7 +55,31 @@ NULL = util.Bundle()
 
 class TableException (Exception):
     """Exception class for Table"""
-    pass
+    def __init__(self, errmsg, filename=None, lineno=None):
+        msg = ""
+        add_space = False
+        add_semicolon = False
+        
+        if filename:
+            msg += "%s" % filename
+            add_space = True
+            add_semicolon = True
+            
+        if lineno:
+            add_semicolon = True        
+            if add_space:
+                msg += " "
+            msg += "line %d" % lineno
+        
+        if add_semicolon:
+            msg += ": "
+        
+        msg = msg + errmsg
+        
+        Exception.__init__(self, msg)
+        
+        
+        
 
 
       
@@ -277,14 +301,15 @@ class Table (list):
                 self.append(row)
                 
         except Exception, e:
-            e = TableException("line %d: %s" % (lineno, str(e)))
+            e = TableException(str(e), self.filename, lineno)
             raise e
         
         
         # now that we know the headers we can process extra headers
         for i, row in enumerate(extraHeaders):
             if len(row) != len(self.headers):
-                raise TableException("wrong number of columns in extra header %d" % i)
+                raise TableException("wrong number of columns in extra header %d" % i,
+                                     self.filename)
             self.extraHeaders.append(dict(zip(self.headers, row)))
         
         

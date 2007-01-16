@@ -665,14 +665,14 @@ def compose(* funcs):
 # regex
 #
 
-def match(pattern, line):
+def match(pattern, text):
     """
     A quick way to do pattern matching.
     
     remember: to name tokens use (?P<name>pattern)
     """
     
-    m = re.match(pattern, line)
+    m = re.match(pattern, text)
     
     if m == None:
         return {}

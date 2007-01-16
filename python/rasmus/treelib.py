@@ -28,10 +28,10 @@ import pyparsing
 # allow tree reading extra recursion levels
 sys.setrecursionlimit(4000)
 
-
-############################################################################
+#============================================================================
 # Newick parsing
 #
+
 
 def makeNewickParser():
     # pyparsing
@@ -87,9 +87,10 @@ newickParser = makeNewickParser()
 
 
 
-############################################################################
+#============================================================================
 # Tree data structures
 #
+
 
 class TreeNode:
     def __init__(self, name):
@@ -1009,9 +1010,10 @@ def removeExposedInternalNodes(tree):
 
 
 
-##############################################################################
+#=============================================================================
 # Rerooting functions
 #
+
 
 def isRooted(tree):
     return len(tree.root.children) <= 2
@@ -1241,8 +1243,7 @@ def removeOutgroup(tree, outgroup):
     
 
 
-
-############################################################################
+#=========================================================================
 # Draw Tree ASCII art 
 #
 

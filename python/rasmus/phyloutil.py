@@ -254,7 +254,7 @@ def reconRoot2(gtree, stree, gene2species = gene2species,
     
     # make an unrooted copy of gene tree
     # TODO: this can be simplified (root on node.parent)
-    gtree = treelib.reroot(gtree, util.sort(gtree.leaveNames())[0])
+    gtree = treelib.reroot(gtree, util.sort(gtree.leafNames())[0])
     gtree = treelib.unroot(gtree)
     
     # make recon root consistent for rerooting tree of the same names
@@ -746,7 +746,7 @@ def paralogs(gene, gtree, recon):
     while ptr != gtree.root and recon[ptr.parent] == recon[ptr]:
         ptr = ptr.parent
     
-    genes = gtree.leaveNames(ptr)
+    genes = gtree.leafNames(ptr)
     genes.remove(gene)
     return genes
 
@@ -754,7 +754,7 @@ def paralogs(gene, gtree, recon):
 
 def findBootTreeHomology(tree, stree, homology, niters, 
                          gene2species=gene2species):
-    genomes = stree.leaveNames()
+    genomes = stree.leafNames()
     trees = partitionTree(tree, stree)
 
     util.log("processing tree of %d parts" % len(trees))
@@ -763,7 +763,7 @@ def findBootTreeHomology(tree, stree, homology, niters,
         tree2 = reconRoot(tree2, stree)
         recon = reconcile(tree2, stree)
         
-        for gene in tree2.leaveNames():
+        for gene in tree2.leafNames():
             # count orthologs
             for genome in genomes:
                 if genome == gene2species(gene):

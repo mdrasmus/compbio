@@ -215,8 +215,8 @@ def makeReport(conf):
         
         results.append([basefile, hash1 == hash2, error])
         resultstab.add(treeid=basefile,
-                       tree=hash1,
-                       correct_tree=hash2,
+                       tree=tree1.getOnelineNewick(),
+                       correct_tree=tree2.getOnelineNewick(),
                        correct= (hash1 == hash2),
                        rferror=error,
                        species_hash=shash1)

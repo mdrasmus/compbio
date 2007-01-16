@@ -970,7 +970,7 @@ def partOrths(conf, seqs, stree):
     
     comps = []
     for tree2 in parttrees:
-        comps.append(tree.leaveNames())
+        comps.append(tree.leafNames())
     
     util.log("broken into %d parts" % len(comps))
     if len(comps) > 1:

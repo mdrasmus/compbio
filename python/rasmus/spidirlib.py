@@ -2781,12 +2781,12 @@ def sindir(conf, distmat, labels, stree, gene2species, params):
 def consensusTree(trees, counts):
     splits = util.Dict(default=0)
     
-    genes = util.sort(trees[0].leaveNames())
+    genes = util.sort(trees[0].leafNames())
     
     # count up splits
     for tree, count in zip(trees, counts):
         network = treelib.tree2graph(treelib.unroot(tree))
-        splits2 = findSplits(network, set(tree.leaveNames()))
+        splits2 = findSplits(network, set(tree.leafNames()))
         
         print len(splits2)
         

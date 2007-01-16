@@ -81,15 +81,15 @@ class VisTree (sumtree.SumTree):
 
     def alignNode(self, node):
         # get all protein sequences of sub tree
-        seqs2 = util.subdict(self.seqs, self.tree.leaveNames(node))
+        seqs2 = util.subdict(self.seqs, self.tree.leafNames(node))
 
         self.selalign = self.alignfunc(seqs2, verbose = True)
-        self.selalign.names = tree.leaveNames(node)
+        self.selalign.names = tree.leafNames(node)
         alignlib.printAlign(self.selalign)
 
 
     def refine(self, node):
-        #seqs2 = util.subdict(seqs, tree.leaveNames(node))
+        #seqs2 = util.subdict(seqs, tree.leafNames(node))
         #aln = alignfunc(seqs2, verbose = True)
 
         phylip.refineNode(self.tree, node, self.seqs, 

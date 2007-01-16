@@ -324,7 +324,7 @@ def simTreeTopology(conf, baserate, stree, params, species2gene):
     
     # find exposed ancestors
     while True:
-        #print tree.leaveNames()
+        #print tree.leafNames()
         exposed = filter(lambda x: type(x.name) == int, tree.leaves())
         if len(exposed) > 0:
             #print ">>", [x.name for x in exposed]

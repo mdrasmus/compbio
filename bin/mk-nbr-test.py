@@ -29,7 +29,7 @@ def main(param):
     util.tic("reading input")
     gene2species = genomeutil.readGene2species(env.findFile(param["smap"][-1]))
     stree = algorithms.readTree(env.findFile(param["stree"][-1]))
-    genomes = tuple(util.sort(stree.leaveNames()))
+    genomes = tuple(util.sort(stree.leafNames()))
     parts = util.readDelim(param["part"][-1])
     orthonbrs = util.map2(int, util.readDelim(param["nbrs"][-1]))
     util.toc()
@@ -42,7 +42,7 @@ def main(param):
     
     util.tic("write output")
     # make output partition
-    parts2 = [tree.leaveNames() for tree in trees]
+    parts2 = [tree.leafNames() for tree in trees]
     util.writeDelim(param["outpart"][-1], parts2)
     
     # write all trees
@@ -54,7 +54,7 @@ def main(param):
 
 
 def makeSpecificityTest(ones, orthonbrs, stree, gene2species):
-    genomes = stree.leaveNames()
+    genomes = stree.leafNames()
     trees = []
     
     for groups in orthonbrs:
@@ -90,7 +90,7 @@ def makeGeneTree(part, stree, gene2species):
     for gene in part:
         lookup[gene2species(gene)] = gene
 
-    for leaf in stree.leaveNames():
+    for leaf in stree.leafNames():
         tree.rename(leaf, lookup[leaf])
     
     return tree
@@ -99,7 +99,7 @@ def makeGeneTree(part, stree, gene2species):
 def removeLeaves(tree, leaves, depth=0):
     for leaf in leaves:
         tree.remove(tree.nodes[leaf])
-    exposed = filter(lambda x: type(x) == int, tree.leaveNames())
+    exposed = filter(lambda x: type(x) == int, tree.leafNames())
     if len(exposed) > 0:
         tree = removeLeaves(tree, exposed, 1)
 

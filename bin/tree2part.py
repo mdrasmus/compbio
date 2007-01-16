@@ -12,7 +12,7 @@ subtrees = algorithms.smallSubtrees(tree, 1000)
 
 size = 0
 for subtree in subtrees:
-    part = subtree.leaveNames()
+    part = subtree.leafNames()
     if len(part) > 100:
         size += len(part)
         for gene in part:

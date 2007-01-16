@@ -605,10 +605,10 @@ class Tree:
         util.writeVector(treeFile, ptree)
     
     
-    def getOnelineNewick():
-        treestream = StringIO.StringIO()
-        tree.write(treestream, oneline=True)
-        return treestream.getvalue()
+    def getOnelineNewick(self):
+        stream = StringIO.StringIO()
+        self.write(stream, oneline=True)
+        return stream.getvalue()
     
     
     #

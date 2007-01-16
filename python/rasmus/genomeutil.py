@@ -57,9 +57,13 @@ def readOptions(conf):
 
 
 
-#--------------------------------------------------------------------------------
+#============================================================================
 # gene2species mappings and countings
-#--------------------------------------------------------------------------------
+#
+# TODO: I am starting to move these to phyloutil since I use them more 
+# over there.  However, I will not necessarily always use gene2species for
+# phyloutil...
+#
 
 def gene2species(genename):
     # default gene2species mapping
@@ -138,10 +142,9 @@ for i in aminoAcids:
     aaPseudoCounts[i] = 1/21.0
 
         
-
-#--------------------------------------------------------------------------------
+#============================================================================
 # Gene and genome objects for synteny and blast matches
-#--------------------------------------------------------------------------------
+#
 
 
 class Gene:
@@ -528,6 +531,38 @@ class SyntenyBlock:
                 genes[gene] = True
         return genes
     
+    def length1(self):
+        return self.end1 - self.start1 + 1
+    
+    def length2(self):
+        return self.end2 - self.start2 + 1
+    
+    
+
+    def getDirection(self):
+        if self.matches[0].direction():
+            return 1
+        else:
+            return -1
+        
+        #vote = 0
+        #for match in self.matches:
+        #    if match.direction():
+        #        vote += 1
+        #    else:
+        #        vote -= 1
+        #if vote > 0:
+        #    self.direction = 1
+        #else:
+        #    self.direction = -1
+        #return self.direction
+    
+    def forget(self):
+        self.widths = None
+        self.slope = None
+        self.genes = None
+        
+    
     """
     def getSlope(self):
         if self.slope != None:
@@ -613,36 +648,7 @@ class SyntenyBlock:
     """
                 
     
-    def length1(self):
-        return self.end1 - self.start1 + 1
-    
-    def length2(self):
-        return self.end2 - self.start2 + 1
-    
-    
 
-    def getDirection(self):
-        if self.matches[0].direction():
-            return 1
-        else:
-            return -1
-        
-        #vote = 0
-        #for match in self.matches:
-        #    if match.direction():
-        #        vote += 1
-        #    else:
-        #        vote -= 1
-        #if vote > 0:
-        #    self.direction = 1
-        #else:
-        #    self.direction = -1
-        #return self.direction
-    
-    def forget(self):
-        self.widths = None
-        self.slope = None
-        self.genes = None
 
 
 

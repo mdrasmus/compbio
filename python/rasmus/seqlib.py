@@ -34,6 +34,8 @@ class SeqDict (dict):
     
     
     def get(self, keys, new=None):
+        """Return a subset of the sequences"""
+        
         if new == None:
             new = type(self)()
         
@@ -42,6 +44,15 @@ class SeqDict (dict):
                 new[key] = self[key]
         
         return new
+
+
+    def alignlen(self):
+        """
+        If this SeqDict is an alignment, this function 
+        will return its length
+        """
+        
+        return len(self.values()[0])
         
     
     # The following methods keep names in sync with dictionary keys

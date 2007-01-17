@@ -17,7 +17,7 @@ from rasmus.progress import *
 from rasmus.vis.treevis import showTree
 
 # rasmus modules
-from rasmus import env, svg, tablelib
+from rasmus import env, svg, tablelib, treelib
 from rasmus.tablelib import Table, readTable
 
 # bio tools

@@ -77,10 +77,87 @@ class TableException (Exception):
         msg = msg + errmsg
         
         Exception.__init__(self, msg)
-        
-        
-        
 
+
+#===========================================================================
+# Types handling
+#
+
+def manoli_str2bool(text=None):
+    """Will parse every way manolis stores a boolean as a string"""
+    
+    if text == None:
+        # default value
+        return False
+    
+    text2 = text.lower()
+    
+    if text2 == "false":
+        return False
+    elif text2 == "true":
+        return True
+    else:
+        raise Exception("unknown string for bool '%s'" % text)
+
+
+
+
+class TableTypeLookup:
+    def __init__(self, names_types=[]):
+        self.name2type = {}
+        self.type2name = {}
+        
+        for name, t in names_types:
+            self.name2type[name] = t
+            self.type2name[t] = name
+    
+    
+    def extend(self, names_types):
+        typeLookup = TableTypeLookup()
+        typeLookup.name2type = copy.copy(self.name2type)
+        typeLookup.type2name = copy.copy(self.type2name)
+        
+        for name, t in names_types:
+            typeLookup.name2type[name] = t
+            typeLookup.type2name[t] = name
+        
+        return typeLookup
+        
+    
+    def parseTableTypes(self, line, delim):
+        lookup = self.name2type
+        names = line.split(delim)
+        types = []
+
+        try:
+            for name in names:
+                types.append(lookup[name])
+        except KeyError:
+            raise TableException("unknown type '%s'" % name)
+        return types
+
+
+    def formatTableTypes(self, types, delim):
+        lookup = self.type2name
+        names = []
+
+        try:
+            for t in types:
+                names.append(lookup[t])
+        except KeyError:
+            raise TableException("unknown type '%s'" % t.__name__)
+            #names.append(t.__name__)
+        return delim.join(names)
+
+
+
+_defaultTypeLookup = \
+    TableTypeLookup([["string", str],
+                     ["str",    str],   # backwards compatiable name
+                     ["int",    int],
+                     ["float",  float],
+                     ["bool",   bool],
+                     ["unknown", str]]) # backwards compatiable name
 
       
 
@@ -93,7 +170,8 @@ class Table (list):
                        defaults={},
                        types={},
                        extraHeaders = [],
-                       filename=None):
+                       filename=None,
+                       typeLookup=None):
         
         # set table info
         self.headers = copy.copy(headers)
@@ -104,7 +182,12 @@ class Table (list):
         self.comments = []
         self.delim = "\t"
         self.nheaders = 1
-        self.version = "1.0"
+        self.version = TABLE_VERSION
+        
+        if typeLookup == None:
+            self.typeLookup = _defaultTypeLookup
+        else:
+            self.typeLookup = _defaultTypeLookup.extend(typeLookup)
         
         
         # set data
@@ -171,9 +254,16 @@ class Table (list):
         return tab
     
     
-    # TODO: make a readRow function for streamed reading
+    #===================================================================
+    # Input/Output
+    #
     
     def read(self, filename, delim="\t", nheaders=1):
+        for row in self.readIter(filename, delim=delim, nheaders=nheaders):
+            self.append(row)
+            
+    
+    def readIter(self, filename, delim="\t", nheaders=1):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -199,23 +289,28 @@ class Table (list):
         if isinstance(filename, str):
             self.filename = filename
         
+
         # clear table
         self[:] = []
         self.headers = None
         self.types = {}
-        self.defaults = {}        
+        self.defaults = {}
+        self.extraHeaders = []        
         self.comments = []
         self.delim = delim
         self.nheaders = nheaders
         self.version = TABLE_VERSION
-        extraHeaders = []
+        
         
         
         # temps for reading only
         self.tmptypes = None
         self.tmpdefaults = None
+        self.tmpextraHeaders = []
         
+        # line number for error reporting
         lineno = 0
+        
         
         try:
             for line in infile:
@@ -233,53 +328,14 @@ class Table (list):
                         self.comments.append(line)
                     continue
 
-                # split row            
+                # split row into tokens
                 tokens = line.split(delim)
-
+                
                 # if no headers read yet, use this line as a header
                 if not self.headers:
                     # parse header
-                    if self.nheaders > 0:
-                        # determine if extra headers exist
-                        if len(extraHeaders) >= self.nheaders - 1:
-                            self.headers = tokens
-                            
-                            # check that headers are unique
-                            check = set()
-                            for header in self.headers:
-                                if header in check:
-                                    raise TableException("Duplicate header '%s'" % header)
-                                check.add(header)
-                        else:
-                            # this line is an extra header
-                            extraHeaders.append(tokens)
-                            continue
-                    else:
-                        # default headers are numbers
-                        self.headers = range(len(tokens))
-                    
-                    
-                    # populate types
-                    if self.tmptypes:
-                        assert len(self.tmptypes) == len(self.headers)
-                        self.types = dict(zip(self.headers, self.tmptypes))
-                    else:
-                        self.types = {}.fromkeys(self.headers, str)
-                    
-                    
-                    # populate defaults
-                    if self.tmpdefaults:
-                        self.defaults = {}
-                        for header, default in zip(self.headers, self.tmpdefaults):
-                            self.defaults[header] = self.types[header](default)
-                    else:        
-                        self.defaults = util.mapdict(self.types,
-                                                     valfunc=lambda x: x())
-
-                    # if we used this line as a header then go to next line
-                    if self.nheaders > 0:
+                    if self.parseHeader(tokens):
                         continue
-
 
                 # parse data
                 row = {}
@@ -297,16 +353,18 @@ class Table (list):
                     key = self.headers[i]
                     row[key] = self.defaults[key]
                 
-                # add row to table
-                self.append(row)
+                # return completed row
+                yield row
+                
                 
         except Exception, e:
+            # report error in parsing input file
             e = TableException(str(e), self.filename, lineno)
             raise e
         
         
         # now that we know the headers we can process extra headers
-        for i, row in enumerate(extraHeaders):
+        for i, row in enumerate(self.tmpextraHeaders):
             if len(row) != len(self.headers):
                 raise TableException("wrong number of columns in extra header %d" % i,
                                      self.filename)
@@ -316,6 +374,58 @@ class Table (list):
         # clear temps
         del self.tmptypes
         del self.tmpdefaults
+        del self.tmpextraHeaders
+        
+        raise StopIteration
+    
+    
+    def parseHeader(self, tokens):
+        if self.nheaders > 0:
+            # determine if extra headers exist
+            if len(self.tmpextraHeaders) >= self.nheaders - 1:
+                self.headers = tokens
+
+                # check that headers are unique
+                check = set()
+                for header in self.headers:
+                    if header in check:
+                        raise TableException("Duplicate header '%s'" % header)
+                    check.add(header)
+            else:
+                # this line is an extra header
+                self.tmpextraHeaders.append(tokens)
+                return True
+        else:
+            # default headers are numbers
+            self.headers = range(len(tokens))
+        
+        
+        # if we have headers then we can initialize other 
+        # things (e.g. types, defaults)
+        if self.headers:
+            # populate types
+            if self.tmptypes:
+                assert len(self.tmptypes) == len(self.headers)
+                self.types = dict(zip(self.headers, self.tmptypes))
+            else:
+                self.types = {}.fromkeys(self.headers, str)
+
+
+            # populate defaults
+            if self.tmpdefaults:
+                self.defaults = {}
+                for header, default in zip(self.headers, self.tmpdefaults):
+                    self.defaults[header] = self.types[header](default)
+            else:        
+                self.defaults = util.mapdict(self.types,
+                                             valfunc=lambda x: x())
+
+        # return True if this line has been used as a (extra) header
+        # return False if this line should be parsed as data
+        if self.nheaders > 0:
+            return True
+        else:
+            return False
     
     
     
@@ -333,14 +443,17 @@ class Table (list):
         out = util.openStream(filename, "w")
         
         self.writeHeader(out, delim=delim)
-
+        
+        # tmp variable
+        types = self.types
+        
         # write data
         for row in self:
             # code is inlined here for speed
             rowstr = []
             for header in self.headers:
                 if header in row:
-                    rowstr.append(str(row[header]))
+                    rowstr.append(types[header].__str__(row[header]))
                 else:
                     rowstr.append('')
             print >>out, delim.join(rowstr)
@@ -387,9 +500,10 @@ class Table (list):
     
     def writeRow(self, out, row, delim="\t"):
         rowstr = []
+        types = self.types
         for header in self.headers:
             if header in row:
-                rowstr.append(str(row[header]))
+                rowstr.append(types[header].__str__(row[header]))
             else:
                 rowstr.append('')
         print >>out, delim.join(rowstr)
@@ -404,6 +518,10 @@ class Table (list):
         else:
             raise Exception("Table has no filename")
     
+    
+    #===================================================================
+    # Input/Output: Directives
+    #
     
     def determineDirective(self, line):
         if line.startswith("##version:"):
@@ -440,7 +558,7 @@ class Table (list):
             return True
             
         elif directive == DIR_TYPES:
-            self.tmptypes = parseTableTypes(rest, self.delim)
+            self.tmptypes = self.typeLookup.parseTableTypes(rest, self.delim)
             return True
             
         elif directive == DIR_DEFAULTS:
@@ -469,9 +587,9 @@ class Table (list):
             else:
                 entry = [""] * len(self.headers)
             out.write("##types:" +
-                      formatTableTypes(util.mget(self.types,
-                                                 self.headers),
-                                       delim) + "\n")
+                      self.typeLookup.formatTableTypes(
+                            util.mget(self.types, self.headers),
+                            delim) + "\n")
         elif line == DIR_DEFAULTS:
             out.write("##defaults:" +
                       delim.join(map(str, 
@@ -484,6 +602,9 @@ class Table (list):
             raise "unknown directive:", line
     
 
+    #===================================================================
+    # Table manipulation
+    #
     
     def add(self, **kargs):
         """Add a row to the table
@@ -604,22 +725,29 @@ class Table (list):
     def map(self, func):
         """Returns a new table with the function 'func' applied to each row"""
         
-        lst = []
+        if len(self) == 0:
+            # trivial case
+            return self.new()
+        else:
+            # setup table based on first row
+            tab2 = Table([func(self[0])])
+            
+            # copy over remaining rows
+            for row in self[1:]:
+                tab2.append(func(row))
         
-        for row in self:
-            lst.append(func(row))
-        
-        return Table(lst)
+            return tab2
     
     
     def groupby(self, keyfunc=None, col=None):
         groups = {}
         
         if col != None:
-            assert col != None, "must specify column name"
             keyfunc = lambda x: x[col]
         
-        assert keyfunc != None, "must specify keyfunc"
+        if keyfunc == None:
+            raise Exception("must specify keyfunc")
+        
         
         for row in self:
             key = keyfunc(row)
@@ -748,81 +876,23 @@ class Table (list):
 
 
 
-
-
-#
-# Types handling
-#
-
-def manoli_str2bool(text=None):
-    """Will parse every way manolis stores a boolean as a string"""
-    
-    if text == None:
-        return False
-    
-    text2 = text.lower()
-    
-    if text2 == "false":
-        return False
-    elif text2 == "true":
-        return True
-    else:
-        raise Exception("unknown string for bool '%s'" % text)
-
-
-tableTypesLookup = {
-        "string": str,
-        "str": str,
-        "int": int,
-        "float": float,
-        "bool": manoli_str2bool,
-        "unknown": str
-    }
-
-
-tableTypesNames = {
-    str: "string",
-    int: "int",
-    float: "float",
-    bool: "bool"
-}
-
-
-
-def parseTableTypes(line, delim):
-    names = line.split(delim)
-    types = []
-    
-    for name in names:
-        if name in tableTypesLookup:
-            types.append(tableTypesLookup[name])
-        else:
-            raise "unknown type '%s'" % name
-    return types
-
-
-def formatTableTypes(types, delim):
-    lookup = tableTypesNames
-    names = []
-    
-    for t in types:
-        if t in lookup:
-            names.append(lookup[t])
-        else:
-            names.append(t.__name__)
-    return delim.join(names)
-
-
-
-#
+#===========================================================================
 # convenience functions
 #
 
-def readTable(filename, delim="\t", nheaders=1):
-    table = Table()
+def readTable(filename, delim="\t", nheaders=1, typeLookup=None):
+    """Read a Table from a file written in PTF"""
+    
+    table = Table(typeLookup=typeLookup)
     table.read(filename, delim=delim, nheaders=nheaders)
     return table
 
+
+def iterTable(filename, delim="\t", nheaders=1):
+    """Iterate through the rows of a Table from a file written in PTF"""
+    
+    table = Table()
+    return table.readIter(filename, delim=delim, nheaders=nheaders)
 
 
 def histTable(items, headers=["item", "count", "percent"]):
@@ -878,7 +948,7 @@ def matrix2table(matrix, rlabels=None, clabels=None, rowheader="rlabels"):
 
 
 
-#
+#===========================================================================
 # testing
 #
 
@@ -976,3 +1046,106 @@ mike	789	1
         print tab.cget('name', 'num')
 
 
+    #################################################
+    # timing
+    if 0:
+        from rasmus import util
+        
+        text=["##types:" + "int\t" * 99 + "int",
+              "\t".join(map(str, range(100))) ]
+
+        for i in range(10000):
+            text.append("1\t" * 99 + "1")
+        text = "\n".join(text)
+        
+        stream = StringIO.StringIO(text)
+        
+        util.tic("read table")
+        tab = readTable(stream)
+        util.toc()
+    
+    
+    #################################################
+    # specialized types
+    if 1:
+        text="""\
+##types:str	int	strand_type
+name	num	strand
+matt	123	+
+alex	456	-
+mike	789	+
+john	0	+
+"""
+        
+        
+        #
+        # custom types must do the following
+        #
+        # 1. default value: 
+        #   default = mytype()  
+        #   returns default value
+        #
+        # 2. convert from string
+        #   val = mytype(string)  
+        #   converts from string to custom type
+        #
+        # 3. convert to string
+        #   string = str(val)
+        #   converts val of type 'mytype' to a string
+        #   TODO: I could change this interface...
+        #   I could just use  mytype.__str__(val)
+        #
+        # 4. type inference (optional)
+        #   type(val)
+        #   returns instance of 'mytype'
+        #   TODO: I could not require this (only map really needs it)
+        #
+        
+        class strand_type:
+            def __init__(self, text=None):
+                if text == None:
+                    self.val = True
+                else:
+                    if text == "+":
+                        self.val = True
+                    elif text == "-":
+                        self.val = False
+                    else:
+                        raise Exception("cannot parse '%s' as strand_type" % 
+                                        str(text))
+                
+            
+            def __str__(self):
+                if self.val:
+                    return "+"
+                else:
+                    return "-"
+        
+
+        def strand_func(text=None):
+            if text == None:
+                return True
+            else:
+                if text == "+":
+                    return True
+                elif text == "-":
+                    return False
+                else:
+                    raise Exception("cannot parse '%s' as strand_type" % 
+                                    str(text))
+        
+        def strand_func_str(val):
+            if val:
+                return "+"
+            else:
+                return "-"
+        
+        strand_func.__str__ = strand_func_str
+                    
+
+        stream = StringIO.StringIO(text)
+        tab = readTable(stream, typeLookup=[["strand_type", strand_func]])
+        print tab.types
+        print tab
+    
+    

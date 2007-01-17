@@ -147,8 +147,8 @@ class Region:
     
     def read(self, line):
         # parse comment
-        if "#" in line:
-            pos = line.index("#")
+        pos = line.index("#")
+        if pos > -1:
             self.comment = line[pos+1:]
             line = line[:pos]
         else:

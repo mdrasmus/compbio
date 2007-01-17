@@ -16,6 +16,10 @@ from seqlib import *
 # Constants
 #--------------------------------------------------------------------------------
 
+#
+# I think theses should go somewhere else.  A protein.py?  seqlib.py?
+#
+
 CODON_TABLE = {
     "TTT": "F",  "CTT": "L",  "ATT": "I",  "GTT": "V",
     "TTC": "F",  "CTC": "L",  "ATC": "I",  "GTC": "V",

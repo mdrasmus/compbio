@@ -30,6 +30,28 @@ Directives are on a single line and begin with two hashes '##'
 No space after colon is allowed.
 
 
+Table can also handle custom types.  Custom types must do the following
+
+ 1. default value: 
+   default = mytype()  
+   returns default value
+
+ 2. convert from string
+   val = mytype(string)  
+   converts from string to custom type
+
+ 3. convert to string
+   string = str(val)
+   converts val of type 'mytype' to a string
+   TODO: I could change this interface...
+   I could just use  mytype.__str__(val)
+
+ 4. type inference (optional)
+   type(val)
+   returns instance of 'mytype'
+   TODO: I could not require this (only map really needs it)
+
+
 """
 
 import sys
@@ -49,7 +71,7 @@ DIR_HEADERS  = 2
 DIR_DEFAULTS = 3
 #DIR_DELIM    = 3
 
-# a special unique null type 
+# a special unique null type (more 'null' than None)
 NULL = util.Bundle()
 
 
@@ -98,9 +120,8 @@ def manoli_str2bool(text=None):
         return True
     else:
         raise Exception("unknown string for bool '%s'" % text)
-
-
-
+        
+            
 
 class TableTypeLookup:
     def __init__(self, names_types=[]):
@@ -149,6 +170,69 @@ class TableTypeLookup:
             #names.append(t.__name__)
         return delim.join(names)
 
+class TableType:
+    def __init__(self, parser, formatter):
+        self.parser = parser
+        self.formatter = formatter
+        
+    def __call__(self, text=None):
+        return self.parser(text)
+    
+    def __str__(self, val):
+        return self.formatter(val)
+    
+
+def stringQuote(text=None):
+    if text == None:
+        return ""
+    
+    text2 = []
+    
+    i = 0
+    while i < len(text):
+        if text[i] == "\n":
+            text2.append("\\n")
+        elif text[i] == "\t":
+            text2.append("\\t")
+        elif text[i] == "\\":
+            text2.append("\\\\")
+        else:
+            text2.append(text[i])
+        
+        i += 1
+    
+    return "".join(text2)
+    
+
+def stringExpand(text=None):
+    if text == None:
+        return ""
+    
+    print 'eee', text
+    text2 = []
+    
+    i = 0
+    while i < len(text):
+        if text[i] == "\\" and i < len(text) - 1:
+            if text[i+1] == "n":
+                text2.append("\n")
+            elif text[i+1] == "t":
+                text2.append("\t")
+            elif text[i+1] == "\\":
+                text2.append("\\")
+            else:
+                text2.append(text[i+1])
+            i += 1
+        else:
+            text2.append(text[i])
+        
+        i += 1
+    
+    return "".join(text2)
+
+
+QuotedString = TableType(stringExpand, stringQuote)
+TableBool = TableType(manoli_str2bool, str)
 
 
 _defaultTypeLookup = \
@@ -156,11 +240,14 @@ _defaultTypeLookup = \
                      ["str",    str],   # backwards compatiable name
                      ["int",    int],
                      ["float",  float],
-                     ["bool",   bool],
+                     ["bool",   TableBool],
+                     ["quoted_string", QuotedString],
                      ["unknown", str]]) # backwards compatiable name
 
       
-
+#===========================================================================
+# Table class
+#
 
 class Table (list):
     """Class implementing the Portable Table Format"""
@@ -239,7 +326,7 @@ class Table (list):
         if headers == None:
             headers = self.headers
         
-        tab = Table(headers=headers)
+        tab = type(self)(headers=headers)
         
         tab.types = util.subdict(self.types, headers)
         tab.defaults = util.subdict(self.defaults, headers)
@@ -250,6 +337,8 @@ class Table (list):
         tab.comments = copy.copy(self.comments)
         tab.delim = self.delim
         tab.nheaders = self.nheaders
+        
+        tab.typeLookup = copy.copy(self.typeLookup)
         
         return tab
     
@@ -730,7 +819,7 @@ class Table (list):
             return self.new()
         else:
             # setup table based on first row
-            tab2 = Table([func(self[0])])
+            tab2 = type(self)([func(self[0])])
             
             # copy over remaining rows
             for row in self[1:]:
@@ -1078,28 +1167,7 @@ john	0	+
 """
         
         
-        #
-        # custom types must do the following
-        #
-        # 1. default value: 
-        #   default = mytype()  
-        #   returns default value
-        #
-        # 2. convert from string
-        #   val = mytype(string)  
-        #   converts from string to custom type
-        #
-        # 3. convert to string
-        #   string = str(val)
-        #   converts val of type 'mytype' to a string
-        #   TODO: I could change this interface...
-        #   I could just use  mytype.__str__(val)
-        #
-        # 4. type inference (optional)
-        #   type(val)
-        #   returns instance of 'mytype'
-        #   TODO: I could not require this (only map really needs it)
-        #
+       
         
         class strand_type:
             def __init__(self, text=None):
@@ -1122,7 +1190,7 @@ john	0	+
                     return "-"
         
 
-        def strand_func(text=None):
+        def strand_parser(text=None):
             if text == None:
                 return True
             else:
@@ -1134,18 +1202,33 @@ john	0	+
                     raise Exception("cannot parse '%s' as strand_type" % 
                                     str(text))
         
-        def strand_func_str(val):
+        def strand_formatter(val):
             if val:
                 return "+"
             else:
                 return "-"
         
-        strand_func.__str__ = strand_func_str
+        strand_type = TableType(strand_parser, strand_formatter)
                     
 
         stream = StringIO.StringIO(text)
-        tab = readTable(stream, typeLookup=[["strand_type", strand_func]])
+        tab = readTable(stream, typeLookup=[["strand_type", strand_type]])
         print tab.types
         print tab
     
-    
+    #################################################
+    # quoted strings
+    if 1:
+        text=\
+r"""##types:str	bool	quoted_string
+name	num	blah
+matt	True	hello\tthere
+alex	False	hello\nthere
+mike	True	hello\\there
+john	False	hello\n\\\nthere
+"""                    
+
+        stream = StringIO.StringIO(text)
+        tab = readTable(stream)
+        print tab.types
+        print tab

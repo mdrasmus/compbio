@@ -270,10 +270,30 @@ def addVisited(conf, visited, tree, thash=None):
 
     if "correcthash" in conf:
         if thash == conf["correcthash"]:
-            debug("PROPOSED CORRECT TREE")
+            debug("PROPOSED CORRECT TREE: visisted = ", len(visited))
             if conf["searchtest"]:
                 drawTreeLogl(tree)
                 sys.exit(0)
+        
+    if "debugtab_file" in conf:
+        shash = phyloutil.hashTree(tree, gene2species)
+
+        if "correcthash" in conf:
+            correct = (conf["correcthash"] == thash)
+        else:
+            correct = False
+
+        conf["debugtab"].writeRow(conf["debugtab_file"],
+                              {"correct": correct,
+                               "logl": tree.data["logl"], 
+                               "treelen": sum(x.dist for x in tree), 
+                               "baserate": tree.data["baserate"], 
+                               "error": tree.data["error"], 
+                               "errorlogl": tree.data["errorlogl"],
+                               "eventlogl": tree.data["eventlogl"], 
+                               "tree": tree.getOnelineNewick(),
+                               "topology": thash,
+                               "species_hash": shash})
 
 
 
@@ -618,25 +638,6 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             this.nold = 0
         
         addVisited(conf, visited, tree2, thash)
-        
-        if "debugtab_file" in conf:
-            thash = phyloutil.hashTree(tree)
-            shash = phyloutil.hashTree(tree, gene2species)
-            
-            if "correcthash" in conf:
-                correct = (conf["correcthash"] == thash) 
-        
-            conf["debugtab"].writeRow(conf["debugtab_file"],
-                                  {"correct": correct,
-                                   "logl": tree.data["logl"], 
-                                   "treelen": sum(x.dist for x in tree), 
-                                   "baserate": tree.data["baserate"], 
-                                   "error": tree.data["error"], 
-                                   "errorlogl": tree.data["errorlogl"],
-                                   "eventlogl": tree.data["eventlogl"], 
-                                   "tree": tree.getOnelineNewick(),
-                                   "topology": thash,
-                                   "species_hash": shash})
         
         # best yet tree
         if logl > this.toplogl:

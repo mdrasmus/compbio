@@ -598,7 +598,8 @@ class Table (list):
                 rowstr.append(types[header].__str__(row[header]))
             else:
                 rowstr.append('')
-        print >>out, delim.join(rowstr)
+        out.write(delim.join(rowstr))
+        out.write("\n")
     
     
     def save(self):

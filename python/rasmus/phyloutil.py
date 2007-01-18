@@ -584,7 +584,7 @@ def stree2gtree(stree, genes, gene2species):
 
 
 
-def findAllOrthologs(gtree, stree, recon):
+def findOrthologs(gtree, stree, recon):
     events = labelEvents(gtree, recon)
     orths = []
     
@@ -596,7 +596,11 @@ def findAllOrthologs(gtree, stree, recon):
                 for j in range(i+1, len(leavesmat)):
                     for gene1 in leavesmat[i]:
                         for gene2 in leavesmat[j]:
-                            orths.append(util.sort([gene1.name, gene2.name]))
+                            if gene1.name < gene2.name:
+                                orth = (gene1.name, gene2.name)
+                            else:
+                                orth = (gene2.name, gene1.name)
+                            orths.append(orth)
     
     return orths
 

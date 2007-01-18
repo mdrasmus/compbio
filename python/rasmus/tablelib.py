@@ -236,13 +236,16 @@ TableBool = TableType(manoli_str2bool, str)
 
 
 _defaultTypeLookup = \
-    TableTypeLookup([["string", str],
+    TableTypeLookup([["unknown", str], # backwards compatiable name                     
                      ["str",    str],   # backwards compatiable name
+                     ["string", str],
                      ["int",    int],
                      ["float",  float],
+                     ["bool",   bool],
                      ["bool",   TableBool],
-                     ["quoted_string", QuotedString],
-                     ["unknown", str]]) # backwards compatiable name
+                     ["quoted_string", QuotedString]])
+
+# NOTE: ordering of name-type pairs is important
 
       
 #===========================================================================
@@ -1232,3 +1235,28 @@ john	False	hello\n\\\nthere
         tab = readTable(stream)
         print tab.types
         print tab
+    
+    
+    #################################################
+    # python data structures/code
+    if 1:
+        def eval2(text=None):
+            if text == None:
+                return None
+            else:
+                return eval(text)
+        
+        python_type = TableType(eval2, str)
+    
+    
+    
+        tab = Table(headers=["name", "list"],
+                    types={"list": python_type},
+                    typeLookup=[["python", python_type]])
+                    
+        
+        tab.append({"name": "matt", "list": [1,2,3]})
+        tab.append({"name": "mike", "list": [4,5,6]})
+        tab.append({"name": "alex", "list": [7,8,9]})
+        
+        tab.write()

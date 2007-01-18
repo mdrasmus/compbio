@@ -259,7 +259,7 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
 
 
 
-def addVisited(conf, visited, tree, thash=None):
+def addVisited(conf, visited, tree, gene2species, thash=None):
     if thash is None:
         thash = phyloutil.hashTree(tree)
     
@@ -316,7 +316,7 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
 
     # store tree in visited
-    addVisited(conf, visited, tree)
+    addVisited(conf, visited, tree, gene2species)
     
     stuck = False
         
@@ -371,7 +371,7 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
                 if nproposals == 1:
                     stuck = True
             
-            addVisited(conf, visited, tree2, thash)
+            addVisited(conf, visited, tree2, gene2species, thash)
             
             
             debug("logl2", logl2)
@@ -537,7 +537,7 @@ def proposeTree3(conf, tree,  distmat, labels,
         if thash not in visited:        
             Spidir.setTreeDistances(conf, tree, distmat, labels)
             logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
-        addVisited(conf, visited, tree, thash)
+        addVisited(conf, visited, tree, gene2species, thash)
         logl, tree, count = visited[thash]
         
         if logl > toplogl:
@@ -570,7 +570,7 @@ def searchRegraft(conf, distmat, labels, stree, gene2species, params,
     logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
     
     # store tree in visited
-    addVisited(conf, visited, tree)
+    addVisited(conf, visited, tree, gene2species)
     
     # show initial tree
     printMCMC(conf, 0, tree, stree, gene2species, visited)    
@@ -613,7 +613,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     this.toptree = tree
     
     # store tree in visited
-    addVisited(conf, visited, tree)
+    addVisited(conf, visited, tree, gene2species)
     
     # show initial tree
     printMCMC(conf, 0, tree, stree, gene2species, visited)
@@ -637,7 +637,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #                                        gene2species, params)
             this.nold = 0
         
-        addVisited(conf, visited, tree2, thash)
+        addVisited(conf, visited, tree2, gene2species, thash)
         
         # best yet tree
         if logl > this.toplogl:

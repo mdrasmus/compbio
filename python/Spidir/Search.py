@@ -653,7 +653,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
             #    chain.logl = this.toplogl
         
         # alter logl to influence search only
-        chain.relax = 0 #conf["speedup"] * this.nold
+        chain.relax = conf["speedup"] * this.nold
                
         return tree2, logl
         

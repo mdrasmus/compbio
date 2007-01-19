@@ -51,16 +51,27 @@ class Svg:
             self.close()
     
     
+    def writeAttrOptions(self, options):
+        if "color" in options:
+            color = options["color"]
+            self.out.write("stroke-opacity='%f' stroke='%s' " % 
+            (color[3], color2string(color)))
     
-    def line(self, x1, y1, x2, y2, color=black):
+    
+    def line(self, x1, y1, x2, y2, color=None, **options):
         self.out.write(
-            """<line x1='%f' y1='%f' x2='%f' y2='%f' 
-            stroke-opacity='%f' 
-            stroke='%s' />\n""" % 
-            (x1, y1, x2, y2, color[3], color2string(color)))
+            """<line x1='%f' y1='%f' x2='%f' y2='%f' """ % 
+            (x1, y1, x2, y2))
+        
+        if color != None:
+            options["color"] = color
+        self.writeAttrOptions(options)
+        
+        self.out.write(" />\n")
+            
     
     
-    def polygon(self, verts, strokeColor=black, fillColor=blue):
+    def polygon(self, verts, strokeColor=black, fillColor=black):
         self.out.write(
             "<polygon %s points='" % colorFields(strokeColor, fillColor))
         
@@ -69,17 +80,17 @@ class Svg:
         self.out.write("' />\n")
     
     
-    def rect(self, x, y, width, height, strokeColor=black, fillColor=blue):
+    def rect(self, x, y, width, height, strokeColor=black, fillColor=black):
         self.out.write(
             """<rect x='%f' y='%f' width='%f' height='%f' %s />\n""" % \
             (x, y, width, height, colorFields(strokeColor, fillColor)))
     
     
-    def circle(self, x, y, radius, strokeColor=black, fillColor=blue):
+    def circle(self, x, y, radius, strokeColor=black, fillColor=black):
         self.out.write("<circle cx='%f' cy='%f' r='%f' %s />\n" % \
             (x, y, radius, colorFields(strokeColor, fillColor)))
     
-    def ellispe(self, x, y, xradius, yradius, strokeColor=black, fillColor=blue):
+    def ellispe(self, x, y, xradius, yradius, strokeColor=black, fillColor=black):
         self.out.write("<ellipse  cx='%f' cy='%f' rx='%f' ry='%f' %s />\n" %\
             (x, y, xradius, yradius, colorFields(strokeColor, fillColor)))
     
@@ -223,6 +234,11 @@ if __name__ == "__main__":
     
     svg.line(35, 200, 35, 400, red)
     
+    
+    svg.beginStyle("font-family: courier")
+    svg.text("* FIXED WIDTH    *", 100, 400, 10)
+    svg.text("* IS THE DEFAULT *", 100, 410, 10)
+    svg.endStyle()
     
     for i in range(0, 300, 10):
         color = (i / 300.0, 0, 1 - i/300.0, 1)

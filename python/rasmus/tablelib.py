@@ -757,6 +757,10 @@ class Table (list):
         
         # change header
         col = self.headers.index(oldname)
+        
+        if col == -1:
+            raise Exception("column '%s' is not in table" % oldname)
+        
         self.headers[col] = newname
         
         # change info

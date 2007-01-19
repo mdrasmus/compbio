@@ -106,6 +106,11 @@ options = ["""\
     {"single": True,
      "parser": int,
      "default": 40}],
+ ["", "speedup=", "speedup", "<speed up factor>",
+    {"single": True,
+     "default": 0.0,
+     "parser": float}],
+ 
  
  # OLD search parameters
  #
@@ -117,10 +122,6 @@ options = ["""\
  #   {"default": 5000, 
  #    "parser": int,
  #    "single": True}], 
- #["", "speedup=", "speedup", "<speed up factor>",
- #   {"single": True,
- #    "default": 0.0,
- #    "parser": float}],
  #["", "maxerror=", "maxerror", "<maximum allowed rel error>",
  #   {"single": True,
  #    "default": .2,

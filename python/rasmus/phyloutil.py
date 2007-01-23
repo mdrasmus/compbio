@@ -716,6 +716,94 @@ def neighborjoin(distmat, genes):
     return tree
 
 
+#============================================================================
+# branch splits
+#
+
+def findBranchSplitsHelper(network, leaves):
+    # find vertice and edge visit history
+    start = network.keys()[0]
+
+    openset = [start]
+    closedset = {}
+    
+    vhistory = []
+    ehistory = []
+    elookup = util.Dict(1, [])
+    
+    
+    while len(openset) > 0:
+        vertex = openset.pop()
+        
+        vhistory.append(vertex)
+        
+        if len(vhistory) > 1:
+            edge = tuple(util.sort(vhistory[-2:]))        
+            ehistory.append(edge)
+            elookup[edge].append(len(ehistory) - 1)
+        
+        # skip closed vertices
+        if vertex in closedset:
+            continue
+        
+        for v in network[vertex].keys():
+            if v not in closedset:
+                openset.append(vertex)            
+                openset.append(v)
+        
+
+        # close new vertex
+        closedset[vertex] = 1
+    
+    
+    # use histories to define half each split
+    splits = {}
+    for edge in elookup:
+        set1 = {}
+        
+        start, end = elookup[edge]
+        for i in range(start+1, end+1):
+            if vhistory[i] in leaves:
+                set1[vhistory[i]] = 1
+        
+        # fill in other half of splits using complement
+        set2 = {}
+        for v in leaves:
+            if v not in set1:
+                set2[v] = 1
+        
+        if edge[0] == vhistory[start]:
+            splits[edge] = [set2, set1]
+        else:
+            splits[edge] = [set1, set2]
+        
+    
+    return splits
+
+
+def findBranchSplits(tree):
+    splits = findBranchSplitsHelper(treelib.tree2graph(tree), tree.leafNames())
+    splits2 = {}
+    
+    for edge, sets in splits.iteritems():
+        # skip external edges
+        if len(sets[0]) == 1 or len(sets[1]) == 1:
+            continue
+        
+        s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
+        splits2[edge] = s
+    
+    # if tree is rooted, remove duplicate edge
+    if treelib.isRooted(tree):
+        edge1 = tuple(sorted([tree.root.name, tree.root.children[0].name]))
+        edge2 = tuple(sorted([tree.root.name, tree.root.children[1].name]))
+        if edge1 > edge2:
+            edge1, edge2 = edge2, edge1
+        if edge1 in splits2 and edge2 in splits2:
+            del splits2[edge1]
+    
+    return splits2
+
 
 
 #============================================================================

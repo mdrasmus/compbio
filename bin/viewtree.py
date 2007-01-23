@@ -147,8 +147,12 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
             
             # label bootstraps
             if "boot" in node.data and node.data["boot"] != 0:
-                labels[node.name] = "(%d) %s" % (node.data["boot"], 
-                                                 labels[node.name])
+                if isinstance(node.data["boot"], int):
+                    labels[node.name] = "(%d) %s" % (node.data["boot"], 
+                                                     labels[node.name])
+                else:
+                    labels[node.name] = "(%.2f) %s" % (node.data["boot"], 
+                                                       labels[node.name])
         
             # label node names
             if conf["names"] and not node.isLeaf():

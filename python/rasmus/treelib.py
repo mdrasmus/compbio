@@ -354,8 +354,11 @@ class Tree:
             boot, dist = data.split(":")
             node.dist = float(dist)
             
-            if boot.isalnum():
-                node.data["boot"] = int(boot)
+            if len(boot) > 0:
+                if boot.isdigit():
+                    node.data["boot"] = int(boot)
+                else:
+                    node.data["boot"] = float(boot)
     
     
     
@@ -366,7 +369,10 @@ class Tree:
         if "boot" in node.data and \
            not node.isLeaf() and \
            self.root != node:
-            string += "%d" % node.data["boot"]
+            if isinstance(node.data["boot"], int):
+                string += "%d" % node.data["boot"]
+            else:
+                string += "%f" % node.data["boot"]
         string += ":%f" % node.dist
         return string
     
@@ -1352,7 +1358,10 @@ def drawTreeBootLens(tree, *args, **kargs):
         if node.isLeaf():
             labels[node.name] = "%f" % node.dist
         else:
-            labels[node.name] = "(%d) %f" % (node.data["boot"], node.dist)
+            if isinstance(node.data["boot"], int):
+                labels[node.name] = "(%d) %f" % (node.data["boot"], node.dist)
+            else:
+                labels[node.name] = "(%.2f) %f" % (node.data["boot"], node.dist)
     
     drawTree(tree, labels, *args, **kargs)
 

@@ -19,13 +19,13 @@ class Timer:
         self.quiets = 0
 
     def start(self, msg = ""):
-        t = time.time()
         if msg != "":
             self.indent()
             self._write("BEGIN %s:\n" % msg)
         self.msg.append(msg)
-        self.starts.append(t)
         self.flush()
+        self.starts.append(time.time())
+        
     
     def time(self):
         return self.starts[-1] - time.clock()
@@ -35,7 +35,20 @@ class Timer:
         msg = self.msg.pop()
         if msg != "":
             self.indent()
-            self._write("END   %s: [%.3f s]\n" % (msg, duration))
+            
+            if duration > 3600:
+                pretty = "%.1fh" % (duration / 3600.)
+            elif duration > 60:
+                pretty = "%.1fm" % (duration / 60.)
+            else:
+                pretty = "%.3fs" % duration
+                      
+            if duration > .1:
+                secs = "%.3fs" % duration
+            else:
+                secs = "%.3es" % duration
+            
+            self.write("END   %s: %s (%s)\n" % (msg, pretty, secs))
         self.flush()
         return duration
     

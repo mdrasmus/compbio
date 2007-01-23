@@ -133,7 +133,7 @@ def printVisitedTrees(visited):
         return
     nleaves = len(visited.values()[0][1].leaves())
     
-    debug("\n\nmost likily trees out of %d visited (%5.1f total): " % \
+    debug("\n\nmost likily trees out of %d visited (%.2e total): " % \
           (len(visited), numPossibleTrees(nleaves)))
     
     mat = [[key, logl, 

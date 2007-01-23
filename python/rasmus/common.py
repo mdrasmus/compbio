@@ -56,11 +56,11 @@ class ListFiles:
     def __repr__(self):
         self()
         return ""
-ls = ListFiles()
+#ls = ListFiles()
 
 
-def cd(path = os.environ["HOME"]):
-    os.chdir(path)
+#def cd(path = os.environ["HOME"]):
+#    os.chdir(path)
 
 
 def strStream(text):

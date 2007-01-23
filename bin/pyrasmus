@@ -1,0 +1,4 @@
+#!/bin/sh
+
+
+ipython -i -c 'from rasmus.common import *'

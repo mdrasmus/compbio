@@ -947,7 +947,7 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
-        mat2, rlabels, clabels = self.getMatrix(rlabels=None)
+        mat2, rlabels, clabels = self.getMatrix(rowheader=None)
         
         # get extra headers
         mat = []

@@ -1055,10 +1055,10 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
 
 
 def writeMatrix(filename, mat, rlabels=None, clabels=None, rowheader="rlabels"):
-    tab = tablelib.matrix2table(mat,
-                                labels=rlabels,
-                                rlabels=clabels,
-                                rowheader=rowheader)
+    tab = matrix2table(mat,
+                       labels=rlabels,
+                       rlabels=clabels,
+                       rowheader=rowheader)
     tab.write(filename)
 
 

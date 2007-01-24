@@ -1056,8 +1056,8 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
 
 def writeMatrix(filename, mat, rlabels=None, clabels=None, rowheader="rlabels"):
     tab = matrix2table(mat,
-                       labels=rlabels,
-                       rlabels=clabels,
+                       rlabels=rlabels,
+                       clabels=clabels,
                        rowheader=rowheader)
     tab.write(filename)
 

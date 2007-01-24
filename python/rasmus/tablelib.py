@@ -1015,8 +1015,18 @@ def histTable(items, headers=["item", "count", "percent"]):
     
     return tab
 
+#===========================================================================
+# Matrix functions
+#
 
 def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
+    """
+    convert a matrix into a table
+    
+    use table.getMatrix()  to convert back to a matrix
+    
+    """
+    
     if clabels == None:
         clabels = range(len(mat[0]))
         nheaders = 0
@@ -1043,6 +1053,20 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
     
     return tab
 
+
+def writeMatrix(filename, mat, rlabels=None, clabels=None, rowheader="rlabels"):
+    tab = tablelib.matrix2table(mat,
+                                labels=rlabels,
+                                rlabels=clabels,
+                                rowheader=rowheader)
+    tab.write(filename)
+
+
+def readMatrix(filename, rowheader="rlabels"):
+    tab = readTable(filename)    
+    mat, rlabels, clabels = tab.getMatrix(rowheader=rowheader)
+    return mat, rlabels, clabels
+    
 
 
 #===========================================================================

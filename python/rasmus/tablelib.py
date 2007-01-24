@@ -790,7 +790,7 @@ class Table (list):
         
         # get labels
         if rlabel != None and rlabel in self.headers:
-            rlabels = self.cget(rlabel)
+            rlabels = tab.cget(rlabel)
             clabels = copy.copy(self.headers)
             clabels.remove(rlabel)
         else:

@@ -22,7 +22,7 @@ options = [
 conf = util.parseOptions(sys.argv, options, quit=True)
 
 
-if len(conf["REST"]) > 0:
+if len(conf["REST"]) > 0 and conf["REST"][0] != "-":
     infile = file(conf["REST"][0])
 else:
     infile = sys.stdin

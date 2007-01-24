@@ -218,7 +218,7 @@ def main(argv):
 
 
 def trainTree(conf, stree, gene2species):
-    args = conf[""]
+    args = conf["REST"]
     treefiles = []
     
     for arg in args:

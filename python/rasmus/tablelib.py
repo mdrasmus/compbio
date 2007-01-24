@@ -790,7 +790,7 @@ class Table (list):
         
         # get labels
         if rlabel != None and rlabel in self.headers:
-            rlabels = tab.cget(rlabel)
+            rlabels = self.cget(rlabel)
             clabels = copy.copy(self.headers)
             clabels.remove(rlabel)
         else:
@@ -1016,9 +1016,9 @@ def histTable(items, headers=["item", "count", "percent"]):
     return tab
 
 
-def matrix2table(matrix, rlabels=None, clabels=None, rowheader="rlabels"):
+def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
     if clabels == None:
-        clabels = range(len(matrix[0]))
+        clabels = range(len(mat[0]))
         nheaders = 0
     else:
         nheaders = 1

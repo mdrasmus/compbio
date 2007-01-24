@@ -780,7 +780,7 @@ class Table (list):
             del row[oldname]
             
        
-    def getMatrix(self, rlabel="rlabels"):
+    def getMatrix(self, rowheader="rlabels"):
         """Returns mat, rlabels, clabels
         
            where mat is a copy of the table as a 2D list
@@ -789,10 +789,10 @@ class Table (list):
         """
         
         # get labels
-        if rlabel != None and rlabel in self.headers:
-            rlabels = tab.cget(rlabel)
+        if rowheader != None and rowheader in self.headers:
+            rlabels = self.cget(rowheader)
             clabels = copy.copy(self.headers)
-            clabels.remove(rlabel)
+            clabels.remove(rowheader)
         else:
             rlabels = range(len(self))
             clabels = copy.copy(self.headers)
@@ -947,7 +947,7 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
-        mat2, rlabels, clabels = self.getMatrix()
+        mat2, rlabels, clabels = self.getMatrix(rlabels=None)
         
         # get extra headers
         mat = []

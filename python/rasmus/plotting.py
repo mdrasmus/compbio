@@ -55,9 +55,17 @@ class Gnuplot:
     
     
     def set(self, **options):
+        if "noreplot" in options:
+            noreplot = False
+            del option["noreplot"]
+        else:
+            noreplot = True
+        
         for key in options:
             self.options[key] = options[key]
-        self.replot()
+        
+        if not noreplot:
+            self.replot()
     
     def gnuplot(self, text):
         self.stream.write(text)
@@ -667,12 +675,14 @@ class ColorMap:
         ]
         
         Values bewteen val1 and val2 will be assigned a blend of 
-        color1 and color2.  
+        color1 and color2.  value-color pairs can be specified in any order 
+        within table.
         
         """
         self.table = table
         
-        self.table.sort(lambda a,b: cmp(a[0], b[0]))
+        self.table.sort(key=lambda x: x[0])
+    
     
     def get(self, value):
         # determine where color falls in table

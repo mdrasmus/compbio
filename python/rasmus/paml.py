@@ -3,9 +3,9 @@
 import os
 
 # rasmus libs
-import phylip
-import util
-import alignlib
+from rasmus import phylip
+from rasmus import util
+from rasmus import alignlib
 
 
 def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):

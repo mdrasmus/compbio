@@ -610,13 +610,30 @@ def findOrthologs(gtree, stree, recon):
 # Branch length analysis
 #
 
-def makeBranchZScores(rates, params):
+def getRelBranchLens(rates, species=None):
+    if species == None:
+        species = rates.headers
+    
+    relrates = rates.new()
+    
+    for row in rates:
+        row2 = {}
+        tot = sum(util.mget(row, species))
+        
+        for sp in species:
+            row2[sp] = row[sp] / tot
+        relrates.append(row2)
+    
+    return relrates
+        
+
+def getBranchZScores(rates, params):
     zscores = rates.new()
     
     # determine column to species mapping
     col2species = {}
     for species in params:
-        col[str(species)] = species
+        col2species[str(species)] = species
         
     
     for row in rates:
@@ -633,6 +650,8 @@ def makeBranchZScores(rates, params):
         zscores.append(row2)
     
     return zscores
+
+
 
 
 

@@ -175,8 +175,11 @@ class TableType:
         self.parser = parser
         self.formatter = formatter
         
-    def __call__(self, text=None):
-        return self.parser(text)
+    def __call__(self, text=NULL):
+        if text == NULL:
+            return self.parser()
+        else:
+            return self.parser(text)
     
     def __str__(self, val):
         return self.formatter(val)
@@ -233,6 +236,8 @@ def stringExpand(text=None):
 
 QuotedString = TableType(stringExpand, stringQuote)
 TableBool = TableType(manoli_str2bool, str)
+TableStr = TableType(str, str)
+TableFloat = TableType(float, str)
 
 
 _defaultTypeLookup = \
@@ -241,6 +246,7 @@ _defaultTypeLookup = \
                      ["string", str],
                      ["int",    int],
                      ["float",  float],
+                     ["float",  TableFloat],
                      ["bool",   bool],
                      ["bool",   TableBool],
                      ["quoted_string", QuotedString]])
@@ -404,7 +410,8 @@ class Table (list):
         lineno = 0
         
         
-        try:
+        #try:
+        if 1:
             for line in infile:
                 line = line.rstrip()        
                 lineno += 1
@@ -449,10 +456,10 @@ class Table (list):
                 yield row
                 
                 
-        except Exception, e:
-            # report error in parsing input file
-            e = TableException(str(e), self.filename, lineno)
-            raise e
+        #except Exception, e:
+        #    # report error in parsing input file
+        #    e = TableException(str(e), self.filename, lineno)
+        #    raise e
         
         
         # now that we know the headers we can process extra headers

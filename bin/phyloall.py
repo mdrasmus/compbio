@@ -599,7 +599,7 @@ def main(conf):
     
     util.logger("will process %d input files" % len(files))
     util.logger("will skip %d input files" % (len(files2) - len(files)))
-
+    
     
     util.tic("phyloall")
     if len(files) > conf["groupsize"] and depend.hasLsf():

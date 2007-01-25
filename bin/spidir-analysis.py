@@ -67,8 +67,14 @@ def plotAbsLens(name, lens, low, high, step):
     bins = util.mget(bins, ind)
     ext = util.mget(ext, ind)
     
-    chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-    pval = chisq["p.value"]
+    try:
+        chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
+        pval = chisq["p.value"]
+    except rpy.RException, e:
+        print e
+        pval = 0.0
+    
+    
     util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
     
     p.set(xmin=low, xmax=high, 
@@ -103,9 +109,12 @@ def plotRelLens(name, params, lens, low, high, step):
     ext = util.mget(ext, ind)
     
     
-    
-    chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-    pval = chisq["p.value"]
+    try:
+        chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
+        pval = chisq["p.value"]
+    except rpy.RException, e:
+        print e
+        pval = 0.0
     
     #pval = rpy.r.shapiro_test(lens2)["p.value"]
     
@@ -163,7 +172,7 @@ def getCorrMatrix(lens, stree, leaves, useroot=True, get=None):
             c = stats.corr(dists1, dists2)
 
             if c == util.INF:
-                c = 1
+                c = 1.0
             corrmat[-1].append(c)
 
     return corrmat
@@ -196,7 +205,7 @@ if 1:
         if name not in lens:
             util.log("skipping abs '%s'" % str(name))
             continue
-
+        
         low = 0
         high = 3 * stats.mean(lens[name])
         step = (high - low) / conf["nbins"]
@@ -204,7 +213,7 @@ if 1:
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
         
-        fitting.append({"name": name,
+        fitting.append({"name": str(name),
                         "type": "abs",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
@@ -228,7 +237,7 @@ if 1:
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
         
-        fitting.append({"name": name,
+        fitting.append({"name": str(name),
                         "type": "rel",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],

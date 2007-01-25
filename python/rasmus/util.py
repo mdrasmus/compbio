@@ -226,7 +226,7 @@ def cget(mat, *i):
         return [[row[j] for j in i] for row in mat]
 
 
-def mget(data, keys):
+def mget(lst, ind):
     """Returns a list 'lst2' such that lst2[i] = lst[ind[i]]
        
        Or in otherwords, get the subsequence 'lst'
@@ -234,7 +234,7 @@ def mget(data, keys):
        sounds like it can't be used on dicts; but it can.
        
     """
-    return [data[key] for key in keys]
+    return [lst[i] for i in ind]
 
 
 def concat(* lists):
@@ -305,8 +305,6 @@ def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
     return dic2
 
 
-# TODO: make lst a *lst and use zip(lst)
-#
 def groupby(func, lst):
     """Places i and j of 'lst' into the same group if func(i) == func(j).
        
@@ -375,11 +373,27 @@ def mapapply(funcs, lst):
     return lst2
 
 
-def map2(func, matrix):
-    """Maps a function onto the elements of a matrix
+def map2(func, *matrix):
+    """
+    Maps a function onto the elements of a matrix
+    
+    Also accepts multiple matrices.  Thus matrix addition is
+    
+    map2(add, matrix1, matrix2)
+    
     """
     
-    return [map(func, row) for row in matrix]
+    matrix2 = []
+    
+    for i in range(len(matrix[0])):
+        row2 = []    
+        matrix2.append(row2)
+
+        for j in range(len(matrix[0][i])):
+            args = [x[i][j] for x in matrix]
+            row2.append(func(* args))
+    
+    return matrix2
 
 
 def min2(matrix):
@@ -394,26 +408,12 @@ def max2(matrix):
     return max(map(max, matrix))
 
 
-class range2:
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.i = -1
-        self.j = 0
+def range2(width, height):
+    """Iterates over a matrix"""
     
-    def __iter__(self):
-        return self
-    
-    def next(self):
-        self.i += 1
-        if self.i >= self.width:
-            self.j += 1
-            self.i = 0
-        
-        if self.j >= self.height:
-            raise StopIteration
-        
-        return self.i, self.j
+    for i in range(width):
+        for j in range(height):
+            yield i, j
     
 
 def frange(start, end, step):
@@ -513,7 +513,10 @@ def islands(lst):
 
 
 def overlap(a, b, x, y, inc=True):
-    """Returns True if range [a,b] overlaps [x,y]
+    """
+    Returns True if range [a,b] overlaps [x,y]
+    
+    inc -- Should overlap be inclusive
     """
     if inc:
         return (y >= a) and (x <= b)
@@ -521,23 +524,47 @@ def overlap(a, b, x, y, inc=True):
         return (y > a) and (x < b)
 
 
-def argmax(lst):
+def argmax(lst, key=lambda x: x):
+    """
+    Find the index 'i' in 'lst' with maximum lst[i]
+    
+    lst -- list to search
+    key -- function to apply to each lst[i].
+           argmax(lst, key=func) --> argmax(map(key, lst))
+    """
+    
     assert len(lst) > 0
     top = 0
+    topval = key(lst[0])
     for i in xrange(1, len(lst)):
-        if lst[i] > lst[top]:
+        val = key(lst[i])
+        if val > topval:
             top = i
+            topval = val
     return top
 
-def argmin(lst):
+
+def argmin(lst, key=lambda x: x):
+    """
+    Find the index 'i' in 'lst' with minimum lst[i]
+    
+    lst -- list to search
+    key -- function to apply to each lst[i].
+           argmin(lst, key=func) --> argmin(map(key, lst))
+    """
+    
     assert len(lst) > 0
     low = 0
+    lowval = key(lst[0])
     for i in xrange(1, len(lst)):
-        if lst[i] < lst[low]:
+        val = key(lst[i])
+        if val < lowval:
             low = i
+            lowval = val
     return low
 
 def maxfunc(func, lst):
+    """Find the element 'e' in 'lst' with maximum func(e)"""
     top = -INF
     topi = None
     for i in lst:
@@ -547,8 +574,10 @@ def maxfunc(func, lst):
             topi = i
     return topi
 
+
 def minfunc(func, lst):
-    low = -INF
+    """Find the element 'e' in 'lst' with minimum func(e)"""
+    low = INF
     lowi = None
     for i in lst:
         val = func(i)
@@ -557,28 +586,15 @@ def minfunc(func, lst):
             lowi = i
     return lowi
 
+
 def argmaxfunc(func, lst):
-    assert len(lst) > 0
-    top = 0
-    topval = func(lst[top])
-    for i in xrange(1,len(lst)):
-        val = func(lst[i])
-        if val > topval:
-            topval = val
-            top = i
-    return top
+    """DEPRECATED: use argmax"""
+    return argmax(lst, key=func)
 
     
 def argminfunc(func, lst):
-    assert len(lst) > 0
-    low = 0
-    lowval = func(lst[low])
-    for i in xrange(1, len(lst)):
-        val = func(lst[i])
-        if val < lowval:
-            lowval = val
-            low = i
-    return low
+    """DEPRECATED: use argmin"""
+    return argmin(lst, key=func)
 
 
 def eqfunc(a): return lambda x: x == a

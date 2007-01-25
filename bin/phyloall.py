@@ -573,6 +573,7 @@ def main(conf):
 
     # determine input files
     files2 = conf["REST"]
+    conf["REST"] = []
     if conf["stdin"]:
         for line in sys.stdin:
             files2.append(line.rstrip())
@@ -610,10 +611,8 @@ def main(conf):
         pipeline.setMaxNumProc(conf["nproc"])
         
         args = copy.copy(sys.argv)
-        print "1", args
         if len(conf["REST"]) > 0:
             args = args[:-len(conf["REST"])]
-        print "2", args
         
         # remove arguments that give dispatched jobs trouble
         if "-i" in args:
@@ -623,7 +622,6 @@ def main(conf):
         prefix = " ".join(args) + " "
         jobs = []
         
-        print "3", args
         
         for i in range(0, len(files), conf["groupsize"]):
             jobs.append(pipeline.add("job%d" % i, 

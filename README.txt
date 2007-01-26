@@ -16,4 +16,15 @@ export PYTHONPATH=$PYTHONPATH:/afs/csail.mit.edu/group/compbio/software/summon/l
 export PATH=$PATH:/afs/csail.mit.edu/group/compbio/bin
 
 
-<checked-out-dir> refers to the location where you checked out the cvs files.
+<checked-out-dir> refers to the location where you checked out the CVS files.
+
+
+To checkout my CVS directory use the following CVS command:
+
+
+export CVS_RSH=ssh
+export CVSROOT=compbio.mit.edu:/afs/csail.mit.edu/group/compbio/cvsroot
+cvs co rasmus
+
+
+

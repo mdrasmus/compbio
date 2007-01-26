@@ -69,7 +69,7 @@ def plotAbsLens(name, lens, low, high, step):
     
     try:
         chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-        pval = chisq["p.value"]
+        pval = float(chisq["p.value"])
     except rpy.RException, e:
         print e
         pval = 0.0
@@ -111,7 +111,7 @@ def plotRelLens(name, params, lens, low, high, step):
     
     try:
         chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-        pval = chisq["p.value"]
+        pval = float(chisq["p.value"])
     except rpy.RException, e:
         print e
         pval = 0.0

@@ -99,7 +99,7 @@ def writeTreeDistrib(out, lengths):
         out.write("\n")
 
 
-def treeDistrib2table(lengths):
+def treeDistrib2table(lengths, filenames=None):
     keys = []
     mat = []
     
@@ -114,6 +114,11 @@ def treeDistrib2table(lengths):
             keys.append(str(node))
         
         mat.append(lens)
+
+    # add filenames if they exist
+    if filenames:
+        mat.append(filenames)
+        keys.append("filename")
 
     # transpose matrix
     mat = zip(* mat)
@@ -675,14 +680,14 @@ def mleBaserates(lengths, params, baserateparam):
     return baserates
 
 
-def learnModel(trees, stree, gene2species, statsprefix=""):
+def learnModel(trees, stree, gene2species, statsprefix="", filenames=None):
     util.tic("learn model")
 
     util.tic("find branch length distributions")
-    trees2, lengths = phyloutil.findBranchDistrib(trees, stree, gene2species,
-                                                  False)
+    lengths, used = phyloutil.findBranchDistrib(trees, stree, gene2species,
+                                                False)
     debug("Total trees matching species topology: %d out of %d" % 
-          (len(trees2), len(trees)))
+          (sum(used), len(trees)))
     util.toc()
     
     params = {}
@@ -692,7 +697,7 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
     # print output stats
     if statsprefix != "":
         writeTreeDistrib(file(statsprefix + ".lens", "w"), lengths)
-        rates = treeDistrib2table(lengths)
+        rates = treeDistrib2table(lengths, filenames=filenames)
         rates.write(statsprefix + "_rates.tab")
     
     
@@ -707,8 +712,9 @@ def learnModel(trees, stree, gene2species, statsprefix=""):
         params[node.name] = param
         util.toc()
     util.toc()
-
+    
     # calc distribution of total tree length
+    trees2 = util.mget(trees, util.findeq(True, used))
     lens = map(lambda x: sum(y.dist for y in x.nodes.values()), trees2)
     lens = filter(lambda x: x < 20, lens)
     mu = stats.mean(lens)

@@ -233,7 +233,8 @@ def trainTree(conf, stree, gene2species):
         trees.append(treelib.readTree(treefile))
     util.toc()
     
-    params = Spidir.learnModel(trees, stree, gene2species, conf["trainstats"])
+    params = Spidir.learnModel(trees, stree, gene2species, conf["trainstats"],
+                               filenames=treefiles)
     
     Spidir.writeParams(conf["param"], params)
     

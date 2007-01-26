@@ -485,7 +485,7 @@ def hashOrderTree(tree, smap = lambda x: x):
 def findBranchDistrib(trees, stree, gene2species = gene2species, 
                       relative = True):
     lengths = util.Dict(1, [])
-    trees2 = []
+    used = []
 
     for tree in trees:
         #tree = reconRoot(tree, stree, gene2species, newCopy=False)
@@ -495,9 +495,10 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
         # skip trees with duplications or with extremly long branch lengths
         if "dup" in events.values():# or \
             #max(x.dist for x in tree.nodes.values()) > 2:
+            used.append(False)
             continue
         else:
-            trees2.append(tree)
+            used.append(True)
         
         for node in tree.nodes.values():
             if relative:
@@ -511,7 +512,7 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
                 lengths[recon[node]].append(node.dist)
     
     
-    return trees2, lengths
+    return lengths, used
 
 
 def mapRefTree(trees, reftree, refmapfunc):

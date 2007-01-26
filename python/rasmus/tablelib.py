@@ -105,6 +105,27 @@ class TableException (Exception):
 # Types handling
 #
 
+def guessType(text):
+    """Guesses the type of a value encoded in a string"""
+    
+    if text.isdigit():
+        return int
+
+    try:
+        float(text)
+        return float
+    except ValueError:
+        pass
+    
+    try:
+        manoli_str2bool(text)
+        return bool
+    except ValueError:
+        pass
+    
+    return str
+
+
 def manoli_str2bool(text=None):
     """Will parse every way manolis stores a boolean as a string"""
     
@@ -119,7 +140,7 @@ def manoli_str2bool(text=None):
     elif text2 == "true":
         return True
     else:
-        raise Exception("unknown string for bool '%s'" % text)
+        raise ValueError("unknown string for bool '%s'" % text)
         
             
 

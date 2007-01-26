@@ -243,10 +243,10 @@ class Gnuplot:
         
     
     def findRange(self):
-        bestLeft = 1e500
-        bestRight = -1e500
-        bestTop = -1e500
-        bestBottom = 1e500
+        bestLeft = INF
+        bestRight = -INF
+        bestTop = -INF
+        bestBottom = INF
     
         # find ranges for each graph that is plotted
         for graph in self.data:
@@ -262,29 +262,37 @@ class Gnuplot:
             left   = min(list1)
             right  = max(list1)
             
-            # find margin
-            ymargin = (top - bottom) * self.margin
-            xmargin = (right - left) * self.margin
-            if xmargin == 0: xmargin = 1
-            if ymargin == 0: ymargin = 1
-            
-            # find new border
-            top    += ymargin
-            bottom -= ymargin
-            left   -= xmargin
-            right  += xmargin
-            
             # record biggest range thus far
             if top > bestTop:       bestTop = top
             if bottom < bestBottom: bestBottom = bottom
             if left < bestLeft:     bestLeft = left
             if right > bestRight:   bestRight = right
         
+        # find margin
+        ymargin = (bestTop - bestBottom) * self.margin
+        xmargin = (bestRight - bestLeft) * self.margin
+        
+        if xmargin == 0: xmargin = 1
+        if ymargin == 0: ymargin = 1
+
+        # add margin to border
+        if xmargin > 0 and ymargin > 0:
+            bestTop    += ymargin
+            bestBottom -= ymargin
+            bestLeft   -= xmargin
+            bestRight  += xmargin
+        
         # auto scale
-        if bestLeft >= 1e500:   bestLeft = "*"
-        if bestRight <= -1e500:  bestRight = "*"
-        if bestTop <= -1e500:     bestTop = "*"
-        if bestBottom >= 1e500: bestBottom = "*"
+        if bestLeft >= INF:   bestLeft = "*"
+        if bestRight <= -INF:  bestRight = "*"
+        if bestTop <= -INF:     bestTop = "*"
+        if bestBottom >= INF: bestBottom = "*"
+        
+        if bestLeft == bestRight:
+            bestLeft = bestRight = "*"
+        if bestTop == bestBottom:
+            bestTop = bestBottom = "*"
+        
         
         return (bestTop, bestBottom, bestLeft, bestRight)
     
@@ -433,6 +441,12 @@ class Gnuplot:
             print >>self.stream
         print >>self.stream, "e"
     
+
+    def enableOutput(self, enable = True):
+        self.enable = enable
+        if enable:
+            self.stream = os.popen("gnuplot", "w")
+    
     
     def plot(self, list1, list2=[], list3=[], **options):
         self.set(**options)
@@ -443,6 +457,46 @@ class Gnuplot:
         if self.enable:
             self.stream = os.popen("gnuplot", "w")
             self.replot()
+    
+    
+    def plotfunc(self, func, start, end, step, **options):
+        x = []
+        y = []
+        while start < end:
+            try:
+                y.append(func(start))
+                x.append(start)
+            except ZeroDivisionError:
+                pass
+            start += step
+        
+        self.plot(x, y, style="lines", **options)
+    
+    
+    def plotdiag(self, start=None, end=None, **options):
+        if start == None:
+            start = INF
+            
+            for graph in self.data:
+                if graph.options["eqn"]:
+                    continue            
+                start = min(start, min(graph.xlist))
+                start = min(start, min(graph.ylist))
+
+        if end == None:
+            end = -INF
+            
+            for graph in self.data:
+                if graph.options["eqn"]:
+                    continue            
+                end = max(end, max(graph.xlist))
+                end = max(end, max(graph.ylist))
+        
+        options2 = {"style": "lines",
+                    "plab": ""}
+        options2.update(options)
+        
+        self.plot([start, end], [start, end], **options2)
     
     
     
@@ -517,23 +571,7 @@ class Gnuplot:
         return params
     
     
-    def plotfunc(self, func, start, end, step, **options):
-        x = []
-        y = []
-        while start < end:
-            try:
-                y.append(func(start))
-                x.append(start)
-            except ZeroDivisionError:
-                pass
-            start += step
-        
-        self.plot(x, y, style="lines", ** options)
-    
-    def enableOutput(self, enable = True):
-        self.enable = enable
-        if enable:
-            self.stream = os.popen("gnuplot", "w")
+
     
     
     

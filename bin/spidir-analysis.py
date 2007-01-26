@@ -49,8 +49,12 @@ def plotAbsLens(name, lens, low, high, step):
     sigma2 = stats.variance(lens2)
     prms = [mu*mu/sigma2, mu/sigma2]
     
-    prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
-                                   lens2, low, high, step)
+    try:
+        prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
+                                       lens2, low, high, step)
+    except:
+        print "FIT EXCEPTION"
+        pass
     
     util.plotdistrib(lens, low=low, width=step, plot=p)
     p.plotfunc(lambda x: stats.gammaPdf(x, prms), low, high, step/4.)

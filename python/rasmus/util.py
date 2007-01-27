@@ -2,8 +2,9 @@
  file: util.py 
  authors: Matt Rasmussen
  date: 11/30/05
-
- Common utilities (timers, progress bars, plotting, list/dict manipulation)
+ 
+ Provides basic functional programming functions for manipulating lists and 
+ dicts.  Also provides common utilities (timers, plotting, histograms)
 """
 
 
@@ -80,9 +81,9 @@ class Dict (dict):
     
     def __init__(self, items=None, dim=1, default=None, insert=True):
         """
-        items   - items to initialize Dict (can be dict, list, iter)
-        dim     - number of dimensions of the dictionary
-        default - default value of a dictionary item
+        items   -- items to initialize Dict (can be dict, list, iter)
+        dim     -- number of dimensions of the dictionary
+        default -- default value of a dictionary item
         """
         
         if isinstance(items, int):
@@ -110,17 +111,7 @@ class Dict (dict):
                 self[i] = ret
             return ret
         return dict.__getitem__(self, i)
-    
-    """
-    def __len__(self):
-        if self.dim == 1:
-            return dict.__len__(self)
-        else:
-            nnz = 0
-            for i in self:
-                nnz += len(self[i])
-            return nnz
-    """
+
         
     def has_keys(self, *keys):
         if len(keys) == 0:
@@ -165,9 +156,8 @@ def exceptDefault(func, val, exc=Exception):
         return val
 
 
-#################################################################################
-# list and dict functions
-#
+#=============================================================================
+# list and dict functions for functional programming
 
 def equal(* vals):
     """Returns True if all arguments are equal"""
@@ -191,17 +181,18 @@ def remove(lst, *vals):
     return lst2
 
 
-def sort(lst, compare=cmp):
+def sort(lst, compare=cmp, key=None, reverse=False):
     """Returns a sorted copy of a list
        
        python2.5 now has sorted which fulfills the same purpose
        
-       arguments:
-       lst     - a list to sort
-       compare - a function for comparing items (default: cmp)
+       lst     -- a list to sort
+       compare -- a function for comparing items (default: cmp)
+       key     -- function of one arg to map items
+       reverse -- when True reverse sorting
     """
     lst2 = copy.copy(lst)
-    lst2.sort(compare)
+    lst2.sort(compare, key=key, reverse=reverse)
     return lst2
 
 
@@ -237,6 +228,7 @@ def mget(lst, ind):
     return [lst[i] for i in ind]
 
 
+
 def concat(* lists):
     """Concatenates several lists into one
     """
@@ -253,9 +245,8 @@ def subdict(dic, keys):
     Returns a new dictionary dic2 such that
     dic2[i] = dic[i] for all i in keys
 
-    arguments:
-    dic  - a dictionary
-    keys - a list of keys
+    dic  -- a dictionary
+    keys -- a list of keys
     """
     dic2 = {}
     for key in keys:
@@ -308,9 +299,8 @@ def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
 def groupby(func, lst):
     """Places i and j of 'lst' into the same group if func(i) == func(j).
        
-       arguments:
-       func - is a function of one argument that maps items to group objects
-       lst  - is a list of items
+       func -- is a function of one argument that maps items to group objects
+       lst  -- is a list of items
        
        returns:
        a dictionary such that the keys are groups and values are items found in
@@ -346,7 +336,7 @@ def flatten(lst, depth=INF):
     """
     Flattens nested lists into one list
     
-    depth - specifies how deep flattening should occur
+    depth -- specifies how deep flattening should occur
     """
     
     flat = []
@@ -371,6 +361,73 @@ def mapapply(funcs, lst):
     for func, item in zip(funcs, lst):
         lst2.append(func(item))
     return lst2
+
+
+def frange(start, end, step):
+    """Returns a range of floats 
+    
+       start -- begining of range
+       end   -- end of range
+       step  -- step size
+    """
+    
+    i = 0
+    lst = []
+    while start + i * step < end:
+        lst.append(start + i * step)
+        i += 1
+    return lst
+
+
+
+
+#=============================================================================
+# simple matrix functions
+
+def makeMatrix(nrows, ncols, val = 0):
+    mat = []
+    for i in xrange(nrows):
+        row = []
+        mat.append(row)
+        for j in xrange(ncols):
+            row.append(copy.copy(val))
+    return mat
+
+
+def transpose(mat):
+    """
+    Transpose a matrix
+    
+    Works better than zip() in that rows are lists not tuples
+    """
+    
+    assert equal(* map(len, mat)), "rows are not equal length"
+    
+    mat2 = []
+    
+    for j in xrange(len(mat[0])):
+        row2 = []
+        mat2.append(row2)
+        for row in mat:
+            row2.append(row[j])
+    
+    return mat2
+    
+
+def submatrix(mat, rows=None, cols=None):
+    if rows == None:
+        rows = range(len(mat))
+    if cols == None:
+        cols = range(len(mat[0]))
+    
+    mat2 = []
+    
+    for i in rows:
+        mat2.append([])
+        for j in cols:
+            mat2[-1].append(mat[i][j])
+    
+    return mat2
 
 
 def map2(func, *matrix):
@@ -409,34 +466,22 @@ def max2(matrix):
 
 
 def range2(width, height):
-    """Iterates over a matrix"""
+    """Iterates over the indices of a matrix"""
     
     for i in range(width):
         for j in range(height):
             yield i, j
-    
 
-def frange(start, end, step):
-    """Returns a range of floats 
-    
-       arguments:
-       start - begining of range
-       end   - end of range
-       step  - step size
-    """
-    
-    i = 0
-    lst = []
-    while start + i * step < end:
-        lst.append(start + i * step)
-        i += 1
-    return lst
+
+#=============================================================================
+# list counting and finding functions
 
 
 def count(func, lst):
-    """Counts the number of times func(x) is True for x in list 'lst'
+    """
+    Counts the number of times func(x) is True for x in list 'lst'
        
-       See also:
+    See also:
         counteq(a, lst)   count items equal to a
         countneq(a, lst)  count items not equal to a
         countle(a, lst)   count items less than or equal to a
@@ -459,7 +504,17 @@ def countgt(a, lst): return count(gtfunc(a), lst)
 
 
 def find(func, lst):
-    """Returns the indices of func(x) == True for x in list 'lst'"""
+    """
+    Returns the indices 'i' of 'lst' where func(lst[i]) == True
+    
+    See also:
+        findeq(a, lst)   count items equal to a
+        findneq(a, lst)  count items not equal to a
+        findle(a, lst)   count items less than or equal to a
+        findlt(a, lst)   count items less than a
+        findge(a, lst)   count items greater than or equal to a
+        findgt(a, lst)   count items greater than a
+    """
     pos = []
     for i in xrange(len(lst)):
         if func(lst[i]):
@@ -474,7 +529,7 @@ def findge(a, lst): return find(gefunc(a), lst)
 def findgt(a, lst): return find(gtfunc(a), lst)
 
 
-
+'''
 def islands(lst):
     """
       takes a list, or a string, and gather islands of identical elements.
@@ -510,19 +565,23 @@ def islands(lst):
     counting[current_char].append((current_start, i))
 
     return counting
+'''
 
 
 def overlap(a, b, x, y, inc=True):
     """
     Returns True if range [a,b] overlaps [x,y]
     
-    inc -- Should overlap be inclusive
+    inc -- treat [a,b] and [x,y] as inclusive
     """
     if inc:
         return (y >= a) and (x <= b)
     else:
         return (y > a) and (x < b)
 
+
+#=============================================================================
+# max and min functions
 
 def argmax(lst, key=lambda x: x):
     """
@@ -597,6 +656,19 @@ def argminfunc(func, lst):
     return argmin(lst, key=func)
 
 
+#=============================================================================
+# math functions
+
+#
+# comparison function factories
+#
+# These functions will return convenient comparison functions.  
+#
+# example:
+#   filter(ltfunc(4), lst) ==> returns all values in lst less than 4
+#   count(ltfunc(4), lst)  ==> returns the number of values in lst < 4
+#
+
 def eqfunc(a): return lambda x: x == a
 def neqfunc(a): return lambda x: x != a
 def ltfunc(a): return lambda x: x < a
@@ -615,10 +687,6 @@ def withinfunc(a, b, ainc=True, binc=True):
         else:
             return lambda x: a < x < b
 
-
-#
-# math functions
-#
 
 def sign(num):
     """Returns the sign of a number"""
@@ -677,7 +745,7 @@ def compose(* funcs):
         f = compose2(funcs[i], f)
     return f
 
-#
+#=============================================================================
 # regex
 #
 
@@ -696,7 +764,7 @@ def match(pattern, text):
         return m.groupdict()
 
 
-###############################################################################
+#=============================================================================
 # common Input/Output
 
 def readInts(filename):
@@ -792,7 +860,7 @@ def openStream(filename, mode = "r"):
 
 
 
-#################################################################################
+#=============================================================================
 # printing functions
 #
 
@@ -1148,8 +1216,8 @@ class IndentStream:
 
     
     
-###############################################################################
-# file/directory stuff
+#=============================================================================
+# file/directory functions
 #
 def listFiles(path, extension=""):
     """Returns a list of files in 'path' with ending with 'extension'"""
@@ -1218,7 +1286,7 @@ def replaceExt(filename, oldext, newext):
 
 
 
-###############################################################################
+#=============================================================================
 # sorting
 #
 
@@ -1258,22 +1326,14 @@ def permute(lst, perm):
 '''
 
 
-###############################################################################
+#=============================================================================
 # histograms, distributions
 #
+
 def oneNorm(vals):
     """Normalize values so that they sum to 1"""
     s = float(sum(vals))
     return map(lambda x: x/s, vals)
-
-def bucketSize2(array, ndivs=20):
-    """
-    Determine the bucket size needed to divide the values in array into 
-    'ndivs' evenly sized buckets
-       
-    DEPRECATED   
-    """
-    return (max(array) - min(array)) / float(ndivs)
 
 
 def bucketSize(array, ndivs=None, low=None, width=None):

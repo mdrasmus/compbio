@@ -52,6 +52,8 @@ def plotAbsLens(name, lens, low, high, step):
     try:
         prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
                                        lens2, low, high, step)
+        prms = map(float, prms)
+        resid = float(resid)
     except:
         print "FIT EXCEPTION"
         pass
@@ -97,7 +99,9 @@ def plotRelLens(name, params, lens, low, high, step):
     lens2 = filter(util.withinfunc(.00001, high), lens)
     
     prms, resid = stats.fitDistrib(stats.normalPdf, params, 
-                                   lens2, low, high, step)    
+                                   lens2, low, high, step)
+    prms = map(float, prms)
+    resid = float(resid)  
     util.plotdistrib(lens, low=low, width=step, plot=p)
     p.plotfunc(lambda x: stats.normalPdf(x, prms), low, high, step/4.)
     

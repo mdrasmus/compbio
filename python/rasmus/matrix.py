@@ -173,8 +173,24 @@ def makeMatrix(nrows, ncols, val = 0):
 
 
 def transpose(mat):
-    return zip(* mat)
+    """
+    Transpose a matrix
     
+    Works better than zip() in that rows are lists not tuples
+    """
+    
+    assert equal(* map(len, mat)), "rows are not equal length"
+    
+    mat2 = []
+    
+    for j in xrange(len(mat[0])):
+        row2 = []
+        mat2.append(row2)
+        for row in mat:
+            row2.append(row[j])
+    
+    return mat2
+
 
 def submatrix(mat, rows=None, cols=None):
     if rows == None:

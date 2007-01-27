@@ -30,7 +30,7 @@ def findFile(filename, pathlist = datapaths, cwd=True):
 def addPaths(* paths, **keywords):
     """Add paths to the pathlist
     
-       Custom pathlist can be specified by pathlist keyword argument
+       Custom pathlist can be specified by 'pathlist' keyword argument
        """
     
     if "pathlist" in keywords:

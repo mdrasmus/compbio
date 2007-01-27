@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+# bookmark directories
+
+import os
+import sys
+
+
+
+BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".dirbookmarks")
+
+
+
+def readBookmarks(bfile):
+    bookmarks = []
+    
+    for line in file(bfile):
+        tokens = line.rstrip().split("\t")
+        if len(tokens) == 2:
+            bookmarks.append(tokens[:2])
+    
+    return bookmarks
+
+
+def writeBookmarks(bfile, bookmarks):
+    out = file(bfile, "w")
+    for bookmark in bookmarks:
+        out.write("%s\t%s\n" % (bookmark[0], bookmark[1]))
+    out.close()
+    
+
+def showBookmarks(bookmarks):
+    for bookmark in bookmarks:
+        print "%s\t%s" % (bookmark[0], bookmark[1])
+
+
+# read/create bookmarks
+if os.path.exists(BOOKMARK_FILE):
+    bookmarks = readBookmarks(BOOKMARK_FILE)
+else:
+    # create bookmarks file
+    bfile = file(BOOKMARK_FILE, "w")
+    bfile.close()
+    
+    bookmarks = []
+
+
+
+if len(sys.argv) <= 1:
+    # show bookmarks
+    showBookmarks(bookmarks)
+    
+elif sys.argv[1] == "-c":
+    # clear bookmarks
+    writeBookmarks(BOOKMARK_FILE, [])
+    
+elif sys.argv[1] == "-g":
+    # get bookmark
+    name = sys.argv[2]
+    
+    for bookmark in bookmarks:
+        if bookmark[0] == name:
+            print bookmark[1]
+
+elif sys.argv[1] == "-d":
+    # delete bookmark
+    name = sys.argv[2]
+    
+    delmark = None
+        
+    for bookmark in bookmarks:
+        if bookmark[0] == name:
+            delmark = bookmark
+    
+    if delmark != None:
+        print "delete bookmark '%s': %s" % (delmark[0], delmark[1])    
+        bookmarks.remove(delmark)
+        writeBookmarks(BOOKMARK_FILE, bookmarks)
+    
+else:
+    # add bookmark
+    name = sys.argv[1]
+    path = os.getcwd()
+    
+    # search for existing name
+    for bookmark in bookmarks:
+        if bookmark[0] == name:
+            bookmark[1] = path
+            print "change bookmark '%s': %s" % (name, path)
+            break
+    else:
+        print "add bookmark '%s': %s" % (name, path)
+        bookmarks.append([name, path])
+    
+    
+    
+    writeBookmarks(BOOKMARK_FILE, bookmarks)

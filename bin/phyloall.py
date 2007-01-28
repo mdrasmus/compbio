@@ -572,8 +572,7 @@ def main(conf):
     
 
     # determine input files
-    files2 = conf["REST"]
-    conf["REST"] = []
+    files2 = copy.copy(conf["REST"])
     if conf["stdin"]:
         for line in sys.stdin:
             files2.append(line.rstrip())

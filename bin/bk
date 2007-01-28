@@ -52,9 +52,26 @@ if len(sys.argv) <= 1:
 elif sys.argv[1] == "-c":
     # clear bookmarks
     writeBookmarks(BOOKMARK_FILE, [])
+
+elif sys.argv[1] == "--setupbash":
+    # output code for setting up bash to use bookmarks
+
+    print """
+    function cb ()
+    {
+        if [ $# == 0 ]; then
+            bk
+        else
+            cd `bk -g $1`
+        fi
+    }"""
     
 elif sys.argv[1] == "-g":
     # get bookmark
+    if len(sys.argv) < 3:
+        print >>sys.stderr, "no bookmark name specified"
+        sys.exit(1)
+    
     name = sys.argv[2]
     
     for bookmark in bookmarks:
@@ -63,6 +80,10 @@ elif sys.argv[1] == "-g":
 
 elif sys.argv[1] == "-d":
     # delete bookmark
+    if len(sys.argv) < 3:
+        print >>sys.stderr, "no bookmark name specified"
+        sys.exit(1)
+    
     name = sys.argv[2]
     
     delmark = None

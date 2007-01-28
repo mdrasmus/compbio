@@ -40,6 +40,8 @@ def readBookmarks(bfile):
         tokens = line.rstrip().split("\t")
         if len(tokens) == 2:
             bookmarks.append(tokens[:2])
+
+    bookmarks.sort(key=lambda x: x[1])
     
     return bookmarks
 

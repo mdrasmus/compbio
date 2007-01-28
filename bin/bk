@@ -109,10 +109,10 @@ elif sys.argv[1] == "-g":
             print bookmark[1]
             break
     else:
+        # bookmark could not be found
         print >>sys.stderr, "unknown bookmark '%s'" % name
         print "."
-        
-    
+        sys.exit(1)
 
 elif sys.argv[1] == "-d":
     # delete bookmark
@@ -127,11 +127,15 @@ elif sys.argv[1] == "-d":
     for bookmark in bookmarks:
         if bookmark[0] == name:
             delmark = bookmark
-    
-    if delmark != None:
-        print "delete bookmark '%s': %s" % (delmark[0], delmark[1])    
-        bookmarks.remove(delmark)
-        writeBookmarks(BOOKMARK_FILE, bookmarks)
+            break
+    else:
+        # bookmark could not be found
+        print >>sys.stderr, "unknown bookmark '%s'" % name
+        sys.exit(1)    
+
+    print "delete bookmark '%s': %s" % (delmark[0], delmark[1])    
+    bookmarks.remove(delmark)
+    writeBookmarks(BOOKMARK_FILE, bookmarks)
     
 else:
     # add bookmark

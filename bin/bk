@@ -5,6 +5,24 @@ import os
 import sys
 
 
+USAGE = """\
+usage: bk [<name>|options]
+
+no options:
+    show all bookmarks
+<name>
+    add a bookmark named <name> for the current directory
+-c
+    clear all bookmarks
+-g <bookmark>
+    get a bookmark
+--setupbash
+    print code for setting up bash to use bookmarks
+-d <name>
+    delete a bookmark <name>
+"""
+
+
 
 BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".dirbookmarks")
 
@@ -29,6 +47,8 @@ def writeBookmarks(bfile, bookmarks):
     
 
 def showBookmarks(bookmarks):
+    print "NAME\tDIRECTORY"
+    
     for bookmark in bookmarks:
         print "%s\t%s" % (bookmark[0], bookmark[1])
 
@@ -48,6 +68,11 @@ else:
 if len(sys.argv) <= 1:
     # show bookmarks
     showBookmarks(bookmarks)
+
+elif sys.argv[1] == "-h" or sys.argv[1] == "--help":
+    # display help
+    print USAGE
+    sys.exit(0)
     
 elif sys.argv[1] == "-c":
     # clear bookmarks

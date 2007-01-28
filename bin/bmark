@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-# bookmark directories
+# BMARK - directory bookmarks
+# Matt Rasmussen
+# 1/28/2007
+#
+
+
 
 import os
 import sys
@@ -23,9 +28,10 @@ no options:
 """
 
 
+
 BOOKMARK_ENV = "BMARK"
 
-# determin BOOKMARK_FILE
+# determine BOOKMARK_FILE
 if BOOKMARK_ENV in os.environ:
     BOOKMARK_FILE = os.environ[BOOKMARK_ENV]
 else:

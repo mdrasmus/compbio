@@ -6,7 +6,7 @@ import sys
 
 
 USAGE = """\
-usage: bk [<name>|options]
+usage: bmark [<name>|options]
 
 no options:
     show all bookmarks
@@ -23,13 +23,13 @@ no options:
 """
 
 
-BOOKMARK_ENV = "DIRBOOKMARK"
+BOOKMARK_ENV = "BMARK"
 
 # determin BOOKMARK_FILE
 if BOOKMARK_ENV in os.environ:
     BOOKMARK_FILE = os.environ[BOOKMARK_ENV]
 else:
-    BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".dirbookmarks")
+    BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".bmark")
 
 
 
@@ -90,9 +90,9 @@ elif sys.argv[1] == "--setupbash":
     function cb ()
     {
         if [ $# == 0 ]; then
-            bk
+            bmark
         else
-            cd `bk -g $1`
+            cd `bmark -g $1`
         fi
     }"""
     

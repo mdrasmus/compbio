@@ -107,6 +107,12 @@ elif sys.argv[1] == "-g":
     for bookmark in bookmarks:
         if bookmark[0] == name:
             print bookmark[1]
+            break
+    else:
+        print >>sys.stderr, "unknown bookmark '%s'" % name
+        print "."
+        
+    
 
 elif sys.argv[1] == "-d":
     # delete bookmark

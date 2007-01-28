@@ -23,8 +23,13 @@ no options:
 """
 
 
+BOOKMARK_ENV = "DIRBOOKMARK"
 
-BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".dirbookmarks")
+# determin BOOKMARK_FILE
+if BOOKMARK_ENV in os.environ:
+    BOOKMARK_FILE = os.environ[BOOKMARK_ENV]
+else:
+    BOOKMARK_FILE = os.path.join(os.environ["HOME"], ".dirbookmarks")
 
 
 

@@ -103,7 +103,7 @@ class TreeNode:
     
     def __iter__(self):
         """Iterate through child nodes"""
-        return self.children
+        return iter(self.children)
     
     
     def copy(self, parent=None, copyChildren=True):

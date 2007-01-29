@@ -18,6 +18,7 @@ from rasmus import mrbayes
 from rasmus import muscle
 from rasmus import paml
 from rasmus import phylip
+from rasmus import phyloutil
 from rasmus import phyml
 from rasmus import puzzletree
 from rasmus import tablelib
@@ -114,7 +115,7 @@ fasta2alignProgs = ["clustalw", "muscle"]
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep"]
              
-dist2treeProgs = [ "bionj", "lse" ]
+dist2treeProgs = ["bionj", "lse", "nj"]
 
 align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
                    "puzzledist"]
@@ -383,6 +384,10 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         Spidir.setTreeDistances({"debug": 2}, 
                                 usertree, mat, labels)
         tree = usertree
+
+    elif prog == "nj":
+        tree = phyloutil.neighborjoin(mat, labels, usertree=usertree)
+    
     else:
         raise "unknown program '%s'" % prog
     

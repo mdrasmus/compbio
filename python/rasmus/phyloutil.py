@@ -660,7 +660,7 @@ def getBranchZScores(rates, params):
 # Phylogenetic reconstruction
 #
 
-def neighborjoin(distmat, genes):
+def neighborjoin(distmat, genes, usertree=None):
     """Neighbor joining algorithm"""
     
     tree = treelib.Tree()
@@ -682,21 +682,44 @@ def neighborjoin(distmat, genes):
         tree.add(treelib.TreeNode(gene))
         leaves[gene] = 1
     
+    # if usertree is given, determine merging order
+    merges = []
+    newnames = {}
+    if usertree != None:
+        def walk(node):
+            if not node.isLeaf():
+                assert len(node.children) == 2, \
+                    Exception("usertree is not binary")
+            
+                for child in node:
+                    walk(child)
+                merges.append(node)
+                newnames[node] = len(merges)
+            else:
+                newnames[node] = node.name
+        walk(usertree.root)
+        merges.reverse()
+    
     # join loop
     while len(leaves) > 2:
         # search for closest genes
-        low = util.INF
-        lowpair = (None, None)
-        leaveslst = leaves.keys()
+        if not usertree:
+            low = util.INF
+            lowpair = (None, None)
+            leaveslst = leaves.keys()
 
-        for i in range(len(leaves)):
-            for j in range(i+1, len(leaves)):
-                gene1, gene2 = leaveslst[i], leaveslst[j]
-                dist = dists[gene1][gene2] - restdists[gene1] - restdists[gene2]
-                
-                if dist < low:
-                    low = dist
-                    lowpair = (gene1, gene2)
+            for i in range(len(leaves)):
+                for j in range(i+1, len(leaves)):
+                    gene1, gene2 = leaveslst[i], leaveslst[j]
+                    dist = dists[gene1][gene2] - restdists[gene1] \
+                                               - restdists[gene2]
+                    if dist < low:
+                        low = dist
+                        lowpair = (gene1, gene2)
+        else:
+            node = merges.pop()
+            lowpair = (newnames[node.children[0]],
+                       newnames[node.children[1]])
         
         # join gene1 and gene2
         gene1, gene2 = lowpair
@@ -732,6 +755,19 @@ def neighborjoin(distmat, genes):
     tree.addChild(tree.nodes[gene1], tree.nodes[gene2])
     tree.nodes[gene2].dist = dists[gene1][gene2]
     tree.root = tree.nodes[gene1]
+
+    # root tree according to usertree    
+    if usertree != None and treelib.isRooted(usertree):
+        roots = set([newnames[usertree.root.children[0]],
+                     newnames[usertree.root.children[1]]])
+        newroot = None
+        for child in tree.root.children:
+            if child.name in roots:
+                newroot = child
+        
+        assert newroot != None
+        
+        treelib.reroot(tree, newroot.name, newCopy=False)
     
     return tree
 

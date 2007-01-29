@@ -197,8 +197,19 @@ os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
 Spidir.drawParamTree(stree, params, xscale=2000, 
                      filename="%s/params-tree.svg" % conf["outdir"])
 
+# make table version of parameters
+tab = tablelib.Table(headers=["branch", "mean", "sdev", "tight"])
+for name in params:
+    if name in (1, "baserate"):
+        continue
+    tab.add(branch=str(name),
+            mean=params[name][0],
+            sdev=params[name][1],
+            tight=params[name][1] / params[name][0])
+tab.sort(col="branch")
+tab.write("%s/params.tab" % conf["outdir"])
 
-
+    
 
 # make directories
 os.system("mkdir -p %s/abs" % conf["outdir"])

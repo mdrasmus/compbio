@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import sys, os
-from rasmus import util, env, treelib, spidirlib, stats, tablelib
+from rasmus import util, env, treelib, stats, tablelib
+import Spidir
 
 import rpy
 
@@ -30,8 +31,8 @@ conf = util.parseOptions(sys.argv, options, quit=True)
 # read data
 env.addEnvPaths("DATAPATH")
 stree = treelib.readTree(env.findFile(conf["stree"]))
-params = spidirlib.readParams(env.findFile(conf["params"]))
-lens = spidirlib.readTreeDistrib(env.findFile(conf["lens"]))
+params = Spidir.readParams(env.findFile(conf["params"]))
+lens = Spidir.readTreeDistrib(env.findFile(conf["lens"]))
 totals = map(sum, zip(* lens.values()))
 rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 
@@ -193,8 +194,8 @@ def getCorrMatrix(lens, stree, leaves, useroot=True, get=None):
 os.system("mkdir -p %s" % conf["outdir"])
 os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
           (conf["params"], conf["stree"], conf["outdir"]))
-spidirlib.drawParamTree(stree, params, xscale=2000, 
-                        filename="%s/params-tree.svg" % conf["outdir"])
+Spidir.drawParamTree(stree, params, xscale=2000, 
+                     filename="%s/params-tree.svg" % conf["outdir"])
 
 
 
@@ -316,6 +317,9 @@ util.heatmap(corrmat, width=20, height=20,
              filename=os.path.join(conf["outdir"], "corr/abs.svg"))
 util.toc()
 
+# make png
+os.system("convert corr/abs.svg corr/abs.png")
+
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))
 tab.write(os.path.join(conf["outdir"], "corr/abs.tab"))
@@ -336,6 +340,9 @@ util.heatmap(rcorrmat, width=20, height=20,
              display=False,
              filename=os.path.join(conf["outdir"], "corr/rel.svg"))
 util.toc()
+
+# make png
+os.system("convert corr/rel.svg corr/rel.png")
 
 # write table
 tab = tablelib.Table(rcorrmat, headers=map(str, keys))
@@ -361,6 +368,9 @@ util.heatmap(corrmat, width=20, height=20,
              filename=os.path.join(conf["outdir"], "corr/abs_paths.svg"))
 util.toc()
 
+# make png
+os.system("convert corr/abs_paths.svg corr/abs_paths.png")
+
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))
 tab.write(os.path.join(conf["outdir"], "corr/abs_paths.tab"))
@@ -383,6 +393,9 @@ util.heatmap(rcorrmat, width=20, height=20,
              display=False,
              filename=os.path.join(conf["outdir"], "corr/rel_paths.svg"))
 util.toc()
+
+# make png
+os.system("convert corr/rel_paths.svg corr/rel_paths.png")
 
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))

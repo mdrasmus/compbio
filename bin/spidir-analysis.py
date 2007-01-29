@@ -318,7 +318,8 @@ util.heatmap(corrmat, width=20, height=20,
 util.toc()
 
 # make png
-os.system("convert corr/abs.svg corr/abs.png")
+os.system("convert %s/corr/abs.svg %s/corr/abs.png" % 
+          (conf["outdir"], conf["outdir"]))
 
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))
@@ -342,7 +343,8 @@ util.heatmap(rcorrmat, width=20, height=20,
 util.toc()
 
 # make png
-os.system("convert corr/rel.svg corr/rel.png")
+os.system("convert %s/corr/rel.svg %s/corr/rel.png" % 
+          (conf["outdir"], conf["outdir"]))
 
 # write table
 tab = tablelib.Table(rcorrmat, headers=map(str, keys))
@@ -369,7 +371,8 @@ util.heatmap(corrmat, width=20, height=20,
 util.toc()
 
 # make png
-os.system("convert corr/abs_paths.svg corr/abs_paths.png")
+os.system("convert %s/corr/abs_paths.svg %s/corr/abs_paths.png" % 
+          (conf["outdir"], conf["outdir"]))
 
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))
@@ -395,7 +398,8 @@ util.heatmap(rcorrmat, width=20, height=20,
 util.toc()
 
 # make png
-os.system("convert corr/rel_paths.svg corr/rel_paths.png")
+os.system("convert %s/corr/rel_paths.svg %s/corr/rel_paths.png" % 
+          (conf["outdir"], conf["outdir"]))
 
 # write table
 tab = tablelib.Table(corrmat, headers=map(str, keys))

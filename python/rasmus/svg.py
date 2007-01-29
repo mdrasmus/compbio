@@ -44,9 +44,12 @@ class Svg:
             """<svg width='%d' height='%d' 
             xmlns='http://www.w3.org/2000/svg' version='1.1'>\n""" % \
             (width, height))
+            
+        # default style
+        self.out.write("<g style='stroke: rgb(0,0,0);'>")
     
     def endSvg(self, close=True):
-        self.out.write("</svg>")
+        self.out.write("</g></svg>")
         if close:
             self.close()
     

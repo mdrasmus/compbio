@@ -440,8 +440,7 @@ def learnModel(trees, stree, gene2species, statsprefix="", filenames=None):
     util.tic("learn model")
 
     util.tic("find branch length distributions")
-    lengths, used = phylo.findBranchDistrib(trees, stree, gene2species,
-                                                False)
+    lengths, used = phylo.findBranchDistrib(trees, stree, gene2species, False)
     debug("Total trees matching species topology: %d out of %d" % 
           (sum(used), len(trees)))
     util.toc()

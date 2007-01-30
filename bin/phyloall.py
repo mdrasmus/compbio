@@ -18,7 +18,7 @@ from rasmus import mrbayes
 from rasmus import muscle
 from rasmus import paml
 from rasmus import phylip
-from rasmus import phyloutil
+from rasmus import phylo
 from rasmus import phyml
 from rasmus import puzzletree
 from rasmus import tablelib
@@ -380,11 +380,11 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
-        phyloutil.leastSquareError(usertree, mat, labels)
+        phylo.leastSquareError(usertree, mat, labels)
         tree = usertree
 
     elif prog == "nj":
-        tree = phyloutil.neighborjoin(mat, labels, usertree=usertree)
+        tree = phylo.neighborjoin(mat, labels, usertree=usertree)
     
     else:
         raise "unknown program '%s'" % prog

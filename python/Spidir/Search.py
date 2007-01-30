@@ -2,7 +2,7 @@ import random
 import math
 import StringIO
 
-from rasmus import phyloutil
+from rasmus import phylo
 from rasmus import treelib
 from rasmus import stats
 from rasmus import matrix
@@ -243,8 +243,8 @@ def proposeTreeWeighted(tree):
 
 def printMCMC(conf, i, tree, stree, gene2species, visited):
     if isDebug(DEBUG_LOW):
-        recon = phyloutil.reconcile(tree, stree, gene2species)
-        events = phyloutil.labelEvents(tree, recon)            
+        recon = phylo.reconcile(tree, stree, gene2species)
+        events = phylo.labelEvents(tree, recon)            
 
         debug("\n=======================================")
         debug("iter:", i, " visited:", len(visited))
@@ -260,7 +260,7 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
 
 def addVisited(conf, visited, tree, gene2species, thash=None):
     if thash is None:
-        thash = phyloutil.hashTree(tree)
+        thash = phylo.hashTree(tree)
     
     if thash in visited:
         visited[thash][2] += 1
@@ -275,7 +275,7 @@ def addVisited(conf, visited, tree, gene2species, thash=None):
                 sys.exit(0)
         
     if "debugtab_file" in conf:
-        shash = phyloutil.hashTree(tree, gene2species)
+        shash = phylo.hashTree(tree, gene2species)
 
         if "correcthash" in conf:
             correct = (conf["correcthash"] == thash)
@@ -307,8 +307,8 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
         tree = initTree
     else:
         #tree = bionj.bionj(labels=labels, distmat=distmat, verbose=False)
-        tree = phyloutil.neighborjoin(distmat, labels)
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        tree = phylo.neighborjoin(distmat, labels)
+        tree = phylo.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
@@ -351,10 +351,10 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
             # apply proposals
             for logl3, edge, change in proposals2[start:start+nproposals]:
                 proposeNni(tree, edge[0], edge[1], change)
-            tree2 = phyloutil.reconRoot(tree, stree, gene2species, newCopy=True)
+            tree2 = phylo.reconRoot(tree, stree, gene2species, newCopy=True)
             
             # calc likelihood
-            thash = phyloutil.hashTree(tree2)
+            thash = phylo.hashTree(tree2)
             if thash not in visited:
                 Spidir.setTreeDistances(conf, tree2, distmat, labels)
                 logl2 = Spidir.treeLogLikelihood(conf, tree2, stree, 
@@ -428,9 +428,9 @@ def getProposals(conf, tree, distmat, labels, stree,
     for edge in edges:
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
-            tree2 = phyloutil.reconRoot(tree, stree, gene2species, newCopy=True)
+            tree2 = phylo.reconRoot(tree, stree, gene2species, newCopy=True)
             
-            thash = phyloutil.hashTree(tree2)
+            thash = phylo.hashTree(tree2)
             if thash not in visited:
                 Spidir.setTreeDistances(conf, tree2, distmat, labels)
                 logl = Spidir.treeLogLikelihood(conf, tree2, stree, 
@@ -482,7 +482,7 @@ def proposeTree2(conf, tree,  distmat, labels,
         tree2 = proposeTreeWeighted(tree2)
 
     if random.random() < conf["rerootprob"]:
-        phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
+        phylo.reconRoot(tree2, stree, gene2species, newCopy=False)
     return tree2
 
 
@@ -531,7 +531,7 @@ def proposeTree3(conf, tree,  distmat, labels,
         #print "p3>>", node.name, node.parent.name
         regraftTree(tree, tree2.copy(), node, node.parent)
         
-        thash = phyloutil.hashTree(tree)
+        thash = phylo.hashTree(tree)
         
         if thash not in visited:        
             Spidir.setTreeDistances(conf, tree, distmat, labels)
@@ -561,8 +561,8 @@ def searchRegraft(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = phyloutil.neighborjoin(distmat, labels)
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        tree = phylo.neighborjoin(distmat, labels)
+        tree = phylo.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
@@ -603,8 +603,8 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = phyloutil.neighborjoin(distmat, labels)
-        tree = phyloutil.reconRoot(tree, stree, gene2species)
+        tree = phylo.neighborjoin(distmat, labels)
+        tree = phylo.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 
     # init likelihood score
@@ -624,7 +624,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
                             stree, gene2species, params, visited)
         
         # check visited dict
-        thash = phyloutil.hashTree(tree2)
+        thash = phylo.hashTree(tree2)
         if thash in visited:
             logl, tree2, count = visited[thash]
             this.nold += 1
@@ -716,7 +716,7 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
                 tree2.addChild(newnode, node)
                 tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
             
-            #tree2 = phyloutil.reconRoot(tree2, stree, gene2species)
+            #tree2 = phylo.reconRoot(tree2, stree, gene2species)
             Spidir.setTreeDistances(conf, tree2, distmat2, labels2)
             logl = Spidir.treeLogLikelihood(conf, tree2, stree, gene2species, params)
 
@@ -763,7 +763,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
     tree = tree.copy()
     
     # find initial logl
-    thash = phyloutil.hashTree(tree)
+    thash = phylo.hashTree(tree)
     if thash not in visited:
         Spidir.setTreeDistances(conf, tree, distmat, labels)
         logl = Spidir.treeLogLikelihood(conf, tree, stree, 
@@ -797,7 +797,7 @@ def searchExhaustive(conf, distmat, labels, tree, stree, gene2species, params,
         for change in (0,1):
             proposeNni(tree, edge[0], edge[1], change)
             
-            thash = phyloutil.hashTree(tree)
+            thash = phylo.hashTree(tree)
             if thash not in visited:
                 Spidir.setTreeDistances(conf, tree, distmat, labels)
                 logl = Spidir.treeLogLikelihood(conf, tree, stree, 

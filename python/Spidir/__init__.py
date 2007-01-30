@@ -11,7 +11,7 @@ import math, StringIO, copy, random, sys
 # rasmus libs
 from rasmus import bionj
 from rasmus import fasta
-from rasmus import phyloutil
+from rasmus import phylo
 from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib
@@ -216,7 +216,7 @@ def setTreeDistances(conf, tree, distmat, genes):
         util.tic("fit branch lengths")
     
     # perform LSE
-    lse = phyloutil.leastSquareError(tree, distmat, genes)
+    lse = phylo.leastSquareError(tree, distmat, genes)
     
     # catch unusual case that may occur in greedy search
     if sum(x.dist for x in tree.nodes.values()) == 0:
@@ -288,21 +288,21 @@ def setBranchError2(conf, tree, pathErrors, edges, topmat):
 
 
 def findSplits(network, leaves):
-    """DEPRECATED: use phyloutil.findAllBranchSplits()"""
+    """DEPRECATED: use phylo.findAllBranchSplits()"""
     
-    return phyloutil.findAllBranchSplits(network, leaves)
+    return phylo.findAllBranchSplits(network, leaves)
 
 
 def getSplit(tree):
-    """DEPRECATED: use phyloutil.findBranchSplits()"""
+    """DEPRECATED: use phylo.findBranchSplits()"""
     
-    return phyloutil.findBranchSplits(tree)
+    return phylo.findBranchSplits(tree)
               
 
 def robinsonFouldsError(tree1, tree2):
-    """DEPRECATED: use phyloutil.robinsonFouldsError()"""
+    """DEPRECATED: use phylo.robinsonFouldsError()"""
     
-    return phyloutil.robinsonFouldsError(tree1, tree2)
+    return phylo.robinsonFouldsError(tree1, tree2)
 
 
 
@@ -440,7 +440,7 @@ def learnModel(trees, stree, gene2species, statsprefix="", filenames=None):
     util.tic("learn model")
 
     util.tic("find branch length distributions")
-    lengths, used = phyloutil.findBranchDistrib(trees, stree, gene2species,
+    lengths, used = phylo.findBranchDistrib(trees, stree, gene2species,
                                                 False)
     debug("Total trees matching species topology: %d out of %d" % 
           (sum(used), len(trees)))
@@ -663,8 +663,8 @@ def getExtraBranches(root, recon, events, stree):
 def getBaserate(tree, stree, params, recon=None, gene2species=None):
     if recon == None:
         assert gene2species != None
-        recon = phyloutil.reconcile(tree, stree, gene2species)
-    events = phyloutil.labelEvents(tree, recon)
+        recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.labelEvents(tree, recon)
     
     extraBranches = getExtraBranches(tree.root, recon, events, stree)
     
@@ -748,7 +748,7 @@ def rareEventsLikelihood(conf, tree, stree, recon, events):
         if event == "dup":
             logl += log(conf["dupprob"])
         
-    #nloss = len(phyloutil.findLoss(tree, stree, recon))
+    #nloss = len(phylo.findLoss(tree, stree, recon))
     #logl += nloss * log(conf["lossprob"])
     
     return logl
@@ -942,8 +942,8 @@ def treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None
     # reconcile the gene tree
     # determine all events
     tree.clearData("logl", "extra", "fracs", "params", "unfold")
-    recon = phyloutil.reconcile(tree, stree, gene2species)
-    events = phyloutil.labelEvents(tree, recon)
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.labelEvents(tree, recon)
     
     # determine baserate
     if baserate == None:
@@ -1366,8 +1366,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
 
     # derive relative branch lengths
     tree.clearData("logl", "extra", "fracs", "params", "unfold")
-    recon = phyloutil.reconcile(tree, stree, gene2species)
-    events = phyloutil.labelEvents(tree, recon)
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.labelEvents(tree, recon)
 
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
@@ -1494,8 +1494,8 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
                                     
         elif search == "exhaustive":
             if tree == None:
-                tree = phyloutil.neighborjoin(distmat, labels)
-                tree = phyloutil.reconRoot(tree, stree, gene2species)
+                tree = phylo.neighborjoin(distmat, labels)
+                tree = phylo.reconRoot(tree, stree, gene2species)
             
             tree, logl = Search.searchExhaustive(conf, distmat, labels, tree, stree, 
                                           gene2species, params, 
@@ -1525,7 +1525,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
             debug("use distances from file")
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
-        thash = phyloutil.hashTree(tree)
+        thash = phylo.hashTree(tree)
         if thash in visited:
             a, b, count = visited[thash]
         else:
@@ -1534,8 +1534,8 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
         if isDebug(DEBUG_LOW):
             debug("\nuser given tree:")
-            recon = phyloutil.reconcile(tree, stree, gene2species)
-            events = phyloutil.labelEvents(tree, recon)
+            recon = phylo.reconcile(tree, stree, gene2species)
+            events = phylo.labelEvents(tree, recon)
             drawTreeLogl(tree, events=events)        
     
     # eval the user given trees
@@ -1556,7 +1556,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         print len(strees)
         
         for top in strees:
-            tree = phyloutil.stree2gtree(top, labels, gene2species)
+            tree = phylo.stree2gtree(top, labels, gene2species)
             evalUserTree(tree)    
     
     if len(conf["tops"]) > 0:
@@ -1572,8 +1572,8 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
         if isDebug(DEBUG_LOW):
             debug("\ncorrect tree:")
-            recon = phyloutil.reconcile(tree, stree, gene2species)
-            events = phyloutil.labelEvents(tree, recon)
+            recon = phylo.reconcile(tree, stree, gene2species)
+            events = phylo.labelEvents(tree, recon)
             drawTreeLogl(tree, events=events)
     
     

@@ -17,7 +17,7 @@ import sys
 from rasmus import genomeutil
 from rasmus import fasta
 from rasmus import phylip
-from rasmus import phyloutil
+from rasmus import phylo
 from rasmus import progress
 from rasmus import stats
 from rasmus import treelib
@@ -245,7 +245,7 @@ def buildTree(conf, stree, gene2species):
     params = Spidir.readParams(conf["param"])
     
     if "correcttree" in conf:
-        conf["correcthash"] = phyloutil.hashTree(conf["correcttree"])
+        conf["correcthash"] = phylo.hashTree(conf["correcttree"])
     
     
     if "dist" in conf:
@@ -265,11 +265,11 @@ def buildTree(conf, stree, gene2species):
             # test for correctness
             if "correcttree" in conf:
                 correctTree = conf["correcttree"]
-                phyloutil.hashOrderTree(correctTree)
-                phyloutil.hashOrderTree(tree)
+                phylo.hashOrderTree(correctTree)
+                phylo.hashOrderTree(tree)
                 
-                thash1 = phyloutil.hashTree(tree)
-                thash2 = phyloutil.hashTree(correctTree)
+                thash1 = phylo.hashTree(tree)
+                thash2 = phylo.hashTree(correctTree)
                 
                 print "spidir: "
                 treelib.drawTree(tree, maxlen=5, minlen=5)

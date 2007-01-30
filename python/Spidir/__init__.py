@@ -211,80 +211,6 @@ def drawParamTree(tree, params, *args, **kargs):
 # Branch length fitting
 #-------------------------------------------------------------------------------
 
-def neighborjoin(distmat, genes):
-    tree = treelib.Tree()
-    leaves = {}
-    dists = util.Dict(2, None)
-    restdists = {}
-    
-    # initialize distances
-    for i in range(len(genes)):
-        r = 0
-        for j in range(len(genes)):
-            dists[genes[i]][genes[j]] = distmat[i][j]
-            r += distmat[i][j]
-        restdists[genes[i]] = r / (len(genes) - 2)
-        
-    # initialize leaves
-    for gene in genes:
-        tree.add(treelib.TreeNode(gene))
-        leaves[gene] = 1
-    
-    # join loop
-    while len(leaves) > 2:       
-        # search for closest genes
-        low = util.INF
-        lowpair = (None, None)
-        leaveslst = leaves.keys()
-        
-        
-        for i in range(len(leaves)):
-            for j in range(i+1, len(leaves)):
-                gene1, gene2 = leaveslst[i], leaveslst[j]
-                dist = dists[gene1][gene2] - restdists[gene1] - restdists[gene2]
-                
-                if dist < low:
-                    low = dist
-                    lowpair = (gene1, gene2)
-        
-        # join gene1 and gene2
-        gene1, gene2 = lowpair
-        parent = treelib.TreeNode(tree.newName())
-        tree.addChild(parent, tree.nodes[gene1])
-        tree.addChild(parent, tree.nodes[gene2])
-        
-        # set distances
-        tree.nodes[gene1].dist = (dists[gene1][gene2] + restdists[gene1] - 
-                                  restdists[gene2]) / 2.0
-        tree.nodes[gene2].dist = dists[gene1][gene2] - tree.nodes[gene1].dist
-        
-        # gene1 and gene2 are no longer leaves
-        del leaves[gene1]
-        del leaves[gene2]
-        
-        gene3 = parent.name
-        r = 0
-        for gene in leaves:
-            dists[gene3][gene] = (dists[gene1][gene] + dists[gene2][gene] -
-                                  dists[gene1][gene2]) / 2.0
-            dists[gene][gene3] = dists[gene3][gene]
-            r += distmat[i][j]
-        leaves[gene3] = 1
-        
-        if len(leaves) > 2:
-            restdists[gene3] = r / (len(leaves) - 2)
-    
-    # join the last two genes into a tribranch
-    gene1, gene2 = leaves.keys()
-    if type(gene1) == str:
-        gene1, gene2 = gene2, gene1
-    tree.addChild(tree.nodes[gene1], tree.nodes[gene2])
-    tree.nodes[gene2].dist = dists[gene1][gene2]
-    tree.root = tree.nodes[gene1]
-    
-    return tree
-
-
 
 def findSplits(network, leaves):
     # find vertice and edge visit history
@@ -1738,7 +1664,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
                                     
         elif search == "exhaustive":
             if tree == None:
-                tree = neighborjoin(distmat, labels)
+                tree = phyloutil.neighborjoin(distmat, labels)
                 tree = phyloutil.reconRoot(tree, stree, gene2species)
             
             tree, logl = Search.searchExhaustive(conf, distmat, labels, tree, stree, 

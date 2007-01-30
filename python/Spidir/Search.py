@@ -307,7 +307,7 @@ def searchHillClimb(conf, distmat, labels, stree, gene2species, params,
         tree = initTree
     else:
         #tree = bionj.bionj(labels=labels, distmat=distmat, verbose=False)
-        tree = Spidir.neighborjoin(distmat, labels)
+        tree = phyloutil.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 
@@ -561,7 +561,7 @@ def searchRegraft(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = Spidir.neighborjoin(distmat, labels)
+        tree = phyloutil.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 
@@ -603,7 +603,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
     if initTree != None:
         tree = initTree
     else:
-        tree = Spidir.neighborjoin(distmat, labels)
+        tree = phyloutil.neighborjoin(distmat, labels)
         tree = phyloutil.reconRoot(tree, stree, gene2species)
         Spidir.setTreeDistances(conf, tree, distmat, labels)
 

@@ -861,6 +861,17 @@ def findBranchSplits(tree):
     return splits2
 
 
+def robinsonFouldsError(tree1, tree2):
+    splits1 = findBranchSplits(tree1)
+    splits2 = findBranchSplits(tree2)
+
+    overlap = set(splits1.values()) & set(splits2.values())
+    
+    #assert len(splits1) == len(splits2)
+
+    return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))
+
+
 
 #============================================================================
 # duplication loss counting

@@ -1590,58 +1590,11 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
             debug("SEARCH: NEVER saw correct tree")
 
     
-    
-    
-    
     # return ML tree
-    if True:
-        trees = [x[1] for x in visited.itervalues()]
-        i = util.argmax([x.data["logl"] for x in trees])
-        return trees[i], trees[i].data["logl"]
+    trees = [x[1] for x in visited.itervalues()]
+    i = util.argmax([x.data["logl"] for x in trees])
+    return trees[i], trees[i].data["logl"]
     
-    """
-    # find best tree
-    if False:
-        errorfactor = 1.3
-        minerror = min(x[1].data["error"] for x in visited.itervalues())
-
-        # find all tree with error near minerror
-        goodtrees = filter(lambda x: x[1].data["error"] < errorfactor * minerror,
-                           visited.itervalues())
-
-        # find best tree as max logl in good trees
-        i = util.argmax([x[1].data["logl"] for x in goodtrees])
-
-    if False:
-        errorcutoff = conf["maxerror"]
-        trees = [x[1] for x in visited.values()]
-        errors = [tree.data["error"] for tree in trees]
-        
-
-        # find all tree with acceptable error
-        goodind = util.find(lambda err: err < errorcutoff, errors)
-        if len(goodind) > 0:
-            goodtrees = util.mget(trees, goodind)
-        else:
-            # default to all trees if all errors are high
-            debug("WARNING: high error rate in all trees found")
-            goodtrees = trees
-
-        # find best tree as max logl in good trees
-        i = util.argmax([x.data["logl"] for x in goodtrees])
-        return goodtrees[i], goodtrees[i].data["logl"]
-    
-    if False:
-        # find best consensus tree
-        items = visited.values()
-        items.sort(key=lambda x: x[1].data["logl"], reverse=True)
-        mat = [[x[1], x[2]] for x in items[:conf["toptrees"]]]
-        trees, counts = zip(* mat)
-
-        phylip.writeBootTrees(conf["out"] + ".trees", trees, counts=counts)
-        tree = phylip.consense(trees, counts=counts, verbose=False, args="r\ny")
-        return tree, 0
-    """
 
 
 def consensusTree(trees, counts):

@@ -110,6 +110,18 @@ def viewTree(tree, options = "-t 1"):
     os.remove(tmpfile)
     
 
+def tree2distmat(tree, leaves):
+    """get pair-wise distances between leaves of a tree"""
+    
+    # TODO: not implemented efficiently
+    mat = []
+    for i in range(len(leaves)):
+        mat.append([])
+        for j in range(len(leaves)):
+            mat[-1].append(treelib.findDist(tree, leaves[i], leaves[j]))
+    
+    return mat
+
 
 def reconcile(gtree, stree, gene2species = gene2species):
     recon = {}

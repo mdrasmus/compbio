@@ -46,6 +46,10 @@ def plotAbsLens(name, lens, low, high, step):
     lens = filter(util.withinfunc(low, high), lens)
     
     lens2 = filter(util.gtfunc(.001), lens)
+    
+    if len(lens2) == 0:
+        return None, None
+    
     mu = stats.mean(lens2)
     sigma2 = stats.variance(lens2)
     prms = [mu*mu/sigma2, mu/sigma2]
@@ -98,6 +102,9 @@ def plotRelLens(name, params, lens, low, high, step):
     
     lens = filter(util.withinfunc(low, high), lens)
     lens2 = filter(util.withinfunc(.00001, high), lens)
+    
+    if len(lens2) == 0:
+        return None, None
     
     prms, resid = stats.fitDistrib(stats.normalPdf, params, 
                                    lens2, low, high, step)
@@ -230,6 +237,10 @@ if 1:
         high = 3 * stats.mean(lens[name])
         step = (high - low) / conf["nbins"]
         p, fit = plotAbsLens(name, lens[name], low, high, step)
+        
+        if p == None:
+            continue
+        
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
         
@@ -241,8 +252,9 @@ if 1:
         
     util.toc()
 
-if 1:
 
+
+if 1:
     # plot all rel branch distributions
     util.tic("plot relative branch lengths")
     for name in stree.nodes:
@@ -254,6 +266,10 @@ if 1:
         high = 3 * stats.mean(rlens[name])
         step = (high - low) / conf["nbins"]
         p, fit = plotRelLens(name, params[name], rlens[name], low, high, step)
+        
+        if p == None:
+            continue
+        
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
         

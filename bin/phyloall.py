@@ -380,9 +380,7 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
-        import Spidir
-        Spidir.setTreeDistances({"debug": 2}, 
-                                usertree, mat, labels)
+        phyloutil.leastSquareError(usertree, mat, labels)
         tree = usertree
 
     elif prog == "nj":

@@ -11,7 +11,6 @@ import math, StringIO, copy, random, sys
 # rasmus libs
 from rasmus import bionj
 from rasmus import fasta
-from rasmus import matrix
 from rasmus import phyloutil
 from rasmus import stats
 from rasmus import tablelib
@@ -212,174 +211,22 @@ def drawParamTree(tree, params, *args, **kargs):
 #-------------------------------------------------------------------------------
 
 
-def findSplits(network, leaves):
-    # find vertice and edge visit history
-    start = network.keys()[0]
-
-    openset = [start]
-    closedset = {}
-    
-    vhistory = []
-    ehistory = []
-    elookup = util.Dict(1, [])
-    
-    
-    while len(openset) > 0:
-        vertex = openset.pop()
-        
-        vhistory.append(vertex)
-        
-        if len(vhistory) > 1:
-            edge = tuple(util.sort(vhistory[-2:]))        
-            ehistory.append(edge)
-            elookup[edge].append(len(ehistory) - 1)
-        
-        # skip closed vertices
-        if vertex in closedset:
-            continue
-        
-        for v in network[vertex].keys():
-            if v not in closedset:
-                openset.append(vertex)            
-                openset.append(v)
-        
-
-        # close new vertex
-        closedset[vertex] = 1
-    
-    
-    # use histories to define half each split
-    splits = {}
-    for edge in elookup:
-        set1 = {}
-        
-        start, end = elookup[edge]
-        for i in range(start+1, end+1):
-            if vhistory[i] in leaves:
-                set1[vhistory[i]] = 1
-        
-        # fill in other half of splits using complement
-        set2 = {}
-        for v in leaves:
-            if v not in set1:
-                set2[v] = 1
-        
-        if edge[0] == vhistory[start]:
-            splits[edge] = [set2, set1]
-        else:
-            splits[edge] = [set1, set2]
-        
-    
-    return splits
-
-def makeVector(array):
-    if len(array.shape) == 2:
-        if array.shape[0] == 1:
-            return array[0]
-        else:
-            return scipy.transpose(array)[0]
-    else:
-        return array
-
 def setTreeDistances(conf, tree, distmat, genes):
     if isDebug(DEBUG_MED):
         util.tic("fit branch lengths")
     
-    if treelib.isRooted(tree):
-        rootedge = sorted([x.name for x in tree.root.children])
-        treelib.unroot(tree, newCopy=False)
-    else:
-        rootedge = None
-    
-            
-    network = treelib.tree2graph(tree)
-        
-    # create pairwise dist array
-    dists = []
-    for i in xrange(len(genes)):
-        for j in xrange(i+1, len(genes)):
-            dists.append(distmat[i][j])
-    
-    # find how edges split vertices
-    splits = findSplits(network, set(genes))
-    edges = splits.keys()
-    
-    # create topology matrix
-    topmat = matrix.makeMatrix(len(dists), len(edges))
-    
-    vlookup = util.list2lookup(genes)
-    n = len(genes)
-    for e in xrange(len(edges)):
-        set1, set2 = splits[edges[e]]
-        for gene1 in set1:
-            for gene2 in set2:
-                i, j = util.sort([vlookup[gene1], vlookup[gene2]])
-                index = i*n-i*(i+1)/2+j-i-1
-                topmat[index][e] = 1
-    
-        
-    A = scipy.array(topmat)
-    d = scipy.array(dists)
-    b,resids,rank,singlars = scipy.linalg.lstsq(A, d)
-    
-    # force non-negative branch lengths
-    b = [max(float(x), 0) for x in makeVector(b)]
-    #b = [float(x) for x in makeVector(b)]
-    
-    d2 = makeVector(scipy.dot(A, b))
-    resids = (d2 - d).tolist()
-    d = d.tolist()
-    
-    
-    # recreate rooting branches
-    if rootedge != None:
-        # restore original rooting
-        if tree.nodes[rootedge[0]].parent == tree.nodes[rootedge[1]]:
-            treelib.reroot(tree, rootedge[0], newCopy=False)
-        else:
-            treelib.reroot(tree, rootedge[1], newCopy=False)
-    
-        # find root edge in edges
-        for i in xrange(len(edges)):
-            if sorted(edges[i]) == rootedge:
-                break
-                
-        edges[i] = [rootedge[0], tree.root.name]
-        edges.append([rootedge[1], tree.root.name])
-        b[i] /= 2.0
-        b.append(b[i])
-        resids[i] /= 2.0
-        resids.append(resids[i])
-        d[i] /= 2.0
-        d.append(d[i])
-        
-        for row in topmat:
-            row.append(row[i])
-
-    
-    for i in xrange(len(edges)):
-        gene1, gene2 = edges[i]
-        if tree.nodes[gene2].parent == tree.nodes[gene1]:
-            gene1, gene2 = gene2, gene1
-        tree.nodes[gene1].dist = b[i]
-    
-    #for node in tree.nodes.values():
-    #    assert node.dist >= 0
-    
+    # perform LSE
+    lse = phyloutil.leastSquareError(tree, distmat, genes)
     
     # catch unusual case that may occur in greedy search
     if sum(x.dist for x in tree.nodes.values()) == 0:
         for node in tree.nodes.values():
             node.dist = .01
     
-    tree.data["error"] = math.sqrt(scipy.dot(resids, resids)) / \
+    tree.data["error"] = math.sqrt(scipy.dot(lse.resids, lse.resids)) / \
                                    sum(x.dist for x in tree.nodes.values())
     
-    #util.writeVector("resids", resids)
-    #util.writeVector("dists", d)
-    #util.writeVector("dists2", d2)
-    
-    setBranchError(conf, tree, resids, d, edges, topmat)
+    setBranchError(conf, tree, lse.resids, lse.paths, lse.edges, lse.topmat)
         
     if isDebug(DEBUG_MED):
         util.toc()
@@ -438,42 +285,25 @@ def setBranchError2(conf, tree, pathErrors, edges, topmat):
     for node in tree.nodes.itervalues():
         if node.name in npaths:
             node.data["error"] /= npaths[node.name]
-        
+
+
+def findSplits(network, leaves):
+    """DEPRECATED: use phyloutil.findAllBranchSplits()"""
+    
+    return phyloutil.findAllBranchSplits(network, leaves)
 
 
 def getSplit(tree):
-    splits = findSplits(treelib.tree2graph(tree), tree.leafNames())
-    splits2 = {}
+    """DEPRECATED: use phyloutil.findBranchSplits()"""
     
-    for edge, sets in splits.iteritems():
-        # skip external edges
-        if len(sets[0]) == 1 or len(sets[1]) == 1:
-            continue
-        
-        s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
-        splits2[edge] = s
-    
-    # if tree is rooted, remove duplicate edge
-    if treelib.isRooted(tree):
-        edge1 = tuple(sorted([tree.root.name, tree.root.children[0].name]))
-        edge2 = tuple(sorted([tree.root.name, tree.root.children[1].name]))
-        if edge1 > edge2:
-            edge1, edge2 = edge2, edge1
-        if edge1 in splits2 and edge2 in splits2:
-            del splits2[edge1]
-    
-    return splits2
+    return phyloutil.findBranchSplits(tree)
               
 
 def robinsonFouldsError(tree1, tree2):
-    splits1 = getSplit(tree1)
-    splits2 = getSplit(tree2)
-
-    overlap = set(splits1.values()) & set(splits2.values())
+    """DEPRECATED: use phyloutil.robinsonFouldsError()"""
     
-    #assert len(splits1) == len(splits2)
+    return phyloutil.robinsonFouldsError(tree1, tree2)
 
-    return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))
 
 
 #-------------------------------------------------------------------------------

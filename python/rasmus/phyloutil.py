@@ -657,7 +657,7 @@ def getBranchZScores(rates, params):
 
 
 #=============================================================================
-# Phylogenetic reconstruction
+# Phylogenetic reconstruction: Neighbor-Joining
 #
 
 def neighborjoin(distmat, genes, usertree=None):
@@ -772,11 +772,138 @@ def neighborjoin(distmat, genes, usertree=None):
     return tree
 
 
+
+
+
+#=============================================================================
+# Phylogenetic reconstruct: Least Square Error
+
+def leastSquareError(tree, distmat, genes, forcePos=True):
+    """Least Squared Error algorithm for phylogenetic reconstruction"""
+    
+    # use SCIPY to perform LSE
+    import scipy
+    
+    def makeVector(array):
+        """convience function for handling different configurations of scipy"""
+        if len(array.shape) == 2:
+            if array.shape[0] == 1:
+                return array[0]
+            else:
+                return scipy.transpose(array)[0]
+        else:
+            return array
+            
+    
+    if treelib.isRooted(tree):
+        rootedge = sorted([x.name for x in tree.root.children])
+        treelib.unroot(tree, newCopy=False)
+    else:
+        rootedge = None        
+    
+    # create pairwise dist array
+    dists = []
+    for i in xrange(len(genes)):
+        for j in xrange(i+1, len(genes)):
+            dists.append(distmat[i][j])
+    
+    # create topology matrix
+    topmat, edges = makeTopologyMatrix(tree, genes)
+    
+    # solve LSE
+    topmat2 = scipy.array(topmat)
+    paths = scipy.array(dists)
+    edgelens, resids, rank, singlars = scipy.linalg.lstsq(topmat2, paths)
+    
+    # force non-negative branch lengths
+    if forcePos:
+        edgelens = [max(float(x), 0) for x in makeVector(edgelens)]
+    else:
+        edgelens = [float(x) for x in makeVector(edgelens)]
+    
+    # calc path residuals (errors)
+    paths2 = makeVector(scipy.dot(topmat2, edgelens))
+    resids = (paths2 - paths).tolist()
+    paths = paths.tolist()
+    
+    # set branch lengths
+    setBranchLengths(tree, edges, edgelens, paths, resids, 
+                     topmat=topmat, rootedge=rootedge)
+    
+    return util.Bundle(resids=resids, 
+                       paths=paths, 
+                       edges=edges, 
+                       topmat=topmat)
+
+
+
+def makeTopologyMatrix(tree, genes):
+
+    # find how edges split vertices
+    network = treelib.tree2graph(tree)
+    splits = findAllBranchSplits(network, set(genes))
+    edges = splits.keys()
+
+    # create topology matrix
+    n = len(genes) 
+    ndists = n*(n-1) / 2
+    topmat = util.makeMatrix(ndists, len(edges))
+    
+    vlookup = util.list2lookup(genes)
+    n = len(genes)
+    for e in xrange(len(edges)):
+        set1, set2 = splits[edges[e]]
+        for gene1 in set1:
+            for gene2 in set2:
+                i, j = util.sort([vlookup[gene1], vlookup[gene2]])
+                index = i*n-i*(i+1)/2+j-i-1
+                topmat[index][e] = 1
+    
+    return topmat, edges
+
+
+def setBranchLengths(tree, edges, edgelens, paths, resids, 
+                     topmat=None, rootedge=None):
+    # recreate rooting branches
+    if rootedge != None:
+        # restore original rooting
+        if tree.nodes[rootedge[0]].parent == tree.nodes[rootedge[1]]:
+            treelib.reroot(tree, rootedge[0], newCopy=False)
+        else:
+            treelib.reroot(tree, rootedge[1], newCopy=False)
+    
+        # find root edge in edges
+        for i in xrange(len(edges)):
+            if sorted(edges[i]) == rootedge:
+                break
+                
+        edges[i] = [rootedge[0], tree.root.name]
+        edges.append([rootedge[1], tree.root.name])
+        edgelens[i] /= 2.0
+        edgelens.append(edgelens[i])
+        resids[i] /= 2.0
+        resids.append(resids[i])
+        paths[i] /= 2.0
+        paths.append(paths[i])
+        
+        if topmat != None:
+            for row in topmat:
+                row.append(row[i])
+    
+    # set branch lengths
+    for i in xrange(len(edges)):
+        gene1, gene2 = edges[i]
+        if tree.nodes[gene2].parent == tree.nodes[gene1]:
+            gene1, gene2 = gene2, gene1
+        tree.nodes[gene1].dist = edgelens[i]
+
+
+
 #============================================================================
 # branch splits
 #
 
-def findBranchSplitsHelper(network, leaves):
+def findAllBranchSplits(network, leaves):
     # find vertice and edge visit history
     start = network.keys()[0]
 
@@ -838,7 +965,7 @@ def findBranchSplitsHelper(network, leaves):
 
 
 def findBranchSplits(tree):
-    splits = findBranchSplitsHelper(treelib.tree2graph(tree), tree.leafNames())
+    splits = findAllBranchSplits(treelib.tree2graph(tree), tree.leafNames())
     splits2 = {}
     
     for edge, sets in splits.iteritems():

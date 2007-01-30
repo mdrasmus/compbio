@@ -119,7 +119,8 @@ def tree2distmat(tree, leaves):
         mat.append([])
         for j in range(len(leaves)):
             mat[-1].append(treelib.findDist(tree, leaves[i], leaves[j]))
-return mat
+    
+    return mat
 
 
 def reconcile(gtree, stree, gene2species = gene2species):
@@ -794,6 +795,7 @@ def leastSquareError(tree, distmat, genes, forcePos=True):
     
     # use SCIPY to perform LSE
     import scipy
+    import scipy.linalg
     
     def makeVector(array):
         """convience function for handling different configurations of scipy"""

@@ -3,14 +3,13 @@ import math
 import random
 import sys
 
-# rasmus libs
-import graph
-import textdraw
-import util
 
 
+#=============================================================================
 
 class UnionFind:
+    """An implementation of the UNINON/FIND algorithm"""
+
     def __init__(self, items):
         self.parent = None    
         self.items = dict.fromkeys(items, 1)
@@ -63,12 +62,12 @@ class UnionFind:
         """DEPRECATED: use len(set)"""
         return len(self.root().items)
 
+
+#=============================================================================
+# QuadTree data structure
     
 class Rect:
-    x1 = 0
-    y1 = 0
-    x2 = 0
-    y2 = 0        
+    """A representation of a rectangle"""       
     
     def __init__(self, x1, y1, x2, y2):
         if x1 < x2:
@@ -94,11 +93,6 @@ class QuadNode:
         
         
 class QuadTree:
-    nodes = []
-    children = []
-    center = [0,0]
-    size = 100
-    depth = 0
     MAX = 10
     MAX_DEPTH = 10
     
@@ -183,10 +177,7 @@ class QuadTree:
 
 
 
-######
-#    
-#
-
+#=============================================================================
 # TODO: make a funtion based linear search
 
 def binsearch(lst, val, compare=cmp, order=1):
@@ -239,33 +230,19 @@ def binsearch(lst, val, compare=cmp, order=1):
         return low, top
 
 
-
-# include tree algorithms into this module
+#
+# DEPRECATED
+#
+# include tree algorithms into this module for backwards compatability
+# remove this soon.
+#
 from treelib import *
 
 
 
 if __name__ == "__main__":
-    #tree = Tree()
-    #tree.readNewick("test/small3.tree")    
-    #trees = smallSubtrees(tree, 30)
     
-    #tree2 = reroot(tree, 2)
-    #tree2, good = removeOutgroup(tree, ['a','b'])
-    #print good
-    #tree2.writeNewick(sys.stdout)
-    
-    # test tree drawing
     if True:
-        import common
-        tree = readTree(common.strStream(
-            """((a:.2,b:.1):.6,
-                ((c:.3,d:.4):.8,e:.5):.2)"""))
-        drawTreeLens(tree)
-        
-
-    
-    if False:
         set1 = UnionFind()
         set2 = UnionFind()
         set3 = UnionFind()

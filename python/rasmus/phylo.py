@@ -11,8 +11,8 @@ import os
 import sys
 
 # xml support
-from xml.sax import make_parser
-import xml.sax.handler
+#from xml.sax import make_parser
+#import xml.sax.handler
 
 # rasmus imports
 import blast
@@ -790,7 +790,8 @@ def neighborjoin(distmat, genes, usertree=None):
 #=============================================================================
 # Phylogenetic reconstruct: Least Square Error
 
-def leastSquareError(tree, distmat, genes, forcePos=True):
+def leastSquareError(tree, distmat, genes, forcePos=True, weightmat=None,
+                     weighting=False):
     """Least Squared Error algorithm for phylogenetic reconstruction"""
     
     # use SCIPY to perform LSE
@@ -823,10 +824,23 @@ def leastSquareError(tree, distmat, genes, forcePos=True):
     # create topology matrix
     topmat, edges = makeTopologyMatrix(tree, genes)
     
-    # solve LSE
+    # setup matrix and vector
     topmat2 = scipy.array(topmat)
     paths = scipy.array(dists)
-    edgelens, resids, rank, singlars = scipy.linalg.lstsq(topmat2, paths)
+    
+    if weighting:
+        weightmat = makeWeightMatrix(topmat2, paths)
+    
+    # weighting
+    if weightmat:
+        topmat3 = scipy.dot(weightmat, topmat2)
+        paths3 = scipy.dot(weightmat, paths)
+    else:
+        topmat3 = topmat2
+        paths3 = paths
+    
+    # solve LSE
+    edgelens, resids, rank, singlars = scipy.linalg.lstsq(topmat3, paths3)
     
     # force non-negative branch lengths
     if forcePos:
@@ -849,6 +863,20 @@ def leastSquareError(tree, distmat, genes, forcePos=True):
                        topmat=topmat)
 
 
+def makeWeightMatrix(topmat, paths):
+    import scipy
+    
+    weightmat = scipy.transpose(topmat)
+    
+    
+    for row in weightmat:
+        tot = sum(row)
+        
+        for i in xrange(len(row)):
+            row[i] *= 1.0 #* float(paths[i])
+    
+    return weightmat
+
 
 def makeTopologyMatrix(tree, genes):
 
@@ -870,7 +898,7 @@ def makeTopologyMatrix(tree, genes):
             for gene2 in set2:
                 i, j = util.sort([vlookup[gene1], vlookup[gene2]])
                 index = i*n-i*(i+1)/2+j-i-1
-                topmat[index][e] = 1
+                topmat[index][e] = 1.0
     
     return topmat, edges
 

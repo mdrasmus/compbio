@@ -1,7 +1,9 @@
 #
 # SPIDIR library
 #
-# note: SPIDIR was a codename, it may still be present in the code.
+# note: SINDIR was a codename, it may still be present in the code.
+#
+# This library is DEPRECATED use the Spidir package
 #
 
 

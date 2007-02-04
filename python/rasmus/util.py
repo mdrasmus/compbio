@@ -184,7 +184,7 @@ def remove(lst, *vals):
 def sort(lst, compare=cmp, key=None, reverse=False):
     """Returns a sorted copy of a list
        
-       python2.5 now has sorted which fulfills the same purpose
+       python2.5 now has sorted() which fulfills the same purpose
        
        lst     -- a list to sort
        compare -- a function for comparing items (default: cmp)
@@ -206,15 +206,23 @@ def reverse(lst):
 
 def cget(mat, *i):
     """Returns the column(s) '*i' of a 2D list 'mat'
-    
+        
+       mat -- matrix or 2D list 
+       *i  -- columns to extract from matrix
+       
        notes:
        If one column is given, the column is returned as a list.
-       If multiple columns are given, a submatrix is returned.
+       If multiple columns are given, a list of columns (also lists) is returned
     """
+    
     if len(i) == 1:
         return [row[i[0]] for row in mat]
     else:
-        return [[row[j] for j in i] for row in mat]
+        cols = []
+
+        for index in i:
+            cols.append([row[index] for row in mat])
+        return cols
 
 
 def mget(lst, ind):
@@ -259,6 +267,9 @@ def revdict(dic, allowdups=False):
     """
     Reverses a dict 'dic' such that the keys become values and the 
     values become keys.
+    
+    allowdups -- if True, one of several key-value pairs with the same value 
+                 will be arbitrarily choosen.  Otherwise an expection is raised
     """
     
     dic2 = {}
@@ -334,7 +345,7 @@ def unique(lst):
 
 def flatten(lst, depth=INF):
     """
-    Flattens nested lists into one list
+    Flattens nested lists/tuples into one list
     
     depth -- specifies how deep flattening should occur
     """
@@ -568,16 +579,7 @@ def islands(lst):
 '''
 
 
-def overlap(a, b, x, y, inc=True):
-    """
-    Returns True if range [a,b] overlaps [x,y]
-    
-    inc -- treat [a,b] and [x,y] as inclusive
-    """
-    if inc:
-        return (y >= a) and (x <= b)
-    else:
-        return (y > a) and (x < b)
+
 
 
 #=============================================================================
@@ -744,6 +746,19 @@ def compose(* funcs):
     for i in xrange(len(funcs)-2, -1, -1):
         f = compose2(funcs[i], f)
     return f
+
+def overlap(a, b, x, y, inc=True):
+    """
+    Returns True if range [a,b] overlaps [x,y]
+    
+    inc -- if True, treat [a,b] and [x,y] as inclusive
+    """
+    if inc:
+        return (y >= a) and (x <= b)
+    else:
+        return (y > a) and (x < b)
+
+
 
 #=============================================================================
 # regex
@@ -1504,6 +1519,7 @@ from plotting import *
 
 
 """
+=============================================================================
 DEPRECATED
 
 class IterFunc:

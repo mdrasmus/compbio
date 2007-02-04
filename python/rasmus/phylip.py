@@ -1,6 +1,22 @@
 """
 
     PHYLIP Wrapper for python
+    
+    author: Matt Rasmussen
+    date:   2/4/2007
+
+
+The following programs should be in your PATH
+
+    dnaml       -- Maximum likelihood (nucleotide)
+    proml       -- Maximum likelihood (peptide)
+    dnapars     -- Parsimony (nucleotide)
+    protpars    -- Parsimony (peptide)
+    neighbor    -- Neighbor Joining
+    dnadist     -- Distance estimation (nucleotide)
+    protdist    -- Distance estimation (peptide)
+    seqboot     -- Sequence bootstrapping
+    consense    -- Consensus tree building
 
 """
 
@@ -11,22 +27,26 @@ import shutil
 import sys
 
 # rasmus imports
-import fasta
-import matrix
-import util
-import treelib
+from rasmus import fasta
+from rasmus import util
+from rasmus import treelib
 
+
+
+#=============================================================================
+# managing input, output, and execution of PHYLIP-like programs
+#
 
 def validateSeq(seqs):
     """Ensures sequences are all same size"""
     
     sizes = map(len, seqs.values())
-    assert max(sizes) == min(sizes), "sequences are not same length"
+    assert util.equal(* sizes), "sequences are not same length"
 
 
-
-
-def checkTempFiles(force):    
+def checkTempFiles(force):
+    """Ensure PHYLIP tempfiles do not already exist in current directory"""
+    
     if force:
         os.system("rm -f infile outfile outtree")
     elif os.path.isfile("infile") or \
@@ -35,7 +55,9 @@ def checkTempFiles(force):
         raise Exception("Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!")
 
 
-def execPhylip(cmd, args, verbose):
+def execPhylip(cmd, args, verbose=False):
+    """Execute a phylip-like program that expects arguments from stdin"""
+
     if verbose:
         util.logger("exec: %s" % cmd)
         util.logger("args: %s" % args)
@@ -48,26 +70,37 @@ def execPhylip(cmd, args, verbose):
 
 
 def cleanup(files=["infile", "outfile", "outtree"]):
+    """Remove PHYLIP tempfiles from current directory
+    
+       THIS FUNCTION IS COMMONLY NOT USED.  SEE createTempDir()/cleanupTempDir()
+    """
+    
     for f in files:
-        try:
+        if os.path.exists(f):
             os.remove(f)
-        except OSError:
-            pass
 
 
-def createTempDir():
-    directory = os.path.split(util.tempfile(".", "tmpphylip_", ""))[1]
+def createTempDir(prefix="tmpphylip_"):
+    """Create a temporary directory for executing PHYLIP"""
+    
+    directory = os.path.split(util.tempfile(".", prefix, ""))[1]
     os.mkdir(directory)
     os.chdir(directory)
     return directory
 
+
 def cleanupTempDir(directory):
+    """Exit and delete a temporary directory for executing PHYLIP"""
+
     os.chdir("..")
     assert "/" not in directory
     assert os.path.isdir(directory)
     util.deldir(directory)
 
+
 def saveTempDir(directory, newname):
+    """Exit and save a temporary directory for executing PHYLIP"""
+
     os.chdir("..")
     assert "/" not in directory
     assert os.path.isdir(directory)
@@ -78,7 +111,7 @@ def saveTempDir(directory, newname):
     os.rename(directory, newname)
     
 
-#
+#=============================================================================
 # common input/output
 #    
 
@@ -157,7 +190,7 @@ def readDistMatrix(filename):
     infile = util.openStream(filename)
 
     size = int(util.readWord(infile))
-    mat = matrix.makeMatrix(size, size)
+    mat = util.makeMatrix(size, size)
     names = []
     
     """

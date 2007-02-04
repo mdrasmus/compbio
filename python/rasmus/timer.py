@@ -1,13 +1,24 @@
-###############################################################################
-# Timer class for timing nested sections of code
+"""
+    Timer class for timing nested sections of code
+    
+    file:   rasmus/timer.py
+    author: Matt Rasmussen
+    date:   2/4/2005
 
-import os, sys, traceback, time
+"""
+
+
+# python libs
+import os
+import sys
+import traceback
+import time
 
 
 
 # GLOBALS
-timer = None
-notes = None
+RASMUS_TIMER = None
+GLOBAL_NOTES = None
 
 
 class Timer:
@@ -19,6 +30,8 @@ class Timer:
         self.quiets = 0
 
     def start(self, msg = ""):
+        """Start a new timer"""
+        
         if msg != "":
             self.indent()
             self._write("BEGIN %s:\n" % msg)
@@ -28,9 +41,13 @@ class Timer:
         
     
     def time(self):
+        """Get the current duration of the timer"""
+        
         return self.starts[-1] - time.clock()
     
     def stop(self):
+        """Stop the last created timer and return duration in seconds"""
+    
         duration = time.time() - self.starts.pop()
         msg = self.msg.pop()
         if msg != "":
@@ -53,6 +70,9 @@ class Timer:
         return duration
     
     def log(self, *text):
+        """Write a message to the timer stream.  Message will be written with 
+           current indentation level"""
+        
         self.indent()
         for i in text:
             self._write("%s " % str(i))
@@ -60,10 +80,15 @@ class Timer:
         self.flush()        
     
     def logExact(self, text):
+        """Write the extact string 'text' to the timer output stream with no 
+           additional indentation."""
+        
         self._write(text)
         self.flush()
     
     def warn(self, text, offset=0):
+        """Write a warning message to the timer output stream"""
+        
         filename, lineno, func, code = traceback.extract_stack()[-2-offset]
         filename = os.path.basename(filename)
         
@@ -73,6 +98,8 @@ class Timer:
             self.flush()
         
     def error(self, text, offset=0):
+        """Write an error message to the timer output stream"""
+        
         filename, lineno, func, code = traceback.extract_stack()[-2-offset]
         filename = os.path.basename(filename)
         
@@ -81,18 +108,23 @@ class Timer:
             self._write("ERROR: %s, line %d: %s\n" % (filename, lineno, text))
             self.flush()
     
+    
     def indent(self):
+        """Write the current indentation level to the timer output stream"""
         for i in range(self.depth()):
             self._write("  ")
     
     def reset(self):
+        """Stop all timers"""
         self.msg = []
         self.starts = []
     
     def depth(self):
+        """Get the current number of running timers"""
         return len(self.msg)
     
     def _write(self, text):
+        """Private function for writing to output stream"""
         for stream, maxdepth in self.streams:
             if self.depth() < maxdepth and \
                self.quiets == 0:
@@ -113,21 +145,31 @@ class Timer:
         self.streams = filter(lambda x: x[0] != stream, self.streams)
 
     def suppress(self):
+        """Calling this function will suppress timer output messages until 
+           unsuppress() is called.  
+           
+           If suppress() is called multiple times,  unsuppress() must be called
+           an equal number of times to resume timer  output.  This is useful for
+           nesting suppress/unsuppress."""
         self.quiets += 1
     
     def unsuppress(self):
+        """Calling this function will resume timer output messages that were
+           disabled with suppress().
+           
+           If suppress() is called multiple times,  unsuppress() must be called
+           an equal number of times to resume timer  output.  This is useful for
+           nesting suppress/unsuppress."""
         self.quiets = max(self.quiets - 1, 0)
 
 
 def globalTimer():
-    global timer
-    if timer == None:
-        timer = Timer()
-    return timer
+    global RASMUS_TIMER
+    if RASMUS_TIMER == None:
+        RASMUS_TIMER = Timer()
+    return RASMUS_TIMER
     
-    #if not "timer" in GLOBALS():
-    #    GLOBALS()["timer"] = Timer()
-    #return GLOBALS()["timer"]
+
 
 def log(*text):
     return globalTimer().log(*text)
@@ -162,13 +204,13 @@ def noteflush():
     return notfile().flush()
 
 def notefile(out = None):
-    global notes
+    global GLOBAL_NOTES
 
     if out == None:
         out = file("/dev/null", "w")
-    if notes == None:
-        notes = out
-    return notes
+    if GLOBAL_NOTES == None:
+        GLOBAL_NOTES = out
+    return GLOBAL_NOTES
 
 
 

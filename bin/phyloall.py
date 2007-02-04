@@ -380,8 +380,22 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
-        phylo.leastSquareError(usertree, mat, labels)
+        lse = phylo.leastSquareError(usertree, mat, labels, weighting=False)
         tree = usertree
+            
+        # debug branch error
+        if 0:
+            import Spidir
+            Spidir.setBranchError({}, tree, lse.resids, lse.paths, 
+                                  lse.edges, lse.topmat)
+        
+            mat = []
+            for node in tree:
+                if "error" in node.data:
+                    mat.append((node.name, node.data["error"]))
+            
+            mat.sort(key=lambda x: x[1])
+            util.printcols(mat)
 
     elif prog == "nj":
         tree = phylo.neighborjoin(mat, labels, usertree=usertree)
@@ -584,16 +598,17 @@ def main(conf):
     # report file status
     if "status" in conf:
         reportStatus(conf, files2)
-    
+        return 0
     
     # report stats
     if "stats" in conf:
         reportStats(conf, conf["stats"], files2)
+        return 0
     
     
     if "prog" not in conf:
         sys.stderr.write("phyloall.py: no programs (--prog) given.  Quiting...")
-        return 0
+        return 1
     
     parseArguments(conf)
     

@@ -723,6 +723,8 @@ class ColorMap:
     
     
     def get(self, value):
+        """Returns values in [0, 1]"""
+    
         # determine where color falls in table
         for i in xrange(len(self.table)):
             if value <= self.table[i][0]:
@@ -752,6 +754,11 @@ class ColorMap:
                                 weight2 * color2[j])
             
             return newcolor
+    
+    
+    def getInt(self, value):
+        return [int(x*255) for x in self.get(value)]
+    
 
 
 def rainbowColorMap(data=None, low=None, high=None):

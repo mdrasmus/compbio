@@ -259,32 +259,6 @@ def setBranchError(conf, tree, errors, dists, edges, topmat):
         if node.name in npaths:
             node.data["error"] /= npaths[node.name]
         
-    
-def setBranchError2(conf, tree, pathErrors, edges, topmat):
-    """Assigns an error to each branch"""
-    
-    # init errors to zero
-    for node in tree.nodes.values():
-        node.data["error"] = 0
-    
-    npaths = util.Dict(default=0)
-    
-    # add up errors
-    for i in xrange(len(topmat)):
-        for j in xrange(len(edges)):
-            if topmat[i][j] == 1:
-                gene1, gene2 = edges[j]
-                if tree.nodes[gene2].parent == tree.nodes[gene1]:
-                    gene1, gene2 = gene2, gene1
-                
-                tree.nodes[gene1].data["error"] += pathErrors[i]**2
-                npaths[gene1] += 1
-                
-    
-    # normalize by number of paths through edge
-    for node in tree.nodes.itervalues():
-        if node.name in npaths:
-            node.data["error"] /= npaths[node.name]
 
 
 def findSplits(network, leaves):

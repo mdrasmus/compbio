@@ -98,11 +98,11 @@ class FastaDict (SeqDict):
     
 
 def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 
-              errors=True):   
+              errors=True, useIndex=True):   
     """Read a FASTA file into a sequence dictionary"""
     
     fa = FastaDict()
-    fa.read(filename, keyfunc, valuefunc, errors)
+    fa.read(filename, keyfunc, valuefunc, errors, useIndex=useIndex)
     return fa
 
 

@@ -120,6 +120,8 @@ dist2treeProgs = ["bionj", "lse", "nj"]
 align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
                    "puzzledist"]
 
+tree2distProgs = ["tree2dist"]
+
 
 
 # filenames
@@ -270,6 +272,12 @@ def run(conf, infile, test=False):
                 continue
             if not test:
                 dist2tree(conf, prog, distfile, labelfile, basename)
+        
+        elif prog in tree2distProgs:
+            if not checkFileExists(conf, treefile, distfile): 
+                continue
+            if not test:
+                tree2dist(conf, prog, treefile, labelfile, distfile, basename)
             
         else:
             raise "unknown program '%s'" % prog
@@ -453,6 +461,15 @@ def align2dist(conf, prog, alignfile, basename):
     else:
         raise "unknown program '%s'" % prog
 
+
+def tree2dist(conf, prog, treefile, labelfile, distfile, basename):
+    tree = treelib.readTree(treefile)
+    labels = fasta.readFasta(labelfile).keys()
+    
+    if prog == "tree2dist":
+        mat = phylo.tree2distmat(tree, labels)
+        
+    phylip.writeDistMatrix(mat, out=distfile)
     
 
 def displayHelp():
@@ -473,6 +490,11 @@ def displayHelp():
     print >>sys.stderr, "Distance matrix to tree"
     print >>sys.stderr, " ", " ".join(dist2treeProgs)
     print >>sys.stderr    
+
+    print >>sys.stderr, "Tree to distance matrix"
+    print >>sys.stderr, " ", " ".join(tree2distProgs)
+    print >>sys.stderr    
+    
 
 
 def reportStatus(conf, infiles):

@@ -1,4 +1,6 @@
-import util
+import copy
+
+from rasmus import util
 
 def decorator(deco):
     def new_decorator(f):
@@ -16,7 +18,7 @@ def decorator(deco):
 
 
 @decorator
-def timer_deco(func):
+def func_timer(func):
     def wrapper(*args, **kwargs):
         util.tic(func.__name__)
         result = func(* args, **kwargs)
@@ -24,12 +26,43 @@ def timer_deco(func):
         return result
     return wrapper
 
+
+
+def func_defaults(** defaults):
+
+    def helper(func):
+        def wrapper(*args, **kwargs):
+            print "HERE", func, defaults
+
+            for k, v in defaults.items():
+                if k not in kwargs:
+                    kwargs[k] = copy.copy(v)
+
+            result = func(* args, **kwargs)
+            return result
+        return wrapper
+    return helper
+
+
+
 if __name__ == "__main__":
-    @timer_deco
+    @func_timer
     def dowork(x):
         w = [1,2,3]
         print x
 
 
     dowork(99)
-    help(dowork)
+    
+    @func_defaults(x=[1,2,3], y=7)
+    def doit(x=0, y=0):
+        x.append(4)
+        print x, y
+    
+    doit()
+    doit()
+    
+    #help(dowork)
+
+
+

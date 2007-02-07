@@ -128,7 +128,7 @@ def writePhylipAlign(out, seqs):
 
 def fasta2phylip(out, seqs):
     """DEPRECATED use writePhylipAlign()"""
-    writePhylipAlign(out, seqs)
+    return writePhylipAlign(out, seqs)
 
 
 def readLogl(filename):

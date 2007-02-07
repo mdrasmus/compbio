@@ -20,7 +20,7 @@ def getDistMatrix(seqs, output=None, verbose=True, force = False, args=None):
     util.tic("puzzle on %d of length %d" % (len(seqs), len(seqs.values()[0])))
     
     # create input
-    labels = phylip.fasta2phylip(file("infile", "w"), seqs)
+    labels = phylip.writePhylipAlign(file("infile", "w"), seqs)
     util.writeVector(file("labels", "w"), labels)
     
     # run phylip

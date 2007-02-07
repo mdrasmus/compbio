@@ -907,7 +907,7 @@ def leastSquareError(tree, distmat, genes, forcePos=True, weighting=True):
     
     # setup matrix and vector
     if weighting:
-        topmat2 = scipy.array([[x / math.sqrt(dists[i]) 
+        topmat2 = scipy.array([[util.safediv(x, math.sqrt(dists[i]), 0) 
                                 for x in row]
                                for i, row in enumerate(topmat)])
         paths = scipy.array(map(math.sqrt, dists))

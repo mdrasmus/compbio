@@ -115,7 +115,7 @@ fasta2alignProgs = ["clustalw", "muscle"]
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep"]
              
-dist2treeProgs = ["bionj", "lse", "nj"]
+dist2treeProgs = ["bionj", "lse", "wls", "nj"]
 
 align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
                    "puzzledist"]
@@ -390,20 +390,13 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         
         lse = phylo.leastSquareError(usertree, mat, labels, weighting=False)
         tree = usertree
-            
-        # debug branch error
-        if 0:
-            import Spidir
-            Spidir.setBranchError({}, tree, lse.resids, lse.paths, 
-                                  lse.edges, lse.topmat)
+    
+    elif prog == "wls":
+        if usertree == None:
+            raise "Must supply usertree with 'wls'"
         
-            mat = []
-            for node in tree:
-                if "error" in node.data:
-                    mat.append((node.name, node.data["error"]))
-            
-            mat.sort(key=lambda x: x[1])
-            util.printcols(mat)
+        wls = phylo.leastSquareError(usertree, mat, labels, weighting=True)
+        tree = usertree
 
     elif prog == "nj":
         tree = phylo.neighborjoin(mat, labels, usertree=usertree)

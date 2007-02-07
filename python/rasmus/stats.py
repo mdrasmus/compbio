@@ -35,14 +35,6 @@ def mode(vals):
             topkey = key
     return topkey
 
-"""
-Bad function name
-
-def var(vals):
-    u = mean(vals)
-    return mean(map(lambda x: (x - u)**2, vals))
-"""
-
 
 def msqerr(vals1, vals2):
     """Mean squared error"""
@@ -56,16 +48,20 @@ def msqerr(vals1, vals2):
     
 
 def variance(vals):
+    """Variance"""
     u = mean(vals)
     return sum(map(lambda x: (x - u)**2, vals)) / float(len(vals)-1)
 
 def sdev(vals):
+    """Standard deviation"""
     return sqrt(variance(vals))
 
 def serror(vals):
+    """Stanadrd error"""
     return sdev(vals) / sqrt(len(vals))
 
 def covariance(lst1, lst2):
+    """Covariance"""
     m1 = mean(lst1)
     m2 = mean(lst2)
     tot = 0.0
@@ -75,6 +71,7 @@ def covariance(lst1, lst2):
 
 
 def covmatrix(mat):
+    """Covariance Matrix"""
     size = len(mat)
     
     return util.list2matrix(map(lambda (i,j): cov(mat[i], mat[j]), 
@@ -82,6 +79,7 @@ def covmatrix(mat):
                             size, size)
 
 def corrmatrix(mat):
+    """Correlation Matrix"""
     size = len(mat)
     
     return util.list2matrix(map(lambda (i,j): corr(mat[i], mat[j]), 
@@ -90,6 +88,7 @@ def corrmatrix(mat):
 
 
 def corr(lst1, lst2):
+    """Pearson's Correlation"""
     num = covariance(lst1, lst2)
     denom = float(sdev(lst1) * sdev(lst2))
     if denom != 0:
@@ -99,6 +98,8 @@ def corr(lst1, lst2):
 
 
 def qqnorm(data, plot=None):
+    """Quantile-quantile plot"""
+    
     data2 = util.sort(data)
     norm = [random.normalvariate(0, 1) for x in range(len(data2))]
     norm.sort()
@@ -112,6 +113,8 @@ def qqnorm(data, plot=None):
 
 
 def fitLine(xlist, ylist):
+    """2D regression"""
+    
     xysum = 0
     xxsum = 0
     n = len(xlist)        
@@ -131,47 +134,16 @@ def fitLine(xlist, ylist):
     return (slope, inter)
 
 
-def smooth_old(x, radius):
-    """
-    return an averaging of vals using a radius
+def fitLineError(xlist, ylist, slope, inter):
+    error = 0
+    n = len(xlist)
     
-    Note: not implemented as fast as possible
-    runtime: O(len(vals) * radius)
-    """
-    
-    vlen = len(x)
-    
-    # simple case
-    if vlen == 0:
-        return []
-    
-    x2 = []
-    
-    tot = x[0]
-    
-    low = 0
-    high = 0
-    
-    for i in range(vlen):
-        xi = x[i]
-    
-        xradius2 = min(i, vlen - i - 1, xradius)
-    
-        # move window
-        while x[low] < xi - xradius2:
-            xtot -= x[low]
-            ytot -= y[low]
-            low += 1
-        while x[high] < xi + xradius2:
-            high += 1
-            xtot += x[high]
-            ytot += y[high]
-        
-        denom = float(high - low + 1)
-        x2.append(xtot / denom)
-        y2.append(ytot / denom)
-    
-    return x2, y2
+    for i in range(n):
+        error += ((xlist[i]*slope + inter) - ylist[i]) ** 2
+    return error / n
+
+
+
 
 
 def smooth(vals, radius):
@@ -243,15 +215,52 @@ def smooth2(x, y, xradius):
 
 
 
-def fitLineError(xlist, ylist, slope, inter):
-    error = 0
-    n = len(xlist)
+def smooth_old(x, radius):
+    """
+    return an averaging of vals using a radius
     
-    for i in range(n):
-        error += ((xlist[i]*slope + inter) - ylist[i]) ** 2
-    return error / n
+    Note: not implemented as fast as possible
+    runtime: O(len(vals) * radius)
+    """
+    
+    vlen = len(x)
+    
+    # simple case
+    if vlen == 0:
+        return []
+    
+    x2 = []
+    
+    tot = x[0]
+    
+    low = 0
+    high = 0
+    
+    for i in range(vlen):
+        xi = x[i]
+    
+        xradius2 = min(i, vlen - i - 1, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            xtot -= x[low]
+            ytot -= y[low]
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            xtot += x[high]
+            ytot += y[high]
+        
+        denom = float(high - low + 1)
+        x2.append(xtot / denom)
+        y2.append(ytot / denom)
+    
+    return x2, y2
+
 
 def factorial(x, k=1):
+    """Simple implementation of factorial"""
+    
     n = 1
     for i in xrange(int(k)+1, int(x)+1):
         n *= i
@@ -319,57 +328,9 @@ def chyper(m, n, M, N, report=0):
     else:
         raise "unknown option"
     
-
-
-
-"""
+#=============================================================================
+# Distributions
 #
-# old *Distrib functions now they are *Pdf
-#
-
-def bionomialDistrib(n, params):
-    p, k = params
-    return choose(n, k) * (p ** k) * ((1-p) ** (n - k))
-
-def gaussianDistrib(x, params):
-    return 1/sqrt(2*pi) * exp(- x**2 / 2.0)
-
-def normalDistrib(x, params):
-    mu, sigma = params
-    return 1/(sigma * sqrt(2*pi)) * exp(- (x - mu)**2 / (2.0 * sigma**2))
-
-def poissonDistrib(x, params):
-    p = params[0]
-    if x > 0 and p > 0:
-        return exp(p) * p **x / x
-    else:
-        return 0.0
-
-def gammaDistrib(x, params):
-    alpha, beta = params
-    if x <= 0 or alpha <= 0 or beta <= 0:
-        return 0.0
-    else:
-        return (exp(-beta * x) * (x ** (alpha -1)) * (beta ** alpha)) / \
-           gamma(alpha)
-
-def betaDistrib(x, params):
-    alpha, beta = params
-    if 0 < x < 1:
-        return gamma(alpha + beta) / (gamma(alpha)*gamma(beta)) * \
-               x ** (alpha-1) * (1-x)**(beta-1)
-    else:
-        return 0.0
-
-def myDistrib(x, params):
-    alpha, beta, exp, scale = params
-    if 0 < x < 1 and .5 <= exp <= 10:
-        return scale * (betaDistrib(x, [alpha, beta]) ** exp)
-    else:
-        return 0.0
-"""
-
-
 
 def bionomialPdf(n, params):
     p, k = params
@@ -483,10 +444,11 @@ def betaPdf3(x, params):
 
 def gamma(x):
     """
-    Lanczos approximation to the gamma function.    
+    Lanczos approximation to the gamma function. 
+    
+    found on http://www.rskey.org/gamma.htm   
     """
     
-    # found on http://www.rskey.org/gamma.htm
     ret = 1.000000000190015 + \
           76.18009172947146 / (x + 1) + \
           -86.50532032941677 / (x + 2) + \
@@ -497,29 +459,31 @@ def gamma(x):
     
     return ret * sqrt(2*pi)/x * (x + 5.5)**(x+.5) * exp(-x-5.5)
 
-"""
-From numerical alogrithms in C
 
-float gammln(float xx)
-Returns the value ln[(xx)] for xx > 0.
-{
-    Internal arithmetic will be done in double precision, a nicety that you can omit if five-figure
-    accuracy is good enough.
-    double x,y,tmp,ser;
-    static double cof[6]={76.18009172947146,-86.50532032941677,
-         24.01409824083091,-1.231739572450155,
-         0.1208650973866179e-2,-0.5395239384953e-5};
-    int j;
-    y=x=xx;
-    tmp=x+5.5;
-    tmp -= (x+0.5)*log(tmp);
-    ser=1.000000000190015;
-    for (j=0;j<=5;j++) ser += cof[j]/++y;
-    return -tmp+log(2.5066282746310005*ser/x);
-}
-"""
 
 def gammaln(xx):
+    """
+    From numerical alogrithms in C
+
+    float gammln(float xx)
+    Returns the value ln[(xx)] for xx > 0.
+    {
+        Internal arithmetic will be done in double precision, a nicety that you can omit if five-figure
+        accuracy is good enough.
+        double x,y,tmp,ser;
+        static double cof[6]={76.18009172947146,-86.50532032941677,
+             24.01409824083091,-1.231739572450155,
+             0.1208650973866179e-2,-0.5395239384953e-5};
+        int j;
+        y=x=xx;
+        tmp=x+5.5;
+        tmp -= (x+0.5)*log(tmp);
+        ser=1.000000000190015;
+        for (j=0;j<=5;j++) ser += cof[j]/++y;
+        return -tmp+log(2.5066282746310005*ser/x);
+    }
+    """
+
     cof = [76.18009172947146,-86.50532032941677,
          24.01409824083091,-1.231739572450155,
          0.1208650973866179e-2,-0.5395239384953e-5]

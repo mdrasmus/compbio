@@ -8,8 +8,8 @@
 import sys
 
 # rasmus libs
-import fasta
-from seqlib import *
+from rasmus import fasta
+from rasmus.seqlib import *
 
 
 #--------------------------------------------------------------------------------

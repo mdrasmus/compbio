@@ -15,14 +15,16 @@ import sys
 #import xml.sax.handler
 
 # rasmus imports
-import blast
-import cluster
-import graph
-import treelib
-import util
+from rasmus import blast
+from rasmus import cluster
+from rasmus import fasta
+from rasmus import graph
+from rasmus import phylip
+from rasmus import treelib
+from rasmus import util
 
 
-from genomeutil import gene2species
+from rasmus.genomeutil import gene2species
 
 
 
@@ -784,14 +786,93 @@ def neighborjoin(distmat, genes, usertree=None):
     return tree
 
 
+#=============================================================================
+# Sequence Distance Estimation
 
+
+def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
+    aln = fasta.FastaDict()
+    aln["0"] = seq1
+    aln["1"] = seq2
+    
+    if os.path.isfile("infile"):
+        raise Exception("infile already exists")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madePhylip = True
+    else:
+        madePhylip = False
+    
+    
+    
+    # write file
+    if infile == None:
+        infile = util.tempfile(".", "tmp_in", ".align")
+        madeInfile = True
+    else:
+        madeInfile = False
+    if outfile == None:    
+        outfile = util.tempfile(".", "tmp_out", ".dist")
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    if os.path.exists(outfile):
+        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
+    else:
+        args = "%s\nf\n%s\ny\n" % (infile, outfile)
+    
+    phylip.writePhylipAlign(file(infile, "w"), aln)
+    phylip.execPhylip("dnadist", args, verbose=False)
+    labels, distmat = phylip.readDistMatrix(outfile)
+
+    if madePhylip:
+        os.remove("outfile")
+    
+    if madeInfile:
+        os.remove(infile)
+    if madeOutfile:
+        os.remove(outfile)
+    
+    return distmat[0][1]
+
+    
+def getGaplessDistMatrix(aln):
+    infile = util.tempfile("/tmp/", "tmp_in", ".align")
+    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
+    keys = aln.keys()
+    
+    for i in xrange(0, len(aln)):
+        for j in xrange(i+1, len(aln)):
+            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
+                                           infile=infile, outfile=outfile)
+            distmat[j][i] = distmat[i][j]
+    
+    
+    if madeOutfile:
+        os.remove("outfile")
+    
+    os.remove(infile)
+    os.remove(outfile)
+    
+    return distmat
 
 
 #=============================================================================
 # Phylogenetic reconstruct: Least Square Error
 
-def leastSquareError(tree, distmat, genes, forcePos=True, weightmat=None,
-                     weighting=False):
+def leastSquareError(tree, distmat, genes, forcePos=True, weighting=True):
     """Least Squared Error algorithm for phylogenetic reconstruction"""
     
     # use SCIPY to perform LSE
@@ -825,22 +906,18 @@ def leastSquareError(tree, distmat, genes, forcePos=True, weightmat=None,
     topmat, edges = makeTopologyMatrix(tree, genes)
     
     # setup matrix and vector
-    topmat2 = scipy.array(topmat)
-    paths = scipy.array(dists)
-    
     if weighting:
-        weightmat = makeWeightMatrix(topmat2, paths)
-    
-    # weighting
-    if weightmat:
-        topmat3 = scipy.dot(weightmat, topmat2)
-        paths3 = scipy.dot(weightmat, paths)
+        topmat2 = scipy.array([[x / math.sqrt(dists[i]) 
+                                for x in row]
+                               for i, row in enumerate(topmat)])
+        paths = scipy.array(map(math.sqrt, dists))
     else:
-        topmat3 = topmat2
-        paths3 = paths
+        topmat2 = scipy.array(topmat)
+        paths = scipy.array(dists)
+
     
     # solve LSE
-    edgelens, resids, rank, singlars = scipy.linalg.lstsq(topmat3, paths3)
+    edgelens, resids, rank, singlars = scipy.linalg.lstsq(topmat2, paths)
     
     # force non-negative branch lengths
     if forcePos:

@@ -44,7 +44,7 @@ def validateSeq(seqs):
     assert util.equal(* sizes), "sequences are not same length"
 
 
-def checkTempFiles(force):
+def checkTempFiles(force=False):
     """Ensure PHYLIP tempfiles do not already exist in current directory"""
     
     if force:
@@ -116,8 +116,7 @@ def saveTempDir(directory, newname):
 #    
 
 
-
-def fasta2phylip(out, seqs):
+def writePhylipAlign(out, seqs):
     validateSeq(seqs)
     
     print >>out, len(seqs), len(seqs.values()[0])
@@ -126,6 +125,10 @@ def fasta2phylip(out, seqs):
 
     return seqs.keys()
 
+
+def fasta2phylip(out, seqs):
+    """DEPRECATED use writePhylipAlign()"""
+    writePhylipAlign(out, seqs)
 
 
 def readLogl(filename):

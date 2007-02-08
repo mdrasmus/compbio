@@ -47,7 +47,7 @@ class FastaDict (SeqDict):
                     self.filelookup[key] = filename
                     if key not in self:
                         self.names.append(key)
-                    dict.__setitem__(key, None)
+                    dict.__setitem__(self, key, None)
         else:
             for line in util.openStream(filename):                
                 if len(line) > 0 and line[0] == ">":

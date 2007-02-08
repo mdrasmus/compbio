@@ -1,7 +1,7 @@
 import sys
 import os
 
-from rasmus import util
+from rasmus import util, seqlib
 from rasmus.seqlib import SeqDict
 
 
@@ -28,28 +28,27 @@ class FastaDict (SeqDict):
     def __init__(self, *args, ** keywords):
         SeqDict.__init__(self)
         
-        self.filenames = []
+        self.filelookup = {}
         
         if len(args) > 0:
             self.read(* args, **keywords)
     
     
     def read(self, filename, keyfunc=firstword, valuefunc = lambda x: x, 
-              errors=True, useIndex=True):
+              errors=True, useIndex=False):
         key = ""
         value = ""
         
         if isinstance(filename, str) and useIndex and hasFastaIndex(filename):
-            self.filenames.append(filename)
-            
-            # store None's for when indexing should be used
-            infile = os.popen("grep '>' '%s'" % filename)
-            for line in infile:
-                key = line[1:].rstrip()
-                self.names.append(key)
-        else:
+            # store None's for when indexing should be used            
             for line in util.openStream(filename):
-                if line[0] == ">":
+                if len(line) > 0 and line[0] == ">":    
+                    key = line[1:].rstrip()
+                    self.filelookup[key] = filename
+                    self.add(key, None, errors=errors)
+        else:
+            for line in util.openStream(filename):                
+                if len(line) > 0 and line[0] == ">":
                     if key != "":
                         self.add(key, valuefunc(value), errors)
                     key = keyfunc(line[1:].rstrip())
@@ -73,28 +72,26 @@ class FastaDict (SeqDict):
     
     
     def __getitem__(self, key):
-        if not SeqDict.__contains__(self, key):
+        val = SeqDict.__getitem__(self, key) 
+        
+        if val == None:
             # if val == None, then we are using fasta indexing
-            for filename in self.filenames:
+            if key in self.filelookup:
                 try:
-                    return fastaGet(filename, key)
-                except: pass
-            
+                    val = fastaGet(self.filelookup[key], key)
+                    
+                    # cache value
+                    self[key] = val
+                    return val
+                except:
+                    raise KeyError(key)
+            else:
+                raise KeyError(key)
         else:
-            return SeqDict.__getitem__(self, key)
-    
-    def __contains__(self, key):
-        if not SeqDict.__contains__(self, key):
-            # if val == None, then we are using fasta indexing
-            for filename in self.filenames:
-                try:
-                    fastaGet(filename, key)
-                    return True
-                except: pass
-            return False
-        else:
-            return True
-    
+            return val
+
+
+
     
 
 def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 

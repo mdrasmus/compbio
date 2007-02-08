@@ -1,10 +1,10 @@
 #
 # SPIDIR library
 #
+# This library is DEPRECATED use the Spidir package
 # note: SINDIR was a codename, it may still be present in the code.
 #
-# This library is DEPRECATED use the Spidir package
-#
+
 
 
 # rasmus libs

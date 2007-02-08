@@ -7,19 +7,19 @@ import fasta
 import util
 
 
-
+"""
 try:
-    import bsddb
+    
 except:
     # could not load BerkeleyDB
     pass
 
 try:
-    import sqlite
+    
 except:
     # could not load SQLITE
     pass
-
+"""
 
 
 # NCBI BLASTALL 2.2.10 -m 8 tab-delimited output
@@ -90,6 +90,8 @@ class BlastDb:
     """A database interface to Blast results"""
     
     def __init__(self, filename):
+        import bsddb
+        
         self.db = bsddb.db.DB()
         self.db.set_flags(bsddb.db.DB_DUP)
         
@@ -141,6 +143,8 @@ class BlastDb2:
     """A database interface to Blast results"""
     
     def __init__(self, filename):
+        import sqlite
+    
         self.con = sqlite.connect(filename)
         self.cur = self.con.cursor()
         

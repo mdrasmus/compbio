@@ -12,6 +12,8 @@ class SeqDict (dict):
         
         self.names = []
     
+
+    
     
     def orderNames(self, aln):
         """Orders the names in the same order they appear in aln"""
@@ -28,9 +30,10 @@ class SeqDict (dict):
 
             # keep the longest value, by default
             if len(value) >= len(self[key]):
-                self[key] = value
+                dict.__setitem__(self, key, value)
         else:    
-            self[key] = value
+            self.names.append(key)
+            dict.__setitem__(self, key, value)
     
     
     def get(self, keys, new=None):
@@ -95,12 +98,15 @@ class SeqDict (dict):
                 yield self[key]
         return func()
         
-
     def iteritems(self):
         def func():
             for key in self.iterkeys():
                 yield (key, self[key])
         return func()
 
-
+    def __iter__(self):
+        return iter(self.names)
+    
+    def __len__(self):
+        return len(self.names)
     

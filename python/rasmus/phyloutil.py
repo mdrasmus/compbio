@@ -3,6 +3,6 @@
 #
 
 
-# phyloutil is now an alias for phylo
+# phyloutil is currently an alias for phylo
 from rasmus.phylo import *
 

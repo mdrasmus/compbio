@@ -2,7 +2,7 @@
 # Tree data structures 
 #
 # Contains special features for representing phylogeny.  
-# See phyloutil for more.
+# See rasmus.phylo for more.
 #
 #
 
@@ -139,13 +139,6 @@ class TreeNode:
         walk(self)
           
         return leaves
-    
-    
-    '''
-    def leaveNames(self):
-        """DEPRECATED BAD NAME: use leafNames()"""
-        return map(lambda x: x.name, self.leaves())
-    '''
     
     def leafNames(self):
         return map(lambda x: x.name, self.leaves())
@@ -329,12 +322,6 @@ class Tree:
             node = self.root                   
         return node.leaves()
     
-    
-    '''
-    def leaveNames(self, node = None):
-        """DEPRECATED BAD NAME: use leafNames()"""
-        return map(lambda x: x.name, self.leaves(node))
-    '''
     
     def leafNames(self, node = None):
         return map(lambda x: x.name, self.leaves(node))
@@ -755,6 +742,8 @@ def assertTree(tree):
 
 
 def lca(nodes):
+    """Least Common Ancestor"""
+    
     if len(nodes) == 1:
         return nodes[0]
     elif len(nodes) > 2:
@@ -1062,15 +1051,77 @@ def unroot(tree, newCopy = True):
     return tree
 
 
-def reroot(tree, newroot, mat = None, onBranch=True, newCopy=True):
+def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
+    """
+    Change the rooting of a tree
+    """
+    
+    # mat is a DEPRECATED parameter.  But if it is used then call old function
+    # TODO: remove newCopy (or assert newCopy=False)
+    if mat != None:
+        return reroot_old(tree, newroot, mat, onBranch=onBranch)
+    
+    if newCopy:
+        tree = tree.copy()
+    
 
-    # TODO: phase out this code
-    # speed up, while old reroot alg is phased out
-    if mat is None:
-        if newCopy:
-            tree = tree.copy()
-        return reroot2(tree, newroot, onBranch=onBranch)
+    # handle trivial case
+    if tree.root.name == newroot or \
+       (newroot in [x.name for x in tree.root.children] and \
+        len(tree.root.children) == 2):
+        return tree        
+    
+    
+    unroot(tree, newCopy=False)
+    
+    if onBranch:
+        # add new root in middle of branch
+        newNode = TreeNode(tree.newName())
+        node1 = tree.nodes[newroot]
+        rootdist = node1.dist
+        node1.dist = rootdist / 2.0
+        newNode.dist = rootdist / 2.0
+        node2 = node1.parent
+        node2.children.remove(node1)
+        tree.addChild(newNode, node1)
+        tree.addChild(node2, newNode)
+        
+        ptr = node2
+        ptr2 = newNode
+        newRoot = newNode
+    else:
+        # root directly on root
+        ptr2 = tree.nodes[newroot]
+        ptr = ptr2.parent
+        newRoot = ptr2
+    
+    newRoot.parent = None
+    
+    # reverse parent child relationship of all nodes on path node1 to root
+    oldroot = tree.root    
+    nextDist = ptr2.dist
+    ptr2.dist = 0
+    while True:
+        nextPtr = ptr.parent
+        ptr.children.remove(ptr2)
+        tree.addChild(ptr2, ptr)
+        
+        tmp = ptr.dist
+        ptr.dist = nextDist
+        nextDist = tmp
+        
+        ptr2 = ptr
+        ptr = nextPtr
+        
+        if nextPtr is None:
+            break
+    tree.root = newRoot
+    
+    return tree
+    
 
+
+def reroot_old(tree, newroot, mat = None, onBranch=True):
     # handle trivial case
     if tree.root.name == newroot or \
        (newroot in map(lambda x: x.name, tree.root.children) and \
@@ -1145,64 +1196,7 @@ def reroot(tree, newroot, mat = None, onBranch=True, newCopy=True):
     return tree2
 
 
-def reroot2(tree, newroot, onBranch=True):
-    """
-    Modifies tree to reroot it
-    """
 
-    # handle trivial case
-    if tree.root.name == newroot or \
-       (newroot in [x.name for x in tree.root.children] and \
-        len(tree.root.children) == 2):
-        return tree        
-    
-    
-    unroot(tree, newCopy=False)
-    
-    if onBranch:
-        # add new root in middle of branch
-        newNode = TreeNode(tree.newName())
-        node1 = tree.nodes[newroot]
-        rootdist = node1.dist
-        node1.dist = rootdist / 2.0
-        newNode.dist = rootdist / 2.0
-        node2 = node1.parent
-        node2.children.remove(node1)
-        tree.addChild(newNode, node1)
-        tree.addChild(node2, newNode)
-        
-        ptr = node2
-        ptr2 = newNode
-        newRoot = newNode
-    else:
-        # root directly on root
-        ptr2 = tree.nodes[newroot]
-        ptr = ptr2.parent
-        newRoot = ptr2
-    
-    newRoot.parent = None
-    
-    # reverse parent child relationship of all nodes on path node1 to root
-    oldroot = tree.root    
-    nextDist = ptr2.dist
-    ptr2.dist = 0
-    while True:
-        nextPtr = ptr.parent
-        ptr.children.remove(ptr2)
-        tree.addChild(ptr2, ptr)
-        
-        tmp = ptr.dist
-        ptr.dist = nextDist
-        nextDist = tmp
-        
-        ptr2 = ptr
-        ptr = nextPtr
-        
-        if nextPtr is None:
-            break
-    tree.root = newRoot
-    
-    return tree
 
 
 def outgroupRoot(tree, outgroup, closedset = None):

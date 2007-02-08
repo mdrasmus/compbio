@@ -872,7 +872,7 @@ def getGaplessDistMatrix(aln):
 #=============================================================================
 # Phylogenetic reconstruct: Least Square Error
 
-def leastSquareError(tree, distmat, genes, forcePos=True, weighting=True):
+def leastSquareError(tree, distmat, genes, forcePos=True, weighting=False):
     """Least Squared Error algorithm for phylogenetic reconstruction"""
     
     # use SCIPY to perform LSE

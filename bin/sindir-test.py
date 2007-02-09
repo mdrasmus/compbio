@@ -306,34 +306,5 @@ def testOrthologs(tree1, tree2, stree, gene2species):
 
 
 
-"sindir.py -p $PARAMS -s $STREE -S $SMAP -d $DIST -l $ALIGN -T $CORRECT_TREE -o $OUT_TREE $EXTRA &>$OUT_DEBUG"
-
-"""
-def runPhylip(param, testdir, alnfile, gene2species):
-    distext = param["distext"][-1]
-    labelext = param["labelext"][-1]
-    treeext = param["treeext"][-1]
-        
-    
-    basefile = os.path.basename(distfile.replace(distext, ""))
-
-    labelfile = distfile.replace(distext, labelext)
-    outtree = os.path.join(param["outdir"], basefile + ".tree")
-    correctTreefile = distfile.replace(distext, treeext)
-
-    debugfile = os.path.join(param["outdir"], basefile + ".debug")
-
-    cmd = "sindir.py -p %s -s %s -S %s -d %s -l %s -T %s -o %s %s &>%s" % (
-              param["param"], param["stree"], param["smap"][-1], 
-              distfile, labelfile, correctTreefile, outtree, 
-              param["extra"], debugfile)
-    
-    jobname = pipeline.add(os.path.basename(distfile), cmd, [])
-    
-    return jobname
-"""
-
-
-
 
 main(conf)

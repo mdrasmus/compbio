@@ -50,6 +50,7 @@ if "fungi" in dataenv:
 if "fungi-2" in dataenv:
     datapath.append("%s/data/fungi-2" % filepath)
     datapath.append("%s/data/fungi-2/gene_coord" % filepath)
+    datapath.append("%s/data/fungi-2/gff" % filepath)    
     datapath.append("%s/data/fungi-2/pep" % filepath)
     datapath.append("%s/data/fungi-2/nt" % filepath)
     datapath.append("%s/data/fungi-2/blast_pep" % filepath)

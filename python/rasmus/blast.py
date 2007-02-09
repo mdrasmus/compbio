@@ -38,6 +38,8 @@ except:
 # 11. bit score
 #
 
+# TODO: add checks to see if BLAST crashed
+
 
 class BlastReader:
     """A parser for Blast results in -m8 format"""

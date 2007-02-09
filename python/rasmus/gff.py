@@ -241,6 +241,10 @@ class Region:
         return {None: text}
     
     
+    def length(self):
+        return self.end - self.start + 1
+    
+    
     def __repr__(self):
         return self.__str__()
 
@@ -512,6 +516,18 @@ def readGff(filename, format=Region,
         regions.append(region)
     
     return regions
+
+
+def readGff3(filename, format=Gff3Region, 
+            lineFilter=lambda x: True,
+            regionFilter=lambda x: True):
+    """
+    Read all regions in a GFF file
+    """
+    
+    return readGff(filename, format=format, 
+                   lineFilter=lineFilter,
+                   regionFilter=regionFilter)
 
 
 def writeGff(filename, regions):

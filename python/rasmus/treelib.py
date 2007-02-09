@@ -845,11 +845,11 @@ def findDist(tree, name1, name2):
     
     return dist
 
-
+"""
 def findPath(tree, name1, name2):
-    """
+    '''
     TODO: double check this code before use
-    """
+    '''
     if not name1 in tree.nodes or \
        not name2 in tree.nodes:
         return None
@@ -874,7 +874,7 @@ def findPath(tree, name1, name2):
         i -= 1
 
     return path1[i+1:] + path2[i+1:]
-
+"""
 
 def smallSubtrees(tree, maxsize):
     trees = []

@@ -518,7 +518,8 @@ def reportStats(conf, statsfile, infiles):
     stats = tablelib.Table(headers=["name", 
                                     "nseqs",
                                     "alignlen", 
-                                    "alignlen_ungapped", 
+                                    "alignlen_ungapped",
+                                    "median_genelen",
                                     "percid",
                                     "treelen"])
     
@@ -541,11 +542,13 @@ def reportStats(conf, statsfile, infiles):
         
         # get align stats
         if os.path.exists(alignfile):
+            seqs = fasta.readFasta(fastafile)
             aln = fasta.readFasta(alignfile)
             aln2 = alignlib.removeGappedColumns(aln)
             nseqs = len(aln)
             alignlen = aln.alignlen()
             alignlen_ungapped = aln2.alignlen()
+            median_genelen = stats.median(map(len, seqs.itervalues()))
             cons = alignlib.calcConservation(aln)
             percid = util.counteq(1.0, cons) / float(alignlen)
         
@@ -563,6 +566,7 @@ def reportStats(conf, statsfile, infiles):
                   nseqs = nseqs,
                   alignlen = alignlen,
                   alignlen_ungapped = alignlen_ungapped,
+                  median_genelen =  median_genelen,
                   percid = percid,
                   treelen = treelen)
     

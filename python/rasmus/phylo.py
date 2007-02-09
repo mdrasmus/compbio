@@ -127,7 +127,7 @@ def tree2distmat(tree, leaves):
 
 def reconcile(gtree, stree, gene2species = gene2species):
     recon = {}
-    depths = stree.findDepths(stree.root)
+    #depths = stree.findDepths(stree.root)
     
     # label gene leaves with their species
     for node in gtree.leaves():
@@ -201,7 +201,7 @@ def countDupNode(node, events):
 
 
 def findLoss(gtree, stree, recon, node=None):
-    depths = stree.findDepths()
+    #depths = stree.findDepths()
     loss = []
 
     def walk(node):

@@ -789,7 +789,7 @@ def descendents(node, lst=None):
         lst = []
     for child in node.children:
         lst.append(child)
-        descendents(child)
+        descendents(child, lst=lst)
     return lst
 
 

@@ -62,6 +62,8 @@ def makeGene2species(maps):
 
 
 def readGene2species(* filenames):
+    """Read a gene name to species name mapping file"""
+
     for filename in filenames:
         if filename == "ENSEMBL":
             smap = ensembl.id2genome
@@ -480,7 +482,14 @@ def hashTree(tree, smap = lambda x: x):
             childHashes = map(walk, node.children)
             childHashes.sort()
             return hashTreeCompose(childHashes)
-    return walk(tree.root)
+    
+    if isinstance(tree, treelib.Tree) or hasattr(tree, "root"):
+        return walk(tree.root)
+    elif isinstance(tree, treelib.TreeNode):
+        return walk(tree)
+    else:
+        raise Exception("Expected Tree object")
+
 
 def hashOrderTree(tree, smap = lambda x: x):
     def walk(node):
@@ -565,7 +574,7 @@ def findOrthoNeighbors(parts, hits):
             # skip genes not in parts
             continue
         
-        # dont count hits within a cluster
+        # don't count hits within a cluster
         if part1 == part2:
             continue
         
@@ -590,6 +599,8 @@ def findOrthoNeighbors(parts, hits):
 
 
 def stree2gtree(stree, genes, gene2species):
+    """Create a gene tree with the same topology as the species tree"""
+    
     tree = stree.copy()
     
     for gene in genes:
@@ -600,6 +611,8 @@ def stree2gtree(stree, genes, gene2species):
 
 
 def findOrthologs(gtree, stree, recon):
+    """Find all ortholog pairs within a gene tree"""
+
     events = labelEvents(gtree, recon)
     orths = []
     

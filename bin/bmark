@@ -112,9 +112,18 @@ elif sys.argv[1] == "-g":
     
     name = sys.argv[2]
     
+    # find sub-directories
+    if "/" in name:
+        slashind = name.index("/")
+        subdir = name[slashind:]        
+        name = name[:slashind]
+    else:
+        subdir = ""
+    
+    
     for bookmark in bookmarks:
         if bookmark[0] == name:
-            print bookmark[1]
+            print bookmark[1] + subdir
             break
     else:
         # bookmark could not be found
@@ -149,6 +158,11 @@ else:
     # add bookmark
     name = sys.argv[1]
     path = os.getcwd()
+    
+    # do not allow slash's in name
+    if "/" in name:
+        print >>sys.stderr, "bookmark name cannot contain a '/'"
+        sys.exit(1)
     
     # search for existing name
     for bookmark in bookmarks:

@@ -80,7 +80,7 @@ def main(conf):
     for alignfile in conf["REST"]:
         aln = fasta.readFasta(alignfile)
         
-        merges = genecall.findFragments(regionbd, aln, overlapCutoff=.5)
+        merges = genecall.findFragments(regiondb, aln, overlapCutoff=.5)
         
         if len(merges) > 0:
             util.tic(alignfile)

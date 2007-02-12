@@ -113,17 +113,18 @@ def findRegionPos(regions, pos):
 
 def findRegion(regions, region):
     """Find a region in a sorted list of 'regions'"""
-    low, ind = algorithms.binsearch(regions, gene.start-1, lambda a,b: cmp(a.start, b))
-    if top == None:
+    low, ind = algorithms.binsearch(regions, region.start-1, 
+                                    lambda a,b: cmp(a.start, b))
+    if ind == None:
         return None
     
-    while top < len(regions) and regions[top] != gene:
-        top += 1
+    while ind < len(regions) and regions[ind] != region:
+        ind += 1
     
-    if top == len(regions):
+    if ind == len(regions):
         return None
     else:
-        return top
+        return ind
     
 
 # TODO: add reverse iteration

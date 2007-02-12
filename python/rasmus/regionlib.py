@@ -199,7 +199,7 @@ class RegionDb (object):
                 self.regions[region.data["ID"]] = region
             
     
-        for sp, chroms in species.iteritems():
+        for sp, chroms in self.species.iteritems():
             for chrom, regs in chroms.iteritems():
                 regs.sort(key=lambda x: x.start)
 

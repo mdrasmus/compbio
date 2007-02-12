@@ -11,6 +11,7 @@ from rasmus import fasta
 from rasmus import genecall
 from rasmus import genomeutil
 from rasmus import gff
+from rasmus import regionlib
 from rasmus import util
 
 

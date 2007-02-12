@@ -151,6 +151,8 @@ class TreeNode:
 
 
 class Tree:
+    """Basic rooted tree"""
+
     def __init__(self, nextname = 1):
         self.nodes = {}
         self.root = None
@@ -165,10 +167,12 @@ class Tree:
         
 
     def hasData(self, dataname):
+        """Does the tree contain 'dataname' in its extra data"""
         return dataname in self.defaultData
 
     
     def copy(self):
+        """Returns a copy of the tree"""
         tree = Tree(nextname = self.nextname)
         if self.root != None:
             # copy all nodes
@@ -182,8 +186,6 @@ class Tree:
             walk(tree.root)
         
         # copy extra data
-        #tree.defaultData = copy.copy(self.defaultData)
-        #tree.data = copy.copy(self.data)
         tree.copyData(self)
         tree.copyNodeData(self)
         
@@ -191,12 +193,13 @@ class Tree:
     
     
     def copyData(self, tree):
-        # copy tree data
+        """Copy tree data to another"""
         self.defaultData = copy.copy(tree.defaultData)
         self.data = copy.copy(tree.data)
     
     
     def copyNodeData(self, tree):
+        """Copy node data to another tree"""
         for name, node in self.nodes.iteritems():
             if name in tree.nodes:
                 node.data = copy.copy(tree.nodes[name].data)
@@ -204,12 +207,14 @@ class Tree:
     
     
     def setDefaultData(self):
+        """Set default values in each node's data"""
         for node in self.nodes.itervalues():
             for key, val in self.defaultData.iteritems():
                 node.data.setdefault(key, val)
     
     
     def clearData(self, *keys):
+        """Clear tree data"""
         for node in self.nodes.itervalues():
             if len(keys) == 0:
                 node.data = {}
@@ -220,6 +225,7 @@ class Tree:
     
 
     def makeRoot(self, name = None):
+        """Create a new root node"""
         if name == None:
             name = self.newName()
         self.root = TreeNode(name)
@@ -227,10 +233,14 @@ class Tree:
 
 
     def add(self, node):
+        """Add a node to the tree
+           Does not add node to any specific location (use addChild instead).
+        """
         self.nodes[node.name] = node
 
 
     def addChild(self, parent, child):
+        """Add a child node to an existing node 'parent' in the tree"""
         assert parent != child
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
@@ -267,6 +277,7 @@ class Tree:
     
     
     def rename(self, oldname, newname):
+        """Rename a node in the tree"""
         node = self.nodes[oldname]
         del self.nodes[oldname]
         self.nodes[newname] = node
@@ -274,19 +285,24 @@ class Tree:
     
     
     def newName(self):
+        """Returns a new node name that should be unique in the tree"""
         name = self.nextname
         self.nextname += 1
         return name
     
     
     def addTree(self, parent, childTree):
-        # merge nodes and change the names of childTree names if they conflict
+        """Add a subtree to the tree."""
+        
+        # Merge nodes and change the names of childTree names if they conflict
         # with existing names
         self.mergeNames(childTree)        
         self.addChild(parent, childTree.root)
     
     
     def replaceTree(self, node, childTree):
+        """Remove node and replace it with the root of childTree"""
+    
         # merge nodes and change the names of childTree names if they conflict
         # with existing names
         self.mergeNames(childTree)
@@ -299,8 +315,10 @@ class Tree:
     
     
     def mergeNames(self, tree2):
-        names = tree2.nodes.keys()
-        for name in names:
+        """Merge the node names from tree2 into this tree.
+           Change any names that conflict"""
+    
+        for name in tree2.nodes:
             if name in self.nodes:
                 name2 = self.newName()
                 self.nodes[name2] = tree2.nodes[name]
@@ -313,17 +331,20 @@ class Tree:
         
     
     def clear(self):
+        """Clear all nodes from tree"""
         self.nodes = {}
         self.root = None
     
     
-    def leaves(self, node = None):
+    def leaves(self, node=None):
+        """Return the leaves of the tree in order"""
         if node == None:
             node = self.root                   
         return node.leaves()
     
     
     def leafNames(self, node = None):
+        """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
     
     
@@ -331,6 +352,7 @@ class Tree:
     # input and output
     #
     def write(self, out = sys.stdout, writeData=None, oneline=False):
+        """Write the tree in newick notation"""
         self.writeNewick(util.openStream(out, "w"), writeData=writeData, 
                          oneline=oneline)        
     
@@ -365,6 +387,7 @@ class Tree:
     
     
     def writeNewick(self, out = sys.stdout, writeData=None, oneline=False):
+        """Write the tree in newick notation"""
         self.writeNewickNode(self.root, util.openStream(out, "w"), 
                              writeData=writeData, oneline=oneline)
    
@@ -613,6 +636,8 @@ class Tree:
     
     
     def findDepths(self, node = None):
+        """DEPRECATED"""
+        
         if not node:
             node = self.root
         
@@ -625,82 +650,6 @@ class Tree:
         walk(node, 0)
         return depths
 
-    '''
-    def findDist(self, name1, name2):
-        if not name1 in self.nodes or \
-           not name2 in self.nodes:
-            return None
-    
-        # find root path for node1
-        path1 = []
-        node1 = self.nodes[name1]
-        while node1 != self.root:
-            node1 = node1.parent
-            path1.append(node1)
-        
-        # find root path for node2
-        path2 = []
-        node2 = self.nodes[name2]
-        while node2 != self.root:
-            node2 = node2.parent
-            path2.append(node2)
-        
-        # find when paths diverge
-        i = 0
-        while i < len(path1) and i < len(path2) and (path1[i] == path2[i]):
-            i += 1
-        
-        return len(path1) + len(path2) - 2 * i + 1
-    
-    
-    def findPath(self, name1, name2):
-        if not name1 in self.nodes or \
-           not name2 in self.nodes:
-            return None
-    
-        # find root path for node1
-        node1 = self.nodes[name1]        
-        path1 = [node1]
-        while node1 != self.root:
-            node1 = node1.parent
-            path1.append(node1)
-        
-        # find root path for node2
-        node2 = self.nodes[name2]        
-        path2 = [node2]
-        while node2 != self.root:
-            node2 = node2.parent
-            path2.append(node2)
-        
-        # find when paths diverge
-        i = -1
-        while i < len(path1) and i < len(path2) and (path1[i] == path2[i]):
-            i -= 1
-        
-        return path1[i+1:] + path2[i+1:]
-    
-    
-    def lca(self, names, depths = None):
-        """
-        Least Common Ancestor
-        DEPRECATED:  will soon remove
-        """
-        
-        if not depths:
-            depths = self.findDepths(self.root)
-
-        markers = set(names)
-
-        while len(markers) > 1:
-            names = list(markers)
-            ind = util.argmaxfunc(lambda x: depths[x], names)
-            deepest = names[ind]
-
-            markers.remove(deepest)
-            markers.add(self.nodes[deepest].parent.name)
-
-        return self.nodes[markers.members()[0]]
-    '''
 
 
 #============================================================================
@@ -708,12 +657,14 @@ class Tree:
 #
 
 def readTree(filename):
+    """Read a tree from a newick file"""
     tree = Tree()
     tree.readNewick(filename)
     return tree
 
 
 def parseNewick(newick):
+    """Read a tree from newick notation stored in a string"""
     tree = Tree()
     stream = StringIO.StringIO(newick)
     tree.readNewick(stream)
@@ -742,7 +693,7 @@ def assertTree(tree):
 
 
 def lca(nodes):
-    """Least Common Ancestor"""
+    """Returns the Least Common Ancestor (LCA) of a list of nodes"""
     
     if len(nodes) == 1:
         return nodes[0]
@@ -813,6 +764,8 @@ def subtree(tree, node):
 
 
 def findDist(tree, name1, name2):
+    """Returns the branch distance between two nodes in a tree"""
+
     if not name1 in tree.nodes or \
        not name2 in tree.nodes:
         raise Exception("nodes '%s' and '%s' are not in tree" %

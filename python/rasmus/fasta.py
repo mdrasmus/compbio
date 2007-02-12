@@ -33,7 +33,7 @@ class FastaDict (SeqDict):
         if len(args) > 0:
             self.read(* args, **keywords)
     
-    
+    # TODO: add my fasta indexing (much faster)
     def read(self, filename, keyfunc=firstword, valuefunc = lambda x: x, 
               errors=True, useIndex=False):
         key = ""

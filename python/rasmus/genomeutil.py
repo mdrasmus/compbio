@@ -1305,6 +1305,11 @@ class SequenceDB:
 #--------------------------------------------------------------------------------
 
 
+#
+# TODO: multiblocks can be done with my Regions in regionlib!
+#
+
+
 def cutBlocks(matching, blocks, refChrom, refStart, refEnd):
     segments = [Segment(refChrom.genome, refChrom, refStart, refEnd, 1)]
     

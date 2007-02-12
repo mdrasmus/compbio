@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 
 import sys, time, os
-from rasmus import synteny, synphylweb, bionj, ensembl, phyloutil, env
-from rasmus import fasta, util, genomeio, genomeutil
-from rasmus import muscle, phylip, algorithms, clustalw, alignlib
+from rasmus import env, fasta, alignlib, util
 
 
 
 options = [
     ["d:", "dna=", "dna", "<dna fasta>"],
-    ["g:", "genomes=", "genomes", "<genome1>,<genome2>,..."],
     ["o:", "oldext=", "oldext", "<old extension>",
         {"default": ".align",
          "single": True}],
@@ -36,19 +33,12 @@ def main(param):
             util.tic("read fasta '%s'" % f)
             seqs.read(env.findFile(f))
             util.toc()
-    
-    if "genomes" in param:
-        genomes = param["genomes"][-1].split(",")
-        for genome in genomes:
-            util.tic("read fasta '%s'" % genomeio.codingfile(genome))
-            seqs.read(env.findFile(genomeio.codingfile(genome)))
-            util.toc()
     util.toc()
     
     
     # process alignments
     util.tic("process alignments")
-    for alnFile in param[""]:
+    for alnFile in param["REST"]:
         if not os.path.exists(alnFile):
             util.log("skipping '%s', does not exist" % alnFile)
             continue

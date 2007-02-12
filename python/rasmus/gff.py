@@ -107,14 +107,19 @@ Ctg123	. CDS      7000  7600    .  +  2  ID=cds000043;Parent=mRNA00003;Name=eden
 #
 
 
-# static class
-class Gff (object):
 
-    def formatData(self, data):
+class Gff (object):
+    """Most generic GFF format.  Do not assume any format for attributes field"""
+    
+    def __init__(self):
+        self.nondata = set(["comment", "source", "score", "frame", "species"])
+    
+    
+    def formatData(self, data, ignore=set()):
         # unparsed attribute
         return data.get(None, "")
 
-    def parseData(self, text):
+    def parseData(self, text, ignore=set()):
         return {None: text}
 
 
@@ -161,6 +166,9 @@ class Gff (object):
 
         # parse attributes
         region.data.update(self.parseData(tokens[8]))
+        
+        # parse species
+        region.species = region.data.get("species", "")
 
         return region
 
@@ -209,6 +217,7 @@ class Gff (object):
         # do nothing
         return []
 
+# singleton
 GFF = Gff()
 
 #=============================================================================
@@ -220,7 +229,8 @@ class Gtf (Gff):
     def formatData(self, data):
         lst = []
         for key, val in data.items():
-            lst.append('%s "%s";' % (key, str(val)))
+            if key not in self.nondata:
+                lst.append('%s "%s";' % (key, str(val)))
         return " ".join(lst)
 
 
@@ -253,7 +263,8 @@ class Gff3 (Gff):
     def formatData(self, data):
         lst = []
         for key, val in data.items():
-            lst.append('%s=%s;' % (key, str(val)))
+            if key not in self.nondata:
+                lst.append('%s=%s;' % (key, str(val)))
         return "".join(lst)
 
 

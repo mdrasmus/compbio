@@ -18,12 +18,13 @@ AKA
 
 import sys
 
-if (sys.argv) < 2:
-    print >>sys.stderr, "coord2gff.py <coord file>"
+if (sys.argv) < 3:
+    print >>sys.stderr, "coord2gff.py <species> <coord file>"
     sys.exit(1)
 
+species = sys.argv[1]
 
-for line in file(sys.argv[1]):
+for line in file(sys.argv[2]):
     gene, chrom, start, end, strand = line.rstrip().split("\t")
     
     if strand == "1":
@@ -32,5 +33,5 @@ for line in file(sys.argv[1]):
         strand = "-"
     
     print "\t".join([chrom, ".", "gene", start, end, ".", strand, "0", 
-                     "ID=" + gene])
+                     "ID=%s;species=%s;" % (gene, species)])
     

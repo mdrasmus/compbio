@@ -5,13 +5,14 @@ from rasmus import util, seqlib
 from rasmus.seqlib import SeqDict
 
 
-# TODO: add a fasta file iterator
+# TODO: add a fasta file iterator, can always use indexing as well
 
 
 def removestar(value):
     return value.replace("*", "")
 
 def firstword(key):
+    """Use the first word as the key"""
     return key.split()[0]
 
 
@@ -28,14 +29,12 @@ class FastaDict (SeqDict):
     def __init__(self, *args, ** keywords):
         SeqDict.__init__(self)
         
-        self.filelookup = {}
         self.index = FastaIndex()
         
         if len(args) > 0:
             self.read(* args, **keywords)
     
     
-    # TODO: add my fasta indexing (much faster)
     def read(self, filename, keyfunc=firstword, valuefunc = lambda x: x, 
               errors=True, useIndex=False):
         key = ""
@@ -63,7 +62,7 @@ class FastaDict (SeqDict):
                 self.add(key, valuefunc(value), errors)
     
     
-    def write(self, filename=sys.stdout, names = None, width=80):
+    def write(self, filename=sys.stdout, names=None, width=80):
         out = util.openStream(filename, "w")
         
         if names == None:
@@ -136,109 +135,8 @@ def writeFasta(filename, seqs, order = None, width=None):
         names = map(str, range(len(seqs)))
         writeFastaOrdered(out, names, seqs, width)
     else:
-        if order == None:
-            order = seqs.keys()
-            
-        for key in order:
-            print >>out, ">"+ key
-            util.printwrap(seqs[key], width, out=out)
+        seqs.write(filename, order, width)
 
-
-
-#=============================================================================
-# Simple FASTA's as lists
-#
-
-def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
-    """Read a FASTA file into a 'keys' and 'values' lists"""
-    
-    infile = util.openStream(filename)
-    seqs = []
-    names = []
-    key = ""
-    value = ""
-        
-    for line in infile:
-        if line[0] == ">":
-            if key != "":
-                names.append(keyfunc(key))
-                seqs.append(valuefunc(value))
-            key = line[1:].rstrip()
-            value = ""
-        else:
-            assert key != ""
-            value += line.rstrip()
-    if key != "":
-        names.append(keyfunc(key))
-        seqs.append(valuefunc(value))
-    return (names, seqs)
-
-
-def writeFastaOrdered(filename, names, seqs, width=None):
-    """Write a FASTA in array style to a file"""
-    
-    out = util.openStream(filename, "w")
-    
-    for name,seq in zip(names,seqs):
-        print >>out, ">%s" % name
-        util.printwrap(seq, width, out=out)
-
-
-
-def array2dict(names, seqs):
-    """Convert array style FASTA to FastDict"""
-    
-    fa = FastaDict()
-    for name, seq in zip(names, seqs):
-        fa.add(name, seq)
-    return fa
-
-
-def dict2array(fa, order = None):
-    """Convert FastaDict to array style FASTA"""
-    
-    names = []
-    seqs = []
-    
-    if order == None:
-        order = fa.keys()
-    
-    for name in order:
-        names.append(name)
-        seqs.append(fa[name])
-    return (names, seqs)
-
-
-
-#=============================================================================
-# FASTA BLAST Indexing
-#
-
-def fastaGet(fastaFile, key, start=0, end=0, strand=1):
-    """Get a sequence from a fasta file that has been indexed by 'formatdb'"""
-    
-    stream = os.popen("fastacmd -d %s -s %s -L %d,%d 2>/dev/null" % 
-                      (fastaFile, key, start, end))
-    
-    # remove key
-    val = stream.read()
-    if val == "":
-        raise Exception("no such sequence")
-    else:
-        seq = val.split("\n")[1:]
-        seq = "".join(seq)
-    
-    if strand == -1:
-        seq = _revcomp(seq)
-    
-    return seq
-
-
-def hasBlastIndex(fastaFile):
-    """Check to see if fastaFile has a formatdb fasta index"""
-
-    return os.path.exists(fastaFile + ".psd") and \
-           os.path.exists(fastaFile + ".psi")
 
 
 def _revcomp(seq):
@@ -252,81 +150,6 @@ def _revcomp(seq):
         seq2.append(comp[seq[i]])
     return "".join(seq2)
 
-
-
-
-
-
-
-
-#=============================================================================
-# Special alignment format
-# (rarely used)
-#
-
-class Alignment:
-    def __init__(self, key, value):
-        tokens = key.split("|")
-        
-        self.genome = tokens[0]        
-        self.chrom, self.start, self.end = chromParse(tokens[1])
-        self.kind   = tokens[2]
-        self.seq    = value
-        
-        if self.kind == "_aligned":
-            self.strand = 1
-        elif self.kind == " revcomp_aligned":
-            self.strand = -1
-        else:
-            raise Exception("unknown kind")
-    
-    def makekey(self):
-        return "%s|%s|%s" % \
-            (self.genome, 
-             chromFormat(self.chrom, self.start, self.end), 
-             self.kind)
-
-
-def chromParse(string):
-    tokens = string.split(":")
-    chrom  = tokens[0].replace("chr", "")
-    
-    tokens = tokens[1].split("-")
-    start  = util.pretty2int(tokens[0])
-    end    = util.pretty2int(tokens[1])
-    
-    return (chrom, start, end)
-
-
-def chromFormat(chrom, start, end):
-    if chrom.isdigit():
-        prefix = "chr"
-    else:
-        prefix = ""
-    return "%s%s:%s-%s" % \
-        (prefix, chrom, util.int2pretty(start), util.int2pretty(end))
-
-    
-def readAlignment(filename):
-    aln = []
-    names, seqs = readFastaOrdered(filename)
-    for name, seq in zip(names, seqs):
-        aln.append(Alignment(name, seq))
-    return aln
-
-
-def writeAlignment(out, aln):
-    writeFasta(out, alignment2fasta(aln), order = keys)
-
-
-def alignment2fasta(aln):
-    fa = {}
-    keys = []
-    for seq in aln:
-        key = seq.makekey()
-        keys.append(key)
-        fa[key] = seq.seq
-    return fa    
 
 
 #=============================================================================
@@ -464,3 +287,172 @@ class FastaIndex:
         
         return seq
 
+
+
+#=============================================================================
+# FASTA BLAST Indexing
+#
+
+def fastaGet(fastaFile, key, start=0, end=0, strand=1):
+    """Get a sequence from a fasta file that has been indexed by 'formatdb'"""
+    
+    stream = os.popen("fastacmd -d %s -s %s -L %d,%d 2>/dev/null" % 
+                      (fastaFile, key, start, end))
+    
+    # remove key
+    val = stream.read()
+    if val == "":
+        raise Exception("no such sequence")
+    else:
+        seq = val.split("\n")[1:]
+        seq = "".join(seq)
+    
+    if strand == -1:
+        seq = _revcomp(seq)
+    
+    return seq
+
+
+def hasBlastIndex(fastaFile):
+    """Check to see if fastaFile has a formatdb fasta index"""
+
+    return os.path.exists(fastaFile + ".psd") and \
+           os.path.exists(fastaFile + ".psi")
+
+
+
+#=============================================================================
+# Simple FASTA's as lists
+# (not used very often)
+#
+
+def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
+    """Read a FASTA file into a 'keys' and 'values' lists"""
+    
+    infile = util.openStream(filename)
+    seqs = []
+    names = []
+    key = ""
+    value = ""
+        
+    for line in infile:
+        if line[0] == ">":
+            if key != "":
+                names.append(keyfunc(key))
+                seqs.append(valuefunc(value))
+            key = line[1:].rstrip()
+            value = ""
+        else:
+            assert key != ""
+            value += line.rstrip()
+    if key != "":
+        names.append(keyfunc(key))
+        seqs.append(valuefunc(value))
+    return (names, seqs)
+
+
+def writeFastaOrdered(filename, names, seqs, width=None):
+    """Write a FASTA in array style to a file"""
+    
+    out = util.openStream(filename, "w")
+    
+    for name,seq in zip(names,seqs):
+        print >>out, ">%s" % name
+        util.printwrap(seq, width, out=out)
+
+
+
+def array2dict(names, seqs):
+    """Convert array style FASTA to FastDict"""
+    
+    fa = FastaDict()
+    for name, seq in zip(names, seqs):
+        fa.add(name, seq)
+    return fa
+
+
+def dict2array(fa, order = None):
+    """Convert FastaDict to array style FASTA"""
+    
+    names = []
+    seqs = []
+    
+    if order == None:
+        order = fa.keys()
+    
+    for name in order:
+        names.append(name)
+        seqs.append(fa[name])
+    return (names, seqs)
+
+
+
+
+#=============================================================================
+# Special alignment format
+# (rarely used)
+#
+
+class Alignment:
+    def __init__(self, key, value):
+        tokens = key.split("|")
+        
+        self.genome = tokens[0]        
+        self.chrom, self.start, self.end = chromParse(tokens[1])
+        self.kind   = tokens[2]
+        self.seq    = value
+        
+        if self.kind == "_aligned":
+            self.strand = 1
+        elif self.kind == " revcomp_aligned":
+            self.strand = -1
+        else:
+            raise Exception("unknown kind")
+    
+    def makekey(self):
+        return "%s|%s|%s" % \
+            (self.genome, 
+             chromFormat(self.chrom, self.start, self.end), 
+             self.kind)
+
+
+def chromParse(string):
+    tokens = string.split(":")
+    chrom  = tokens[0].replace("chr", "")
+    
+    tokens = tokens[1].split("-")
+    start  = util.pretty2int(tokens[0])
+    end    = util.pretty2int(tokens[1])
+    
+    return (chrom, start, end)
+
+
+def chromFormat(chrom, start, end):
+    if chrom.isdigit():
+        prefix = "chr"
+    else:
+        prefix = ""
+    return "%s%s:%s-%s" % \
+        (prefix, chrom, util.int2pretty(start), util.int2pretty(end))
+
+    
+def readAlignment(filename):
+    aln = []
+    names, seqs = readFastaOrdered(filename)
+    for name, seq in zip(names, seqs):
+        aln.append(Alignment(name, seq))
+    return aln
+
+
+def writeAlignment(out, aln):
+    writeFasta(out, alignment2fasta(aln), order = keys)
+
+
+def alignment2fasta(aln):
+    fa = {}
+    keys = []
+    for seq in aln:
+        key = seq.makekey()
+        keys.append(key)
+        fa[key] = seq.seq
+    return fa    

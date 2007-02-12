@@ -735,7 +735,7 @@ class Table (list):
         self.append(kargs)
     
     
-    def addCol(self, header, coltype=str, default=NULL, pos=None, data=None):
+    def addCol(self, header, coltype=None, default=NULL, pos=None, data=None):
         """Add a column to the table.  You must populate column data yourself.
         
            header  - name of the column
@@ -743,15 +743,26 @@ class Table (list):
            default - default value of the column
            pos     - position to insert column (default: right-end)
         """
-        
+        # ensure header is unique
         if header in self.headers:
             raise Exception("header '%s' is already in table" % header)
         
+        # default column position is last column
         if pos == None:
             pos = len(self.headers)
+        
+        # default coltype is guessed from data
+        if coltype == None:
+            if data == None:
+                raise Exception("must specify data or coltype")
+            else:
+                coltype = type(data[0])
+        
+        # default value is inferred from column type
         if default == NULL:
             default = coltype()
         
+        # update table info
         self.headers.insert(pos, header)
         self.types[header] = coltype
         self.defaults[header] = default
@@ -833,9 +844,6 @@ class Table (list):
         return mat, rlabels, clabels
     
     
-    
-    
-    
     def filter(self, cond):
         """Returns a table with a subset of rows such that cond(row) == True"""
         tab = self.new()
@@ -845,23 +853,6 @@ class Table (list):
                 tab.append(row)
         
         return tab
-    
-    
-    def map(self, func):
-        """Returns a new table with the function 'func' applied to each row"""
-        
-        if len(self) == 0:
-            # trivial case
-            return self.new()
-        else:
-            # setup table based on first row
-            tab2 = type(self)([func(self[0])])
-            
-            # copy over remaining rows
-            for row in self[1:]:
-                tab2.append(func(row))
-        
-            return tab2
     
     
     def groupby(self, keyfunc=None, col=None):

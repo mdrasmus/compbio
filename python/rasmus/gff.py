@@ -251,6 +251,12 @@ class Gtf (Gff):
             data[key] = val
 
         return attrs
+    
+    def buildHierarchy(self, regions):
+        """GTF has its own heirarchy system
+           It is currently not implemented"""
+        
+        return []
 
 GTF = Gtf()
 

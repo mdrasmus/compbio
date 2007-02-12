@@ -97,7 +97,7 @@ def shellparser(arg):
         return [arg]
 
 
-def parseOptions(argv, options, quit=False, resthelp = ""):
+def parseOptions(argv, options, quit=True, resthelp = ""):
     try:
         return parseArgs(argv, options, quit=quit, resthelp=resthelp, 
                          returnRest=False)

@@ -52,7 +52,7 @@ def makeNewickParser():
 
 
     # terminal rules
-    name    = Word(alphanums + "_" + "-" + ".")
+    name    = Word(alphanums + "_" + "-" + "." + "+")
     fnumber = Combine(Word("+-"+nums, nums) + 
                       Optional(point + Optional(Word(nums))) +
                       Optional(e + Word("+-"+nums, nums)))

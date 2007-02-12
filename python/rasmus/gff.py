@@ -106,425 +106,129 @@ Ctg123	. CDS      7000  7600    .  +  2  ID=cds000043;Parent=mRNA00003;Name=eden
 # Generic GFF fileformat
 #
 
-def formatGffData(data):
-    # unparsed attribute
-    return data.get(None, "")
 
-def parseGffData(text):
-    return {None: text}
+# static class
+class Gff (object):
 
+    def formatData(self, data):
+        # unparsed attribute
+        return data.get(None, "")
 
-def readGffRegion(line, region=None, parseData=parseGffData):
-    if region == None:
-        region = regionlib.Region()
-
-    # parse comment
-    pos = line.find("#")
-    if pos > -1:
-        region.data["comment"] = line[pos+1:]
-        line = line[:pos]
+    def parseData(self, text):
+        return {None: text}
 
 
-    # split into columns
-    tokens = line.split("\t")
-    assert len(tokens) == 9, Exception("line does not have 9 columns")
+    def readRegion(self, line, region=None):
+        if region == None:
+            region = regionlib.Region()
 
-    # parse fields
-    region.seqname = tokens[0]
-    region.feature = tokens[2]
-    region.start   = int(tokens[3])
-    region.end     = int(tokens[4])
-
-    # parse strand
-    if tokens[6] == "+":
-        region.strand = 1
-    elif tokens[6] == "-":
-        region.strand = -1
-    else:
-        region.strand = 0
-    
-    # parse source
-    if tokens[1] != ".":
-        region.data["source"]  = tokens[1]
-    
-    # parse score
-    if tokens[5] != ".":
-        region.data["score"] = float(tokens[5])
-
-    # parse frame
-    if tokens[7] != ".":
-        region.data["frame"] = int(tokens[7])
-
-    # parse attributes
-    region.data.update(parseData(tokens[8]))
-    
-    return region
-    
-    
-def writeGffRegion(region, out=sys.stdout, formatData=formatGffData):
-    score = str(region.data.get("score", "."))
-    source = str(region.data.get("source", "."))
-    
-    if region.strand == 0:
-        strand = "."
-    elif region.strand == 1:
-        strand = "+"
-    else:
-        strand = "-"
-
-    frame = str(region.data.get("frame", "."))
-    
-    attr = formatData(region.data)
-
-    if "comment" in region.data:
-        comment = " #%s" % region.data["comment"]
-    else:
-        comment = ""
-
-
-    out.write("%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s%s\n" % \
-              (region.seqname, 
-               source, 
-               region.feature,
-               region.start,
-               region.end,
-               score,
-               strand,
-               frame,
-               attr,
-               comment))
-
-#=============================================================================
-# GTF fileformat
-#
-    
-def formatGtfData(data):
-    lst = []
-    for key, val in data.items():
-        lst.append('%s "%s";' % (key, str(val)))
-    return " ".join(lst)
-
-
-def parseGtfData(text):
-    """Parses an attribute field into a dict of key/value pairs"""
-
-    tokens = text.split(";")
-    data = {}
-
-    for attr in tokens[:-1]:
-        attr = attr.strip()
-
-        pos = attr.index(" ")
-
-        key = attr[:pos]
-        val = attr[pos+1:].split("\"")[1]
-
-        data[key] = val
-
-    return attrs
-
-
-def readGtfRegion(line, region=None, parseData=parseGtfData):
-    return readGffRegion(line, region=region, parseData=parseData)
-    
-    
-def writeGtfRegion(region, out=sys.stdout, formatData=formatGtfData):
-    return writeGffRegion(region, out=out, formatData=formatData)
-
-
-
-#=============================================================================
-# GFF3 fileformat
-#
-
-def formatGff3Data(data):
-    lst = []
-    for key, val in data.items():
-        lst.append('%s=%s;' % (key, str(val)))
-    return "".join(lst)
-
-
-def parseGff3Data(text):
-    """Parses an attribute field into a dict of key/value pairs"""
-
-    tokens = text.split(";")
-    data = {}
-
-    for attr in tokens:
-        attr = attr.strip()
-        if len(attr) == 0:
-            continue
-
-        pos = attr.index("=")
-
-        key = attr[:pos]
-        val = attr[pos+1:]
-
-        data[key] = val
-
-    return data
-
-
-def buildGff3Hierarchy(regions):
-    """
-    Produces a hierachy from a list of regions
-    Returns list of regions with no parents (roots).
-
-    Assumes ID and Parent attributes are present.
-    """
-
-    # make a list of regions in case regions is not a list
-    if not isinstance(regions, list):
-        regions = list(regions)
-
-    # make lookup by id
-    roots = set()
-    lookup = {}
-    for region in regions:
-        if "ID" in region.data:
-            lookup[region.data["ID"]] = region
-        roots.add(region)
-
-    # build hierarchy
-    for region in regions:
-        if "Parent" in region.data:
-            parents = region.data["Parent"].split(",")
-            for parent in parents:
-                lookup[parent].addChild(region)
-            roots.remove(region)
-
-    # create roots list (regions in same order as they were passed)
-    regions2 = [x for x in regions if x in roots]
-
-    return regions2
-
-
-def readGff3Region(line, region=None, parseData=parseGff3Data):
-    return readGffRegion(line, region=region, parseData=parseData)
-    
-    
-def writeGff3Region(region, out=sys.stdout, formatData=formatGff3Data):
-    return writeGffRegion(region, out=out, formatData=formatData)
-
-
-#-------------------------------------------------------------------------------
-# Region Classes (OLD) DEPRECATED
-#-------------------------------------------------------------------------------
-
-
-# TODO: Generalize beyond GFF (to simply sequence region)
-class GffRegion:
-    """
-    A generic GFF region
-    """
-    
-    def __init__(self, region=None):
-        if isinstance(region, Region):
-            # copy information from other region
-            self.seqname = region.seqname
-            self.source  = region.source    # should not be main field
-            self.feature = region.feature
-            self.start   = region.start
-            self.end     = region.end
-            self.score   = region.score     # should not be main field
-            self.strand  = region.strand
-            self.frame   = region.frame     # should not be main field
-            self.attrs   = dict(region.attrs)   # rename data?
-            self.comment = comment          # should not be main field
-            
-        elif isinstance(region, str):
-            self.read(region)
-        
-        elif region is None:
-            # set defaults
-            self.seqname = ""
-            self.source  = ""
-            self.feature = ""
-            self.start   = 0
-            self.end     = 0
-            self.score   = None
-            self.strand  = None
-            self.frame   = None
-            self.attrs   = {}
-            self.comment = ""
-        
-        else:
-            raise Exception("Cannot parse argument of type '%s'" %
-                            str(type(region)))
-        
-        # initializes species to None
-        self.species = None
-    
-    
-    def read(self, line):
         # parse comment
         pos = line.find("#")
         if pos > -1:
-            self.comment = line[pos+1:]
+            region.data["comment"] = line[pos+1:]
             line = line[:pos]
-        else:
-            self.comment = ""
-        
+
+
         # split into columns
         tokens = line.split("\t")
         assert len(tokens) == 9, Exception("line does not have 9 columns")
-        
+
         # parse fields
-        self.seqname = tokens[0]
-        self.source  = tokens[1]
-        self.feature = tokens[2]
-        self.start   = int(tokens[3])
-        self.end     = int(tokens[4])
-        
-        # parse score
-        if tokens[5] == ".":
-            self.score = None
-        else:
-            self.score = float(tokens[5])
-        
+        region.seqname = tokens[0]
+        region.feature = tokens[2]
+        region.start   = int(tokens[3])
+        region.end     = int(tokens[4])
+
         # parse strand
         if tokens[6] == "+":
-            self.strand = 1
+            region.strand = 1
         elif tokens[6] == "-":
-            self.strand = -1
+            region.strand = -1
         else:
-            self.strand = None
+            region.strand = 0
+
+        # parse source
+        if tokens[1] != ".":
+            region.data["source"]  = tokens[1]
+
+        # parse score
+        if tokens[5] != ".":
+            region.data["score"] = float(tokens[5])
 
         # parse frame
-        if tokens[7] == ".":
-            self.frame = None
-        else:
-            self.frame = int(tokens[7])
+        if tokens[7] != ".":
+            region.data["frame"] = int(tokens[7])
 
         # parse attributes
-        self.attrs = self.parseAttrs(tokens[8])
-    
-    
-    def write(self, out=sys.stdout):
-        out.write(str(self))
-        out.write("\n")
-        
-    
-    def __str__(self):
-        if self.score == None:
-            score = "."
-        else:
-            score = str(self.score)
-        
-        if self.strand == None:
+        region.data.update(self.parseData(tokens[8]))
+
+        return region
+
+
+    def writeRegion(self, region, out=sys.stdout):
+        score = str(region.data.get("score", "."))
+        source = str(region.data.get("source", "."))
+
+        if region.strand == 0:
             strand = "."
-        elif self.strand == 1:
+        elif region.strand == 1:
             strand = "+"
         else:
             strand = "-"
-        
-        if self.frame == None:
-            frame = "."
-        else:
-            frame = str(self.frame)
-        
-        attr = self.formatAttrs(self.attrs)
-        
-        if self.comment != "":
-            comment = " #%s" % self.comment
+
+        frame = str(region.data.get("frame", "."))
+
+        attr = self.formatData(region.data)
+
+        if "comment" in region.data:
+            comment = " #%s" % region.data["comment"]
         else:
             comment = ""
-        
-        
-        return "%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s%s" % \
-            (self.seqname, 
-             self.source, 
-             self.feature,
-             self.start,
-             self.end,
-             score,
-             strand,
-             frame,
-             attr,
-             comment)
-    
-    def formatAttrs(self, attrs):
-        # unparsed attribute
-        assert attrs.keys() == [None]
-        return attrs[None]
-    
-    def parseAttrs(self, text):    
-        return {None: text}
-    
-    
-    def length(self):
-        return self.end - self.start + 1
-    
-    
-    def __repr__(self):
-        return self.__str__()
 
 
-class HierarchicalRegion (GffRegion):
-    """
-    Generic Region class with support for parent and child regions
-    """
+        out.write("%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s%s\n" % \
+                  (region.seqname, 
+                   source, 
+                   region.feature,
+                   region.start,
+                   region.end,
+                   score,
+                   strand,
+                   frame,
+                   attr,
+                   comment))
     
-    def __init__(self, region=None):
-        GffRegion.__init__(self, region)
-        self.parents = []
-        self.children = []
-    
-    
-    def addChild(self, child):
-        assert self not in child.parents
-        assert child not in self.children
-        child.parents.append(self)
-        self.children.append(child)
-    
-    def removeChild(self, child):
-        child.parents.remove(self)
-        self.children.remove(child)
-    
-    def write(self, out=sys.stdout):
-        out.write(str(self))
-        out.write("\n")
-        
-        for child in self.children:
-            child.write(out)
-        
-    
-    @staticmethod
     def buildHierarchy(self, regions):
         """
         Produces a hierachy from a list of regions
         Returns list of regions with no parents (roots).
         
-        This base class does not implement anything
+        This base class function does nothing.  See GFF3
         """
         
+        # do nothing
         return []
 
+GFF = Gff()
 
+#=============================================================================
+# GTF fileformat
+#
 
-class GtfRegion (HierarchicalRegion):
-    """
-    GTF Region
-    
-    Parses and formats attributes field according to the GTF specification
-    """
+class Gtf (Gff):
 
-    def __init__(self, region=None):
-        HierarchicalRegion.__init__(self, region)
-        
-
-    def formatAttrs(self, attrs):
+    def formatData(self, data):
         lst = []
-        for key, val in attrs.items():
+        for key, val in data.items():
             lst.append('%s "%s";' % (key, str(val)))
         return " ".join(lst)
-    
-    
-    def parseAttrs(self, text):
+
+
+    def parseData(self, text):
         """Parses an attribute field into a dict of key/value pairs"""
 
         tokens = text.split(";")
-        attrs = {}
+        data = {}
 
         for attr in tokens[:-1]:
             attr = attr.strip()
@@ -534,49 +238,30 @@ class GtfRegion (HierarchicalRegion):
             key = attr[:pos]
             val = attr[pos+1:].split("\"")[1]
 
-            attrs[key] = val
+            data[key] = val
 
         return attrs
-    
-    @staticmethod
-    def buildHierarchy(regions):
-        """
-        Produces a hierachy from a list of regions
-        Returns list of regions with no parents (roots).
-        
-        NOT written yet
-        """
-        
-        # TODO: create hierarchy from gene_id, transcript_id attrs
-        
-        pass
 
+GTF = Gtf()
 
+#=============================================================================
+# GFF3 fileformat
+#
 
-class Gff3Region (HierarchicalRegion):
-    """
-    GFF3 Region
-    
-    Parses and formats attributes field according to the GFF3 specification
-    
-    Also includes support for Parents and Children.
-    """
-    
-    def __init__(self, region=None):
-        HierarchicalRegion.__init__(self, region)
+class Gff3 (Gff):
 
-
-    def formatAttrs(self, attrs):
+    def formatData(self, data):
         lst = []
-        for key, val in attrs.items():
+        for key, val in data.items():
             lst.append('%s=%s;' % (key, str(val)))
         return "".join(lst)
 
-    def parseAttrs(self, text):
+
+    def parseData(self, text):
         """Parses an attribute field into a dict of key/value pairs"""
 
         tokens = text.split(";")
-        attrs = {}
+        data = {}
 
         for attr in tokens:
             attr = attr.strip()
@@ -588,128 +273,52 @@ class Gff3Region (HierarchicalRegion):
             key = attr[:pos]
             val = attr[pos+1:]
 
-            attrs[key] = val
+            data[key] = val
 
-        return attrs
-    
-    @staticmethod
-    def buildHierarchy(regions):
+        return data
+
+
+    def buildHierarchy(self, regions):
         """
         Produces a hierachy from a list of regions
         Returns list of regions with no parents (roots).
-        
+
         Assumes ID and Parent attributes are present.
         """
-        
+
         # make a list of regions in case regions is not a list
         if not isinstance(regions, list):
             regions = list(regions)
-        
+
         # make lookup by id
         roots = set()
         lookup = {}
         for region in regions:
-            if "ID" in region.attrs:
-                lookup[region.attrs["ID"]] = region
+            if "ID" in region.data:
+                lookup[region.data["ID"]] = region
             roots.add(region)
-        
+
         # build hierarchy
         for region in regions:
-            if "Parent" in region.attrs:
-                parents = region.attrs["Parent"].split(",")
+            if "Parent" in region.data:
+                parents = region.data["Parent"].split(",")
                 for parent in parents:
                     lookup[parent].addChild(region)
                 roots.remove(region)
-        
+
         # create roots list (regions in same order as they were passed)
         regions2 = [x for x in regions if x in roots]
-        
+
         return regions2
-        
+
+GFF3 = Gff3()
 
 
-#-------------------------------------------------------------------------------
-# Region functions
-#-------------------------------------------------------------------------------
+#=============================================================================
+# Gff Input/Output
+#
 
-# Could convert this into a generator function
-class RegionIter:
-    """An iterator that walks down a sorted list of regions"""
-
-    def __init__(self, regions, start, end, index=None):
-        self.regions  = regions
-        self.start  = start
-        self.end    = end
-        self.nregions = len(regions)
-        
-        if index != None:
-            self.index = index
-        else:
-            self.index = 0
-            
-            # find starting index by binary search
-            low, top = algorithms.binsearch(regions, start-1, 
-                                            lambda a,b: cmp(a.start, b))
-            
-            if top != None:
-                self.index = top
-            else:
-                self.index = self.nregions
-    
-    def __iter__(self):
-        return self
-    
-    
-    def next(self):
-        if (self.index < self.nregions) and \
-           (self.regions[self.index].start < self.end):
-            gene = self.regions[self.index]
-        else:
-            raise StopIteration
-        
-        self.index += 1
-        return gene
-
-
-
-def overlap(region1, region2):
-    """Tests whether two regions overlap"""
-    
-    return region1.seqname == region2.seqname and \
-           region1.species == region2.species and \
-           util.overlap(region1.start, region1.end,
-                        region2.start, region2.end)
-
-def overlaps(region1, regions):
-    """Find the regions in list 'regions' that overlap region1"""
-    
-    return [x for x in regions if overlap(region1, x)]
-
-
-def regionLookup(regions, key="ID"):
-    """
-    Returns a dict lookup of regions based on a key (default: ID)
-    """
-    
-    lookup = {}
-
-    for region in regions:
-        if key in region.attrs:
-            rkey = region.attrs[key]
-            assert rkey not in lookup, Exception("duplicate key")
-            lookup[rkey] = region
-            
-
-    return lookup
-
-
-
-
-#-------------------------------------------------------------------------------
-# Region Input/Output
-#-------------------------------------------------------------------------------
-
-def readGff(filename, format=readGffRegion, 
+def readGff(filename, format=GFF3, 
             lineFilter=lambda x: True,
             regionFilter=lambda x: True):
     """
@@ -721,15 +330,10 @@ def readGff(filename, format=readGffRegion,
                      lineFilter,
                      regionFilter)
     
-    regions = []
-    
-    for region in infile:
-        regions.append(region)
-    
-    return regions
+    return list(infile)
 
 
-def writeGff(filename, format=writeGffRegion):
+def writeGff(filename, format=GFF3):
     """
     Write regions to a file stream
     
@@ -740,14 +344,11 @@ def writeGff(filename, format=writeGffRegion):
     out = util.openStream(filename, "w")
     
     for region in regions:
-        format(region, out=out)
+        format.writeRegion(region, out=out)
 
 
 
-
-
-
-def iterGff(filename, format=readGffRegion, 
+def iterGff(filename, format=GFF3, 
             lineFilter=lambda x: True,
             regionFilter=lambda x: True):
     """
@@ -767,7 +368,7 @@ def iterGff(filename, format=readGffRegion,
         
         # parse region
         try:
-            region = format(line)
+            region = format.readRegion(line)
         except Exception, e:
             raise Exception("%s\nError on line %d: %s" % (e,lineno, line))
             
@@ -784,12 +385,11 @@ def iterGff(filename, format=readGffRegion,
 if __name__ == "__main__":
     from rasmus.common import *
     
-    regions = readGff(strStream(TEST_GFF3_2), format=Gff3Region)
-    
-    regions2 = Gff3Region.buildHierarchy(regions)
+    regions = readGff(strStream(TEST_GFF3_2), format=GFF3)
+    regions2 = GFF3.buildHierarchy(regions)
     
     print regions2
-    regions2[0].write()
+    print regions2[0]
     
     if 0:
         pc(readGff(strStream(TEST_GTF)))

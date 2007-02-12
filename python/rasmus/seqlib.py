@@ -26,7 +26,7 @@ class SeqDict (dict):
     def add(self, key, value, errors=False):
         if key in self:
             if errors:
-                print "duplicate key", key
+                util.logger("duplicate key", key)
 
             # keep the longest value, by default
             if len(value) >= len(self[key]):

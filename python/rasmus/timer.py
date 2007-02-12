@@ -28,6 +28,7 @@ class Timer:
         self.showErrors = True
         self.showWarnings = True
         self.quiets = 0
+    
 
     def start(self, msg = ""):
         """Start a new timer"""

@@ -350,7 +350,7 @@ def readGff(filename, format=GFF3,
     return list(infile)
 
 
-def writeGff(filename, format=GFF3):
+def writeGff(filename, regions, format=GFF3):
     """
     Write regions to a file stream
     

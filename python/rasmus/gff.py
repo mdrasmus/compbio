@@ -115,9 +115,9 @@ class Gff (object):
         self.nondata = set(["comment", "source", "score", "frame", "species"])
     
     
-    def formatData(self, data, ignore=set()):
+    def formatData(self, region, ignore=set()):
         # unparsed attribute
-        return data.get(None, "")
+        return region.data.get(None, "")
 
     def parseData(self, text, ignore=set()):
         return {None: text}
@@ -186,7 +186,7 @@ class Gff (object):
 
         frame = str(region.data.get("frame", "."))
 
-        attr = self.formatData(region.data)
+        attr = self.formatData(region)
 
         if "comment" in region.data:
             comment = " #%s" % region.data["comment"]
@@ -226,9 +226,13 @@ GFF = Gff()
 
 class Gtf (Gff):
 
-    def formatData(self, data):
+    def formatData(self, region):
         lst = []
-        for key, val in data.items():
+        
+        if region.species != "":
+            lst.append('species "%s";' % region.species)
+        
+        for key, val in region.data.iteritems():
             if key not in self.nondata:
                 lst.append('%s "%s";' % (key, str(val)))
         return " ".join(lst)
@@ -266,9 +270,13 @@ GTF = Gtf()
 
 class Gff3 (Gff):
 
-    def formatData(self, data):
+    def formatData(self, region):
         lst = []
-        for key, val in data.items():
+        
+        if region.species != "":
+            lst.append("species=%s;" % region.species)
+        
+        for key, val in region.data.iteritems():
             if key not in self.nondata:
                 lst.append('%s=%s;' % (key, str(val)))
         return "".join(lst)

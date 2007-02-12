@@ -48,7 +48,7 @@ def main(conf):
     regions = []
     for gffFile in conf["gff"]:
         util.tic("read " + gffFile)
-        lst = gff.readGff(env.findFile(gffFile), format=gff.readGff3Region,
+        lst = gff.readGff(env.findFile(gffFile), format=gff.GFF3,
                           regionFilter = lambda x: x.feature == "gene")
         for gene in lst:
             gene.species = gene2species(gene.data["ID"])

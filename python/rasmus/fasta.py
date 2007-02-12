@@ -29,9 +29,11 @@ class FastaDict (SeqDict):
         SeqDict.__init__(self)
         
         self.filelookup = {}
+        self.index = FastaIndex()
         
         if len(args) > 0:
             self.read(* args, **keywords)
+    
     
     # TODO: add my fasta indexing (much faster)
     def read(self, filename, keyfunc=firstword, valuefunc = lambda x: x, 
@@ -40,14 +42,13 @@ class FastaDict (SeqDict):
         value = ""
         
         if isinstance(filename, str) and useIndex and hasFastaIndex(filename):
-            # store None's for when indexing should be used            
-            for line in util.openStream(filename):
-                if len(line) > 0 and line[0] == ">":    
-                    key = line[1:].rstrip()
-                    self.filelookup[key] = filename
-                    if key not in self:
-                        self.names.append(key)
-                    dict.__setitem__(self, key, None)
+            newkeys = self.index.read(filename)
+            
+            # store None's for when indexing should be used
+            for key in newkeys:
+                if key not in self:
+                    self.names.append(key)
+                dict.__setitem__(self, key, None)
         else:
             for line in util.openStream(filename):                
                 if len(line) > 0 and line[0] == ">":
@@ -78,22 +79,42 @@ class FastaDict (SeqDict):
         
         if val == None:
             # if val == None, then we are using fasta indexing
-            if key in self.filelookup:
-                try:
-                    val = fastaGet(self.filelookup[key], key)
-                    
-                    # cache value
-                    self[key] = val
-                    return val
-                except:
-                    raise KeyError(key)
-            else:
+            try:
+                val = self.index.get(key)
+                
+                # cache value
+                self[key] = val
+                return val
+            except:
                 raise KeyError(key)
+
         else:
+            return val
+    
+    
+    def getseq(self, key, start=None, end=None, strand=1):
+        val = SeqDict.__getitem__(self, key) 
+        
+        if val == None:
+            # if val == None, then we are using fasta indexing
+            try:
+                return self.index.get(key, start, end, strand)
+            except:
+                raise KeyError(key)
+
+        else:
+            val = val[start:end+1]
+        
+            # reverse complement if needed
+            if strand == -1:
+                val = _revcomp(val)
+            
             return val
 
 
-
+#=============================================================================
+# Convenience functions for input/output
+#
     
 
 def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 
@@ -105,6 +126,28 @@ def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x,
     return fa
 
 
+
+def writeFasta(filename, seqs, order = None, width=None):
+    """Write a FASTA dictionary into a file"""
+    
+    out = util.openStream(filename, "w")
+    
+    if type(seqs) == list:
+        names = map(str, range(len(seqs)))
+        writeFastaOrdered(out, names, seqs, width)
+    else:
+        if order == None:
+            order = seqs.keys()
+            
+        for key in order:
+            print >>out, ">"+ key
+            util.printwrap(seqs[key], width, out=out)
+
+
+
+#=============================================================================
+# Simple FASTA's as lists
+#
 
 def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
     """Read a FASTA file into a 'keys' and 'values' lists"""
@@ -131,19 +174,45 @@ def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
     return (names, seqs)
 
 
-
-def _revcomp(seq):
-    """Reverse complement a sequence"""
-
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
-            "a":"t", "c":"g", "g":"c", "t":"a", "n":"n"}
+def writeFastaOrdered(filename, names, seqs, width=None):
+    """Write a FASTA in array style to a file"""
     
-    seq2 = []
-    for i in xrange(len(seq)-1, -1, -1):
-        seq2.append(comp[seq[i]])
-    return "".join(seq2)
+    out = util.openStream(filename, "w")
+    
+    for name,seq in zip(names,seqs):
+        print >>out, ">%s" % name
+        util.printwrap(seq, width, out=out)
 
 
+
+def array2dict(names, seqs):
+    """Convert array style FASTA to FastDict"""
+    
+    fa = FastaDict()
+    for name, seq in zip(names, seqs):
+        fa.add(name, seq)
+    return fa
+
+
+def dict2array(fa, order = None):
+    """Convert FastaDict to array style FASTA"""
+    
+    names = []
+    seqs = []
+    
+    if order == None:
+        order = fa.keys()
+    
+    for name in order:
+        names.append(name)
+        seqs.append(fa[name])
+    return (names, seqs)
+
+
+
+#=============================================================================
+# FASTA BLAST Indexing
+#
 
 def fastaGet(fastaFile, key, start=0, end=0, strand=1):
     """Get a sequence from a fasta file that has been indexed by 'formatdb'"""
@@ -165,68 +234,35 @@ def fastaGet(fastaFile, key, start=0, end=0, strand=1):
     return seq
 
 
-def hasFastaIndex(fastaFile):
+def hasBlastIndex(fastaFile):
     """Check to see if fastaFile has a formatdb fasta index"""
 
     return os.path.exists(fastaFile + ".psd") and \
            os.path.exists(fastaFile + ".psi")
 
 
+def _revcomp(seq):
+    """Reverse complement a sequence"""
 
-def writeFasta(filename, seqs, order = None, width=None):
-    """Write a FASTA dictionary into a file"""
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
+            "a":"t", "c":"g", "g":"c", "t":"a", "n":"n"}
     
-    out = util.openStream(filename, "w")
-    
-    if type(seqs) == list:
-        names = map(str, range(len(seqs)))
-        writeFastaOrdered(out, names, seqs, width)
-    else:
-        if order == None:
-            order = seqs.keys()
-            
-        for key in order:
-            print >>out, ">"+ key
-            util.printwrap(seqs[key], width, out=out)
-
-
-def writeFastaOrdered(filename, names, seqs, width=None):
-    out = util.openStream(filename, "w")
-    
-    for name,seq in zip(names,seqs):
-        print >>out, ">%s" % name
-        util.printwrap(seq, width, out=out)
-
-
-#def getkey(key, field, delim="|"):
-#    return key.split(delim)[field]
-
-
-def array2dict(names, seqs):
-    fa = FastaDict()
-    for name, seq in zip(names, seqs):
-        fa.add(name, seq)
-    return fa
-
-
-def dict2array(fa, order = None):
-    names = []
-    seqs = []
-    
-    if order == None:
-        order = fa.keys()
-    
-    for name in order:
-        names.append(name)
-        seqs.append(fa[name])
-    return (names, seqs)
+    seq2 = []
+    for i in xrange(len(seq)-1, -1, -1):
+        seq2.append(comp[seq[i]])
+    return "".join(seq2)
 
 
 
-#
+
+
+
+
+
+#=============================================================================
 # Special alignment format
+# (rarely used)
 #
-
 
 class Alignment:
     def __init__(self, key, value):
@@ -293,9 +329,13 @@ def alignment2fasta(aln):
     return fa    
 
 
-
+#=============================================================================
+# Rasmus FASTA Indexing
+#
 
 def makeFastaIndex(filename):
+    """I also have a faster C program called formatfa"""
+    
     infile = util.openStream(filename)
     
     index = {}
@@ -307,50 +347,111 @@ def makeFastaIndex(filename):
     return index
 
 
+def hasFastaIndex(fastaFile):
+    """Check to see if fastaFile has an index"""
+
+    return os.path.exists(fastaFile + ".index")
+
+
+def guessFastaWidth(fastaFile):
+    fafile = util.openStream(fastaFile, "rb")
+    
+    numlines = 5
+    lineno = 0
+    width = -1
+    width2 = -1
+    maxwidth = 0
+    
+    for line in fafile:
+        if len(line) != 0  and line[0] != ">":
+            lineno += 1        
+            width3 = len(line.rstrip())
+            maxwidth = max(maxwidth, width3)
+            
+            if width == -1:
+                # first line
+                width = width2
+
+            elif width3 > width:
+                # widths cannot get bigger
+                return -1
+            
+            elif width3 == width:
+                return width
+            
+            elif width2 == -1:
+                # this should be last line in sequence
+                width2 = width3
+                return width
+            else:
+                # width got smaller twice
+                return -1
+        else:
+            # previous sequence had only one line
+            # rest widths for next sequence
+            if width2 != -1:
+                width2 = -1
+            else:
+                width = -1
+    
+    return maxwidth
+    
+
+
 class FastaIndex:
-    def __init__(self, filename):
+    def __init__(self, *filenames):
+        self.filelookup = {}
+        self.index = {}
+        
+        for fn in filenames:
+            self.read(fn)
+        
+    
+    def read(self, filename):
         # open fasta
-        self.fafile = file(filename, "rb")
+        infile = util.openStream(filename, "rb")
         
         # estimate column width
-        numlines = 5
-        widths = []
-        for line in self.fafile:
-            if len(line) != 0  and line[0] != ">":
-                widths.append(len(line.rstrip()))
-                if len(widths) == numlines:
-                    break
-        if not util.equal(* widths):
+        self.width = guessFastaWidth(filename)
+        if self.width == -1:
             raise Exception("lines do not have consistent width")
-        self.width = widths[0]
         
         # read index
-        self.index = {}
+        keys = []
         for key, ind in util.DelimReader(filename + ".index"):
+            keys.append(key)
             self.index[key] = int(ind)
+            self.filelookup[key] = infile
+        
+        # return keys read
+        return keys
     
     
-    def get(self, key, start=1, end=None, strand=1):
-        assert start > 0, Exception("must specify coordinates one-based")
+    def get(self, key, start=0, end=None, strand=1):
+        #assert start > 0, Exception("must specify coordinates one-based")
         assert key in self.index, Exception("key '%s' not in index" % key)
         
-        # must translate from one-based to zero-based
+        if end != None and end < start:
+            return ""
+        
+        # //must translate from one-based to zero-based
         # must account for newlines
-        start2 = self.index[key] + start - 1 + ((start-1) / self.width)
+        start2 = self.index[key] + start + (start // self.width)
         
         # seek to beginning
-        self.fafile.seek(start2)
+        infile = self.filelookup[key]
+        infile.seek(start2)
         
         # read until end
         if end != None:
-            end2 = self.index[key] + end + ((end-1) / self.width)
+            end2 = self.index[key] + end + 1 + (end // self.width)
             readlen = end2 - start2
-            seq = self.fafile.read(readlen).replace("\n", "")
+            seq = infile.read(readlen).replace("\n", "")
         else:
             # read until end of sequence
             seq = []
             while True:
-                line = self.fafile.readline()
+                line = infile.readline()
                 if line.startswith(">") or len(line) == 0:
                     break
                 seq.append(line.rstrip())
@@ -363,148 +464,3 @@ class FastaIndex:
         
         return seq
 
-
-
-"""
-
-
-def makeFastaIndex(filename, keyfunc = lambda x: x):
-    def addKey(index, key, locs):
-        if key in index:
-            raise "duplicate key '%s'" % key
-        index[keyfunc(key)] = locs
-
-    infile = util.openStream(filename)
-    index = {}
-    key = ""
-    locs = []
-    ind = 0
-    
-    for line in util.SafeReadIter(infile):
-        if line[0] == ">":
-            if key != "":
-                addKey(index, key, locs)
-            key = line[1:].rstrip()
-            locs = []
-            ind = 0
-        else:
-            assert key != ""
-            locs.append((ind, pos))
-            ind += len(line.rstrip())
-        pos = infile.tell()
-    if key != "":
-        addKey(index, key, locs)
-    
-    return index
-
-
-
-
-def readFastaIndex(filename, keyfunc=firstword):
-    infile = util.openStream(filename)
-    index = {}
-    
-    for line in infile:
-        words = line.split("\t")
-        key = words[0]
-        locs = []
-        
-        for i in xrange(1, len(words), 2):
-            locs.append((int(words[i]), int(words[i+1])))
-        index[keyfunc(key)] = locs
-    
-    return index
-        
-
-def writeFastaIndex(filename, index, order=None):
-    out = util.openStream(filename, "w")
-    
-    if order == None:
-        order = index.keys()
-        order.sort()
-    
-    for key in order:
-        out.write(key)
-        for ind, pos in index[key]:
-            out.write("\t%d\t%d" % (ind, pos))
-        out.write("\n")
-            
-#
-# end is inclusive
-#
-def indexSeq(fastaFile, index, key, start=1, end=None):
-    infile = util.openStream(fastaFile)
-    locs = index[key]
-    
-    # convert start,end to from 1-based to 0-based
-    start -= 1
-    end -= 1
-    
-    
-    # find nearest starting index
-    i = 0
-    while i < len(locs) and locs[i][0] < start: i += 1
-    
-    # determine desired sequence length
-    if end != None:
-        seqlen = end - start + 1
-    else:
-        seqlen = 1e1000 
-    
-    infile.seek(locs[i][1] + start - locs[i][0])
-    seq = ""
-    for line in util.SafeReadIter(infile):
-        if line[0] == ">":
-            break
-        else:
-            seq += line.rstrip()
-            if len(seq) > seqlen:
-                seq = seq[:seqlen]
-                break
-    return seq
-"""
-
-
-
-"""
-def getCodonPos(seq):
-    pos = []
-    i = 0
-    for j in seq:
-        if j != "-":
-            pos.append(i)
-            if i < 2:
-                i += 1
-            else:
-                i = 0
-    return pos
-
-
-
-# get Ks, Ka stats
-
-def countCodonSub(seq1, seq2):
-    assert len(seq1) == len(seq2), "sequences are not aligned"
-
-    # synonymous and non-synonymous subsitutions
-    ks = 0
-    ka = 0
-    
-    pos1 = getCodonPos(seq1)
-    pos2 = getCodonPos(seq2)
-    for i in range(len(pos1)-3):
-        # only process aligned codons
-        if pos1[i:i+3] == [0,1,2] and \
-           pos2[i:i+3] == [0,1,2]:
-            # determine if codons are synonymous and count mismatches
-            if dna2aa(seq1[i:i+3]) == dna2aa(seq2[i:i+3]):
-                for j in range(i,i+3):
-                    if seq1[j] != seq2[j]:
-                        ks += 1
-            else:
-                for j in range(i,i+3):
-                    if seq1[j] != seq2[j]:
-                        ka += 1
-    
-    return {"ks": ks, "ka": ka}
-"""

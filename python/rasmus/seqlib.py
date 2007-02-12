@@ -1,10 +1,11 @@
-import util
+from rasmus import util
 
 
 class SeqDict (dict):
     """\
     A dictionary for sequences.  Also keeps track of their order, useful for 
-    reading and writing sequences from fasta's
+    reading and writing sequences from fasta's.  See fasta.FastaDict for
+    subclass that implements FASTA reading and writing.
     """
 
     def __init__(self):

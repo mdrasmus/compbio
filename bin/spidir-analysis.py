@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os
+import sys, os, random
 from rasmus import util, env, treelib, stats, tablelib
 import Spidir
 
@@ -39,16 +39,42 @@ rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 fitting = tablelib.Table(headers=["name", "type", "param1", "param2", "pval"])
 
 
+def chisqFit():
+    """
+    bins, obs = util.hist(lens, low=low, width=step)
+    tot = len(lens)
+    ext = map(lambda x: tot * (stats.gammaCdf(x+step, prms) - 
+                               stats.gammaCdf(x, prms)), bins)
+    
+    q = util.plot(obs)
+    q.plot(ext)
+    import time
+    time.sleep(100)
+    
+    ind = util.find(lambda x: x>5, ext)
+    ind = ind[1:]
+    obs = util.mget(obs, ind)
+    bins = util.mget(bins, ind)
+    ext = util.mget(ext, ind)
+    
+    try:
+        chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
+        pval = float(chisq["p.value"])
+    except rpy.RException, e:
+        print e
+        pval = 0.0
+    """
+
 def plotAbsLens(name, lens, low, high, step):
     p = util.Gnuplot()
     p.enableOutput(False)
     
+    lens3 = lens
     lens = filter(util.withinfunc(low, high), lens)
-    
     lens2 = filter(util.gtfunc(.001), lens)
     
-    if len(lens2) == 0:
-        return None, None
+    #if len(lens2) == 0:
+    #    return None, None
     
     mu = stats.mean(lens2)
     sigma2 = stats.variance(lens2)
@@ -66,21 +92,25 @@ def plotAbsLens(name, lens, low, high, step):
     util.plotdistrib(lens, low=low, width=step, plot=p)
     p.plotfunc(lambda x: stats.gammaPdf(x, prms), low, high, step/4.)
     
+    # fitting
+    obs = util.unique(lens3)
+    obs = filter(util.gtfunc(.001), obs)
+    samples = []    
+    while len(samples) < len(obs):
+        s = random.gammavariate(prms[0], 1./prms[1])
+        if .001 < s:
+            samples.append(s)
     
-    bins, obs = util.hist(lens, low=low, width=step)
-    tot = len(lens)
-    ext = map(lambda x: tot * (stats.gammaCdf(x+step, prms) - 
-                               stats.gammaCdf(x, prms)), bins)
-    
-    ind = util.find(lambda x: x>5, ext)
-    ind = ind[1:]
-    obs = util.mget(obs, ind)
-    bins = util.mget(bins, ind)
-    ext = util.mget(ext, ind)
+    qqplot = util.Gnuplot()
+    qqplot.enableOutput(False)
+    qqplot.plot(util.sort(obs), util.sort(samples),
+               xlab="data", ylab="samples",
+               main="%s abs qq-plot" % name)
+    qqplot.plotdiag()
     
     try:
-        chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-        pval = float(chisq["p.value"])
+        ret = rpy.r.ks_test(obs, samples)
+        pval = float(ret["p.value"])
     except rpy.RException, e:
         print e
         pval = 0.0
@@ -90,21 +120,22 @@ def plotAbsLens(name, lens, low, high, step):
     
     p.set(xmin=low, xmax=high, 
           xlab="sub/site",
-          main="%s absolute branch lengths (a=%f, b=%f, Pval=%e)" % 
+          main="%s absolute branch lengths (a=%.4f, b=%.4f, Pval=%.3e)" % 
           (str(name), prms[0], prms[1], pval))
     
-    return p, util.Bundle(pval=pval, prms=prms)
+    return p, util.Bundle(pval=pval, prms=prms, qqplot=qqplot)
 
 
 def plotRelLens(name, params, lens, low, high, step):
     p = util.Gnuplot()
     p.enableOutput(False)
     
+    lens3 = lens
     lens = filter(util.withinfunc(low, high), lens)
     lens2 = filter(util.withinfunc(.00001, high), lens)
     
-    if len(lens2) == 0:
-        return None, None
+    #if len(lens2) == 0:
+    #    return None, None
     
     prms, resid = stats.fitDistrib(stats.normalPdf, params, 
                                    lens2, low, high, step)
@@ -113,6 +144,31 @@ def plotRelLens(name, params, lens, low, high, step):
     util.plotdistrib(lens, low=low, width=step, plot=p)
     p.plotfunc(lambda x: stats.normalPdf(x, prms), low, high, step/4.)
     
+    
+    # fitting
+    obs = util.unique(lens)
+    obs = filter(util.gtfunc(.00001), obs)
+    samples = []    
+    while len(samples) < len(obs):
+        s = random.normalvariate(prms[0], prms[1])
+        if .00001 < s:
+            samples.append(s)
+    
+    qqplot = util.Gnuplot()
+    qqplot.enableOutput(False)
+    qqplot.plot(util.sort(obs), util.sort(samples),
+               xlab="data", ylab="samples",
+               main="%s abs qq-plot" % name)
+    qqplot.plotdiag()
+    
+    try:
+        ret = rpy.r.ks_test(obs, samples)
+        pval = float(ret["p.value"])
+    except rpy.RException, e:
+        print e
+        pval = 0.0
+    
+    """
     bins, obs = util.hist(lens, low=low, width=step)
     tot = len(lens)
     ext = map(lambda x: tot * (stats.normalCdf(x+step, prms) - 
@@ -133,20 +189,21 @@ def plotRelLens(name, params, lens, low, high, step):
         pval = 0.0
     
     #pval = rpy.r.shapiro_test(lens2)["p.value"]
+    """
     
     util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
     
     #p.data[1].options["plab"] = "best fit"
     p.set(xmin=low, xmax=high, 
           xlab="rel sub/site",
-          main="%s relative branch lengths (mean=%f, sdev=%f, pval=%e)" % 
+          main="%s relative branch lengths (mean=%.4f, sdev=%.4f, pval=%.3e)" % 
           (str(name), params[0], params[1], pval))
     
     #q=util.plot(bins, obs, style="lines")
     #q.plot(bins, ext, style="lines")
     #q.save("tmp_" + str(name) + ".ps")
     
-    return p, util.Bundle(pval=pval, prms=prms)
+    return p, util.Bundle(pval=pval, prms=prms, qqplot=qqplot)
 
 
 def getCorrMatrix(lens, stree, leaves, useroot=True, get=None):
@@ -228,30 +285,27 @@ os.system("mkdir -p %s/corr/rel" % conf["outdir"])
 if 1:
     # plot all abs branch distributions
     util.tic("plot absolute branch lengths")
-    for name in stree.nodes:
-        if name not in lens:
-            util.log("skipping abs '%s'" % str(name))
-            continue
-        
+    names = set(stree.nodes) & set(lens)
+
+    for name in names:        
         low = 0
-        high = 3 * stats.mean(lens[name])
+        high = 3 * stats.median(lens[name])
         step = (high - low) / conf["nbins"]
         p, fit = plotAbsLens(name, lens[name], low, high, step)
-        
-        if p == None:
-            continue
-        
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
+        p.save(os.path.join(conf["outdir"], "abs/%s.png" % str(name)))
+        
+        fit.qqplot.enableOutput()
+        fit.qqplot.save(os.path.join(conf["outdir"], 
+                                     "abs/%s-qqplot.ps" % str(name)))
         
         fitting.append({"name": str(name),
                         "type": "abs",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
                         "pval": fit.pval})
-        
     util.toc()
-
 
 
 if 1:
@@ -267,11 +321,13 @@ if 1:
         step = (high - low) / conf["nbins"]
         p, fit = plotRelLens(name, params[name], rlens[name], low, high, step)
         
-        if p == None:
-            continue
-        
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
+        p.save(os.path.join(conf["outdir"], "rel/%s.png" % str(name)))
+        
+        fit.qqplot.enableOutput()
+        fit.qqplot.save(os.path.join(conf["outdir"], 
+                                     "rel/%s-qqplot.ps" % str(name)))
         
         fitting.append({"name": str(name),
                         "type": "rel",
@@ -285,6 +341,7 @@ if 1:
 fitting.write(os.path.join(conf["outdir"], "fitting.tab"))
 
 
+
 # total branch length
 util.log("plot total tree lengths")
 low = 0
@@ -293,6 +350,7 @@ step = (high - low) / conf["nbins"]
 p, fit = plotAbsLens("family rate", totals, low, high, step)
 p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
+p.save(os.path.join(conf["outdir"], "family-rates.png"))
 
 
 #####################################################
@@ -321,14 +379,17 @@ colormap = util.ColorMap([[-1, util.red],
                           [-.3, util.yellow],
                           [-.2, util.green],
                           [-.1, util.blue],
-                          [0, (1, 1, 1, 1)],
+                          [0, util.blue],
                           [.1, util.blue],
                           [.2, util.green],
                           [.3, util.yellow],
                           [.5, util.orange],
                           [1, util.red]])
 
-
+# write correlation legend
+util.makeColorLegend(os.path.join(conf["outdir"], "corr/colorscale.svg"), 
+                     colormap, -1, 1, .1, 
+                     width=100, height=10)
 
 
 util.tic("abs correlation")

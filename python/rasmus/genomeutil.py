@@ -60,9 +60,9 @@ def readOptions(conf):
 #============================================================================
 # gene2species mappings and countings
 #
-# TODO: I am starting to move these to phyloutil since I use them more 
+# TODO: I am starting to move these to phylo since I use them more 
 # over there.  However, I will not necessarily always use gene2species for
-# phyloutil...
+# phylo...
 #
 
 def gene2species(genename):

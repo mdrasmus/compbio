@@ -20,9 +20,7 @@ class FastaDict (SeqDict):
     """Store a FASTA file as a dictionary-like object
        
        FastaDict works exactly like a python dict except keys are guaranteed to
-       in the same order as they appear in the file.  If a FASTA has *.psd and
-       *.psi index files direct indexing with 'fastacmd' will be used.  This 
-       feature can be disabled with useIndex=False when reading a FASTA file.
+       in the same order as they appear in the file.  
     """
        
 
@@ -91,7 +89,7 @@ class FastaDict (SeqDict):
             return val
     
     
-    def getseq(self, key, start=None, end=None, strand=1):
+    def getseq(self, key, start=1, end=None, strand=1):
         val = SeqDict.__getitem__(self, key) 
         
         if val == None:
@@ -102,7 +100,7 @@ class FastaDict (SeqDict):
                 raise KeyError(key)
 
         else:
-            val = val[start:end+1]
+            val = val[start-1:end]
         
             # reverse complement if needed
             if strand == -1:
@@ -250,15 +248,19 @@ class FastaIndex:
         return keys
     
     
-    def get(self, key, start=0, end=None, strand=1):
-        #assert start > 0, Exception("must specify coordinates one-based")
+    def get(self, key, start=1, end=None, strand=1):
+        """Get a sequence by key
+           coordinates are 1-based and end is inclusive"""
+    
+        assert start > 0, Exception("must specify coordinates one-based")
         assert key in self.index, Exception("key '%s' not in index" % key)
         
         if end != None and end < start:
             return ""
         
-        # //must translate from one-based to zero-based
+        # must translate from one-based to zero-based
         # must account for newlines
+        start - 1
         start2 = self.index[key] + start + (start // self.width)
         
         # seek to beginning

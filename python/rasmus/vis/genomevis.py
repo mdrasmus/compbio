@@ -3,8 +3,8 @@
 import copy
 
 # rasmus libs
-from rasmus import gff
 from rasmus import fff
+from rasmus import regionlib
 from rasmus import stats
 from rasmus import util
 from rasmus.genomeutil import *
@@ -18,6 +18,9 @@ from summonlib import shapes
 # globals
 defaultVis = None
 geneLabelTypes = [False, "fix", "scale", "vertical"]
+
+
+# TODO: all region code must be updated to use new region data structure
 
 
 
@@ -215,7 +218,7 @@ class SyntenyVis:
         self.conf = conf
         self.matching = matching
         self.genes = matching.getGenes()
-        self.regions = util.Dict(1, [])
+        self.regions = util.Dict(default=[])
         self.findex = fff.FeatureIndex()
         
         self.rootid = rootid
@@ -446,7 +449,8 @@ class SyntenyVis:
             self.placedGenes[gene] = True
         
         
-        for region in gff.RegionIter(self.regions[frag.chrom], frag.start, frag.end):
+        # TODO: the may not work due to code changes for regionlib/gff
+        for region in regionlib.iterChrom(self.regions[frag.chrom], frag.start, frag.end):
             if frag.direction == 1:
                 region.x = frag.x + region.start - frag.start
             else:
@@ -524,7 +528,7 @@ class SyntenyVis:
             
             rows = util.groupby(lambda x: x.y, genes2)
             keys = util.sort(rows.keys(), compare=util.invcmp)
-            rows = util.sublist(rows, keys)
+            rows = util.mget(rows, keys)
             
             for i in range(1, len(rows)):
                 for botGene in rows[i]:

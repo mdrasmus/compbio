@@ -136,7 +136,7 @@ def iterChrom(regions, start, end, index=None):
     # find index
     if index == None:
         # find starting index by binary search
-        index = findRegionsIndex(regions, pos)
+        index = findRegionPos(regions, start)
         if index == None:
             return
     

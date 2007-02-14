@@ -642,6 +642,8 @@ def getRelBranchLens(rates, species=None):
     if species == None:
         species = rates.headers
     
+    nonspecies = set(rates.headers) - set(species)
+    
     relrates = rates.new()
     
     for row in rates:
@@ -650,6 +652,11 @@ def getRelBranchLens(rates, species=None):
         
         for sp in species:
             row2[sp] = row[sp] / tot
+        
+        # copy over non-species data
+        for key in nonspecies:
+            row2[key] = row[key]
+        
         relrates.append(row2)
     
     return relrates
@@ -662,7 +669,6 @@ def getBranchZScores(rates, params):
     col2species = {}
     for species in params:
         col2species[str(species)] = species
-        
     
     for row in rates:
         row2 = {}

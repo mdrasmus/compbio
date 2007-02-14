@@ -13,7 +13,7 @@ import graph
 import genomeio
 import muscle
 import phylip
-import phyloutil
+import phylo
 import stats
 import util
 import treelib
@@ -957,16 +957,16 @@ def partOrths(conf, seqs, stree):
     #trees = phylip.bootNeighbor(seqs, conf["bootiters"])
     #
     #for tree in trees:
-    #    parttrees = phyloutil.partitionTree(tree, stree, gene2species)
+    #    parttrees = phylo.partitionTree(tree, stree, gene2species)
     
     #tree = phylip.proml(aln) #bionj.bionj(aln)
     
     
     tree = muscle.buildTree(seqs, verbose=False)
-    tree = phyloutil.reconRoot(tree, stree, conf["gene2species"])
+    tree = phylo.reconRoot(tree, stree, conf["gene2species"])
     tree.write(util.globalTimer())
     
-    parttrees = phyloutil.partitionTree(tree, stree, conf["gene2species"])
+    parttrees = phylo.partitionTree(tree, stree, conf["gene2species"])
     
     comps = []
     for tree2 in parttrees:

@@ -41,7 +41,3 @@ for key in prot:
         print "error", key
         good = False
 
-if good:
-    print "all sequences pass!"
-else:
-    print "errors occurred"

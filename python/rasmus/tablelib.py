@@ -1058,7 +1058,7 @@ def joinTables(* args, **kwargs):
     
     # build new table
     if "headers" not in kwargs:
-        headers = util.concat(args[0][1], *util.cget(args, 2))
+        headers = util.concat([args[0][1]], *util.cget(args, 2))
     else:
         headers = kwargs["headers"]
     tab = Table(headers=headers)

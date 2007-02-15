@@ -39,20 +39,13 @@ rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 fitting = tablelib.Table(headers=["name", "type", "param1", "param2", "pval"])
 
 
-def chisqFit():
-    """
-    bins, obs = util.hist(lens, low=low, width=step)
-    tot = len(lens)
-    ext = map(lambda x: tot * (stats.gammaCdf(x+step, prms) - 
-                               stats.gammaCdf(x, prms)), bins)
-    
-    q = util.plot(obs)
-    q.plot(ext)
-    import time
-    time.sleep(100)
+def chisqFit(name, data, func, low, high, step, perc):
+    bins, obs = util.hist(data, low=low, width=step)
+    tot = len(data)
+    ext = map(lambda x: perc * tot * (func(x+step) - func(x)),
+              bins)
     
     ind = util.find(lambda x: x>5, ext)
-    ind = ind[1:]
     obs = util.mget(obs, ind)
     bins = util.mget(bins, ind)
     ext = util.mget(ext, ind)
@@ -63,43 +56,32 @@ def chisqFit():
     except rpy.RException, e:
         print e
         pval = 0.0
-    """
+    
+    qqplot = util.Gnuplot()
+    qqplot.enableOutput(False)
+    qqplot.plot(util.sort(obs), util.sort(ext),
+               xlab="data", ylab="samples",
+               main="%s abs qq-plot" % name)
+    qqplot.plotdiag()
+    
+    return pval, qqplot
 
-def plotAbsLens(name, lens, low, high, step):
-    p = util.Gnuplot()
-    p.enableOutput(False)
-    
-    lens3 = lens
-    lens = filter(util.withinfunc(low, high), lens)
-    lens2 = filter(util.gtfunc(.001), lens)
-    
-    #if len(lens2) == 0:
-    #    return None, None
-    
-    mu = stats.mean(lens2)
-    sigma2 = stats.variance(lens2)
-    prms = [mu*mu/sigma2, mu/sigma2]
-    
-    try:
-        prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
-                                       lens2, low, high, step)
-        prms = map(float, prms)
-        resid = float(resid)
-    except:
-        print "FIT EXCEPTION"
-        pass
-    
-    util.plotdistrib(lens, low=low, width=step, plot=p)
-    p.plotfunc(lambda x: stats.gammaPdf(x, prms), low, high, step/4.)
-    
-    # fitting
-    obs = util.unique(lens3)
-    obs = filter(util.gtfunc(.001), obs)
+
+def ksFitting(name, data, func, low, high):
+    obs = util.unique(data)
     samples = []    
     while len(samples) < len(obs):
-        s = random.gammavariate(prms[0], 1./prms[1])
-        if .001 < s:
+        s = func()
+        if low < s < high:
             samples.append(s)
+    
+    try:
+        ret = rpy.r.ks_test(obs, samples)
+        pval = float(ret["p.value"])
+    except rpy.RException, e:
+        print "KS:", e
+        pval = 0.0
+        
     
     qqplot = util.Gnuplot()
     qqplot.enableOutput(False)
@@ -107,18 +89,44 @@ def plotAbsLens(name, lens, low, high, step):
                xlab="data", ylab="samples",
                main="%s abs qq-plot" % name)
     qqplot.plotdiag()
+
+    
+    return pval, qqplot
+
+
+
+def plotAbsLens(name, lens, low, high, high2, step):
+    p = util.Gnuplot()
+    p.enableOutput(False)
+    
+    lens2 = filter(util.withinfunc(low, high), lens)
+    lens3 = filter(util.withinfunc(low, high2), lens)
+    perc = len(lens2) / float(len(lens))
+    
+    mu = stats.mean(lens2)
+    sigma2 = stats.variance(lens2)
+    prms = [mu*mu/sigma2, mu/sigma2]
     
     try:
-        ret = rpy.r.ks_test(obs, samples)
-        pval = float(ret["p.value"])
-    except rpy.RException, e:
-        print e
-        pval = 0.0
+        pass
+        prms, resid = stats.fitDistrib(stats.gammaPdf, prms, 
+                                       lens2, low, high, step, perc)
+        prms = map(float, prms)
+        resid = float(resid)        
+    except:
+        print "FIT EXCEPTION"
+        pass
     
+    util.plotdistrib(lens, low=0, width=step, plot=p)
+    p.plotfunc(lambda x: stats.gammaPdf(x, prms), 0, high, step/4.)
+    
+    # goodnes of fit
+    pval, qqplot = ksFitting(name, lens3, 
+                    lambda: random.gammavariate(prms[0], 1./prms[1]), low, high2)
     
     util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
     
-    p.set(xmin=low, xmax=high, 
+    p.set(xmin=0, xmax=high, 
           xlab="sub/site",
           main="%s absolute branch lengths (a=%.4f, b=%.4f, Pval=%.3e)" % 
           (str(name), prms[0], prms[1], pval))
@@ -126,84 +134,39 @@ def plotAbsLens(name, lens, low, high, step):
     return p, util.Bundle(pval=pval, prms=prms, qqplot=qqplot)
 
 
-def plotRelLens(name, params, lens, low, high, step):
+def plotRelLens(name, params, lens, low, high, high2, step):
     p = util.Gnuplot()
     p.enableOutput(False)
     
-    lens3 = lens
-    lens = filter(util.withinfunc(low, high), lens)
-    lens2 = filter(util.withinfunc(.00001, high), lens)
+    lens2 = filter(util.withinfunc(low, high), lens)
+    lens3 = filter(util.withinfunc(low, high2), lens)
+    perc = len(lens2) / float(len(lens))
     
-    #if len(lens2) == 0:
-    #    return None, None
-    
-    prms, resid = stats.fitDistrib(stats.normalPdf, params, 
-                                   lens2, low, high, step)
+    #prms, resid = stats.fitDistrib(stats.normalPdf, params, 
+    #                               lens2, low, high, step)
+    prms = params
     prms = map(float, prms)
-    resid = float(resid)  
-    util.plotdistrib(lens, low=low, width=step, plot=p)
-    p.plotfunc(lambda x: stats.normalPdf(x, prms), low, high, step/4.)
+    #resid = float(resid)  
+    util.plotdistrib(lens, low=0, width=step, plot=p)
+    p.plotfunc(lambda x: stats.normalPdf(x, prms), 0, high, step/4.)
     
+    # goodness of fit
+    pval, qqplot = ksFitting(name, lens2, 
+                    lambda: random.normalvariate(prms[0], prms[1]), low, high)
+    pval2, junk = ksFitting(name, lens3, 
+                    lambda: random.normalvariate(prms[0], prms[1]), low, high2)
+    #pval, qqplot = chisqFit(name, lens, 
+    #                        lambda x: stats.normalCdf(x, prms), 
+    #                        low, high, step, perc)
     
-    # fitting
-    obs = util.unique(lens)
-    obs = filter(util.gtfunc(.00001), obs)
-    samples = []    
-    while len(samples) < len(obs):
-        s = random.normalvariate(prms[0], prms[1])
-        if .00001 < s:
-            samples.append(s)
+    util.logger("%s\t%.3e\t%.3e\t%s" % (name, pval, pval2, str(pval2 > .05)))
     
-    qqplot = util.Gnuplot()
-    qqplot.enableOutput(False)
-    qqplot.plot(util.sort(obs), util.sort(samples),
-               xlab="data", ylab="samples",
-               main="%s abs qq-plot" % name)
-    qqplot.plotdiag()
-    
-    try:
-        ret = rpy.r.ks_test(obs, samples)
-        pval = float(ret["p.value"])
-    except rpy.RException, e:
-        print e
-        pval = 0.0
-    
-    """
-    bins, obs = util.hist(lens, low=low, width=step)
-    tot = len(lens)
-    ext = map(lambda x: tot * (stats.normalCdf(x+step, prms) - 
-                               stats.normalCdf(x, prms)), bins)
-    
-    ind = util.find(lambda x: x>5, ext)
-    ind = ind[1:]
-    obs = util.mget(obs, ind)
-    bins = util.mget(bins, ind)
-    ext = util.mget(ext, ind)
-    
-    
-    try:
-        chisq = rpy.r.chisq_test(obs, p=util.oneNorm(ext))
-        pval = float(chisq["p.value"])
-    except rpy.RException, e:
-        print e
-        pval = 0.0
-    
-    #pval = rpy.r.shapiro_test(lens2)["p.value"]
-    """
-    
-    util.logger("%s\t%.3e\t%s" % (name, pval, str(pval > .05)))
-    
-    #p.data[1].options["plab"] = "best fit"
-    p.set(xmin=low, xmax=high, 
+    p.set(xmin=0, xmax=high, 
           xlab="rel sub/site",
           main="%s relative branch lengths (mean=%.4f, sdev=%.4f, pval=%.3e)" % 
           (str(name), params[0], params[1], pval))
     
-    #q=util.plot(bins, obs, style="lines")
-    #q.plot(bins, ext, style="lines")
-    #q.save("tmp_" + str(name) + ".ps")
-    
-    return p, util.Bundle(pval=pval, prms=prms, qqplot=qqplot)
+    return p, util.Bundle(pval=pval, pval2=pval2, prms=prms, qqplot=qqplot)
 
 
 def getCorrMatrix(lens, stree, leaves, useroot=True, get=None):
@@ -260,6 +223,9 @@ os.system("viewparam.py -p %s -s %s -l 500 > %s/params.txt" %
           (conf["params"], conf["stree"], conf["outdir"]))
 Spidir.drawParamTree(stree, params, xscale=2000, 
                      filename="%s/params-tree.svg" % conf["outdir"])
+os.system("convert %s/params-tree.svg %s/params-tree.png" %
+          (conf["outdir"], conf["outdir"]))
+
 
 # make table version of parameters
 tab = tablelib.Table(headers=["branch", "mean", "sdev", "tight"])
@@ -282,16 +248,20 @@ os.system("mkdir -p %s/corr" % conf["outdir"])
 os.system("mkdir -p %s/corr/abs" % conf["outdir"])
 os.system("mkdir -p %s/corr/rel" % conf["outdir"])
 
-if 1:
+if 0:
     # plot all abs branch distributions
     util.tic("plot absolute branch lengths")
     names = set(stree.nodes) & set(lens)
 
     for name in names:        
-        low = 0
-        high = 3 * stats.median(lens[name])
+        #high = 3 * stats.median(lens[name])
+        vals = util.sort(lens[name])
+        low = vals[int(len(vals) * .015)]
+        high2 = vals[int(len(vals) * .90)]
+        high = vals[int(len(vals) * .95)]
+        
         step = (high - low) / conf["nbins"]
-        p, fit = plotAbsLens(name, lens[name], low, high, step)
+        p, fit = plotAbsLens(name, lens[name], low, high, high2, step)
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "abs/%s.ps" % str(name)))
         p.save(os.path.join(conf["outdir"], "abs/%s.png" % str(name)))
@@ -304,11 +274,12 @@ if 1:
                         "type": "abs",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
-                        "pval": fit.pval})
+                        "pval": fit.pval,
+                        "pval2": 0})
     util.toc()
 
 
-if 1:
+if 0:
     # plot all rel branch distributions
     util.tic("plot relative branch lengths")
     for name in stree.nodes:
@@ -316,10 +287,14 @@ if 1:
             util.log("skipping rel '%s'" % str(name))
             continue
         
-        low = 0
-        high = 3 * stats.mean(rlens[name])
+        #high = 3 * stats.mean(rlens[name])
+        vals = util.sort(lens[name])
+        high = vals[int(len(vals) * .80)]
+        low = params[name][1]
+        high2 = params[name][0] + params[name][1]
+        
         step = (high - low) / conf["nbins"]
-        p, fit = plotRelLens(name, params[name], rlens[name], low, high, step)
+        p, fit = plotRelLens(name, params[name], rlens[name], low, high, high2, step)
         
         p.enableOutput()
         p.save(os.path.join(conf["outdir"], "rel/%s.ps" % str(name)))
@@ -333,7 +308,8 @@ if 1:
                         "type": "rel",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
-                        "pval": fit.pval})
+                        "pval": fit.pval,
+                        "pval2": fit.pval2})
         
     util.toc()
 
@@ -347,7 +323,7 @@ util.log("plot total tree lengths")
 low = 0
 high = 3 * stats.mean(totals)
 step = (high - low) / conf["nbins"]
-p, fit = plotAbsLens("family rate", totals, low, high, step)
+p, fit = plotAbsLens("family rate", totals, low, high, max(totals), step)
 p.enableOutput()
 p.save(os.path.join(conf["outdir"], "family-rates.ps"))
 p.save(os.path.join(conf["outdir"], "family-rates.png"))
@@ -368,11 +344,24 @@ def walk(node):
         walk(node.children[1])
 walk(stree.root)
 
+
 #
 # abs all branches
 #
+
+
 mat = util.mget(lens, keys)
 rmat = util.mget(rlens, keys)
+
+if 1:
+    mus = map(stats.median, mat)
+    sel = [sum(int(x > .7) for x, y in zip(col, mus)) == 0
+       for col in zip(* mat)]
+    ind = util.findeq(True, sel)
+
+    mat = [util.mget(row, ind) for row in mat]
+    rmat = [util.mget(row, ind) for row in rmat]
+
 
 colormap = util.ColorMap([[-1, util.red],
                           [-.5, util.orange],
@@ -471,7 +460,7 @@ tab.write(os.path.join(conf["outdir"], "corr/abs_paths.tab"))
 # rel paths
 #
 
-util.tic("abs rel correlation")
+util.tic("rel paths correlation")
 keys = stree.leafNames()
 rcorrmat = getCorrMatrix(rlens, stree, keys, False)
 util.heatmap(rcorrmat, width=20, height=20,

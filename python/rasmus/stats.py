@@ -738,8 +738,9 @@ def fitCurve(xdata, ydata, func, paramsInit):
     return list(params), sum(resid*resid)
 
     
-def fitDistrib(func, paramsInit, data, start, end, step):
+def fitDistrib(func, paramsInit, data, start, end, step, perc=1.0):
     xdata, ydata = util.distrib(data, low=start, width=step)
+    ydata = [i / perc for i in ydata]
     xdata = util.histbins(xdata)
     params, resid = fitCurve(xdata, ydata, func, paramsInit)
     return params, resid

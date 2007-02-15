@@ -227,6 +227,8 @@ def gcContent(seq):
 # Alignment functions
 #--------------------------------------------------------------------------------
 
+# TODO: maybe ignore dict alignments altogether?
+
 def newAlign(aln=None):
     """Makes a new alignment object based on the given object
         

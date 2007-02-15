@@ -1034,6 +1034,45 @@ def histTable(items, headers=["item", "count", "percent"]):
     
     return tab
 
+
+def joinTables(* args, **kwargs):
+    """Join together tables into one table.
+       Each argument is a tuple (table_i, key_i, cols_i)
+    """
+    
+    if len(args) == 0:
+        return Table()
+    
+    # determine common keys
+    tab, key, cols = args[0]
+    keys = tab.cget(key)
+    keyset = set(keys)
+    
+    lookups = [tab.lookup(key)]
+    for tab, key, cols in args[1:]:
+        keyset = keyset & set(tab.cget(key))
+        lookups.append(tab.lookup(key))
+    
+    keys = filter(lambda x: x in keyset, keys)
+    
+    
+    # build new table
+    if "headers" not in kwargs:
+        headers = util.concat(args[0][1], *util.cget(args, 2))
+    else:
+        headers = kwargs["headers"]
+    tab = Table(headers=headers)
+    
+    for key in keys:
+        row = {headers[0]: key}
+        for (tab2, key2, cols), lookup in zip(args, lookups):
+            row.update(util.subdict(lookup[key], cols))
+        tab.append(row)
+    
+    return tab
+               
+
+
 #===========================================================================
 # Matrix functions
 #
@@ -1308,3 +1347,22 @@ john	False	hello\n\\\nthere
         tab.append({"name": "alex", "list": [7,8,9]})
         
         tab.write()
+    
+    ##################################################
+    # join tables
+    if 1:
+        tab1 = Table([[0, 1, 2],
+                      [1, 3, 4],
+                      [2, 5, 6],
+                      [3, 7, 8]],
+                     headers=['a', 'b', 'c'])
+        tab2 = Table([[0, 6, 6],
+                      [1, 7, 7],
+                      [3, 8, 8]],
+                     headers=['a2', 'b2', 'c2'])
+        
+        tab3 = joinTables((tab1, 'a', ['c', 'b']), (tab2, 'a2', ['b2']),
+                          headers=['a', 'b2', 'b', 'c'])
+        
+        print tab3
+    

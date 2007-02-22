@@ -153,7 +153,6 @@ class Gnuplot:
         out = openStream(filename, "w")
 
         for data in self.data:
-            print data
             print >>out, data.options["plab"]
 
             if len(data.ylist) > 0:
@@ -175,7 +174,7 @@ class Gnuplot:
         Save gnuplot commands, tad delimited, and plot image in the 
         following files:
             
-            <filename>.gnuplot
+            <filename>.ps
             <filename>.tab
             <filename>.png
         
@@ -184,9 +183,10 @@ class Gnuplot:
         if not self.enable:
             return
         
-        self.savedata(filename + ".gnuplot")
+        
         self.savetab(filename + ".tab")
         self.save(filename + ".png")
+        self.save(filename + ".ps")        
         
         
     

@@ -36,7 +36,8 @@ lens = Spidir.readTreeDistrib(env.findFile(conf["lens"]))
 totals = map(sum, zip(* lens.values()))
 rlens = util.mapdict(lens, valfunc=lambda x: util.vidiv(x, totals))
 
-fitting = tablelib.Table(headers=["name", "type", "param1", "param2", "pval"])
+fitting = tablelib.Table(headers=["name", "type", "param1", "param2", "pval",
+                                  "fit"])
 
 
 def chisqFit(name, data, func, low, high, step, perc):
@@ -248,7 +249,7 @@ os.system("mkdir -p %s/corr" % conf["outdir"])
 os.system("mkdir -p %s/corr/abs" % conf["outdir"])
 os.system("mkdir -p %s/corr/rel" % conf["outdir"])
 
-if 0:
+if 1:
     # plot all abs branch distributions
     util.tic("plot absolute branch lengths")
     names = set(stree.nodes) & set(lens)
@@ -275,11 +276,11 @@ if 0:
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
                         "pval": fit.pval,
-                        "pval2": 0})
+                        "fit": fit.pval >= .05})
     util.toc()
 
 
-if 0:
+if 1:
     # plot all rel branch distributions
     util.tic("plot relative branch lengths")
     for name in stree.nodes:
@@ -308,25 +309,28 @@ if 0:
                         "type": "rel",
                         "param1": fit.prms[0],
                         "param2": fit.prms[1],
-                        "pval": fit.pval,
-                        "pval2": fit.pval2})
+                        "pval": fit.pval2,
+                        "fit": fit.pval2 >= .05})
         
     util.toc()
 
 
 fitting.write(os.path.join(conf["outdir"], "fitting.tab"))
+print >>file(os.path.join(conf["outdir"], "fitting.tab.txt"), "w"), \
+      repr(fitting)
 
 
 
 # total branch length
-util.log("plot total tree lengths")
-low = 0
-high = 3 * stats.mean(totals)
-step = (high - low) / conf["nbins"]
-p, fit = plotAbsLens("family rate", totals, low, high, max(totals), step)
-p.enableOutput()
-p.save(os.path.join(conf["outdir"], "family-rates.ps"))
-p.save(os.path.join(conf["outdir"], "family-rates.png"))
+if 1:
+    util.log("plot total tree lengths")
+    low = 0
+    high = 3 * stats.mean(totals)
+    step = (high - low) / conf["nbins"]
+    p, fit = plotAbsLens("family rate", totals, low, high, max(totals), step)
+    p.enableOutput()
+    p.save(os.path.join(conf["outdir"], "family-rates.ps"))
+    p.save(os.path.join(conf["outdir"], "family-rates.png"))
 
 
 #####################################################
@@ -354,13 +358,17 @@ mat = util.mget(lens, keys)
 rmat = util.mget(rlens, keys)
 
 if 1:
-    mus = map(stats.median, mat)
-    sel = [sum(int(x > .7) for x, y in zip(col, mus)) == 0
+    mus = map(stats.mean, mat)
+    sigmas = map(stats.sdev, mat)
+    sel = [sum(int(x > mu + 6 * sigma) for x, mu, sigma in zip(col, mus, sigmas)) == 0
        for col in zip(* mat)]
     ind = util.findeq(True, sel)
 
+    print "%f of trees kept" % (len(ind) / float(len(sel)))
+
     mat = [util.mget(row, ind) for row in mat]
     rmat = [util.mget(row, ind) for row in rmat]
+
 
 
 colormap = util.ColorMap([[-1, util.red],

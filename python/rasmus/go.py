@@ -4,6 +4,7 @@ import xml.sax.handler
 
 
 def readGo(filename):
+    """DEPRECATED"""
     terms = Dict(default=[])
     
     for line in file(filename):
@@ -19,6 +20,7 @@ def readGo(filename):
 
 
 def readCommonNames(filename):
+    """DEPRECATED"""
     commonNames = {}
 
     for line in file(filename):

@@ -1,11 +1,29 @@
+"""
+
+    CLUSTALW wrapper for python
+
+    author: Matt Rasmussen
+    date:   2/4/2007
+
+"""
+
+
+
+# python libs
 import math
-import util
 import os
 import sys
-import algorithms
-import fasta
 
-def clustalw(seqs, verbose = True, removetmp = True, options = ""):
+# rasmus libs
+from rasmus import fasta
+from rasmus import treelib
+from rasmus import util
+
+
+# TODO: change removetmp to saveOutput
+def clustalw(seqs, verbose=True, removetmp=True, options=""):
+    """Align sequences 'seqs' with clustalw"""
+
     if len(seqs) < 2:
         return seqs
 
@@ -22,7 +40,7 @@ def clustalw(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     # parse output
-    aln = parseAlignment(outfilename)
+    aln = readClustalwAlign(outfilename)
     
     # cleanup tempfiles
     if removetmp:
@@ -34,7 +52,7 @@ def clustalw(seqs, verbose = True, removetmp = True, options = ""):
     return aln
 
 
-def buildTree(seqs, verbose = True, removetmp = True, options = ""):
+def buildTree(seqs, verbose=True, removetmp=True, options=""):
     # make input file for clustalw
     infilename = util.tempfile(".", "clustalw-in", ".fa")
     fasta.writeFasta(infilename, seqs)
@@ -48,7 +66,7 @@ def buildTree(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     # parse output
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick(outfilename)
     
     # cleanup tempfiles
@@ -59,7 +77,7 @@ def buildTree(seqs, verbose = True, removetmp = True, options = ""):
     return tree   
 
 
-def clustalw_profiles(aln1, aln2, verbose = True, removetmp = True, options = ""):
+def clustalwProfiles(aln1, aln2, verbose=True, removetmp=True, options=""):
     # make input file for clustalw
     infilename1 = util.tempfile(".", "clustalw-in", ".fa")
     infilename2 = util.tempfile(".", "clustalw-in", ".fa")
@@ -75,7 +93,7 @@ def clustalw_profiles(aln1, aln2, verbose = True, removetmp = True, options = ""
     os.system(cmd)
     
     # parse output
-    aln = parseAlignment(outfilename)
+    aln = readClustalwAlign(outfilename)
     
     # cleanup tempfiles
     if removetmp:
@@ -97,8 +115,8 @@ def clustalw_profiles(aln1, aln2, verbose = True, removetmp = True, options = ""
 
 
 
-def parseAlignment(filename):
-    infile = file(filename)
+def readClustalwAlign(filename):
+    infile = util.openStream(filename)
     
     seqs = fasta.FastaDict()
     
@@ -118,6 +136,10 @@ def parseAlignment(filename):
     return seqs
 
 
+#=============================================================================
+# Alignment stats
+# TODO: either move to alignlib or get rid of it
+#
 
 def alignInfo(aln):
     score = 0
@@ -143,41 +165,6 @@ def alignInfo(aln):
 
 def alignAvgInfo(aln):
     return alignInfo(aln) / len(aln[0])
-
-
-def printAlign(aln, width = 59, out=sys.stdout, order=None):
-    if order == None:
-        order = aln.keys()
-
-    # get basic info
-    length = len(aln.values()[0])
-    seqs = aln.values()
-    
-    # find identity positions
-    identity = ""
-    for i in xrange(length):
-        chars = {}
-        for j in xrange(len(aln)):
-            char = seqs[j][i]
-            if char != "-":
-                if not char in chars:
-                    chars[char] = 1
-                else:
-                    chars[char] += 1
-        pid = max(chars.values()) / float(len(aln))
-        if pid == 1:
-            identity += "*"
-        elif pid > .5:
-            identity += "."
-        else:
-            identity += " "
-    
-    # print alignment
-    for i in xrange(0, len(aln.values()[0]), width):
-        for name in order:
-            print >>out, "%20s %s" % (name, aln[name][i:i+width])
-        print >>out, (" "*21) + identity[i:i+width]
-        print >>out
 
 
 def alignScore(seqs, match=1, mismatch=-1, gapopen=-5, gapext=-1):
@@ -212,49 +199,10 @@ def alignScore(seqs, match=1, mismatch=-1, gapopen=-5, gapext=-1):
                 k += 1
     return score
 
-def alignIdentity(aln):
-    return alignScore(aln, 1, 0, 0, 0) / float(len(aln[0]))
 
-
-def alignGroup(matching, groupid):
-    hgroup = matching.homology[groupid]
-    seqs = map(lambda gene: gene.sequence(), hgroup.genes)
-    alnseqs = clustalw(seqs)
-    
-    aln = {}
-    for i in xrange(len(alnseqs)):
-        aln[hgroup.genes[i]] = alnseqs[i]
-    return aln
-
-
-def seqAlignScore(seqs):
-    return alignScore(clustalw(seqs, True))
-
-
-def seqIdentity(seqs):
-    return alignIdentity(clustalw(seqs, False))
-
-
-def geneAlignScore(genes):
-    seqs = map(lambda gene: gene.sequence(), hgroup.genes)
-    return seqSimilarityScore(seqs)
-
-
+#=============================================================================
 # testing
+#
+
 if __name__ == "__main__":
-    seqs = [ "CTACACCGGCCCCA",
-             "GGTTCTGGTGTTCAG",
-             "CACTGCTCTTTAA",
-             "CTGAGGAGATGAT"]
-    seqs2 = [ "CTCCACCGGGGAACAA",
-             "CTCCCCGGGGAACAA",
-             "CTCCGGGGATAAA",
-             "CTCCGGGGATAAA"]
-
-    for i in xrange(4):
-        for i in xrange(len(seqs)):
-            seqs[i] += seqs[i]
-
-    alnseqs = clustalw(seqs)
-    print alignInfo(alnseqs)
-    printAlign(alnseqs)
+    pass

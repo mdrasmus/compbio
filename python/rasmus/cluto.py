@@ -27,11 +27,38 @@ def writeSquareMatrix(filename, mat):
         for val in row[:-1]:
             out.write(str(val) + "\t")
         out.write(str(row[-1]) + "\n")            
+
+
+def readDenseMatrix(filename):
+    """Read a CLUTO formatted dense matrix file"""
+    
+    infile = util.openStream(filename)
+    
+    header = map(int, infile.next().split())
+    
+    if len(header) == 1:
+        nrows = ncols = header[0]
+    elif len(header) == 2:
+        nrows, ncols = header
+    else:
+        raise Exception("Not a CLUTO dense matrix file")
+    
+    mat = []
+    for line in infile:
+        mat.append(map(float, line.split()))
+        assert len(mat[-1]) == ncols, Exception("File has wrong number of columns")
+    
+    assert len(mat) == nrows, Exception("File has wrong number of rows")
+    
+    return mat
+
     
 
+# TODO: add saveOutput
 def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
     """Cluster a matrix into 'nclusters'
-
+        
+       mat  - a matrix or a matrix filename
        prog - the program to use:
               "vcluster" will treat the matrix as a series of row vectors
               "scluster" will treat the matrix as a square matrix of
@@ -41,30 +68,41 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
        of each item (row) in the input matrix (mat)
     """
     
-    tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
+    
+    if isinstance(mat, str):
+        matfile = mat
+        tmpfile = None
+    else:
+        tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
+        matfile = tmpfile
+        if prog == "scluster":
+            writeSquareMatrix(tmpfile, mat)
+        else:
+            writeDenseMatrix(tmpfile, mat)
+    
     partfile = tmpfile + ".clustering.%d" % nclusters
     
-    if prog == "scluster":
-        writeSquareMatrix(tmpfile, mat)
-    else:
-        writeDenseMatrix(tmpfile, mat)
     
     if verbose:
-        os.system("%s %s %d %s" % (prog, tmpfile, nclusters, options))
+        os.system("%s %s %d %s" % (prog, matfile, nclusters, options))
     else:
-        os.system("%s %s %d %s > /dev/null" % (prog, tmpfile, nclusters, options))
+        os.system("%s %s %d %s > /dev/null" % (prog, matfile, nclusters, options))
     
     partids = util.readInts(partfile)
     
-    os.remove(tmpfile)
+    if tmpfile != None:
+        os.remove(tmpfile)
     os.remove(partfile)
     
     return partids
 
 
+
+# TODO: add saveOutput
 def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
     """Cluster a matrix into 'nclusters'
-    
+        
+       mat  - a matrix or a matrix filename
        prog - the program to use:
               "vcluster" will treat the matrix as a series of row vectors
               "scluster" will treat the matrix as a square matrix of
@@ -73,27 +111,32 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
        returns a hierarchical tree representing the clustering
     """
     
-    
-    # determine files
-    tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
-    partfile = tmpfile + ".clustering.%d" % nclusters
-    treefile = tmpfile + ".tree"
-    
-    # write input matrix
-    if prog == "scluster":
-        writeSquareMatrix(tmpfile, mat)
+    if isinstance(mat, str):
+        matfile = mat
+        tmpfile = None
     else:
-        writeDenseMatrix(tmpfile, mat)
+        tmpfile = util.tempfile("./", "tmpcluto_", ".mat")
+        matfile = tmpfile
+        if prog == "scluster":
+            writeSquareMatrix(tmpfile, mat)
+        else:
+            writeDenseMatrix(tmpfile, mat)
+        
+    # determine files
+    partfile = matfile + ".clustering.%d" % nclusters
+    treefile = matfile + ".tree"
+
     
     if verbose:
-        os.system("%s %s %d %s -fulltree" % (prog, tmpfile, nclusters, options))
+        os.system("%s %s %d %s -fulltree" % (prog, matfile, nclusters, options))
     else:
-        os.system("%s %s %d %s -fulltree > /dev/null" % (prog, tmpfile, nclusters, options))
+        os.system("%s %s %d %s -fulltree > /dev/null" % (prog, matfile, nclusters, options))
     
     tree = treelib.Tree()
     tree.readParentTree(treefile)
     
-    os.remove(tmpfile)
+    if tmpfile != None:
+        os.remove(tmpfile)
     os.remove(partfile)
     os.remove(treefile)
     

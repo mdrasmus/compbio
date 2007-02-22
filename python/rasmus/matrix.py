@@ -1,67 +1,61 @@
 import sys
-import util
 import copy
 
+from rasmus import util
 from rasmus.progress import Progress
 
 class Smat:
-   nrows = 0
-   ncols = 0
-   nnz = 0
-   rows = []
-   cols = []
-   vals = []
-   
-   def __init__(self, filename = ""):
-      rows = []
-      cols = []
-      vals = []   
-      if (filename != ""):
-         self.read(filename)
-      
-   
-   def old__repr__(self):
-      string = str(self.nrows) + " " + \
-               str(self.ncols) + " " + \
-               str(self.nnz) + "\n"
-      for i in range(len(self.rows)):         
-         string += str(self.rows[i]) + " " + \
-                   str(self.cols[i]) + " " + \
-                   str(self.vals[i]) + "\n"
-      return string
-
-   def read(self, filename):
-      infile = file(filename)
-      # read header
-      (self.nrows, self.ncols, self.nnz) = map(int, infile.next().split())
-      
-      # read non-zeros
-      for line in infile:
-         (row, col, val) = line.split()
-         self.rows.append(int(row))
-         self.cols.append(int(col))
-         self.vals.append(float(val))
-
-class AdjMatrix:
+    """Sparse matrix
+    
+    stores non-zeros in three arrays rows, cols, vals
+    """
+    
     nrows = 0
     ncols = 0
     nnz = 0
     rows = []
+    cols = []
+    vals = []
 
-    def __init__(self, filename = ""):
-       rows = []
-       if (filename != ""):
-          self.read(filename)
+    def __init__(self, filename=None):
+        rows = []
+        cols = []
+        vals = []   
+        if filename != None:
+            self.read(filename)
+
+    def read(self, filename):
+        infile = util.openStream(filename)
+
+        # read header
+        self.nrows, self.ncols, self.nnz = map(int, infile.next().split())
+
+        # read non-zeros
+        for line in infile:
+            row, col, val = line.split()
+            self.rows.append(int(row))
+            self.cols.append(int(col))
+            self.vals.append(float(val))
+    
+    def write(self, filename):
+        out = util.openStream(filename, "w")
+        
+        print >>out, self.nrows, self.ncols, self.nnz
+        
+        for i in xrange(len(self.rows)):
+            print >>out, self.rows[i], self.cols[i], self.vals[i]
 
 
-    def __repr__(self):
-       string = str(self.nrows) + " " + \
-                str(self.ncols) + " " + \
-                str(self.nnz) + "\n"
-       for x in range(len(self.rows)):
-          for y in self.rows[x].keys():
-             string += ('%d %d %f\n' % x, y, self.rows[x][y])
-       return string
+
+class AdjMatrix:
+    def __init__(self, filename=None):
+        self.nrows = 0
+        self.ncols = 0
+        self.nnz = 0
+        self.rows = []
+       
+        if filename != None:
+            self.read(filename)
     
     def setDim(self, nrows, ncols, nnz):
         self.nrows = nrows
@@ -69,13 +63,15 @@ class AdjMatrix:
         self.nnz = nnz
         
         # allocate rows array
+        self.rows = []
         for i in range(self.nrows):
             self.rows.append({})
 
-    def read(self, filename, stream = sys.stderr, step = .1):
-       infile = file(filename)
+
+    def read(self, filename, stream=sys.stderr, step=.1):
+       infile = util.openStream(filename)
        # read header
-       (nrows, ncols, nnz) = map(int, infile.next().split())
+       nrows, ncols, nnz = map(int, infile.next().split())
 
        self.setDim(nrows, ncols, nnz)
 
@@ -85,7 +81,7 @@ class AdjMatrix:
        for line in infile:
           progress.update()
 
-          (row, col, val) = line.split()
+          row, col, val = line.split()
           if int(row) in range(len(self.rows)):
              self.rows[int(row)][int(col)] = float(val)
           else:
@@ -141,6 +137,7 @@ class Matrix:
             string += row.__repr__() + "\n"
         string += ">"
         return string
+
 
 def readLabelMatrix(filename, delim=None, default=0):
     infile = util.openStream(filename)

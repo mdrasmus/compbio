@@ -1038,6 +1038,9 @@ def histTable(items, headers=["item", "count", "percent"]):
 def joinTables(* args, **kwargs):
     """Join together tables into one table.
        Each argument is a tuple (table_i, key_i, cols_i)
+       
+       key_i is either a column name or a function that maps a 
+       table row to a unique key
     """
     
     if len(args) == 0:
@@ -1045,26 +1048,43 @@ def joinTables(* args, **kwargs):
     
     # determine common keys
     tab, key, cols = args[0]
-    keys = tab.cget(key)
+    if isinstance(key, str):
+        keys = tab.cget(key)
+        lookups = [tab.lookup(key)]        
+    else:
+        keys = map(key, tab)
+        lookup = {}
+        for row in tab:
+            lookup[key(row)] = row
+        lookups = [lookup]
+        
     keyset = set(keys)
     
-    lookups = [tab.lookup(key)]
+
     for tab, key, cols in args[1:]:
-        keyset = keyset & set(tab.cget(key))
-        lookups.append(tab.lookup(key))
+        if isinstance(key, str):
+            keyset = keyset & set(tab.cget(key))
+            lookups.append(tab.lookup(key))            
+        else:
+            keyset = keyset & set(map(key, tab))
+            lookup = {}
+            for row in tab:
+                lookup[key(row)] = row
+            
+            lookups.append(lookup)
     
     keys = filter(lambda x: x in keyset, keys)
     
     
     # build new table
     if "headers" not in kwargs:
-        headers = util.concat([args[0][1]], *util.cget(args, 2))
+        headers = util.concat(*util.cget(args, 2))
     else:
         headers = kwargs["headers"]
     tab = Table(headers=headers)
     
     for key in keys:
-        row = {headers[0]: key}
+        row = {}
         for (tab2, key2, cols), lookup in zip(args, lookups):
             row.update(util.subdict(lookup[key], cols))
         tab.append(row)
@@ -1361,8 +1381,7 @@ john	False	hello\n\\\nthere
                       [3, 8, 8]],
                      headers=['a2', 'b2', 'c2'])
         
-        tab3 = joinTables((tab1, 'a', ['c', 'b']), (tab2, 'a2', ['b2']),
-                          headers=['a', 'b2', 'b', 'c'])
+        tab3 = joinTables((tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
         
         print tab3
     

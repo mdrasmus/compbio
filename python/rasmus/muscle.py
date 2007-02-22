@@ -123,38 +123,3 @@ def buildBigTree(seqs, verbose = True, removetmp = True, options = ""):
     return buildTree(seqs, verbose, removetmp, options + 
         " -diags1 -sv -maxiters 1")    
 
-
-
-
-"""
-OLD code
-
-def muscleOrdered(seqs, verbose = True, removetmp = True, options = ""):
-    if len(seqs) < 2:
-        return seqs
-
-    # make input file for clustalw
-    infilename = util.tempfile(".", "muscle-in", ".fa")
-    fasta.writeFasta(infilename, seqs)
-    
-    # run muscle
-    outfilename = util.tempfile(".", "muscle-out", ".aln")
-    cmd = "muscle " + options + " -in " + infilename + \
-          " -out " + outfilename
-    os.system(cmd)
-    
-    # parse output
-    names, seqs = fasta.readFastaOrdered(outfilename)
-    
-    # cleanup tempfiles
-    if removetmp:
-        os.remove(infilename)
-        os.remove(outfilename)
-    
-    return (names, seqs)
-
-
-def muscleFastOrdered(seqs, verbose = True, removetmp = True, options = ""):
-    return muscleOrdered(seqs, verbose, removetmp, options + " -diags1 -sv -maxiters 1 ")
-
-"""

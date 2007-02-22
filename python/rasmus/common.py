@@ -25,6 +25,7 @@ from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blas
 #from rasmus.phyloutil import viewTree
 
 
+from itertools import izip, imap
 
 """
 # common compbio imports
@@ -56,11 +57,11 @@ class ListFiles:
     def __repr__(self):
         self()
         return ""
-#ls = ListFiles()
+ls2 = ListFiles()
 
 
-#def cd(path = os.environ["HOME"]):
-#    os.chdir(path)
+def cd2(path = os.environ["HOME"]):
+    os.chdir(path)
 
 
 def strStream(text):

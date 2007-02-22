@@ -1,6 +1,6 @@
 """
 
-    PHYLIP Wrapper for python
+    PHYLIP wrapper for python
     
     author: Matt Rasmussen
     date:   2/4/2007

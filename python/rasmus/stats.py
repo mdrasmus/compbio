@@ -327,6 +327,34 @@ def chyper(m, n, M, N, report=0):
         return vals
     else:
         raise "unknown option"
+
+
+def rhyper(m, n, M, N, report=0):
+    from rpy import r
+
+    '''
+    calculates cumulative probability based on
+    hypergeometric distribution
+    over/under/both (report = 0/1/2)
+    (uses R through RPy)
+    '''
+    
+    assert( (type(m) == type(n) == type(M) == type(N) == int)
+            and m <= n and m <= M and n <= N)
+    
+    
+    if report == 0:
+        #p-val for over-repr.
+        return r.phyper(m-1, M, N-M, n, lower_tail=False)
+    elif report == 1:
+        #p-val for under-repr.
+        return r.phyper(m, M, N-M, n)
+    elif report == 2:
+        #tuple (over, under)
+        return r.phyper(m-1, M, N-M, n, lower_tail=False), r.phyper(m, M, N-M, n)
+    else:
+        raise "unknown option"
+
     
 #=============================================================================
 # Distributions

@@ -392,7 +392,7 @@ def dict2array(fa, order = None):
 
 #=============================================================================
 # Special alignment format
-# (rarely used)
+# (rarely used. only used it for MIKE's alignments once)
 #
 
 class Alignment:

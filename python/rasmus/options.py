@@ -1,12 +1,21 @@
-###############################################################################
-# Argument parsing
+"""
+    Argument parsing
+    
+    file:   options.py
+    author: Matt Rasmussen
+    date:   11/30/05
 
-from util import *   
+"""
 
+#from util import *   
+
+import os
 import sys
 import getopt
 import shlex
 import __builtin__
+
+
 
 class OptionError (Exception):
     """Exception for errors while parsing and accessing optiosn"""
@@ -97,7 +106,7 @@ def shellparser(arg):
         return [arg]
 
 
-def parseOptions(argv, options, quit=True, resthelp = ""):
+def parseOptions(argv, options, resthelp = "", quit=True):
     try:
         return parseArgs(argv, options, quit=quit, resthelp=resthelp, 
                          returnRest=False)
@@ -110,6 +119,8 @@ def parseOptions(argv, options, quit=True, resthelp = ""):
 def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
               helpOption=True, configFileOption=True):
     """
+    DEPRECATED
+    
     Do not call this directly.  This function name is being phased out.
     All scripts should use parseOptions
     """
@@ -210,6 +221,7 @@ def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
         conf.update(readConfigFile(* conf["config"]))
     
     if returnRest:
+        # old way, will remove some day
         return conf, rest
     else:
         return conf

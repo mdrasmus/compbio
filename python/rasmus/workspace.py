@@ -1,16 +1,21 @@
 ###############################################################################
 # pickling
 #
+# TODO: use python sets
 
+import sys
 import cPickle
-from util import *
+#from util import *
+
+from rasmus import util
+
 
 
 def binsave(filename, var):
-    cPickle.dump(var, openStream(filename, "w"), 2)
+    cPickle.dump(var, util.openStream(filename, "w"), 2)
 
 def binload(filename):
-    return cPickle.load(openStream(filename))
+    return cPickle.load(util.openStream(filename))
 
 def varset():
     if "varset" not in GLOBALS():
@@ -26,7 +31,7 @@ def delvar(* varnames):
         del varset()[name]
 
 def getvars(table):
-    set = subdict(table, varset())
+    set = util.subdict(table, varset())
     return set
 
 def setvars(table, dct):
@@ -38,7 +43,7 @@ def showvars(table=None, width=70, out=sys.stdout):
     names.sort()
     
     if not table:
-        printcols(names, width, out)
+        util.printcols(names, width, out)
     else:
         maxname = max(map(len, names))
         

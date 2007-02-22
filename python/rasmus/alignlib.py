@@ -684,12 +684,12 @@ def getLocalLookup(seq):
     Used to go from align -> local space
     """
 
-    i = 0
+    i = -1
     lookup = []
     for c in seq:
-        lookup.append(i)
         if c != "-":
             i += 1
+        lookup.append(i)
     return lookup
 
 

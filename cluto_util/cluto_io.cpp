@@ -47,7 +47,8 @@ bool ReadMatrix(FILE *stream, int *nrows, int *ncols, int *nnz,
         }
     }
     
-	 // allocate space
+    // compress row format
+	// allocate space
     *rowptr = new int [*nrows + 1];
     *rowind = new int [*nnz];
     *rowval = new float [*nnz];

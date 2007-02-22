@@ -9,10 +9,15 @@ options = [
     ["r:", "rows=", "rows", "<number of row to align at a time>",
      {"single": True,
       "default": 100,
-      "parser": int}],
+      "parser": int,
+      "help": "use -1 to align entire file"}],
     ["s:", "spacing=", "spacing", "<column spacing>",
      {"single": True,
       "default": 2,
+      "parser": int}],
+    ["w:", "maxwidth=", "maxwidth", "<# chars>",
+     {"single": True,
+      "default": util.INF,
       "parser": int}],
     ["d:", "delim=", "delim", "<delimiter>",
      {"single": True,
@@ -33,8 +38,8 @@ for line in infile:
     tokens = line.rstrip().split(conf["delim"])
     mat.append(tokens)
     
-    if len(mat) >= conf["rows"]:
-        util.printcols(mat, spacing=conf["spacing"])
+    if conf["rows"] > 0 and len(mat) >= conf["rows"]:
+        util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
         mat = []
 
 util.printcols(mat, spacing=conf["spacing"])

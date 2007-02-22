@@ -1,3 +1,15 @@
+"""
+
+
+Tue Feb 20 23:16:41 EST 2007
+Matt Rasmussen
+This all old code that I should throw away some day
+
+
+
+"""
+
+
 # python libs
 import os
 

@@ -1333,7 +1333,7 @@ def listFiles(path, ext=""):
     
     if path[-1] != "/":
         path += "/"
-    files = filter(lambda x: x.endswith(extension), os.listdir(path))
+    files = filter(lambda x: x.endswith(ext), os.listdir(path))
     files.sort()
     files = map(lambda x: path + x, files)
     return files

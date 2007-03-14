@@ -27,8 +27,21 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     # force best binary tree (if possible)
     options["extra"] += "sumt contype=allcompat;"
     
+    # get gene names
+    names = []
+    namemap = {}
+    
+    for key in aln.keys():
+        if "+" in key:
+            key2 = key.replace("+", "_")
+            names.append(key2)
+            namemap[key2] = key
+        else:
+            names.append(key)
+    
+    
     # write input file
-    writeNexus(file(nexfilename, "w"), aln.keys(), aln.values(), seqtype, options)
+    writeNexus(file(nexfilename, "w"), names, aln.values(), seqtype, options)
     
     # exec mrbayes
     if verbose:
@@ -47,6 +60,10 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
             phylip.cleanupTempDir(cwd)
     
     util.toc()
+    
+    
+    for tmpname, origname in namemap.iteritems():
+        tree.rename(tmpname, origname)
     
     return tree
     

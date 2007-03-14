@@ -379,8 +379,10 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
 
     # gene name and tree ID
     if "geneOutLink" in conf and gene != "":
+        # HACK: for Flybase
+        genename2 = genename.replace("-PA", "")
         genetext = "<a href='%s'>%s</a>" % \
-            (conf['geneOutLink'] % genename, genename)
+            (conf['geneOutLink'] % genename2, genename)
     else:
         genetext = genename
 

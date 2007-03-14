@@ -229,7 +229,7 @@ def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
 
 def usage(progname, options, resthelp = ""):
     """ 
-    options = [("a:", "a_long=", "a_name", "[-a <arg>] [--a_long=<arg>]"), ...]
+    options = [("a:", "a_long=", "a_name", "<arg>]"), ...]
     """
     
     print >>sys.stderr, "Usage: %s [OPTION] %s\n" % (progname, resthelp)

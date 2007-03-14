@@ -165,7 +165,7 @@ def plotRelLens(name, params, lens, low, high, high2, step):
     p.set(xmin=0, xmax=high, 
           xlab="rel sub/site",
           main="%s relative branch lengths (mean=%.4f, sdev=%.4f, pval=%.3e)" % 
-          (str(name), params[0], params[1], pval))
+          (str(name), params[0], params[1], pval2))
     
     return p, util.Bundle(pval=pval, pval2=pval2, prms=prms, qqplot=qqplot)
 
@@ -259,7 +259,7 @@ if 1:
         vals = util.sort(lens[name])
         low = vals[int(len(vals) * .015)]
         high2 = vals[int(len(vals) * .90)]
-        high = vals[int(len(vals) * .95)]
+        high = 3 * stats.median(lens[name])
         
         step = (high - low) / conf["nbins"]
         p, fit = plotAbsLens(name, lens[name], low, high, high2, step)
@@ -290,9 +290,9 @@ if 1:
         
         #high = 3 * stats.mean(rlens[name])
         vals = util.sort(lens[name])
-        high = vals[int(len(vals) * .80)]
-        low = params[name][1]
-        high2 = params[name][0] + params[name][1]
+        high =  params[name][0] + 4 * params[name][1]
+        low = params[name][0] - 2 * params[name][1] 
+        high2 = params[name][0] + 2 * params[name][1]
         
         step = (high - low) / conf["nbins"]
         p, fit = plotRelLens(name, params[name], rlens[name], low, high, high2, step)

@@ -47,12 +47,12 @@ class Smat:
 
 
 
-class AdjMatrix:
+class RowMatrix (list):
     def __init__(self, filename=None):
         self.nrows = 0
         self.ncols = 0
         self.nnz = 0
-        self.rows = []
+        self[:] = []
        
         if filename != None:
             self.read(filename)
@@ -63,12 +63,12 @@ class AdjMatrix:
         self.nnz = nnz
         
         # allocate rows array
-        self.rows = []
+        self[:] = []
         for i in range(self.nrows):
-            self.rows.append({})
+            self.append({})
 
 
-    def read(self, filename, stream=sys.stderr, step=.1):
+    def readIndex(self, filename, stream=sys.stderr, step=.1):
        infile = util.openStream(filename)
        # read header
        nrows, ncols, nnz = map(int, infile.next().split())
@@ -82,13 +82,24 @@ class AdjMatrix:
           progress.update()
 
           row, col, val = line.split()
-          if int(row) in range(len(self.rows)):
-             self.rows[int(row)][int(col)] = float(val)
-          else:
-             print "error: %d %s" % (len(self.rows), line)
+          self[int(row)][int(col)] = float(val)
     
     
-    def writeCluto(self, filename, square=False):
+    def read(self, filename, stream=sys.stderr, step=.1):
+        infile = util.openStream(filename)
+        # read header
+        nrows, ncols, nnz = map(int, infile.next().split())
+
+        self.setDim(nrows, ncols, nnz)
+        
+        # read non-zeros
+        for i, line in enumerate(infile):
+            tokens = line.split()
+            for i in xrange(0, len(tokens), 2):
+                self[i][int(tokens[i])] = float(tokens[i+1])
+            
+    
+    def write(self, filename, square=False):
        out = util.openStream(filename, "w")
 
        # write header
@@ -99,30 +110,31 @@ class AdjMatrix:
             
 
        # write non-zeros in compressed row format
-       for i in range(len(self.rows)):
-          keys = self.rows[i].keys()
+       for i in range(len(self)):
+          keys = self[i].keys()
           keys.sort()
           for j in keys:
-             out.write("%d %f " % (j+1, self.rows[i][j]))
+             out.write("%d %f " % (j+1, self[i][j]))
           out.write("\n")
 
     def get(self, i, j):
-       if j in self.rows[i].keys():
-          return self.rows[j][j]
+       if j in self[i].keys():
+          return self[j][j]
        else:
           return 0
     
     
     def set(self, i, j, value):
-        self.rows[i][j] = value
+        self[i][j] = value
             
     
-
+"""Probably not needed"""
 class Matrix:
     def __init__(self, nrows=0, ncols=0, val=0):
         self.data = []
         self.nrows = nrows
         self.ncols = ncols
+        
         for i in range(nrows):
             self.data.append([])
             for j in range(ncols):

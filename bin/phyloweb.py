@@ -241,7 +241,7 @@ def readCommonNames(filename):
     
     return common
 
-
+"""
 def readResults(filename):
     infile = file(filename)
     results = {}
@@ -260,7 +260,7 @@ def readResults(filename):
             break
     
     return results
-            
+"""            
 
 
 def getTreeNames(conf, datadir):
@@ -903,7 +903,8 @@ def generateTopologyTable(conf, datadir, resultdirs):
     # load up correctness results
     results = {}
     for prog, resultdir, resulturl in resultdirs:
-        results[prog] = readResults(os.path.join(resultdir, "results"))
+        tab = tablelib.readTable(os.path.join(resultdir, "results.tab"))
+        results[prog] = tab.lookup("treeid")
         
     
     # init table
@@ -946,12 +947,13 @@ def generateTopologyTable(conf, datadir, resultdirs):
         row["alignlen"] = aln.alignlen()
         
         for prog, resultdir, resulturl in resultdirs:
-            treefile = getResultTreeFile(conf, resultdir, treename)
-            tree = treelib.readTree(treefile)
-            thash = phyloutil.hashTree(tree, conf["gene2species"])
+            #treefile = getResultTreeFile(conf, resultdir, treename)
+            #tree = treelib.readTree(treefile)
+            #thash = phyloutil.hashTree(tree, conf["gene2species"])
+            thash = results[prog][treename]["species_hash"]
             
             row[prog] = thash
-            row[prog + "_rferror"] = results[prog][treename][1]
+            row[prog + "_rferror"] = results[prog][treename]["rferror"]
             counts[thash] += 1
         treestats.append(row)
     

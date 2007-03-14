@@ -564,9 +564,9 @@ def findge(a, lst): return find(gefunc(a), lst)
 def findgt(a, lst): return find(gtfunc(a), lst)
 
 
-'''
+"""
 def islands(lst):
-    """
+    '''
       takes a list, or a string, and gather islands of identical elements.
       it returns a dictionary counting where
       counting = {element: [(start,end), (start,end), ...],
@@ -578,7 +578,7 @@ def islands(lst):
        is such that list[start-1:end] only contains element
        
        note: this comes from Manolis's code
-    """
+    '''
     
     if not lst: return {}
 
@@ -600,7 +600,7 @@ def islands(lst):
     counting[current_char].append((current_start, i))
 
     return counting
-'''
+"""
 
 
 
@@ -804,6 +804,47 @@ def match(pattern, text):
         return {}
     else:
         return m.groupdict()
+
+    
+def evalstr(text):
+    """Replace expressions in a string (aka string interpolation)
+
+    ex:
+    >>> name = 'Matt'
+    >>> evalstr("My name is ${name} and my age is ${12+12}")
+    'My name is Matt and my age is 24'
+    
+    "${!expr}" expands to "${expr}"
+    
+    """
+    
+    # get environment of caller
+    frame = sys._getframe(1)
+    global_dict = frame.f_globals
+    local_dict = frame.f_locals
+    
+    # find all expression to replace
+    m = re.finditer("\$\{(?P<expr>[^\}]*)\}", text)
+    
+    # build new string
+    try:
+        strs = []
+        last = 0
+        for x in m:
+            expr = x.groupdict()['expr']
+                   
+            strs.append(text[last:x.start()])            
+            
+            if expr.startswith("!"):
+                strs.append("${" + expr[1:] + "}")
+            else:
+                strs.append(str(eval(expr, global_dict, local_dict)))
+            last = x.end()
+        strs.append(text[last:len(text)])
+    except Exception, e:
+        raise Exception("evalstr: " + str(e))
+    
+    return "".join(strs)
 
 
 #=============================================================================

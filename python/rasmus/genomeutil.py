@@ -15,7 +15,6 @@ import ensembl
 import env
 import fasta
 import gff
-import matrix
 import stats
 import treelib
 import util

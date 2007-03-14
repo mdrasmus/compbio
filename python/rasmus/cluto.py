@@ -1,4 +1,5 @@
 
+from rasmus import matrix
 from rasmus import util
 from rasmus import treelib
 import os

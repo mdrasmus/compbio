@@ -49,7 +49,7 @@ Table can also handle custom types.  Custom types must do the following
  4. type inference (optional)
    type(val)
    returns instance of 'mytype'
-   TODO: I could not require this (only map really needs it)
+   TODO: I could not require this (only map() really needs it and __init__())
 
 
 """
@@ -191,20 +191,39 @@ class TableTypeLookup:
             #names.append(t.__name__)
         return delim.join(names)
 
+
 class TableType:
-    def __init__(self, parser, formatter):
-        self.parser = parser
-        self.formatter = formatter
+    def __init__(self, parser=None, formatter=None):
+        if parser != None:
+            self.parserFunc = parser
+        else:
+            self.parserFunc = self.parser
+        
+        if formatter != None:
+            self.formatterFunc = formatter
+        else:
+            self.formatterFunc = self.formatter
+        
         
     def __call__(self, text=NULL):
         if text == NULL:
-            return self.parser()
+            return self.parserFunc()
         else:
-            return self.parser(text)
+            return self.parserFunc(text)
     
     def __str__(self, val):
-        return self.formatter(val)
+        return self.formatterFunc(val)
     
+    
+    def parser(self, text=NULL):
+        if text == NULL:
+            return ""
+        else:
+            return text
+    
+    def formatter(self, val):
+        return str(val)
+        
 
 def stringQuote(text=None):
     if text == None:
@@ -431,8 +450,7 @@ class Table (list):
         lineno = 0
         
         
-        #try:
-        if 1:
+        try:
             for line in infile:
                 line = line.rstrip()        
                 lineno += 1
@@ -477,10 +495,10 @@ class Table (list):
                 yield row
                 
                 
-        #except Exception, e:
-        #    # report error in parsing input file
-        #    e = TableException(str(e), self.filename, lineno)
-        #    raise e
+        except Exception, e:
+            # report error in parsing input file
+            e = TableException(str(e), self.filename, lineno)
+            raise e
         
         
         # now that we know the headers we can process extra headers
@@ -855,24 +873,45 @@ class Table (list):
         return tab
     
     
-    def groupby(self, keyfunc=None, col=None):
+    def groupby(self, key=None):
+        """Groups the row of the table into separate tables based on the 
+           function key(row).  Returns a dict where the keys are the values
+           retruned from key(row) and the values are tables.
+           
+           Ex:
+           tab = Table([{'name': 'matt', 'major': 'CS'},
+                        {'name': 'mike', 'major': 'CS'},
+                        {'name': 'alex', 'major': 'bio'}])
+           lookup = tab.groupby(lambda x: x['major'])
+           
+           lookup ==> {'CS': Table([{'name': 'matt', 'major': 'CS'},
+                                    {'name': 'mike', 'major': 'CS'}]),
+                       'bio': Table([{'name': 'alex', 'major': 'bio'}])}
+            
+           Can also use a column name such as:
+           tab.groupby('major')
+            
+        """
+           
+           
         groups = {}
         
-        if col != None:
-            keyfunc = lambda x: x[col]
+        if isinstance(key, str):
+            keystr = key
+            key = lambda x: x[keystr]
         
-        if keyfunc == None:
+        if key == None:
             raise Exception("must specify keyfunc")
         
         
         for row in self:
-            key = keyfunc(row)
+            key2 = key(row)
             
             # add new table if necessary
-            if key not in groups:
-                groups[key] = self.new()
+            if key2 not in groups:
+                groups[key2] = self.new()
             
-            groups[key].append(row)
+            groups[key2].append(row)
         
         return groups
     

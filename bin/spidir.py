@@ -30,9 +30,9 @@ import Spidir
 
 # command line options
 options = ["""\
-  SPIDIR v0.5  Oct 2006
+  SPIDIR v0.6 (beta) Mar 2007
   SPecies Informed DIstanced-base Reconstruction
-    by Matt Rasmussen 
+  Matt Rasmussen
     
 """,
  "Options",

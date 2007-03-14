@@ -143,7 +143,20 @@ def fitLineError(xlist, ylist, slope, inter):
     return error / n
 
 
-
+def percentile(vals, perc, rounding=-1):
+    """Give the value at a percentile
+       
+       rounding -- round down if -1 or round up for 1
+    """
+    
+    vals2 = util.sort(vals)
+    n = len(vals2)
+    if rounding == -1:
+        return vals2[util.clamp(int(perc * n), 0, n-1)]
+    elif rounding == 1:
+        return vals2[util.clamp(int(ceil(perc * n)), 0, n-1)]
+    else:
+        raise Exception("rounding must be 1 or -1")
 
 
 def smooth(vals, radius):

@@ -100,6 +100,8 @@ class FastaDict (SeqDict):
                 raise KeyError(key)
 
         else:
+            start = util.clamp(start, 1, None)
+            end = util.clamp(end, 1, None)
             val = val[start-1:end]
         
             # reverse complement if needed
@@ -191,7 +193,7 @@ def guessFastaWidth(fastaFile):
             
             if width == -1:
                 # first line
-                width = width2
+                width = width3
 
             elif width3 > width:
                 # widths cannot get bigger

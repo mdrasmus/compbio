@@ -2,6 +2,8 @@
 
  Simple vector library
 
+    operates on both lists and dicts
+
 """
 
 
@@ -57,8 +59,6 @@ def vidiv(u, v):
 #
 # vector and scalar
 #
-
-# TODO: finish using hasattr
 
 def vadds(u, s):
     if hasattr(u, "keys"):

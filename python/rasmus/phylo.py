@@ -604,7 +604,7 @@ def getBranchLens(trees, stree, gene2species=gene2species):
         # skip trees with duplications or with extremly long branch lengths
         assert "dup" not in events.values()
         
-        row = {]
+        row = {}
         for node in tree.nodes.values():
             row[recon[node].name] = node.dist
         rates.append(row)

@@ -20,6 +20,7 @@ from rasmus import cluster
 from rasmus import fasta
 from rasmus import graph
 from rasmus import phylip
+from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 

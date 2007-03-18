@@ -20,7 +20,6 @@ from rasmus import cluster
 from rasmus import fasta
 from rasmus import graph
 from rasmus import phylip
-from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 
@@ -593,19 +592,19 @@ def getBranchLens(trees, stree, gene2species=gene2species):
     species.remove(str(stree.root.name))
     
     # make rates table
-    rates = tablelib.Table(headers=species)
+    rates = Table(headers=species)
     
     # loop through trees
     for tree in trees:
         if isinstance(tree, str):
-            tree = treelib.readTree(tree)
+            tree = readTree(tree)
         recon = reconcile(tree, stree, gene2species)
         events = labelEvents(tree, recon)
         
         # skip trees with duplications or with extremly long branch lengths
         assert "dup" not in events.values()
         
-        row = {}
+        row = {]
         for node in tree.nodes.values():
             row[recon[node].name] = node.dist
         rates.append(row)

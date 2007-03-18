@@ -1321,7 +1321,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
 
     estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     if "integrate" not in conf:
-        return estlogl
+        #return estlogl
+        pass
     else:
         # skip trees that are estimated to be very bad
         if estlogl < conf["bestlogl"] - 50:

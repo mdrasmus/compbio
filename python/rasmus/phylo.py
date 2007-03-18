@@ -20,6 +20,7 @@ from rasmus import cluster
 from rasmus import fasta
 from rasmus import graph
 from rasmus import phylip
+from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 
@@ -344,57 +345,6 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     return gtree
 
 
-def reconRoot2(gtree, stree, gene2species = gene2species, 
-              rootby = "duploss"):
-    # find reconciliation that minimizes loss
-    mincost = util.INF
-    minroot = None
-    minrecon = None
-    
-    # make an unrooted copy of gene tree
-    # TODO: this can be simplified (root on node.parent)
-    gtree = treelib.reroot(gtree, util.sort(gtree.leafNames())[0])
-    gtree = treelib.unroot(gtree)
-    
-    # make recon root consistent for rerooting tree of the same names
-    # TODO: there is the possibility of ties, they are currently broken
-    # arbitrarily.  In order to make comparison of reconRooted trees with 
-    # same gene names accurate, hashOrdering must be done, for now.
-    hashOrderTree(gtree, gene2species)
-    
-    # determine graph and possible roots
-    mat = treelib.tree2graph(gtree)
-    newroots = util.sort(gtree.nodes.keys())
-    newroots.remove(gtree.root.name)
-
-    # try rooting on everything
-    for root in newroots:
-        gtree2 = treelib.reroot(gtree, root, mat)
-        recon = reconcile(gtree2, stree, gene2species)
-        
-        if rootby == "dup":
-            events = labelEvents(gtree2, recon)        
-            cost = countDup(gtree2, events)
-        elif rootby == "loss":
-            cost = len(findLoss(gtree2, stree, recon))
-        elif rootby == "duploss":
-            cost = countDupLoss(gtree2, stree, recon)
-        else:
-            raise "unknown rootby value '%s'"  % rootby
-        
-        # keep track of min loss
-        if cost < mincost:
-            mincost = cost
-            minroot = root
-            minrecon = recon
-    
-    # handle the case where no rerooting was attempted (nleaves == 1)
-    if minroot == None:
-        return gtree
-    
-    # root tree by minroot
-    return treelib.reroot(gtree, minroot)
-
 
 
 def partitionTree(tree, stree, gene2species):
@@ -516,8 +466,7 @@ def findBranchDistrib(trees, stree, gene2species = gene2species,
         events = labelEvents(tree, recon)
         
         # skip trees with duplications or with extremly long branch lengths
-        if "dup" in events.values():# or \
-            #max(x.dist for x in tree.nodes.values()) > 2:
+        if "dup" in events.values():
             used.append(False)
             continue
         else:
@@ -637,6 +586,32 @@ def findOrthologs(gtree, stree, recon):
 #=============================================================================
 # Branch length analysis
 #
+
+def getBranchLens(trees, stree, gene2species=gene2species):
+    # determine species nanes
+    species = map(str, stree.nodes.keys())
+    species.remove(str(stree.root.name))
+    
+    # make rates table
+    rates = tablelib.Table(headers=species)
+    
+    # loop through trees
+    for tree in trees:
+        if isinstance(tree, str):
+            tree = treelib.readTree(tree)
+        recon = reconcile(tree, stree, gene2species)
+        events = labelEvents(tree, recon)
+        
+        # skip trees with duplications or with extremly long branch lengths
+        assert "dup" not in events.values()
+        
+        row = {}
+        for node in tree.nodes.values():
+            row[recon[node].name] = node.dist
+        rates.append(row)
+    
+    return rates
+
 
 def getRelBranchLens(rates, species=None):
     if species == None:
@@ -1211,9 +1186,65 @@ def writeEventTree(stree, out=sys.stdout):
                      out=out)
 
 
+#=============================================================================
+# Old code 
+#
 
+"""
 
+# OLD inefficent version of reconRoot()
 
+def reconRoot2(gtree, stree, gene2species = gene2species, 
+              rootby = "duploss"):
+    # find reconciliation that minimizes loss
+    mincost = util.INF
+    minroot = None
+    minrecon = None
+    
+    # make an unrooted copy of gene tree
+    # TODO: this can be simplified (root on node.parent)
+    gtree = treelib.reroot(gtree, util.sort(gtree.leafNames())[0])
+    gtree = treelib.unroot(gtree)
+    
+    # make recon root consistent for rerooting tree of the same names
+    # TODO: there is the possibility of ties, they are currently broken
+    # arbitrarily.  In order to make comparison of reconRooted trees with 
+    # same gene names accurate, hashOrdering must be done, for now.
+    hashOrderTree(gtree, gene2species)
+    
+    # determine graph and possible roots
+    mat = treelib.tree2graph(gtree)
+    newroots = util.sort(gtree.nodes.keys())
+    newroots.remove(gtree.root.name)
+
+    # try rooting on everything
+    for root in newroots:
+        gtree2 = treelib.reroot(gtree, root, mat)
+        recon = reconcile(gtree2, stree, gene2species)
+        
+        if rootby == "dup":
+            events = labelEvents(gtree2, recon)        
+            cost = countDup(gtree2, events)
+        elif rootby == "loss":
+            cost = len(findLoss(gtree2, stree, recon))
+        elif rootby == "duploss":
+            cost = countDupLoss(gtree2, stree, recon)
+        else:
+            raise "unknown rootby value '%s'"  % rootby
+        
+        # keep track of min loss
+        if cost < mincost:
+            mincost = cost
+            minroot = root
+            minrecon = recon
+    
+    # handle the case where no rerooting was attempted (nleaves == 1)
+    if minroot == None:
+        return gtree
+    
+    # root tree by minroot
+    return treelib.reroot(gtree, minroot)
+"""
 
 
 

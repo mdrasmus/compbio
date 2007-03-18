@@ -592,7 +592,7 @@ def getBranchLens(trees, stree, gene2species=gene2species):
     species.remove(str(stree.root.name))
     
     # make rates table
-    rates = Table(headers=species)
+    rates = tablelib.Table(headers=species)
     
     # loop through trees
     for tree in trees:

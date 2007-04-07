@@ -5,18 +5,18 @@ import os
 import sys
 
 # rasmus libs
-from genomeutil import *
-import algorithms
-import bionj
-import env
-import graph
-import genomeio
-import muscle
-import phylip
-import phylo
-import stats
-import util
-import treelib
+from rasmus.genomeutil import *
+from rasmus import algorithms
+from rasmus import bionj
+from rasmus import env
+from rasmus import graph
+from rasmus import genomeio
+from rasmus import muscle
+from rasmus import phylip
+from rasmus import phylo
+from rasmus import stats
+from rasmus import util
+from rasmus import treelib
 
 
 # TODO: remove algorithms.<tree func> calls

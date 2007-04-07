@@ -5,6 +5,9 @@
  of pyshell
 """
 
+# python libs
+from itertools import izip, imap
+
 
 # rasmus direct imports
 import rasmus
@@ -25,7 +28,6 @@ from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blas
 #from rasmus.phyloutil import viewTree
 
 
-from itertools import izip, imap
 
 """
 # common compbio imports

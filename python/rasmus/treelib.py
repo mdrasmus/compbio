@@ -16,9 +16,9 @@ import os
 import StringIO
 
 # rasmus libs
-import graph
-import textdraw
-import util
+from rasmus import graph
+from rasmus import textdraw
+from rasmus import util
 
 # newick parsing support
 import pyparsing

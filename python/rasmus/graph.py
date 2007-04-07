@@ -1,4 +1,6 @@
-import util
+from rasmus import util
+
+
 
 def repeatedDfs(vertices, visit, getNeighbors, newComponent = lambda x: 0):
     openset = []

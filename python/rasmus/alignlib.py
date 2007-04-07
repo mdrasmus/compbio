@@ -6,6 +6,7 @@
 
 # python libs
 import sys
+import copy
 
 # rasmus libs
 from rasmus import fasta
@@ -40,6 +41,10 @@ CODON_TABLE = {
     
     "---": "-"
 }
+
+
+CANDIDA_CODON_TABLE = copy.copy(CODON_TABLE)
+CANDIDA_CODON_TABLE["CTG"] = "S"  # originally L
 
 
 # make reverse codon table

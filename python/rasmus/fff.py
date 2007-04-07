@@ -1,5 +1,5 @@
-import util
-import algorithms
+from rasmus import util
+from rasmus import algorithms
 
 
 """

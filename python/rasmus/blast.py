@@ -2,9 +2,9 @@
 import os
 
 # rasmus imports
-import env
-import fasta
-import util
+from rasmus import env
+from rasmus import fasta
+from rasmus import util
 
 
 """

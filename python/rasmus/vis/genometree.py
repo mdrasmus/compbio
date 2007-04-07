@@ -14,8 +14,8 @@ from rasmus.genomeutil import *
 
 
 if __name__ != "__main__":
-    from summon import *
-    from summonlib import shapes
+    from summon.core import *
+    from summon import shapes
 
 
 def setupTree(tree, genes):

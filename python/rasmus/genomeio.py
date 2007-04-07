@@ -14,9 +14,9 @@ This all old code that I should throw away some day
 import os
 
 # rasmus libs
-from genomeutil import *
-import util
-import env
+from rasmus.genomeutil import *
+from rasmus import util
+from rasmus import env
 
 
 

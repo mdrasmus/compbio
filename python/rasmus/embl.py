@@ -1,6 +1,11 @@
+#
+# NOTE: this module is pretty much deprecated
+#
+
 import sys
 import os
-import util
+
+from rasmus import util
 
 timer = util.Timer()
 

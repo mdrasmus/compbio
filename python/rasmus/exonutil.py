@@ -1,4 +1,8 @@
-import util, genomeutil, graph, genomeio, fasta, graph, ensembl, mrbayes
+#
+# old file
+#
+
+from rasmus import util, genomeutil, graph, genomeio, fasta, graph, ensembl
 
 
 def findAlignedExons(aln, genomes):
@@ -300,6 +304,8 @@ def intronAlignment(aln, transcripts, slide=2):
     
 
 def writeNexusIntrons(out, names, seqs, genes, lookup, slide=2, options={}):
+    from rasmus import mrbayes
+    
     genomenames = util.unique(map(genomeutil.gene2species, names))
     trans = getRelatedTranscripts(names, seqs, genes, lookup)
     aln = fasta.array2dict(names, seqs)

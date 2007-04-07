@@ -9,11 +9,11 @@
 import os
 import sys
 
-import algorithms
-import blast
-import graph
-import matrix
-import util
+from rasmus import algorithms
+from rasmus import blast
+from rasmus import graph
+from rasmus import matrix
+from rasmus import util
 
 
 

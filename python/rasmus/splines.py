@@ -1,6 +1,7 @@
 from Numeric import *
 from LinearAlgebra import *
-import util
+
+from rasmus import util
 
 def hermite(x0, x1, v0, v1, t):
     a = array([1, t, t**2, t**3])

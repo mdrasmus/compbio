@@ -8,8 +8,8 @@
 
 import sys, os
 
-from util import *
-import svg
+from rasmus.util import *
+from rasmus import svg
 
 
 class Gnuplot:

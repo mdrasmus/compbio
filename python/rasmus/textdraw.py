@@ -2,7 +2,7 @@
 import sys
 
 # rasmus libs
-import util
+from rasmus import util
 
 
 class TextCanvas:

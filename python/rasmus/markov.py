@@ -1,4 +1,5 @@
-import util, stats
+from rasmus import util, stats
+
 import random
 
 def metropolis(proposal, density, initState, steps):

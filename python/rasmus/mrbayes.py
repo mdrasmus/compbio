@@ -1,5 +1,11 @@
-import fasta, util, treelib, exonutil, phylip
 import os, StringIO
+
+from rasmus import fasta
+from rasmus import util
+from rasmus import treelib
+from rasmus import exonutil
+from rasmus import phylip
+
 
 
 

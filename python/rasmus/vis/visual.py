@@ -1,25 +1,102 @@
 import math
-from summon import *
-import summonlib
+from summon.core import *
+import summon
 
-class VisObject:
+
+class VisObject (object):
+    """Base class of visualization objects"""
     def __init__(self):
         self.vis = group()
+    
+    def __del__(self):
+        self.setVisible(False)
     
     def update(self):
         pass
     
     def setVisible(self, visible=True):
         if visible:    
-            if not summonlib.is_update_func(self.update):
-                summonlib.add_update_func(self.update)
+            if not summon.is_update_func(self.update):
+                summon.add_update_func(self.update)
         else:
-            if summonlib.is_update_func(self.update):
-                summonlib.remove_update_func(self.update)
+            if summon.is_update_func(self.update):
+                summon.remove_update_func(self.update)
+        
+
+class Multiscale (object):
+    """Manage detecting when the zoom and scroll of the visualization is 
+       sufficently different to justify a redraw"""
+
+    def __init__(self, marginx=.5, marginy=.5, scalex=4, scaley=4):
+        self.worldx1 = None
+        self.worldx2 = None
+        self.worldy1 = None
+        self.worldy2 = None
+        self.marginx = marginx
+        self.marginy = marginy
+        self.scalex = scalex
+        self.scaley = scaley      
         
     
+    def init(self, view=None):
+        if view == None:
+            view = get_visible()
+        self.worldx1, self.worldy1, self.worldx2, self.worldy2 = view
+        
+        # define outer bound with margins
+        self.worldwidth = self.worldx2 - self.worldx1
+        self.worldheight = self.worldy2 - self.worldy1
+        marginx = self.worldwidth * self.marginx
+        marginy = self.worldheight * self.marginx
+        
+        self.worldx1 -= marginx
+        self.worldx2 += marginx
+        self.worldy1 -= marginy
+        self.worldy2 += marginy
+        
+    
+    def sameScale(self, view=None):
+        if view == None:
+            view = get_visible()
+        
+        worldx1, worldy1, worldx2, worldy2 = view
+        
+        # test for scrolling
+        if worldx1 < self.worldx1 or \
+           worldx2 > self.worldx2 or \
+           worldy1 < self.worldy1 or \
+           worldy2 > self.worldy2:
+            self.init(view)
+            return False
+        
+        worldwidth = worldx2 - worldx1
+        worldheight = worldy2 - worldy1
+        
+        # test for zooming
+        if abs(math.log10(worldwidth / self.worldwidth)) > 1./self.scalex or \
+           abs(math.log10(worldheight / self.worldheight)) > 1./self.scaley:
+            self.init(view)
+            return False
+        
+        return True
+
+
+    def atleast(self, xminres, yminres, view=None):
+        if view == None:
+            view = get_visible()
+        
+        worldx1, worldy1, worldx2, worldy2 = view
+        screenwidth, screenheight = get_window_size()
+        worldwidth = worldx2 - worldx1
+        worldheight = worldy2 - worldy1
+        
+        return screenwidth / worldwidth > xminres and \
+               screenheight / worldheight > yminres
+
 
 class Ruler (VisObject):
+    """ Ruler visualization object """
+    
     def __init__(self, gid, start, end, height=20, bottom=0, unitstr="", 
                  minicolor=color(.8,.8,.8), maincolor = color(0,0,0)):
         VisObject.__init__(self)
@@ -74,7 +151,7 @@ def getRulerAutoSize(screenwidth, worldwidth):
         # find pixels per unit
         pixelsize = screenwidth / (worldwidth / float(unit))
 
-        if pixelsize < 50:
+        if pixelsize < 50 and order < 20:
             unit *= 10
             order += 1
         else:
@@ -82,7 +159,6 @@ def getRulerAutoSize(screenwidth, worldwidth):
     
     return unit
 
-    
 
 def drawRuler(start, end, height=20, bottom=0, unit=None, unitstr="", 
               minicolor=color(.8,.8,.8), maincolor = color(0,0,0)):

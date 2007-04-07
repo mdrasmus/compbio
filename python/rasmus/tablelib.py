@@ -59,7 +59,7 @@ import StringIO
 import copy
 
 # rasmus libs
-import util
+from rasmus import util
 
 
 TABLE_VERSION = "1.0"

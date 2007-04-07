@@ -1,6 +1,9 @@
 import sys
 import os
-import util
+
+
+from rasmus import util
+
 
 
 try:

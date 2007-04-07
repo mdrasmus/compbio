@@ -598,7 +598,7 @@ def getBranchLens(trees, stree, gene2species=gene2species):
     # loop through trees
     for tree in trees:
         if isinstance(tree, str):
-            tree = readTree(tree)
+            tree = treelib.readTree(tree)
         recon = reconcile(tree, stree, gene2species)
         events = labelEvents(tree, recon)
         
@@ -607,7 +607,7 @@ def getBranchLens(trees, stree, gene2species=gene2species):
         
         row = {}
         for node in tree.nodes.values():
-            row[recon[node].name] = node.dist
+            row[str(recon[node].name)] = node.dist
         rates.append(row)
     
     return rates

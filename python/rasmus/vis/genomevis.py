@@ -11,8 +11,8 @@ from rasmus.genomeutil import *
 
 
 # graphics libs
-from summon import *
-from summonlib import shapes
+from summon.core import *
+from summon import shapes
 
 
 # globals

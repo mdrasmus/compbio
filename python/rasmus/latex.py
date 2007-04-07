@@ -2,7 +2,7 @@ import os
 import sys
 
 
-import util
+from rasmus import util
 
 
 

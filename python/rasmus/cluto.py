@@ -1,8 +1,12 @@
 
+# python libs
+import os
+
+# rasmus libs
 from rasmus import matrix
 from rasmus import util
 from rasmus import treelib
-import os
+
 
 def writeDenseMatrix(filename, mat):
     """Write a CLUTO formatted dense matrix file"""

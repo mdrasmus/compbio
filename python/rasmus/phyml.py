@@ -1,10 +1,10 @@
 import os
 import sys
 
-import phylip
-import fasta
-import util
-import treelib
+from rasmus import phylip
+from rasmus import fasta
+from rasmus import util
+from rasmus import treelib
 
 
 

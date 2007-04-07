@@ -1,4 +1,4 @@
-import util, algorithms, genomeutil, blast
+from rasmus import util, algorithms, genomeutil, blast
 
 
 

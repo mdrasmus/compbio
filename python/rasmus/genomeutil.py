@@ -10,14 +10,14 @@ import os
 import sys
 
 # rasmus libs
-import algorithms
-import ensembl
-import env
-import fasta
-import gff
-import stats
-import treelib
-import util
+from rasmus import algorithms
+from rasmus import ensembl
+from rasmus import env
+from rasmus import fasta
+from rasmus import gff
+from rasmus import stats
+from rasmus import treelib
+from rasmus import util
 
 
 

@@ -1,8 +1,8 @@
-import algorithms
-import alignlib
-import regionlib
-import graph
-import util
+from rasmus import algorithms
+from rasmus import alignlib
+from rasmus import regionlib
+from rasmus import graph
+from rasmus import util
 
 
     

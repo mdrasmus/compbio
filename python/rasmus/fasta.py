@@ -76,14 +76,14 @@ class FastaDict (SeqDict):
         
         if val == None:
             # if val == None, then we are using fasta indexing
-            try:
+            #try:
                 val = self.index.get(key)
                 
                 # cache value
                 self[key] = val
                 return val
-            except:
-                raise KeyError(key)
+            #except:
+            #    raise KeyError(key)
 
         else:
             return val
@@ -94,10 +94,7 @@ class FastaDict (SeqDict):
         
         if val == None:
             # if val == None, then we are using fasta indexing
-            try:
-                return self.index.get(key, start, end, strand)
-            except:
-                raise KeyError(key)
+            return self.index.get(key, start, end, strand)
 
         else:
             start = util.clamp(start, 1, None)
@@ -241,9 +238,9 @@ class FastaIndex:
         
         # read index
         keys = []
-        for key, ind in util.DelimReader(filename + ".index"):
+        for key, start, end in util.DelimReader(filename + ".index"):
             keys.append(key)
-            self.index[key] = int(ind)
+            self.index[key] = (int(start), int(end))
             self.filelookup[key] = infile
         
         # return keys read
@@ -262,28 +259,36 @@ class FastaIndex:
         
         # must translate from one-based to zero-based
         # must account for newlines
-        start - 1
-        start2 = self.index[key] + start + (start // self.width)
+        filestart, fileend = self.index[key]
+        start -= 1
+        seek = filestart + start + (start // self.width)
+        
+        # if seek is past sequence then return empty sequence
+        if seek >= fileend:
+            return ""
         
         # seek to beginning
         infile = self.filelookup[key]
-        infile.seek(start2)
+        infile.seek(seek)
         
-        # read until end
-        if end != None:
-            end2 = self.index[key] + end + 1 + (end // self.width)
-            readlen = end2 - start2
-            seq = infile.read(readlen).replace("\n", "")
+        # read until end of sequence
+        seq = []
+        if end == None:
+            lenNeeded = util.INF
         else:
-            # read until end of sequence
-            seq = []
-            while True:
-                line = infile.readline()
-                if line.startswith(">") or len(line) == 0:
-                    break
-                seq.append(line.rstrip())
-            seq = "".join(seq)
+            lenNeeded = end - start
         
+        len2 = 0
+        while len2 < lenNeeded:
+            line = infile.readline()
+            if line.startswith(">") or len(line) == 0:
+                break
+            seq.append(line.rstrip())
+            len2 += len(seq[-1])
+            if len2 > lenNeeded:
+                seq[-1] = seq[-1][:-int(len2 - lenNeeded)]
+                break
+        seq = "".join(seq)
         
         # reverse complement if needed
         if strand == -1:

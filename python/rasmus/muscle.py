@@ -1,8 +1,9 @@
-import clustalw
-import fasta
-import util
 import os
-import algorithms
+
+from rasmus import clustalw
+from rasmus import fasta
+from rasmus import util
+from rasmus import algorithms
 
 
 def muscle(seqs, verbose = True, removetmp = True, options = ""):

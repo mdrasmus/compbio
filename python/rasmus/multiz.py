@@ -1,4 +1,4 @@
-import util
+from rasmus import util
 
 
 def readMaf(filename):

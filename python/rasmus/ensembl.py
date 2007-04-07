@@ -1,4 +1,4 @@
-import util
+from rasmus import util
 
 
 def id2genome(ensid):
@@ -9,7 +9,9 @@ def id2genome(ensid):
     else:
         raise Exception("unknown ENSEMBL ID")
 
-
+#
+# TODO: decide where to put these guys
+#
 def genomeComposition(genomes, comp):
     counts = {}
     for genome in genomes:

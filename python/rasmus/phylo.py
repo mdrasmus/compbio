@@ -587,6 +587,28 @@ def findOrthologs(gtree, stree, recon):
 # Branch length analysis
 #
 
+
+def traverseTreeInorder(tree, func):
+    def walk(node):
+        if node.isLeaf():
+            func(node)
+        else:
+            assert len(node.children) == 2            
+            walk(node.children[0])
+            func(node)
+            walk(node.children[1])
+    walk(tree.root)
+
+
+def getSpeciesInorder(tree):
+    species = []
+    def func(node):
+        species.append(node.name)
+    traverseTreeInorder(tree, func)
+    return species
+
+
+
 def getBranchLens(trees, stree, gene2species=gene2species):
     # determine species nanes
     species = map(str, stree.nodes.keys())

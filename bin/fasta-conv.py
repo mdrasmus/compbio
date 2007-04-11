@@ -8,20 +8,22 @@ options = [
  ["f:", "fasta=", "fasta", "AUTO<fasta>"],
  ["l:", "label=", "label", "AUTO<output labels>"], 
  ["p:", "phylip=", "phylip", "AUTO<output phylip>"], 
- ["n:", "nexus=", "nexus", "AUTO<output nexus>"]
+ ["n:", "nexus=", "nexus", "AUTO<output nexus>"],
+ ["", "nostrip", "nostrip", "",
+    {"single": True}]
 ]
 
 
-try:
-    param, rest = util.parseArgs(sys.argv, options)
-except:
-    sys.exit(1)
 
+param = util.parseOptions(sys.argv, options)
 
-if "phylip" in param and "label" in param:
+if "phylip" in param:
     seqs = fasta.readFasta(param["fasta"][-1])
-    labels = phylip.fasta2phylip(file(param["phylip"][-1], "w"), seqs)
-    util.writeVector(param["label"][-1], labels)
+    labels = phylip.fasta2phylip(file(param["phylip"][-1], "w"), seqs,
+                                 stripNames=not param["nostrip"])
+    
+    if "label" in param:
+        util.writeVector(param["label"][-1], labels)
 
 
 if "nexus" in param:

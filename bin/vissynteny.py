@@ -15,11 +15,11 @@ from rasmus.common import *
 
 
 # graphics libs
-from summon import *
+from summon.core import *
 from rasmus.vis import genomevis
-from summonlib.colors import *
+from summon.colors import *
 
-from summonlib import svg
+from summon import svg
 
 
 options = [

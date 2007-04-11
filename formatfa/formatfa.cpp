@@ -52,22 +52,46 @@ bool indexFasta(string filename)
     
     int lineno = 0;
     char *line = new char [MAXLINE];
+    string key;
+    long long int start = 0, end = 0, pos = 0;
+    long long int linelen;
     
     // process file
     while (fgets(line, MAXLINE, infile)) {
         lineno++;
+        linelen = strlen(line);
+        pos += linelen;
         
-        if (strlen(line) == MAXLINE - 1) {
-            fprintf(stderr, "formatfa: line %d too long\n", lineno);
+        if (linelen == MAXLINE - 1) {
+            fprintf(stderr, "formatfa: line %d too long (MAXLINE=%d)\n", 
+                    lineno, MAXLINE);
             exit(1);
         }
         
         if (line[0] == '>') {
             // chomp
             chomp(line);
-            fprintf(outfile, "%s\t%d\n", &line[1], ftell(infile));
+            
+            end = pos - linelen;
+            
+            // print key and start position
+            //fprintf(outfile, "%s\t%d\n", &line[1], ftell(infile));
+            if (start != 0) {
+                fprintf(outfile, "%s\t%lld\t%lld\n", key.c_str(), start, end);
+            }
+            key = &line[1];
+            start = pos;
         }
+        
+
     }
+    
+    // print last sequence
+    if (start != 0) {
+        end = pos;
+        fprintf(outfile, "%s\t%lld\t%lld\n", key.c_str(), start, end);
+    }
+    
     
     // clean up
     delete [] line;

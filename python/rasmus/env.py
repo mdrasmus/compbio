@@ -1,9 +1,3 @@
-"""
- Environment variables, and paths are automatically setup with this module.
- Paths and variables differ depending on the host.
-
-"""
-
 import os, copy
 
 

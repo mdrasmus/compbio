@@ -116,19 +116,27 @@ def saveTempDir(directory, newname):
 #    
 
 
-def writePhylipAlign(out, seqs):
+def writePhylipAlign(out, seqs, stripNames=True):
     validateSeq(seqs)
     
-    print >>out, len(seqs), len(seqs.values()[0])
-    for i, name in enumerate(seqs.keys()):
-        print >>out, "%8s  %s" % (phylipPadding(str(i), 8), seqs[name])
+    if stripNames:
+        print >>out, len(seqs), len(seqs.values()[0])
+        for i, name in enumerate(seqs.keys()):
+            print >>out, "%8s  %s" % (phylipPadding(str(i), 8), seqs[name])
+    else:
+        print >>out, len(seqs), len(seqs.values()[0])
+        for i, name in enumerate(seqs.keys()):
+            if name <= 8:
+                print >>out, "%8s  %s" % (name, seqs[name])
+            else:
+                print >>out, "%s  %s" % (name, seqs[name])
 
     return seqs.keys()
 
 
-def fasta2phylip(out, seqs):
+def fasta2phylip(out, seqs, stripNames=True):
     """DEPRECATED use writePhylipAlign()"""
-    return writePhylipAlign(out, seqs)
+    return writePhylipAlign(out, seqs, stripNames=stripNames)
 
 
 def readLogl(filename):

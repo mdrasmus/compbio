@@ -125,6 +125,9 @@ tree2distProgs = ["tree2dist"]
 
 
 # filenames
+def getFastaFile(conf, basename):
+    return basename + conf["fastaext"][-1]
+
 def getAlignFile(conf, basename):
     return basename + conf["alignext"][-1]
 
@@ -202,14 +205,23 @@ def getDataFiles(conf, infile):
         labelfile = getLabelFile(conf, basename)
         treefile  = getTreeFile(conf, basename)
     elif infileType == "align":
-        fastafile = None
+        if "fastaext" in conf:
+            fastafile = getFastaFile(conf, basename)
+        else:
+            fastafile = None
         alignfile = infile
         distfile  = getDistFile(conf, basename)
         labelfile = getLabelFile(conf, basename)
         treefile  = getTreeFile(conf, basename)
     elif infileType == "dist":
-        fastafile = None
-        alignfile = None
+        if "fastaext" in conf:
+            fastafile = getFastaFile(conf, basename)
+        else:
+            fastafile = None
+        if "alignext" in conf:
+            alignfile = getAlignFile(conf, basename)
+        else:
+            alignfile = None
         distfile  = infile
         labelfile = getLabelFile(conf, basename)
         treefile  = getTreeFile(conf, basename)
@@ -515,13 +527,13 @@ def reportStats(conf, statsfile, infiles):
     
     ## TODO: make tables stream
     
-    stats = tablelib.Table(headers=["name", 
-                                    "nseqs",
-                                    "alignlen", 
-                                    "alignlen_ungapped",
-                                    "median_genelen",
-                                    "percid",
-                                    "treelen"])
+    statstab = tablelib.Table(headers=["name", 
+                                       "nseqs",
+                                       "alignlen", 
+                                       "alignlen_ungapped",
+                                       "median_genelen",
+                                       "percid",
+                                      "treelen"])
     
     util.tic("reporting stats")
     
@@ -539,6 +551,8 @@ def reportStats(conf, statsfile, infiles):
         alignlen_ungapped = 0
         percid = 0.0
         treelen = 0.0
+        
+        print fastafile, infile
         
         # get align stats
         if os.path.exists(alignfile):
@@ -562,13 +576,13 @@ def reportStats(conf, statsfile, infiles):
                 nseqs = len(tree.leaves())
         
         # record stats
-        stats.add(name = os.path.basename(basename),
-                  nseqs = nseqs,
-                  alignlen = alignlen,
-                  alignlen_ungapped = alignlen_ungapped,
-                  median_genelen =  median_genelen,
-                  percid = percid,
-                  treelen = treelen)
+        statstab.add(name = os.path.basename(basename),
+                     nseqs = nseqs,
+                     alignlen = alignlen,
+                     alignlen_ungapped = alignlen_ungapped,
+                     median_genelen =  median_genelen,
+                     percid = percid,
+                     treelen = treelen)
     
     stats.write(statsfile)
     

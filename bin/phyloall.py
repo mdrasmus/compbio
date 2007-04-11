@@ -584,7 +584,7 @@ def reportStats(conf, statsfile, infiles):
                      percid = percid,
                      treelen = treelen)
     
-    stats.write(statsfile)
+    statstab.write(statsfile)
     
     util.toc()
         

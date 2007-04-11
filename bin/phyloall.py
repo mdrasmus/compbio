@@ -21,6 +21,7 @@ from rasmus import phylip
 from rasmus import phylo
 from rasmus import phyml
 from rasmus import puzzletree
+from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util

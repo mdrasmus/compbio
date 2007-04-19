@@ -319,6 +319,20 @@ def mapdict(dic, key=lambda x: x, val=lambda x: x,
     return dic2
 
 
+def mapwindow(func, size, lst):
+    """Apply a function 'func' to a sliding window of size 'size' within
+       a list 'lst'"""
+    lst2 = []
+    lstlen = len(lst)
+    radius = int(size // 2)
+
+    for i in xrange(lstlen):
+        radius2 = min(i, lstlen - i - 1, radius)
+        lst2.append(func(lst[i-radius2:i+radius2+1]))
+
+    return lst2
+
+
 def groupby(func, lst):
     """Places i and j of 'lst' into the same group if func(i) == func(j).
        
@@ -538,7 +552,7 @@ def countge(a, lst): return count(gefunc(a), lst)
 def countgt(a, lst): return count(gtfunc(a), lst)
 
 
-def find(func, lst):
+def find(func, *lsts):
     """
     Returns the indices 'i' of 'lst' where func(lst[i]) == True
     
@@ -550,10 +564,24 @@ def find(func, lst):
         findge(a, lst)   find items greater than or equal to a
         findgt(a, lst)   find items greater than a
     """
+    
     pos = []
-    for i in xrange(len(lst)):
-        if func(lst[i]):
-            pos.append(i)
+    
+    if len(lsts) == 1:
+        # simple case, one list
+        lst = lsts[0]
+        for i in xrange(len(lst)):
+            if func(lst[i]):
+                pos.append(i)
+    else:
+        # multiple lists given
+        assert equal(* map(len, lsts)), "lists are not same length"
+    
+        nvars = len(lsts)
+        for i in xrange(len(lsts[0])):
+            if func(* [x[i] for x in lsts]):
+                pos.append(i)
+        
     return pos
 
 def findeq(a, lst): return find(eqfunc(a), lst)
@@ -1490,7 +1518,7 @@ def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     for i in array:
         if i >= low:
             h[bucketBin(key(i), ndivs, low, width)].append(i)
-    for i in range(ndivs):
+    for i in xrange(ndivs):
         x.append(i * width + low)
     return (x, h)
 
@@ -1511,7 +1539,7 @@ def hist(array, ndivs=None, low=None, width=None):
             j = bucketBin(i, ndivs, low, width)
             if j < ndivs:
                 h[j] += 1
-    for i in range(ndivs):
+    for i in xrange(ndivs):
         x.append(i * width + low)
     return (x, h)
 

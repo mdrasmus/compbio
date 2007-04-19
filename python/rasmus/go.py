@@ -36,13 +36,15 @@ class GoTerm:
     def __init__(self):
         self.accession = ""
         self.name = ""
-        self.defintion = ""
+        self.definition = ""
         self.is_a = []
         self.part_of = []
 #        self.synonym = []
 
 class AllTerm(GoTerm):
     def __init__(self):
+        GoTerm.__init__(self)
+        
         self.accession = "all"
         self.name = "all"
         self.defintion = "top-level term" 
@@ -81,10 +83,8 @@ class GoHandler(xml.sax.handler.ContentHandler):
             self.term.definition = text
         
 
-class DefaultGoTerms:
-    def __init__(self):
-        import env
-
+class GoDatabase:
+    def __init__(self, filename):
         # Create a parser
         parser = make_parser()
 
@@ -97,10 +97,8 @@ class DefaultGoTerms:
         # Tell the parser to use our handler
         parser.setContentHandler(dh)
 
-        f = env.datapath + "go/go-termdb.rdf-xml"
-
         # Parse the input
-        parser.parse(f)
+        parser.parse(filename)
 
         self.terms = dh.terms
         

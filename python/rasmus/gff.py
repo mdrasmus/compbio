@@ -301,8 +301,8 @@ class Gff3 (Gff):
             data[key] = val
 
         return data
-
-
+    
+    
     def buildHierarchy(self, regions):
         """
         Produces a hierachy from a list of regions
@@ -322,7 +322,7 @@ class Gff3 (Gff):
             if "ID" in region.data:
                 lookup[region.data["ID"]] = region
             roots.add(region)
-
+        
         # build hierarchy
         for region in regions:
             if "Parent" in region.data:
@@ -330,7 +330,7 @@ class Gff3 (Gff):
                 for parent in parents:
                     lookup[parent].addChild(region)
                 roots.remove(region)
-
+        
         # create roots list (regions in same order as they were passed)
         regions2 = [x for x in regions if x in roots]
 

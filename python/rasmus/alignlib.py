@@ -646,7 +646,7 @@ def pssmSeq(pssm, seq):
 # Coordinate systems
 # 
 #   1. local
-#       02134567
+#       01234567
 #       ATGCTGCG
 # 
 #   2. align
@@ -656,13 +656,90 @@ def pssmSeq(pssm, seq):
 #   3. global
 #       coordinate on chromosome on positive strand
 #
-# Notes: 0-based, end is inclusive
-# TODO: make end exclusive
 # There should only be two kinds of indexing
-# 1. 0-based, end exclusive
-# 2. 1-based, end inclusive
+# 1. 0-based, end exclusive (local/align coordinates)
+# 2. 1-based, end inclusive (global coordinates)
 #
 #--------------------------------------------------------------------------------
+
+
+def local2align(seq):
+    """
+    Returns list of indices of non-gap characters
+    
+    'ATG---CTG-CG' ==> [0,1,2,6,7,8,10,11]
+    
+    Used to go from local -> align space
+    """
+    
+    lookup = []
+    for i in xrange(len(seq)):
+        if seq[i] == "-": continue
+        lookup.append(i)
+    return lookup
+
+
+def align2local(seq):
+    """
+    Returns list such that 
+    
+    'ATG---CTG-CG' ==> [0,1,2,2,2,3,4,5,5,6,7]
+    
+    Used to go from align -> local space
+    """
+
+    i = -1
+    lookup = []
+    for c in seq:
+        if c != "-":
+            i += 1
+        lookup.append(i)
+    return lookup
+
+
+
+def global2local(gobal_coord, start, end, strand):
+    """Returns local coordinate in a global region"""
+
+    # swap if strands disagree
+    if strand == 1:
+        return gobal_coord - start
+    else:
+        return end - gobal_coord
+
+
+def local2global(local_coord, start, end, strand):
+    """Return global coordinate within a region from a local coordinate"""
+    
+    # swap if strands disagree
+    if strand == 1:
+        return local_coord + start
+    else:
+        return end - local_coord
+
+
+def global2align(global_coord, start, end, strand, alignLookup):
+    local_coord = global2local(global_coord, start, end, strand)
+    
+    # maybe throw exception for out of bounds
+    if local_coord < 0 or \
+       local_coord >= len(alignLookup):
+        raise Exception("coordinate outside [start, end]")
+    
+    return alignLookup[local_coord]
+
+
+def align2global(align_coord, start, end, strand, localLookup):
+    local_coord = localLookup[align_coord]
+    return local2global(local_coord, start, end, strand)
+
+
+
+
+
+'''
+
+# old code
 
 def getAlignLookup(seq):
     """
@@ -731,6 +808,6 @@ def global2align(coord, start, end, strand, alignLookup):
 def align2global(coord, start, end, strand, localLookup):
     coord = localLookup[coord]
     return local2global(coord, start, end, strand)
-
+'''
 
 

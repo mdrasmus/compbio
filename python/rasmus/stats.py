@@ -75,7 +75,7 @@ def covmatrix(mat):
     size = len(mat)
     
     return util.list2matrix(map(lambda (i,j): cov(mat[i], mat[j]), 
-                                util.range2(size, size)),
+                            util.range2(size, size)),
                             size, size)
 
 def corrmatrix(mat):
@@ -83,7 +83,7 @@ def corrmatrix(mat):
     size = len(mat)
     
     return util.list2matrix(map(lambda (i,j): corr(mat[i], mat[j]), 
-                                util.range2(size, size)),
+                            util.range2(size, size)),
                             size, size)
 
 
@@ -143,13 +143,16 @@ def fitLineError(xlist, ylist, slope, inter):
     return error / n
 
 
-def percentile(vals, perc, rounding=-1):
+def percentile(vals, perc, rounding=-1, sort=True):
     """Give the value at a percentile
        
        rounding -- round down if -1 or round up for 1
     """
     
-    vals2 = util.sort(vals)
+    if sort:
+        vals2 = util.sort(vals)
+    else:
+        vals2 = vals
     n = len(vals2)
     if rounding == -1:
         return vals2[util.clamp(int(perc * n), 0, n-1)]
@@ -170,7 +173,7 @@ def smooth(vals, radius):
     vals2 = []
     vlen = len(vals)
     
-    for i in range(vlen):
+    for i in xrange(vlen):
         radius2 = min(i, vlen - i - 1, radius)
         vals2.append(mean(vals[i-radius2:i+radius2+1]))
     
@@ -182,9 +185,6 @@ def smooth2(x, y, xradius):
     return an averaging of x and y using xradius
     
     x must be sorted least to greatest
-    
-    Note: not implemented as fast as possible
-    runtime: O(len(x) * radius)
     """
 
     vlen = len(x)
@@ -205,7 +205,7 @@ def smooth2(x, y, xradius):
     low = 0
     high = 0
     
-    for i in range(vlen):
+    for i in xrange(vlen):
         xi = x[i]
     
         xradius2 = min(xi - start, end - xi, xradius)

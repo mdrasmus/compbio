@@ -1,3 +1,6 @@
+import math
+import random
+
 from rasmus import util
 
 
@@ -110,4 +113,71 @@ class SeqDict (dict):
     
     def __len__(self):
         return len(self.names)
+
+
+ 
+BASE2INT = {
+    "A": 0,
+    "C": 1,
+    "G": 2,
+    "T": 3
+}
+
+INT2BASE = ["A", "C", "G", "T"]
+
+KIMURA_MATRIX = [
+    ['r', 's', 'u', 's'],
+    ['s', 'r', 's', 'u'],
+    ['u', 's', 'r', 's'],
+    ['s', 'u', 's', 'r']
+]
+
+
+def evolveKimuraSeq(seq, time, alpha=1, beta=1):
+    probs = {
+        's': .25 * (1 - math.e**(-4 * beta * time)),
+        'u': .25 * (1 + math.e**(-4 * beta * time)
+                      - 2*math.e**(-2*(alpha+beta)*time))
+    }
+    probs['r'] =  1 - 2*probs['s'] - probs['u']
     
+    seq2 = []
+    
+    for base in seq:
+        cdf = 0
+        row = KIMURA_MATRIX[BASE2INT[base]]
+        pick = random.random()
+        
+        for i in range(4):
+            cdf += probs[row[i]]
+            if cdf >= pick:
+                seq2.append(INT2BASE[i])
+                break
+    
+    assert len(seq2) == len(seq), "probabilities do not add to one"
+    
+    return "".join(seq2)
+
+
+def evolveKimuraBase(base, time, alpha, beta):
+    probs = {
+        's': .25 * (1 - math.e**(-4 * beta * time)),
+        'u': .25 * (1 + math.e**(-4 * beta * time)
+                      - 2*math.e**(-2*(alpha+beta)*time))
+    }
+    probs['r'] =  1 - 2*probs['s'] - probs['u']
+    
+    cdf = 0
+    row = KIMURA_MATRIX[BASE2INT[base]]
+    pick = random.random()
+    
+    for i in range(4):
+        cdf += probs[row[i]]
+        if cdf >= pick:
+            return INT2BASE[i]
+    
+    assert False, "probabilities do not add to one"
+    
+
+
+

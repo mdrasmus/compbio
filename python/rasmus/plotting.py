@@ -52,7 +52,9 @@ class Gnuplot:
             "zlog": None,
             "margin": None
             }
-    
+        
+        self.DATA_ONLY_OPTION = ["err", "errlow", "errhi"]
+        
     
     def set(self, **options):
         if "noreplot" in options:
@@ -62,6 +64,8 @@ class Gnuplot:
             noreplot = True
         
         for key in options:
+            if key in self.DATA_ONLY_OPTION:
+                continue
             self.options[key] = options[key]
         
         if not noreplot:
@@ -450,9 +454,11 @@ class Gnuplot:
     
     def plot(self, list1, list2=[], list3=[], **options):
         self.set(**options)
+        options2 = copy.copy(self.options)
+        options2.update(options)
         
         list1, list2, list3 = self.prepareData(list1, list2, list3)
-        self.data.append(self.Plot(list1, list2, list3, copy.copy(self.options)))
+        self.data.append(self.Plot(list1, list2, list3, options2))
         
         if self.enable:
             self.stream = os.popen("gnuplot", "w")

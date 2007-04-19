@@ -553,7 +553,6 @@ def reportStats(conf, statsfile, infiles):
         percid = 0.0
         treelen = 0.0
         
-        print fastafile, infile
         
         # get align stats
         if os.path.exists(alignfile):

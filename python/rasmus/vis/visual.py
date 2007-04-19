@@ -6,18 +6,24 @@ import summon
 class VisObject (object):
     """Base class of visualization objects"""
     def __init__(self):
-        self.vis = group()
+        self.win = None
     
     def __del__(self):
-        self.setVisible(False)
+        if summon != None:
+            self.setVisible(False)
     
     def update(self):
         pass
     
+    def show(self):
+        pass
+    
     def setVisible(self, visible=True):
+    
         if visible:    
             if not summon.is_update_func(self.update):
-                summon.add_update_func(self.update)
+                assert self.win != None, "must set window"
+                summon.add_update_func(self.update, self.win)
         else:
             if summon.is_update_func(self.update):
                 summon.remove_update_func(self.update)
@@ -72,6 +78,10 @@ class Multiscale (object):
         worldwidth = worldx2 - worldx1
         worldheight = worldy2 - worldy1
         
+        if self.worldwidth == 0 or \
+           self.worldheight == 0:
+            return True
+        
         # test for zooming
         if abs(math.log10(worldwidth / self.worldwidth)) > 1./self.scalex or \
            abs(math.log10(worldheight / self.worldheight)) > 1./self.scaley:
@@ -90,24 +100,23 @@ class Multiscale (object):
         worldwidth = worldx2 - worldx1
         worldheight = worldy2 - worldy1
         
-        return screenwidth / worldwidth > xminres and \
-               screenheight / worldheight > yminres
+        return (worldwidth == 0 or
+                screenwidth / worldwidth > xminres) and \
+               (worldheight == 0 or 
+                screenheight / worldheight > yminres)
 
 
+# TODO: convert to use multiscale
 class Ruler (VisObject):
     """ Ruler visualization object """
     
     def __init__(self, gid, start, end, height=20, bottom=0, unitstr="", 
-                 minicolor=color(.8,.8,.8), maincolor = color(0,0,0)):
+                 minicolor=color(.8,.8,.8), maincolor=color(0,0,0),
+                 pos=[0.0, 0.0]):
         VisObject.__init__(self)
         
-        self.gid = insert_group(gid, drawRuler(start, end, height=height, 
-                                               bottom=bottom,
-                                               unit=None, 
-                                               unitstr=unitstr, 
-                                               minicolor=minicolor, 
-                                               maincolor=maincolor))
-
+        self.gid = gid 
+        
         worldx1, worldy1, worldx2, worldy2 = get_visible()
         screenwidth, screenheight = get_window_size()
         worldwidth = worldx2 - worldx1
@@ -116,11 +125,12 @@ class Ruler (VisObject):
         self.end = end
         self.height = height
         self.bottom = bottom
+        self.pos = pos[:]
+        self.minicolor = minicolor
+        self.maincolor = maincolor        
         self.unit = getRulerAutoSize(screenwidth, worldwidth)
         self.worldx1 = worldx1 - worldwidth / 2.0
         self.worldx2 = worldx2 + worldwidth / 2.0
-        
-        self.setVisible()
     
     
     def update(self):
@@ -128,16 +138,26 @@ class Ruler (VisObject):
         screenwidth, screenheight = get_window_size()    
         unit = getRulerAutoSize(screenwidth, worldx2 - worldx1)
         
+        worldwidth = worldx2 - worldx1
+        xmargin = worldwidth / 2.0
+        
         if unit != self.unit or \
            worldx1 < self.worldx1 or \
            worldx2 > self.worldx2:
-            g = drawRuler(self.start, self.end, height=self.height, 
-                          bottom=self.bottom)
+            g = drawRuler(self.pos, 
+                          self.start, 
+                          self.end, 
+                          height=self.height, 
+                          bottom=self.bottom,
+                          minicolor=self.minicolor,
+                          maincolor=self.maincolor)
             self.gid = replace_group(self.gid, g)
             
-        self.unit = unit
-        self.worldx1 = worldx1
-        self.worldx2 = worldx2
+            self.worldx1 = worldx1 - xmargin
+            self.worldx2 = worldx2 + xmargin            
+            self.unit = unit
+        
+        
 
 
 def getRulerAutoSize(screenwidth, worldwidth):
@@ -160,8 +180,8 @@ def getRulerAutoSize(screenwidth, worldwidth):
     return unit
 
 
-def drawRuler(start, end, height=20, bottom=0, unit=None, unitstr="", 
-              minicolor=color(.8,.8,.8), maincolor = color(0,0,0)):
+def drawRuler(pos, start, end, height=20, bottom=0, unit=None, unitstr="", 
+              minicolor=color(.8,.8,.8), maincolor=color(0,0,0)):
     
     worldx1, worldy1, worldx2, worldy2 = get_visible()
     screenwidth, screenheight = get_window_size()
@@ -191,29 +211,32 @@ def drawRuler(start, end, height=20, bottom=0, unit=None, unitstr="",
     elif 15 <= order:
         unitstr = "e" + str(order)
         unit2 = unit
-
     
+    
+    x, y = pos
     vis = []
     
     # make mini hashes
     if unit >= 10:
         vis.append(minicolor)
-        i = unit * (max(0, worldx1) // unit)
-        while i <= worldx2 and i < end:
-            vis.append(lines(i, bottom, i, height))
+        i = unit * (max(start, worldx1 - x + start) // unit)
+        while x + i - start <= worldx2 and i < end:
+            if i >= start:
+                vis.append(lines(x + i - start, y+bottom, x + i - start, y+height))
             i += unit // 10
 
     
     # make main hashes
     vis.append(maincolor)
-    i = unit * (max(0, worldx1) // unit)
-    while i <= worldx2 and i < end:
-        vis.append(lines(i, 0, i, height))
-        vis.append(text(str(int(i//unit2)) + unitstr, 
-                        i, 0, i+unit, height, "middle", "left"))
+    i = unit * (max(start, worldx1 - x + start) // unit)
+    while x + i - start <= worldx2 and i < end:
+        if i >= start:
+            vis.append(lines(x + i - start, y, x + i - start, y + height))
+            vis.append(text(str(int(i//unit2)) + unitstr, 
+                            x + i - start, y, x + i -start - unit, y + height, "middle", "right"))
         i += unit
     
     # base line
-    vis.append(lines(color(0,0,0), start, 0, end, 0))
+    vis.append(lines(color(0,0,0), x, y, x + end - start, y))
     
     return group(* vis)

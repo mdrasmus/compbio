@@ -396,12 +396,15 @@ class Table (list):
     # Input/Output
     #
     
-    def read(self, filename, delim="\t", nheaders=1):
-        for row in self.readIter(filename, delim=delim, nheaders=nheaders):
+    def read(self, filename, delim="\t", nheaders=1,
+                   headers=None, types=None):
+        for row in self.readIter(filename, delim=delim, nheaders=nheaders,
+                                 headers=headers, types=types):
             self.append(row)
             
     
-    def readIter(self, filename, delim="\t", nheaders=1):
+    def readIter(self, filename, delim="\t", nheaders=1,
+                 headers=None, types=None):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -430,8 +433,11 @@ class Table (list):
 
         # clear table
         self[:] = []
-        self.headers = None
-        self.types = {}
+        self.headers = copy.copy(headers)
+        if types == None:
+            self.types = {}
+        else:
+            self.types = copy.copy(types)
         self.defaults = {}
         self.extraHeaders = []        
         self.comments = []

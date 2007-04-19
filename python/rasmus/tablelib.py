@@ -922,11 +922,16 @@ class Table (list):
         return groups
     
     
-    def lookup(self, *keys):
+    def lookup(self, *keys, **options):
         """Returns a lookup dict based on a column 'key'
-           or multiple keys"""
+           or multiple keys
+           
+           extra options:
+           default=None
+        """
         
-        lookup = util.Dict(dim=len(keys))
+        options.setdefault("default", None)
+        lookup = util.Dict(dim=len(keys), default=options["default"])
         
         for row in self:
             keys2 = util.mget(row, keys)

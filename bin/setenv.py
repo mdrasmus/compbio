@@ -38,7 +38,7 @@ filepath = os.getenv("FILEPATH")
 
 
 # build datapaths
-datapath = [filepath]
+datapath = [filepath+"/data"]
 
 if "fungi" in dataenv:
     datapath.append("%s/data/fungi" % filepath)

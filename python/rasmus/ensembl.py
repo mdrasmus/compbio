@@ -1,6 +1,9 @@
 from rasmus import util
 
-
+#
+# not really used any more
+# DEPRECATED
+#
 def id2genome(ensid):
     if ensid.startswith("ENSG"): return "human"
     elif ensid.startswith("ENSCAFG"): return "dog"

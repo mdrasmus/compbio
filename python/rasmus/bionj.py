@@ -1,6 +1,9 @@
+#
+# python wrapper for BIONJ
+#
+
 import os
 from rasmus import util, phylip, treelib
-
 
 
 def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):

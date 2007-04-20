@@ -42,5 +42,5 @@ for line in infile:
         util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
         mat = []
 
-util.printcols(mat, spacing=conf["spacing"])
+util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
     

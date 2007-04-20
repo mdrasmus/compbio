@@ -104,4 +104,25 @@ class GoDatabase:
         
         # add top level term
         self.terms["all"] = AllTerm()
+    
+    
+    def getAllParents(self, goid, touched=None, count=0, ret=True):
+        if touched == None:
+            touched = {}
         
+        if goid in self.terms:
+            term = self.terms[goid]
+            parents =  term.is_a + term._part_of
+            
+            for parent in parents:
+                if parent not in touched:
+                    touched[parent] = count
+                    count += 1
+            
+            for parent in parents:
+                self.getAllParents(parent, touched, count, False)
+        
+        if ret:
+            parents = touch.keys()
+            parents.sort(key=lambda x: touch[x])
+            return parents

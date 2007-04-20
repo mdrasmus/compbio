@@ -112,10 +112,10 @@ class GoDatabase:
         
         if goid in self.terms:
             term = self.terms[goid]
-            parents =  term.is_a + term._part_of
+            parents =  term.is_a + term.part_of
             
             for parent in parents:
-                if parent not in touched:
+                if parent not in touched and parent != "all":
                     touched[parent] = count
                     count += 1
             
@@ -123,6 +123,6 @@ class GoDatabase:
                 self.getAllParents(parent, touched, count, False)
         
         if ret:
-            parents = touch.keys()
-            parents.sort(key=lambda x: touch[x])
+            parents = touched.keys()
+            parents.sort(key=lambda x: touched[x])
             return parents

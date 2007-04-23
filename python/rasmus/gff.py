@@ -145,9 +145,10 @@ class Gff (object):
         region.end     = int(tokens[4])
 
         # parse strand
-        if tokens[6] == "+":
+        strand = tokens[6]
+        if strand == "+" or strand == "1":
             region.strand = 1
-        elif tokens[6] == "-":
+        elif strand == "-" or strand == "-1":
             region.strand = -1
         else:
             region.strand = 0

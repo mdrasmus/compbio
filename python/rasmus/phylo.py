@@ -421,93 +421,6 @@ def findRootedSubtrees(tree):
     
     return trees
 
-def hashTreeCompose(childHashes):
-    return "(%s)" % ",".join(childHashes)
-
-def hashTree(tree, smap = lambda x: x):
-    def walk(node):
-        if node.isLeaf():
-            return smap(node.name)
-        else:
-            childHashes = map(walk, node.children)
-            childHashes.sort()
-            return hashTreeCompose(childHashes)
-    
-    if isinstance(tree, treelib.Tree) or hasattr(tree, "root"):
-        return walk(tree.root)
-    elif isinstance(tree, treelib.TreeNode):
-        return walk(tree)
-    else:
-        raise Exception("Expected Tree object")
-
-
-def hashOrderTree(tree, smap = lambda x: x):
-    def walk(node):
-        if node.isLeaf():
-            return smap(node.name)
-        else:
-            childHashes = map(walk, node.children)
-            ind = util.sortInd(childHashes)
-            childHashes = util.mget(childHashes, ind)
-            node.children = util.mget(node.children, ind)
-            return hashTreeCompose(childHashes)
-    walk(tree.root)
-
-
-
-def findBranchDistrib(trees, stree, gene2species = gene2species, 
-                      relative = True):
-    lengths = util.Dict(1, [])
-    used = []
-
-    for tree in trees:
-        #tree = reconRoot(tree, stree, gene2species, newCopy=False)
-        recon = reconcile(tree, stree, gene2species)
-        events = labelEvents(tree, recon)
-        
-        # skip trees with duplications or with extremly long branch lengths
-        if "dup" in events.values():
-            used.append(False)
-            continue
-        else:
-            used.append(True)
-        
-        for node in tree.nodes.values():
-            if relative:
-                # find total length of tree
-                totalLength = 0
-                for node in tree.nodes.values():
-                    totalLength += node.dist
-            
-                lengths[recon[node]].append(node.dist/totalLength)
-            else:                
-                lengths[recon[node]].append(node.dist)
-    
-    
-    return lengths, used
-
-
-def mapRefTree(trees, reftree, refmapfunc):
-    collect = util.Dict(1, [])
-    
-    for tree in trees:
-        nodemap = refmapfunc(tree, reftree)
-        
-        for name, node in tree.nodes.iteritems():
-            collect[nodemap[name]].append(node)
-    
-    return collect
-
-
-def findBranchLengths(collect):
-    return util.mapdict(collect, valfunc = lambda nodes: 
-                                      map(lambda node: node.dist, nodes))
-
-def findTreeLengths(collect):
-    totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
-    return totals
-    
-
 
 def findOrthoNeighbors(parts, hits):
     lookup = cluster.item2part(parts)
@@ -558,7 +471,6 @@ def stree2gtree(stree, genes, gene2species):
 
 
 
-
 def findOrthologs(gtree, stree, recon):
     """Find all ortholog pairs within a gene tree"""
 
@@ -580,6 +492,74 @@ def findOrthologs(gtree, stree, recon):
                             orths.append(orth)
     
     return orths
+
+
+
+
+
+
+#=============================================================================
+# Tree hashing
+#
+
+def hashTreeCompose(childHashes):
+    return "(%s)" % ",".join(childHashes)
+
+def hashTree(tree, smap = lambda x: x):
+    def walk(node):
+        if node.isLeaf():
+            return smap(node.name)
+        else:
+            childHashes = map(walk, node.children)
+            childHashes.sort()
+            return hashTreeCompose(childHashes)
+    
+    if isinstance(tree, treelib.Tree) or hasattr(tree, "root"):
+        return walk(tree.root)
+    elif isinstance(tree, treelib.TreeNode):
+        return walk(tree)
+    else:
+        raise Exception("Expected Tree object")
+
+
+def hashOrderTree(tree, smap = lambda x: x):
+    def walk(node):
+        if node.isLeaf():
+            return smap(node.name)
+        else:
+            childHashes = map(walk, node.children)
+            ind = util.sortInd(childHashes)
+            childHashes = util.mget(childHashes, ind)
+            node.children = util.mget(node.children, ind)
+            return hashTreeCompose(childHashes)
+    walk(tree.root)
+
+
+#=============================================================================
+# Branch length distributions
+#
+
+
+def mapRefTree(trees, reftree, refmapfunc):
+    collect = util.Dict(1, [])
+    
+    for tree in trees:
+        nodemap = refmapfunc(tree, reftree)
+        
+        for name, node in tree.nodes.iteritems():
+            collect[nodemap[name]].append(node)
+    
+    return collect
+
+
+def findBranchLengths(collect):
+    return util.mapdict(collect, valfunc = lambda nodes: 
+                                      map(lambda node: node.dist, nodes))
+
+def findTreeLengths(collect):
+    totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
+    return totals
+    
 
 
 
@@ -633,6 +613,44 @@ def getBranchLens(trees, stree, gene2species=gene2species):
         rates.append(row)
     
     return rates
+
+
+def findBranchDistrib(trees, stree, gene2species = gene2species, 
+                      relative = True):
+    """Older version of getBranchLens()
+    
+       Will probably be deprecated soon.
+    """
+    
+    lengths = util.Dict(1, [])
+    used = []
+
+    for tree in trees:
+        #tree = reconRoot(tree, stree, gene2species, newCopy=False)
+        recon = reconcile(tree, stree, gene2species)
+        events = labelEvents(tree, recon)
+        
+        # skip trees with duplications or with extremly long branch lengths
+        if "dup" in events.values():
+            used.append(False)
+            continue
+        else:
+            used.append(True)
+        
+        for node in tree.nodes.values():
+            if relative:
+                # find total length of tree
+                totalLength = 0
+                for node in tree.nodes.values():
+                    totalLength += node.dist
+            
+                lengths[recon[node]].append(node.dist/totalLength)
+            else:                
+                lengths[recon[node]].append(node.dist)
+    
+    
+    return lengths, used
+
 
 
 def getRelBranchLens(rates, species=None):

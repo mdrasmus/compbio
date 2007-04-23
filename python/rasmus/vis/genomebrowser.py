@@ -550,7 +550,11 @@ class AlignTrack (Track):
         GAP     = 1
         NOBASE  = 2
         baseclasses = {'A': BASE, 'C': BASE, 'T': BASE, 'G': BASE,
-                       '-': GAP, 'N': NOBASE}
+                       '-': GAP, 'N': NOBASE, '*': NOBASE}
+        
+        for aa in 'ARNDCEQGHILKMFPSTWYVU':
+            baseclasses[aa] = BASE
+                       
         
         def getRegions(selectedClass):
             boxpts = []

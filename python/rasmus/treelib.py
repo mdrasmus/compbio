@@ -33,6 +33,9 @@ sys.setrecursionlimit(4000)
 #
 
 
+#
+# TODO: try D-parser, it might be faster
+#
 def makeNewickParser():
     # pyparsing
     from pyparsing import Combine, Optional, Literal, CaselessLiteral, \
@@ -888,15 +891,18 @@ def graph2tree(mat, root, closedset=None):
 
 
 def maxDisjointSubtrees(tree, subroots):
+    """Returns a list of rooted subtrees with atmost one node from 
+       the list 'subroots'
+    """
+    
     marks = {}
 
     # mark the path from each subroot to the root
     for subroot in subroots:
         ptr = subroot
-        while True:
+        while ptr != None:
             lst = marks.setdefault(ptr, [])
             lst.append(subroot)
-            if not ptr.parent: break
             ptr = ptr.parent
 
     # subtrees are those trees with nodes that have at most one mark

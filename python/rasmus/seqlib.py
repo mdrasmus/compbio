@@ -205,8 +205,8 @@ def hydrophobic(aa):
     if aa in 'RK': return 0.5
     return 0.0
 
-def aa2property(aa): 
-    aa2prop = {'A': 'weakly hydrophobic',
+
+AA_PROPERTY = {'A': 'weakly hydrophobic',
                'R': 'charged',
                'N': 'polar',
                'D': 'charged',
@@ -229,7 +229,6 @@ def aa2property(aa):
                'U': 'polar',
                '*': 'stop',
                '-': 'gap'}
-    return aa2prop[aa]
 
 
 

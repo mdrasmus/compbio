@@ -89,6 +89,10 @@ def makeGene2species(maps):
             elif exp[0] == "*":
                 if gene.endswith(exp[1:]):
                     return species
+        
+        if gene in exacts:
+            return exacts[gene]
+        
         raise Exception("Cannot map gene '%s' to any species" % gene)
     return gene2species
 

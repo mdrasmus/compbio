@@ -5,7 +5,7 @@ import copy
 from summon.core import *
 import summon
 from rasmus.vis import visual
-from rasmus import gff, fasta, util, stats, regionlib, alignlib
+from rasmus import gff, fasta, util, stats, regionlib, alignlib, seqlib
 from rasmus.regionlib import Region
 
 
@@ -592,13 +592,29 @@ class AlignTrack (Track):
         nobase_boxpts, nobase_diagpts, nobase_diagpts2 = getRegions(NOBASE)
         
         
+        # build labels
+        labels = []
+        for i, key in enumerate(self.aln):
+            labels.append(text_clip(key, -self.aln.alignlen() * 10, -i, 0, -i-1,
+                                    4, 12, "middle", "right"))
+        
+        # build hotspot
+        click = hotspot("click", 0, 0, self.aln.alignlen(), -self.size[1],
+                        self.onClickCallback)
+        
         textGroup = group()
         self.textGid = get_group_id(textGroup)
         return group(translate(self.pos[0], self.pos[1] + self.size[1],
+                     color(0, 0, 0),
+                     group(*labels),
+                     
+                     click,
+                     
                      color(.5, .5, .5), 
                      quads(* base_boxpts),
                      lines(* base_diagpts),
                      lines(* base_diagpts2),
+                     
                      color(.7, .2, .2),
                      quads(* nobase_boxpts),
                      lines(* nobase_diagpts),
@@ -653,7 +669,20 @@ class AlignTrack (Track):
             self.textGid = replace_group(self.textGid, group())
 
 
+    def onClickCallback(self):
+        x, y = get_mouse_pos('world')
+        x -= self.pos[0]
+        y = self.size[1] - (y - self.pos[1])
+        self.onClick(x, y)
 
+
+    def onClick(self, x, y):
+        y = int(y)
+    
+        if 0 <= y < len(self.aln):
+            print self.aln.keys()[y]
+        
+        
 
 class TrackOverlay (Track):
     def __init__(self, tracks, **options):
@@ -680,6 +709,73 @@ class TrackOverlay (Track):
     def update(self):
         for track in self.tracks:
             track.update()
+
+
+
+def showAlign(* alns):
+    prop2color = {
+        "hydrophobic":          color(1,.5, .2, ),
+        "weakly hydrophobic":   color(1,.5,.5, ),
+        "charged":              color(1, 1, .2, ),
+        "polar":                color(.2, .2, 1, ),
+        "turn":                 color(.2, 1, .2, ),
+        "met":                  color(.2, 1, .2, ),
+        "stop":                 color(0, 0, .2, ),
+    }
+
+    dna = util.Dict({"A": color(1, .5, .5),
+                     "T": color(1, 1, .5),
+                     "C": color(.5, 1, .5),
+                     "G": color(.5, .5, 1)},
+                    default=color(.5, .5, .5))
+    pep = util.Dict(default=color(.5, .5, .5))
+
+    for char in 'ARNDCEQGHILKMFPSTWYVU*':
+        pep[char] = prop2color[seqlib.AA_PROPERTY[char]]
+
+
+    def guessSeq(seq):
+        dna = "ACTG-N"
+
+        chars = util.unique(seq.upper())
+
+        for char in chars:
+            if char not in dna:
+                return "pep"
+        return "dna"
+
+
+    def guessAlign(aln):
+        if "pep" in [guessSeq(seq) for seq in aln.itervalues()]:
+            return "pep"
+        else:
+            return "dna"
+
+
+    def colorAlign(aln):
+        if guessAlign(aln) == "pep":
+            return pep
+        else:
+            return dna
+    
+    view = Region("", "", "", 1, 1)
+    colors = []
+    
+    height = 0
+    for aln in alns:
+        view.end = max(view.end, alns[-1].alignlen())
+        height += len(alns[-1])
+        colors.append(colorAlign(alns[-1]))
+    
+    browser = GenomeStackBrowser(view=view)
+    browser.addTrack(RulerTrack(bottom=-height))
+    for aln, col in zip(alns, colors):
+        browser.addTrack(AlignTrack(aln, colorBases=col))
+    browser.show()
+    
+    return browser
+    
+
 
 """
 

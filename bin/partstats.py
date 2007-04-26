@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from rasmus import util, genomeio, descriptions, genomeutil, fasta, env
+from rasmus import util, genomeio, genomeutil, fasta, env
 import sys
 
 
@@ -180,7 +180,7 @@ def writeMain(out):
 def writePart(out, part, name):
     counts = genomeutil.genomeComposition(order, part, gene2species)
 
-    words = descriptions.summary(part, desc)
+    words = {} #descriptions.summary(part, desc)
     keys = words.keys()
     keys.sort(lambda a, b: cmp(words[b], words[a]))
 
@@ -281,7 +281,7 @@ else:
 
             counts = genomeutil.genomeComposition(order, part, gene2species)
 
-            words = descriptions.summary(part, desc)
+            words = {} #descriptions.summary(part, desc)
             keys = words.keys()
             keys.sort(lambda a, b: cmp(words[b], words[a]))
 

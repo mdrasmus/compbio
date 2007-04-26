@@ -7,21 +7,25 @@
 
 import os
 import sys
+import shutil
+import time
 
 from rasmus import algorithms
 from rasmus import blast
 from rasmus import graph
 from rasmus import matrix
 from rasmus import util
+from rasmus import regionlib
+from rasmus import tablelib
 from rasmus.cluster import *
-
+from itertools import izip
 
 
 ####################################
 # Hierarchical clustering
 #
 
-def mergeBuh(conf, parts1, parts2, blastfiles):
+def mergeBuh(conf, genes, parts1, parts2, blastfiles):
     """Merge by Best Unidirectional Hits"""
     
     lookup1 = item2part(parts1)
@@ -42,10 +46,20 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
                 gene1 = blast.subject(hit)            
             score = blast.bitscore(hit)
             
-            if blast.evalue(hit) > conf["signif"]:
+            len1 = genes[gene1]["length"]
+            len2 = genes[gene2]["length"]
+            
+            # discard a hit that does not pass basic cutoffs
+            if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
+                   conf["bitspersite"] or \
+               blast.alignLength(hit) / float(max(len1, len2)) < \
+                   conf["coverage"]:
                 continue
             
+            #if blast.evalue(hit) > conf["signif"]:
+            #    continue
             
+                        
             if gene1 in lookup1:
                 part1 = (0, lookup1[gene1])
             else:
@@ -87,8 +101,19 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
                 gene1 = blast.subject(hit)            
             score = blast.bitscore(hit)
             
-            if blast.evalue(hit) > conf["signif"]:
+            len1 = genes[gene1]["length"]
+            len2 = genes[gene2]["length"]
+            
+            # discard a hit that does not pass basic cutoffs
+            if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
+                   conf["bitspersite"] or \
+               blast.alignLength(hit) / float(max(len1, len2)) < \
+                   conf["coverage"]:
                 continue
+            
+            #if blast.evalue(hit) > conf["signif"]:
+            #    continue
+            
             
             
             part1 = (0, lookup1[gene1])
@@ -115,7 +140,7 @@ def mergeBuh(conf, parts1, parts2, blastfiles):
 
 
 
-def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
+def mergeAvg(conf, genes, parts1, parts2, blastfiles, outblastfiles):
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
     
@@ -140,8 +165,19 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
                 gene1 = blast.subject(hit)            
             score = blast.bitscore(hit)
             
-            if blast.evalue(hit) > conf["signif"]:
+            len1 = genes[gene1]["length"]
+            len2 = genes[gene2]["length"]
+            
+            
+            # discard a hit that does not pass basic cutoffs
+            if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
+                   conf["bitspersite"] or \
+               blast.alignLength(hit) / float(max(len1, len2)) < \
+                   conf["coverage"]:
                 continue
+            
+            #if blast.evalue(hit) > conf["signif"]:
+            #    continue
             
             if accept and \
                (gene1 not in accept or
@@ -185,8 +221,16 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
                 genein = blast.subject(hit)            
             score = blast.bitscore(hit)
             
-            if blast.evalue(hit) > conf["signif"]:
-                continue
+            # discard a hit that does not pass basic cutoffs
+            if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
+                   conf["bitspersite"] or \
+               blast.alignLength(hit) / float(max(len1, len2)) < \
+                   conf["coverage"]:
+                continue            
+            
+            #if blast.evalue(hit) > conf["signif"]:
+            #    continue            
+            
             
             # create a key for a partition: (side, index)
             if genein in lookup1:
@@ -268,7 +312,7 @@ def mergeAvg(conf, parts1, parts2, blastfiles, outblastfiles):
 """
 
 
-def mergeTree(conf, stree, gene2species, blastFileLookup):
+def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
     util.tic("cluster all genes")
 
     for node in stree.nodes.values():
@@ -312,12 +356,14 @@ def mergeTree(conf, stree, gene2species, blastFileLookup):
             if "merge" in conf and \
                conf["merge"] == "avg":
                 node.parts = mergeAvg(conf,
+                                      genes,
                                       node.children[0].parts,
                                       node.children[1].parts,
                                       blastfiles,
                                       outblastfiles)
             else:
                 node.parts = mergeBuh(conf,
+                                      genes,
                                       node.children[0].parts,
                                       node.children[1].parts,
                                       blastfiles)
@@ -351,3 +397,98 @@ def makeBlastFileLookup(blastfiles):
     return lookup
 
 
+
+
+#=============================================================================
+# gene cluster management
+#
+
+def makeFamtab(parts, famid=0):
+    """Make Family Table"""
+
+    famtab = tablelib.Table(headers=["famid", "genes"])
+
+    for i, part in enumerate(parts):
+        famtab.add(famid=str(famid + i),
+                     genes=",".join(part))
+    return famtab
+
+
+def famtab2parts(famtab):
+    parts = []
+    
+    for row in famtab:
+        parts.append(util.remove(row["genes"].split(","), ""))
+    
+    return parts
+
+    
+
+class FamilyDb (object):
+    def __init__(self, filename=None, datadir=None, olddatadir=None):
+        if filename != None:
+            self.famtab = tablelib.readTable(filename)
+        else:
+            self.famtab = tablelib.Table(headers=["famid", "genes"])
+        
+        self.filename = filename        
+        self.datadir = datadir
+        self.olddatadir = olddatadir
+
+
+    def timestamp(self):
+        return time.strftime("%F_%H-%M-%S")    
+    
+    def familyDir(self, famid):
+        return os.path.join(self.datadir, famid)
+        
+    
+    def saveTable(self):
+        self.famtab.write(self.filename)
+        util.logger("famdb: updated '%s'" % self.filename)
+        
+    
+    def addFamily(self, parts, famids=None):
+        # determine highest current famid
+        if famids == None:
+            # assume famids are ints
+            maxid = max(map(int, self.famtab.cget("famid")))
+            famids = map(str, range(maxid + 1, maxid + 1 + len(parts)))
+            
+        for famid, part in izip(famids, parts):
+            self.famtab.add(famid=famid,
+                            genes=",".join(part))
+            util.logger("famdb: added family '%s'" % famid)
+        
+        # update disk
+        self.archive()
+        self.saveTable()
+        
+        for famid in famids:
+            os.mkdir(self.familyDir(famid))
+    
+    
+    def removeFamily(self, *famids):
+        famids = set(famids)
+        self.famtab[:] = filter(lambda fam: fam["famid"] not in famids, 
+                                self.famtab)
+        current_famids = set(self.famtab.cget("famid"))
+        
+        # update disk
+        self.archive()
+        self.saveTable()
+        for famid in famids:
+            if famid in current_famids:
+                famdir = self.familyDir(famid)
+                shutil.move(famdir, os.path.join(self.olddatadir, famid))
+                util.logger("famdb: archived '%s'" % famdir)
+            else:
+                util.logger("famdb: family '%s' does not exist" % famid)
+    
+    
+    def archive(self):
+        archivefile = os.path.join(self.olddatadir, 
+                                   self.filename + "-" + self.timestamp())
+    
+        shutil.copy(self.filename, archivefile)
+        util.logger("famdb: archived '%s'" % archivefile)

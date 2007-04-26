@@ -2,10 +2,11 @@
 
 import sys
 
-from rasmus import cluster
+from rasmus import genecluster
 from rasmus import genomeutil
 from rasmus import util
 from rasmus import treelib
+from rasmus import tablelib
 
 
 options = [
@@ -16,10 +17,18 @@ options = [
         {"single": True,
          "parser": float,
          "default": .8}],
-    ["c:", "signif=", "signif", "<significance cutoff>",
+    #["c:", "signif=", "signif", "<significance cutoff>",
+    #    {"single": True,
+    #     "parser": float,
+    #     "default": 1e-3}],
+    ["b:", "bitspersite=", "bitspersite", "<bits/site cutoff>",
         {"single": True,
          "parser": float,
-         "default": 1e-3}],
+         "default": 1.0}],
+    ["c:", "coverage=", "coverage", "<minimum coverage>",
+        {"single": True,
+         "parser": float,
+         "default": 0.5}],
     ["a:", "all=", "all", "<output prefix>",
         {"single": True,
          "default": None,
@@ -27,6 +36,8 @@ options = [
     ["m:", "merge=", "merge", "avg|buh",
         {"default": "avg",
          "single": True}],
+    ["l:", "genelens=", "genelens", "<table of gene lengths>",
+        {"single": True}],
     ["", "accept=", "accept", "<accept list>"]
 ] + genomeutil.options
 
@@ -47,10 +58,14 @@ def main(conf):
     if conf["all"] != None:
         conf["output"] = conf["all"]
     
-    tree = cluster.mergeTree(conf, 
+    
+    genes = tablelib.readTable(conf["genelens"]).lookup("gene")
+    
+    tree = genecluster.mergeTree(conf, 
+                             genes,
                              conf["stree"], 
                              conf["gene2species"],
-                             cluster.makeBlastFileLookup(blastfiles))
+                             genecluster.makeBlastFileLookup(blastfiles))
     
     if conf["all"] == None:    
         util.writeDelim(sys.stdout, tree.root.parts)

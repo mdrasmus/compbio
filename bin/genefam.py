@@ -13,11 +13,18 @@ from rasmus import fasta
 from rasmus import genomeutil
 from rasmus import util
 from rasmus import tablelib
+from rasmus import genecluster
 
 
 options = [
-    ["p:", "part=", "part", "<part file>", {"single": True}],
-    ["f:", "famid=", "famid", "<famid file>", {"single": True}],
+    ["", "make=", "make", "<partfile>", {"single": True}],
+    ["", "to_part", "to_part", ""],
+    
+    ["f:", "famid=", "famid", "<famtab file>", {"single": True}],
+    ["", "startid=", "startid", "<starting famid>", 
+        {"single": True,
+         "parser": int,
+         "default": 0}]
 ]
 
 
@@ -29,19 +36,13 @@ def main(conf):
     env.addEnvPaths("DATAPATH")
     #env.addPaths(conf["paths"])
     
-    if "part" in conf:
+    if "make" in conf:
         # convert parts file to famid file
-        parts = util.readDelim(conf["part"])
-
-        partstab = tablelib.Table(headers=["famid", "genes"])
-
-        for i, part in enumerate(parts):
-            partstab.add(famid=str(i),
-                         genes=",".join(part))
-
-        partstab.write()
+        parts = util.readDelim(conf["make"])
+        famtab = genecluster.makeFamtab(parts, famid=conf["startid"])
+        famtab.write()
     
-    elif "famid" in conf:
+    elif "to_part" in conf:
         # convert famid file to parts file
         
         partstab = tablelib.readTable(conf["famid"])

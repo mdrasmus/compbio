@@ -2,17 +2,20 @@
 
 import os
 import sys
+from itertools import izip
 
 from rasmus import env
 from rasmus import fasta
 from rasmus import genomeutil
 from rasmus import util
+from rasmus import genecluster
+from rasmus import tablelib
 
 
-SCRIPT = sys.argv[0]
 
 options = [
     ["p:", "part=", "part", "<part file>"],
+    ["t:", "famtab=", "famtab", "<family table"],
     ["f:", "fasta=", "fasta", "<fasta file>"],    
     ["o:", "outdir=", "outdir", "<output directory>",
         {"single": True}],
@@ -43,19 +46,29 @@ def main(conf):
         nseqs = len(seqs.keys())
         util.toc()
     util.toc()
-
-    parts = util.readDelim(env.findFile(conf["part"][-1]))
+    
+    # read partition
+    if "part" in conf:
+        parts = util.readDelim(env.findFile(conf["part"][-1]))
+        famids = map(str, range(len(parts)))
+    
+    if "famtab" in conf:
+        famtab = tablelib.readTable(conf["famtab"][-1])
+        famids = famtab.cget("famid")
+        parts = genecluster.famtab2parts(famtab)
+    
     
     # actually split fasta
-    for i in xrange(len(parts)):
+    for famid, part in izip(famids, parts): #xrange(len(parts)):
+    
         if conf["dir"]:
-            if not os.path.exists(os.path.join(conf["outdir"], str(i))):
-                os.mkdir(os.path.join(conf["outdir"], str(i)))
-            seqfile = os.path.join(conf["outdir"], str(i), "%d.fasta" % i)
+            if not os.path.exists(os.path.join(conf["outdir"],famid)):
+                os.mkdir(os.path.join(conf["outdir"], famid))
+            seqfile = os.path.join(conf["outdir"], famid, "%s.fasta" % famid)
         else:
-            seqfile = os.path.join(conf["outdir"], "%d.fasta" % i)
-        util.log(seqfile)
-        seqs2 = seqs.get(parts[i])
+            seqfile = os.path.join(conf["outdir"], "%s.fasta" % famid)
+        util.logger(seqfile)
+        seqs2 = seqs.get(part)
         seqs2.write(seqfile)
 
 

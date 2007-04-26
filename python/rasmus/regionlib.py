@@ -174,7 +174,7 @@ def regionLookup(regions, key="ID"):
     for region in regions:
         if key in region.data:
             rkey = region.data[key]
-            assert rkey not in lookup, Exception("duplicate key")
+            assert rkey not in lookup, Exception("duplicate key '%s'" % rkey)
             lookup[rkey] = region
 
     return lookup

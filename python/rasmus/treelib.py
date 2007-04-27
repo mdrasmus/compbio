@@ -16,7 +16,6 @@ import os
 import StringIO
 
 # rasmus libs
-from rasmus import graph
 from rasmus import textdraw
 from rasmus import util
 

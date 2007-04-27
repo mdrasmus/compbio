@@ -236,7 +236,7 @@ def binsearch(lst, val, compare=cmp, order=1):
 # include tree algorithms into this module for backwards compatability
 # remove this soon.
 #
-from treelib import *
+#from treelib import *
 
 
 

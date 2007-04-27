@@ -18,7 +18,7 @@ import math
 import os
 import re
 import sys
-
+from itertools import imap, izip
 
 
 
@@ -231,10 +231,7 @@ def cget(mat, *i):
 def mget(lst, ind):
     """Returns a list 'lst2' such that lst2[i] = lst[ind[i]]
        
-       Or in otherwords, get the subsequence 'lst'
-       Note: same as sublist.  This name is being introduced, because sublist
-       sounds like it can't be used on dicts; but it can.
-       
+       Or in otherwords, get the subsequence 'lst'       
     """
     return [lst[i] for i in ind]
 
@@ -293,7 +290,7 @@ def list2lookup(lst):
     """
     
     lookup = {}
-    for i in range(len(lst)):
+    for i in xrange(len(lst)):
         lookup[lst[i]] = i
     return lookup
 
@@ -395,7 +392,7 @@ def mapapply(funcs, lst):
     """
     
     lst2 = []
-    for func, item in zip(funcs, lst):
+    for func, item in izip(funcs, lst):
         lst2.append(func(item))
     return lst2
 
@@ -413,7 +410,7 @@ def cumsum(vals):
 
 
 def frange(start, end, step):
-    """Returns a range of floats 
+    """Generates a range of floats 
     
        start -- begining of range
        end   -- end of range
@@ -421,11 +418,12 @@ def frange(start, end, step):
     """
     
     i = 0
-    lst = []
-    while start + i * step < end:
-        lst.append(start + i * step)
+    val = start
+    while val < end:
+        yield val
         i += 1
-    return lst
+        val = start + i * step
+
 
 
 
@@ -491,11 +489,11 @@ def map2(func, *matrix):
     
     matrix2 = []
     
-    for i in range(len(matrix[0])):
+    for i in xrange(len(matrix[0])):
         row2 = []    
         matrix2.append(row2)
 
-        for j in range(len(matrix[0][i])):
+        for j in xrange(len(matrix[0][i])):
             args = [x[i][j] for x in matrix]
             row2.append(func(* args))
     
@@ -505,20 +503,20 @@ def map2(func, *matrix):
 def min2(matrix):
     """Finds the minimum of a 2D list or matrix
     """
-    return min(map(min, matrix))
+    return min(imap(min, matrix))
 
 
 def max2(matrix):
     """Finds the maximum of a 2D list or matrix
     """
-    return max(map(max, matrix))
+    return max(imap(max, matrix))
 
 
 def range2(width, height):
     """Iterates over the indices of a matrix"""
     
-    for i in range(width):
-        for j in range(height):
+    for i in xrange(width):
+        for j in xrange(height):
             yield i, j
 
 

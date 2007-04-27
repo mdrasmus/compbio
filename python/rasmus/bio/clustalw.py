@@ -15,10 +15,9 @@ import os
 import sys
 
 # rasmus libs
-from rasmus import fasta
 from rasmus import treelib
 from rasmus import util
-
+from rasmus.bio import fasta
 
 # TODO: change removetmp to saveOutput
 def clustalw(seqs, verbose=True, removetmp=True, options=""):

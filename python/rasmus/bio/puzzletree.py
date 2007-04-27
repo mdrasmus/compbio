@@ -2,9 +2,10 @@
 import os
 
 # rasmus libs
+from rasmus import util
 from rasmus.bio import fasta
 from rasmus.bio import phylip
-from rasmus import util
+
 
 
 def getDistMatrix(seqs, output=None, verbose=True, force = False, args=None):

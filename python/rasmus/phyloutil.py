@@ -4,5 +4,5 @@
 
 
 # phyloutil is currently an alias for phylo
-from rasmus.phylo import *
+from rasmus.bio.phylo import *
 

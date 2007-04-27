@@ -3,8 +3,8 @@ import os
 
 # rasmus imports
 from rasmus import env
-from rasmus import fasta
 from rasmus import util
+from rasmus.bio import fasta
 
 
 """

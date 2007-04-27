@@ -3,7 +3,10 @@
 #
 
 import os
-from rasmus import util, phylip, treelib
+from rasmus import util
+from rasmus import treelib
+from ramus.bio import phylip
+
 
 
 def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):

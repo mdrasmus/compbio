@@ -1276,7 +1276,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 else:
                     lowk = kvars[korder[depnode]] + .0001
                 
-                n = max(3, 10 / (2**this.depth))
+                n = max(1, 10 / (2**this.depth))
                 #n = 20
                 
                 ret = quad(func, lowk, .9999, n=n)[0] / \

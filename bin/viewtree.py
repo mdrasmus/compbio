@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import util, algorithms, phyloutil, genomeutil, env, treelib
+from rasmus import util, phyloutil, genomeutil, env, treelib
 from rasmus.vis import treevis
 from rasmus import tablelib
 
@@ -72,7 +72,7 @@ if "reroot" in conf:
 
 for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
     try:
-        tree = algorithms.readTree(treefile)
+        tree = treelib.readTree(treefile)
     except Exception, e:
         print >>sys.stderr, "error reading '%s': %s" % (treefile, e)
         continue
@@ -173,7 +173,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                                        filename=conf["graphical"],
                                        legendScale=True)
         else:
-            algorithms.drawTree(tree, labels=labels,
+            treelib.drawTree(tree, labels=labels,
                                 scale=conf["scale"],
                                 minlen=conf["minlen"],
                                 maxlen=conf["maxlen"])

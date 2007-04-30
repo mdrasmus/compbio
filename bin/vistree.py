@@ -9,11 +9,11 @@ from rasmus import genomeio, util, fasta, clustalw, muscle, phylip
 from rasmus import algorithms, phyloutil, treelib, alignlib
 
 # graphics libs
-from summon import *
-import summonlib.tree
+from summon.core import *
+from summon import sumtree
 
 
-sumtree = summonlib.tree
+#sumtree = summonlib.tree
 
 options = sumtree.options + [
  ["d:", "desc=", "desc", "AUTO<descriptions>"],

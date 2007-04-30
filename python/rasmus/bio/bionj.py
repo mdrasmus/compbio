@@ -5,7 +5,7 @@
 import os
 from rasmus import util
 from rasmus import treelib
-from ramus.bio import phylip
+from rasmus.bio import phylip
 
 
 

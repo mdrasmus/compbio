@@ -30,19 +30,19 @@ options = [
     ["", "dataTwoTiers=", "dataTwoTiers", "<bool>",
      {"single": True,
       "default": True,
-      "parser": bool}],
+      "parser": util.str2bool}],
     ["", "useGeneNames=", "useGeneNames", "<bool>",
      {"single": True,
       "default": True,
-      "parser": bool}],
+      "parser": util.str2bool}],
     ["", "useRfError=", "useRfError", "<bool>",
      {"single": True,
       "default": False,
-      "parser": bool}],
+      "parser": util.str2bool}],
     ["", "skipNoAlign=", "skipNoAlign", "<bool>",
      {"single": True,
       "default": False,
-      "parser": bool}],
+      "parser": util.str2bool}],
     ["", "display=", "display", "eval|family",
      {"single": True,
       "default": "eval"}],
@@ -67,6 +67,22 @@ options = [
      {"default": "alnvis"}],
     ["", "treeVisDir=", "treeVisDir", "<directory for tree visulizations>",
      {"default": "treevis"}],
+    
+    ["", "calcLoglk=", "calcLoglk", "<bool>",
+        {"single": True,
+         "default": True,
+         "parser": util.str2bool}],
+    ["", "vislink=", "vislink", "<url>",
+        {"single": True,
+         "default": "http://compbio.mit.edu/spidir/browser/vis.cgi"}],
+    
+    ["", "extraCol=", "extraCol", "<python function>",
+        {"single": True,
+         "default": None}],
+    ["", "onlyLeaves=", "onlyLeaves", "<bool>",
+        {"single": True,
+         "default": False,
+         "parser": util.str2bool}],
     
     "Misc",
     ["", "topColors=", "topColors", "<topology colors>",
@@ -341,23 +357,30 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
 
     # get align files
     if os.path.exists(getAlignFile(conf, datadir, treename, "nt")):
-        alnnturl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "nt")
+        alnnturl = conf["vislink"] + "?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "nt")
         alnntlink = "<a href='%s'>An</a> " % alnnturl
     else:
         alnntlink = ""
 
     if os.path.exists(getAlignFile(conf, datadir, treename, "pep")):
-        alnpepurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "pep")
+        alnpepurl = conf["vislink"] + "?vis=align&data=%s" % getAlignUrl(conf, conf["dataurl"], treename, "pep")
         alnpeplink = "<a href='%s'>Ap</a> " % alnpepurl
     else:
         alnpeplink = ""
 
     # get tree files
     treefile = getCorrectTreeUrl(conf, conf["dataurl"], treename)
-    treeurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
+    treeurl = conf["vislink"] + "?vis=tree&data=%s" % treefile
 
     row = treeStats[treename]
-
+    
+    # extraLinks
+    if conf["extraCol"] != None:
+        extralinks = conf["extraCol"](treename)
+    else:
+        extralinks = ""
+    
+    
     if gene == "":
         genename = "-"
         commonName = "-"
@@ -411,7 +434,7 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
     # synteny
     if conf["syntenyIndex"] and gene in conf["syntenyIndex"]:
         syntenyfile = getSyntenyUrl(conf, conf["syntenyIndex"][gene])
-        syntenyurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=synteny&data=%s" % syntenyfile
+        syntenyurl = conf["vislink"] + "?vis=synteny&data=%s" % syntenyfile
         syntenylink = "<a href='%s'>S</a> " % syntenyurl
     else:
         syntenylink = ""
@@ -422,8 +445,8 @@ def writeGeneralStats(conf, datadir, genes, treename, out,
                       alnntlink +
                       alnpeplink + \
                       syntenylink + \
-                      "<a href='%s'>T</a></nobr></td>") % \
-        (treeurl)
+                      "<a href='%s'>T</a>%s</nobr></td>") % \
+        (treeurl, extralinks)
 
 
 
@@ -494,7 +517,7 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
         
         for prog, resultdir, resulturl in resultdirs:
             treefile = getResultTreeUrl(conf, resulturl, treename)
-            resulttree = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
+            resulttree = conf["vislink"] + "?vis=tree&data=%s" % treefile
             
             if conf["useTopNames"]:
                 top = treeStats[treename][prog]
@@ -676,7 +699,7 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
         genes = None
     
     rateTable = conf["rateTable"].lookup("treeid")
-    params = spidirlib.readParams(conf["spidirParams"])
+    params = Spidir.readParams(conf["spidirParams"])
     zscoreTable = conf["zscoreTable"].lookup("treeid")
     
     
@@ -716,6 +739,9 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
     
     
     for sp in species:
+        if conf["onlyLeaves"] and isinstance(sp, int):
+            continue
+    
         if sp == species[0]:
             border = "border-left: 1px black solid;"
         elif str(sp) in colDividers:
@@ -774,6 +800,9 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
         print >>out, "<td>%.2f</td>" % zscoreTable[treename]["loglk"]
         
         for sp in species:
+            if conf["onlyLeaves"] and isinstance(sp, int):
+                continue
+        
             dist = row[str(sp)] / stats["treelen"]
             zscore = (dist - params[sp][0]) / params[sp][1]
             
@@ -786,8 +815,8 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
             else:
                 border = ""
             
-            print >>out, "<td style='background-color: %s; %s'>%.2f</td>" % \
-                         (color, border, zscore)
+            print >>out, "<td style='background-color: %s; %s'><a title='%s,%s'>%.2f</a></td>" % \
+                         (color, border, treename, str(sp), zscore)
         
         
         
@@ -861,7 +890,7 @@ def generateTopologyHistograms(conf, datadir, resultdirs):
                 
                 resulturl, treename = examples[topname]
                 treefile = getResultTreeUrl(conf, resulturl, treename)
-                treeurl = "http://compbio.mit.edu/spidir/browser/vis.cgi?vis=tree&data=%s" % treefile
+                treeurl = conf["vislink"] + "?vis=tree&data=%s" % treefile
         
                 
                 print >>out, "<td style='background-color: %s'><a href='%s'>%s</a> (%.1f%%)</td>" % (
@@ -1006,7 +1035,7 @@ def generateRateTable(conf, datadir):
     rateTable = tablelib.Table(headers=headers)
     zscoreTable = tablelib.Table(headers=headers + ["loglk"])
     
-    params = spidirlib.readParams(conf["spidirParams"])
+    params = Spidir.readParams(conf["spidirParams"])
     
     
     
@@ -1029,14 +1058,19 @@ def generateRateTable(conf, datadir):
         assert len(util.unique(recon.values())) == len(recon)
         
         treelen = sum(x.dist for x in tree.nodes.values())
+        if abs(treelen) < 1e-6:
+            treelen = 1
         
         for node, snode in recon.iteritems():
             row[str(snode.name)] = node.dist
             row2[str(snode.name)] = ((node.dist / treelen) - params[snode.name][0]) \
                                    / params[snode.name][1]
         
-        row2["loglk"] = spidirlib.branchLikelihoods({}, tree, recon, events, 
+        if conf["calcLoglk"]:
+            row2["loglk"] = Spidir.branchLikelihoods({}, tree, recon, events, 
                                                  conf["stree"], params, treelen)
+        else:
+            row2["loglk"] = 0
         
         rateTable.append(row)
         zscoreTable.append(row2)

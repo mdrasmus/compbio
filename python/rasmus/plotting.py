@@ -755,7 +755,7 @@ class ColorMap:
             newcolor = []
             color1 = self.table[i][1]
             color2 = self.table[i+1][1]
-            for j in range(4):
+            for j in range(len(color1)):
                 newcolor.append(weight1 * color1[j] + 
                                 weight2 * color2[j])
             

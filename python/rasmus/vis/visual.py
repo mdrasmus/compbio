@@ -5,34 +5,8 @@ from summon.plot import ScatterPlot
 
 from rasmus import util
 
+from summon import VisObject
 
-
-class VisObject (object):
-    """Base class of visualization objects"""
-    def __init__(self):
-        self.win = None
-    
-    def __del__(self):
-        if summon != None:
-            self.setVisible(False)
-    
-    def update(self):
-        pass
-    
-    def show(self):
-        pass
-    
-    def enableUpdating(self, visible=True):
-        if visible:    
-            if not summon.is_update_func(self.update):
-                assert self.win != None, "must set window"
-                summon.add_update_func(self.update, self.win)
-        else:
-            if summon.is_update_func(self.update):
-                summon.remove_update_func(self.update)
-
-    setVisible = enableUpdating
-    
 
 class Multiscale (object):
     """Manage detecting when the zoom and scroll of the visualization is 

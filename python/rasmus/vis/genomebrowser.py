@@ -95,10 +95,10 @@ class GenomeStackBrowser (Browser):
         self.win.set_bgcolor(1, 1, 1)
         
         # zooming
-        self.win.reset_binding(input_click("right", "down"), "focus")
-        self.win.reset_binding(input_motion("right", "down"), "zoomx")
-        self.win.reset_binding(input_click("right", "down", "shift"), "focus")
-        self.win.reset_binding(input_motion("right", "down", "shift"), "zoomy")
+        self.win.set_binding(input_click("right", "down"), "focus")
+        self.win.set_binding(input_motion("right", "down"), "zoomx")
+        self.win.set_binding(input_click("right", "down", "shift"), "focus")
+        self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
         
         self.gid = self.win.add_group(group())
         
@@ -230,6 +230,8 @@ class GenomeOverview (Browser):
         
         
         # setup window
+        print maxchrom / abs(float(y+step))
+        
         w, h = self.win.get_window_size()
         self.win.set_visible(0, -step, maxchrom, y+step)
         self.win.focus(w/2, h/2)

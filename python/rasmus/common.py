@@ -23,6 +23,7 @@ from rasmus.vis.treevis import showTree
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib
 from rasmus.tablelib import Table, readTable
+from rasmus.treelib import *
 
 # bio tools
 from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib

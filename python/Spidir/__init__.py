@@ -9,16 +9,17 @@ import math, StringIO, copy, random, sys
 
 
 # rasmus libs
-from rasmus import bionj
-from rasmus import fasta
-from rasmus import phylo
 from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
-from rasmus import phylip
-from rasmus.vis import treevis
 
+from rasmus.bio import bionj
+from rasmus.bio import fasta
+from rasmus.bio import phylo
+from rasmus.bio import phylip
+
+from rasmus.vis import treevis
 
 # scipy libs
 # (needed for numerical integration and least square error fitting)

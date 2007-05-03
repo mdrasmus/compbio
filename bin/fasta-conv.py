@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import phylip, fasta, util, mrbayes
+
+from rasmus import util
+from rasmus.bio import phylip, fasta, mrbayes
 
 
 options = [

@@ -13,7 +13,6 @@ from itertools import izip, imap
 import rasmus
 from rasmus.util import *
 from rasmus.algorithms import *
-from rasmus.fasta import *
 from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
@@ -26,9 +25,10 @@ from rasmus.tablelib import Table, readTable
 from rasmus.treelib import *
 
 # bio tools
-from rasmus import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib
-from rasmus import gff
-#from rasmus.phyloutil import viewTree
+from rasmus.bio.fasta import *
+from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib
+from rasmus.bio import gff
+
 
 
 

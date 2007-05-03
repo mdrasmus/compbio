@@ -7,25 +7,27 @@ import sys
 import StringIO
 
 
-# rasmsu libs
-from rasmus import alignlib
-from rasmus import bionj
-from rasmus import clustalw
+# rasmus libs
+
 from rasmus import depend
 from rasmus import env
-from rasmus import fasta
-from rasmus import mrbayes
-from rasmus import muscle
-from rasmus import paml
-from rasmus import phylip
-from rasmus import phylo
-from rasmus import phyml
-from rasmus import puzzletree
 from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
 
+# rasmus.bio libs
+from rasmus.bio import alignlib
+from rasmus.bio import bionj
+from rasmus.bio import clustalw
+from rasmus.bio import fasta
+from rasmus.bio import mrbayes
+from rasmus.bio import muscle
+from rasmus.bio import paml
+from rasmus.bio import phylip
+from rasmus.bio import phylo
+from rasmus.bio import phyml
+from rasmus.bio import puzzletree
 
 
 options = [

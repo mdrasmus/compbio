@@ -6,9 +6,12 @@ import os, sys
 # third party libs
 from reportlab import svglib
 
-# rasmus libss
-from rasmus import util, env, genomeutil, genomeio, clustalw, muscle, ensembl, fasta
-from rasmus.genomeutil import *
+# rasmus libs
+from rasmus import util, env
+
+# rasmus bio libs
+from rasmus.bio genomeutil, genomeio, clustalw, muscle, ensembl, fasta
+from rasmus.bio.genomeutil import *
 
 # for easy user iteraction
 from rasmus.common import *

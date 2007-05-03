@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import util, phyloutil, genomeutil, env, treelib
+from rasmus import util, env, treelib
+from rasmus.bio import phylo, genomeutil
 from rasmus.vis import treevis
 from rasmus import tablelib
 
@@ -79,7 +80,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
     
     if "stree" in conf and \
        "smap" in conf:
-        phyloutil.reconRoot(tree, stree, gene2species, 
+        phylo.reconRoot(tree, stree, gene2species, 
                             rootby=conf["rootby"],
                             newCopy=False)
     
@@ -91,7 +92,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
     if conf["hist"] or conf["hashes"]:
         # only count the tree in histogram mode
     
-        thash = phyloutil.hashTree(tree, gene2species)
+        thash = phylo.hashTree(tree, gene2species)
         hashes.append(thash)
     
     

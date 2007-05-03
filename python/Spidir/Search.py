@@ -2,10 +2,11 @@ import random
 import math
 import StringIO
 
-from rasmus import phylo
+
 from rasmus import treelib
 from rasmus import stats
 from rasmus import matrix
+from rasmus.bio import phylo
 
 
 import Spidir

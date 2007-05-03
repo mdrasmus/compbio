@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 
 import sys, time, os
-from rasmus import synteny, synphylweb, bionj, ensembl, phyloutil, env
-from rasmus import fasta, util, genomeio, genomeutil
-from rasmus import muscle, phylip, algorithms, clustalw
+from rasmus import synphylweb,  env, ensembl
+from rasmus import util, algorithms
+
+# rasmus bio libs
+from rasmus.bio import muscle, phylip, clustalw, synteny, bionj
+from rasmus.bio import phylo, genomeio, genomeutil, fasta
+
 
 options = [
     ["c:", "config=", "config", "<config file>"],
@@ -519,9 +523,9 @@ def treePartNeeded(config, part):
     
 
 def runOrthologySets(config):
-    homology = phyloutil.Homology()
+    homology = phylo.Homology()
     homology.read(homologyFile(config))
-    parts = phyloutil.homology2orthologSets(homology)
+    parts = phylo.homology2orthologSets(homology)
     
     util.writeDelim(orthologSetFile(config))
     
@@ -533,7 +537,7 @@ def runTreeProcessing(config):
     
     stree = algorithms.Tree()
     stree.readNewick(speciesTreeFile(config))
-    homology = phyloutil.Homology()
+    homology = phylo.Homology()
     
     # estimation
     if "estimate" in config:
@@ -566,8 +570,8 @@ def runTreeProcessing(config):
 
                 tree = algorithms.Tree()
                 tree.readNewick(infile)
-                tree = phyloutil.reconRoot(tree, stree, conf["gene2species"])
-                trees = phyloutil.findBootTreeHomology(tree, stree, homology, 
+                tree = phylo.reconRoot(tree, stree, conf["gene2species"])
+                trees = phylo.findBootTreeHomology(tree, stree, homology, 
                     config["bootiters"])
                 
                 if config["save_parttrees"]:
@@ -578,11 +582,11 @@ def runTreeProcessing(config):
                 util.toc()
         else:
             util.tic("quick process %s" % treefile)
-            phyloutil.findSimplePartHomology(parts[i], homology)
+            phylo.findSimplePartHomology(parts[i], homology)
             util.toc()
 
     homology.write(file(homologyFile(config), "w"))
-    oparts = phyloutil.homology2orthologSets(homology)
+    oparts = phylo.homology2orthologSets(homology)
     
     util.writeDelim(orthologSetFile(config), oparts)
 
@@ -601,7 +605,7 @@ def countSubtreeTopologies(config):
             tree = algorithms.Tree()
             tree.readNewick(treefile)
             
-            trees = phyloutil.findRootedSubtrees(tree)
+            trees = phylo.findRootedSubtrees(tree)
             
             for tree2 in trees:
                 hashkey = algorithms.hashTree(tree2, ensembl.id2genome)
@@ -627,7 +631,7 @@ def countTreeTopologies(config):
         if os.path.isfile(treefile):
             tree = algorithms.Tree()
             tree.readNewick(treefile)
-            tree = phyloutil.reconRoot(tree, stree)
+            tree = phylo.reconRoot(tree, stree)
             hashkey = algorithms.hashTree(tree, ensembl.id2genome)
             if hashkey not in counts:
                 counts[hashkey] = 1

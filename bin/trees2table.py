@@ -2,8 +2,8 @@
 
 import os, sys
 
-from rasmus import phyloutil, tablelib, util
-from rasmus import treelib, genomeutil, env
+from rasmus import treelib, env, tablelib, util
+from rasmus.bio import genomeutil, phylo
 from rasmus.vis import treevis
 
 import Spidir
@@ -53,7 +53,7 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
     
     
     # initalize counts to zero
-    phyloutil.initDupLossTree(totalTree)
+    phylo.initDupLossTree(totalTree)
     
     
     util.tic("read trees")
@@ -67,13 +67,13 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         j += 1
         
         tree = treelib.readTree(f)
-        phyloutil.reconRoot(tree, stree, gene2species, newCopy=False)
+        phylo.reconRoot(tree, stree, gene2species, newCopy=False)
 
-        phyloutil.initDupLossTree(singleTree)
-        dup, loss, appear = phyloutil.countDupLossTree(tree, singleTree, gene2species)
-        dup, loss, appear = phyloutil.countDupLossTree(tree, totalTree, gene2species)
+        phylo.initDupLossTree(singleTree)
+        dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)
+        dup, loss, appear = phylo.countDupLossTree(tree, totalTree, gene2species)
 
-        phyloutil.countAncestralGenes(singleTree)
+        phylo.countAncestralGenes(singleTree)
         
         row, junk = tree2row(singleTree)
         
@@ -109,7 +109,7 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
     util.toc()
 
     # count ancestral genes
-    phyloutil.countAncestralGenes(totalTree)
+    phylo.countAncestralGenes(totalTree)
     
         
     return tab, totalTree

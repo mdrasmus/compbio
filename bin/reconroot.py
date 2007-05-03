@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from rasmus import genomeutil, treelib, phyloutil, util
+from rasmus import treelib, util
+from rasmus.bio import genomeutil, phylo
 
 import sys
 
@@ -29,6 +30,6 @@ if "stree" in conf:
 for treefile in conf["REST"]:
     print "rerooting %s..." % treefile
     tree = treelib.readTree(treefile)
-    phyloutil.reconRoot(tree, stree, gene2species, 
+    phylo.reconRoot(tree, stree, gene2species, 
                         rootby=conf["cost"], newCopy=False)
     tree.write(treefile)

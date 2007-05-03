@@ -48,11 +48,14 @@ if "tree" in conf:
     vistree = sumtree.SumTree(tree, name=conf["tree"])
                               #xscale=conf["usedist"]
     vistree.show()
+    vistree.win.set_size(340, 500)
+    vistree.win.set_position(0, 0)
+    
     leaves = tree.leafNames()
     leaves.reverse()
     
     windows.append(vistree.win)
-    coords.append(max(node.x for node in tree.nodes.itervalues()) + 1.5)
+    coords.append(max(node.x for node in tree.nodes.itervalues()))
 
 
 # read alignment
@@ -102,9 +105,12 @@ if "distmat" in conf:
                                 cutoff=-util.INF,
                                 rperm=rperm, cperm=cperm)
     visdist.show()
+    visdist.win.set_bgcolor(1, 1, 1)    
+    visdist.win.set_size(300, 500)
+    visdist.win.set_position(0, 0)    
     
     windows.append(visdist.win)
-    coords.append(1.5)
+    coords.append(0)
 
 
 # show alignment
@@ -113,9 +119,11 @@ if "align" in conf:
     visalign.addTrack(RulerTrack(bottom=-height))
     visalign.addTrack(AlignTrack(aln, colorBases=colors))
     visalign.show()
+    visalign.win.set_size(580, 500)
+    visalign.win.set_position(0, 0)    
 
     windows.append(visalign.win)
-    coords.append(0)
+    coords.append(-1.5)
 
 
 # tie all windows by their y-coordinate

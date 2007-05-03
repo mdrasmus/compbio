@@ -1,43 +1,59 @@
-#!/usr/bin/env summon
+#!/usr/bin/python -i
 
 
 # python libs
 import sys, math
 
 # rasmus libs
-from rasmus import genomeio, util, fasta, clustalw, muscle, phylip
-from rasmus import algorithms, phyloutil, treelib, alignlib
+from rasmus import treelib
+from rasmus import util
+from rasmus.bio import fasta, clustalw, muscle, phylip, alignlib
 
 # graphics libs
 from summon.core import *
 from summon import sumtree
+from summon import svg
+import summon
 
 
-#sumtree = summonlib.tree
+options = [
+ ["p:", "ptree=", "ptree", "<ptree file>",
+    {"single": True}],
+ ["l:", "labels=", "labels", "<leaf labels file>",
+    {"single": True}],
+ ["n:", "newick=", "newick", "<newick file>",
+    {"single": True}],
+ ["t:", "usedist=", "usedist", "<distance factor>",
+    {"single": True,
+     "default": 1.0,
+     "parser": float}],
+ ["L", "noshowlabels", "noshowlabels", "",
+    {"single": True}],
+ ["V", "vertical", "vertical", "",
+    {"single": True}],
 
-options = sumtree.options + [
- ["d:", "desc=", "desc", "AUTO<descriptions>"],
- ["o:", "orth=", "orths", "AUTO<orths>"],
- ["c:", "orthcomp=", "orthcomps", "AUTO<orth comps>"],
- ["f:", "fasta=", "fasta", "AUTO<fasta>"],
- ["v:", "visual=", "visual", "AUTO<outputfile>"],
- ["w:", "winsize=", "winsize", "AUTO<window width>x<window height>"],
+ ["o:", "orth=", "orths", "<orths>"],
+ ["c:", "orthcomp=", "orthcomps", "<orth comps>"],
+ 
+ ["f:", "fasta=", "fasta", "<fasta>"],
+ ["v:", "visual=", "visual", "<outputfile>",
+    {"single": True}],
+ ["w:", "winsize=", "winsize", "<window width>x<window height>",
+    {"single": True}],
  ["r:", "reroot=", "reroot", "<root node>",
     {"single": True}]
 ]
 
 
-try:
-    param, rest = util.parseArgs(sys.argv[1:], options)
-except:
-    sys.exit(1)
+conf = util.parseOptions(sys.argv, options)
 
 selnode = None
 
 class VisTree (sumtree.SumTree):
-    def __init__(self):
-        sumtree.SumTree.__init__(self)
+    def __init__(self, conf, tree, **options):
+        sumtree.SumTree.__init__(self, tree, **options)
         
+        self.conf = conf
         self.colorOrths = color(0,0,0)
         self.clickMode = "desc"
         self.alignfunc = muscle.muscle
@@ -94,13 +110,13 @@ class VisTree (sumtree.SumTree):
 
         phylip.refineNode(self.tree, node, self.seqs, 
                           phylip.protpars, muscle.muscle)
-        clear_groups()
+        self.win.clear_groups()
 
-        self.setupTree(self.param, self.tree)
-        self.drawTree(self.param, self.tree, self.orths)
+        self.setupTree(self.conf, self.tree)
+        self.drawTree(self.conf, self.tree, self.orths)
 
 
-    def drawOrthologs(self, param, tree, orths):      
+    def drawOrthologs(self, conf, tree, orths):      
         vis = []
 
         for orth in orths:
@@ -115,63 +131,92 @@ class VisTree (sumtree.SumTree):
                 alpha = 1 / length
                 alpha = max(alpha, .1)
 
-                vis.append(lines(color(0,0,0,alpha), vertices(x1, y1, x2, y2)))
+                vis.append(lines(color(0,0,0,alpha), x1, y1, x2, y2))
 
-        return list2group(vis)
-
-
-    def display(self, param, tree):
-        sumtree.SumTree.display(self, param, tree)
-        add_group(self.drawOrthologs(param, tree, self.orths))
+        return group(*vis)
 
 
+    def show(self):
+        sumtree.SumTree.show(self)
+        
+        self.win.add_group(self.drawOrthologs(self.conf, self.tree, self.orths))
+        
+        
+        # add key bindings
+        def keypress(mode):
+            def func():
+                print "mode is '"+ mode + "'"
+                self.clickMode = mode
+            return func
 
-def find(gene):
-    return vis.find(gene)
-
-def mark(boxColor = color(1,0,0)):
-    return vis.mark(boxColor)
-
-def flag(flagColor = color(1,0,0)):
-    return vis.flag(flagColor)
-
-def clear_marks():
-    return vis.clearMarks()
+        self.win.set_binding(input_key("a"), keypress("align"))
+        self.win.set_binding(input_key("d"), keypress("desc"))
+        self.win.set_binding(input_key("g"), keypress("gene"))
+        self.win.set_binding(input_key("r"), keypress("refine"))
 
 
-vis = VisTree()
+
+
+
+
+def readTree(conf):
+    util.tic("reading input")
+
+    tree = treelib.Tree()
+
+    if "ptree" in conf:
+        tree.readParentTree(conf["ptree"], conf["labels"])
+        print "%s: %d nodes, %d leaves\n" % \
+            (conf["ptree"], len(tree.nodes), len(tree.leaves()))
+
+    elif "newick" in conf:
+        tree.readNewick(conf["newick"])
+        print "%s: %d nodes, %d leaves\n" % \
+            (conf["newick"], len(tree.nodes), len(tree.leaves()))
+
+    util.toc()    
+    return tree
+
 
 # read tree
-tree = vis.readTree(param)
-
-if "reroot" in param:
-    if param["reroot"].isdigit():
-        param["reroot"] = int(param["reroot"])
-    tree = treelib.reroot(tree, param["reroot"])
-    vis.setupTree(param, tree)
+tree = readTree(conf)
 
 
-# read descriptions
-if "desc" in param:
-    util.tic("read descriptions")
-    for filename in param["desc"]:
-        util.log("reading '%s'..." % filename)
-        vis.desc.update(genomeio.readGeneDesc(filename))
-    util.log("loaded %d desciptions" % len(vis.desc))
-    util.toc()
+# init visualization
+if "newick" in conf:
+    filename = conf["newick"]
+elif "ptree" in conf:
+    filename = conf["ptree"]
+vis = VisTree(conf, tree, name=filename, xscale=conf["usedist"], 
+                      showLabels=not conf["noshowlabels"],
+                      vertical=conf["vertical"])
+
+find = vis.find
+mark = vis.mark
+flag = vis.flag
+clearmarks = vis.clearMarks
+
+
+if "reroot" in conf:
+    if conf["reroot"].isdigit():
+        conf["reroot"] = int(conf["reroot"])
+    tree = treelib.reroot(tree, conf["reroot"])
+    vis.setupTree(conf, tree)
+
+
 
 # read orthologs
-if "orths" in param:
+if "orths" in conf:
     util.tic("read orthologs")
-    for filename in param["orths"]:
+    for filename in conf["orths"]:
         util.log("reading '%s'..." % filename)
         vis.orths.extend(util.readDelim(filename))
     util.log("loaded %d orthologs" % len(vis.orths))
     util.toc()
 
-if "orthcomps" in param:
+if "orthcomps" in conf:
     util.tic("read ortholog components")
-    for filename in param["orthcomps"]:
+    for filename in conf["orthcomps"]:
         util.log("reading '%s'..." % filename)
         vis.orthcomps.extend(util.readDelim(filename))
     for comp in vis.orthcomps:
@@ -182,45 +227,30 @@ if "orthcomps" in param:
     util.toc()
 
 # read sequence
-if "fasta" in param:
+if "fasta" in conf:
     util.tic("read sequence")
-    for filename in param["fasta"]:
+    for filename in conf["fasta"]:
         util.tic("read '%s'" % filename)
         vis.seqs.update(fasta.readFasta(filename))
         util.toc()
     util.log("loaded %d sequences" % len(vis.seqs))
     util.toc()
 
-if "winsize" in param:
-    w, h = map(int, param["winsize"][-1].split("x"))
-    set_window_size(w, h)
+if "winsize" in conf:
+    w, h = map(int, conf["winsize"].split("x"))
+    vis.win.set_window_size(w, h)
 
 
 
 # draw
-vis.display(param, tree)
-home()
+vis.show()
 
-if "visual" in param:
-    import summonlib
-    x1, y1, x2, y2 = get_visible()
+
+if "visual" in conf:
+    x1, y1, x2, y2 = vis.win.get_visible()
     margin = (x2-x1) * .1
-    set_visible(x1-margin, y1-margin, x2+margin, y2+margin)
-    from summonlib import svg
-    svg.printScreen(param["visual"][-1])
+    vis.win.set_visible(x1-margin, y1-margin, x2+margin, y2+margin)
+    svg.printScreen(vis.win, conf["visual"])
     sys.exit(0)
     
-
-
-# add key bindings
-def press(mode):
-    def func():
-        print "mode is '"+ mode + "'"
-        vis.clickMode = mode
-    return func
-
-set_binding(input_key("a"), press("align"))
-set_binding(input_key("d"), press("desc"))
-set_binding(input_key("g"), press("gene"))
-set_binding(input_key("r"), press("refine"))
 

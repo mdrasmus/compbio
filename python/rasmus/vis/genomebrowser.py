@@ -9,6 +9,9 @@ from rasmus import gff, fasta, util, stats, regionlib, alignlib, seqlib
 from rasmus.regionlib import Region
 
 
+
+
+
 class Browser (visual.VisObject):
     """Base class for containing and managing multiple graphical elements"""
     
@@ -777,6 +780,72 @@ def showAlign(* alns):
     
     return browser
     
+
+
+#=============================================================================
+# sequence coloring
+#
+
+
+def prop2color(prop, t=0):
+    return {    
+    "hydrophobic":          color(1, t, t),
+    "weakly hydrophobic":   color(1, .5, t),
+    "charged":              color(1, 1, t),
+    "polar":                color(t, t, 1),
+    "turn":                 color(t, 1, t),
+    "met":                  color(t, 1, t),
+    "stop":                 color(t, t, .2),
+    }[prop]
+
+
+def make_pep_colors(prop2color=prop2color):
+    pep_colors = util.Dict(default=color(.5, .5, .5))
+
+    AA = 'ARNDCEQGHILKMFPSTWYVU*'
+    pep_per_prop = util.histDict(util.mget(seqlib.AA_PROPERTY, AA))
+
+    prop_counts = util.Dict(default=0)
+    for char in AA:
+        prop = seqlib.AA_PROPERTY[char]
+        tint = prop_counts[prop] / float(pep_per_prop[prop])
+        pep_colors[char] = prop2color(prop, tint * .5)
+        prop_counts[prop] += 1
+    
+    return pep_colors
+
+
+dna_colors = util.Dict({"A": color(1, .5, .5),
+                        "T": color(1, 1, .5),
+                        "C": color(.5, 1, .5),
+                        "G": color(.5, .5, 1)},
+                       default=color(.5, .5, .5))
+
+pep_colors = make_pep_colors(prop2color=prop2color)
+
+
+def guessSeq(seq):
+    """Guesses whether a sequence is 'dna' or 'pep'"""
+    dna = "ACTG-N"
+    
+    chars = util.unique(seq.upper())
+    
+    for char in chars:
+        if char not in dna:
+            return "pep"
+    return "dna"
+
+
+def guessAlign(aln):
+    """Guesses whether an alignment is 'dna' or 'pep'"""
+    
+    if "pep" in [guessSeq(seq) for seq in aln.itervalues()]:
+        return "pep"
+    else:
+        return "dna"
+
+              
+
 
 
 """

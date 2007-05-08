@@ -743,6 +743,14 @@ class Matching:
             self.addGene(geneName, genomeName, region.seqname, 
                          region.start, region.end, region.strand)
     
+    def addRegions(self, regions, gene2species):
+        for region in regions:
+            if "ID" in region.data:
+                geneName = region.data["ID"]
+                genomeName = gene2species(geneName)
+                self.addGene(geneName, genomeName, region.seqname, 
+                             region.start, region.end, region.strand)
+    
     
     def readCoordFile(self, filename, gene2species):
         infile = util.openStream(filename)

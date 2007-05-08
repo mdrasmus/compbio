@@ -23,10 +23,11 @@ from rasmus.vis.treevis import showTree
 from rasmus import env, svg, tablelib, treelib
 from rasmus.tablelib import Table, readTable
 from rasmus.treelib import *
+import genomeio
 
 # bio tools
 from rasmus.bio.fasta import *
-from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, genomeio, blast, alignlib
+from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, alignlib
 from rasmus.bio import gff
 
 

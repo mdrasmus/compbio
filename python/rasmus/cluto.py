@@ -220,32 +220,41 @@ def partids2perm(partids):
 # testing code
 #
 if __name__ == "__main__":
+    from rasmus.common import *
     import random
+    import summon
+    from summon import matrix as summatrix
     
     mat = []
+    nclusters = 3
+    nrows = 100
+    ncols = 30
+    clustersize = ncols // nclusters
 
-    cluster1 = [1,2,3,4,5, 4,3,2,1,0]
-    cluster2 = [5,4,3,2,1, 2,3,4,5,6]
+    # make data for cluster
+    for i in xrange(nrows):
+        k = i % nclusters
+        
+        cluster1 = []
+        for j in xrange(ncols):
+            if j // clustersize == k:
+                cluster1.append(2)
+            else:
+                cluster1.append(0)
 
-    # make cluster 1
-    for i in range(10):
         mat.append([])
 
-        for j in range(10):
+        for j in xrange(ncols):
             mat[-1].append(random.normalvariate(cluster1[j], 1))
 
-    # make cluster 2
-    for i in range(10):
-        mat.append([])
-
-        for j in range(10):
-            mat[-1].append(random.normalvariate(cluster2[j], 1))
 
     # randomize matrix
     random.shuffle(mat)
     
     # display shuffled matrix
-    heatmap(mat)
+    #heatmap(mat)
+    viewer1 = summatrix.DenseMatrixViewer(mat)
+    viewer1.show()
 
     #########################
     # cluster by vcluster
@@ -256,9 +265,10 @@ if __name__ == "__main__":
     mat2 = mget(mat, perm)
 
     # display clustered matrix
-    heatmap(mat2)
+    viewer2 = summatrix.DenseMatrixViewer(mat2)
+    viewer2.show()
 
-
+if 0:    
     #########################
     # cluster by scluster
     import stats, matrix
@@ -271,10 +281,12 @@ if __name__ == "__main__":
     simmat2 = matrix.submatrix(simmat, perm, perm)
 
     # display similarity matrix
-    heatmap(simmat)
+    viewer3 = summatrix.DenseMatrixViewer(simmat, cuttoff=.4)
+    viewer3.show()
 
     # display clustered similarity matrix
-    heatmap(simmat2)
+    viewer4 = summatrix.DenseMatrixViewer(simmat2, cuttoff=.4)
+    viewer4.show()
 
 
 

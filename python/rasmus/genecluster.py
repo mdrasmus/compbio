@@ -9,16 +9,18 @@ import os
 import sys
 import shutil
 import time
+from itertools import izip
 
 from rasmus import algorithms
-from rasmus import blast
 from rasmus import graph
 from rasmus import matrix
 from rasmus import util
 from rasmus import regionlib
 from rasmus import tablelib
 from rasmus.cluster import *
-from itertools import izip
+
+from rasmus.bio import blast
+
 
 
 ####################################

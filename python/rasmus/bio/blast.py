@@ -298,7 +298,31 @@ def flipHit(hit):
 
 
 
-
+def iterBestHitPerTarget(reader, scorefunc=bitscore):
+    """Filters blast hits such that only the best hit between a query and a 
+       target is kept.
+       
+       reader    -- BlastReader
+       out       -- file stream
+       scorefunc -- function of 1 argument that accepts a hit and returns a
+                    score.  "best" score is considered max score.
+    """
+    lasthit = None
+    last = []
+    topscore = 0
+    
+    for line in reader:
+        hit = (query(line), subject(line))
+        if hit != lasthit and len(last) != 0:
+            yield last
+            last = line
+            topscore = scorefunc(line)
+        else:
+             score = scorefunc(line)
+             if score > topscore:
+                topscore = score
+                last = line
+        lasthit = hit
 
 def filterBestHitPerTarget(reader, out, scorefunc=bitscore):
     """Filters blast hits such that only the best hit between a query and a 

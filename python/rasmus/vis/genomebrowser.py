@@ -5,8 +5,9 @@ import copy
 from summon.core import *
 import summon
 from rasmus.vis import visual
-from rasmus import gff, fasta, util, stats, regionlib, alignlib, seqlib
+from rasmus import util, stats, regionlib
 from rasmus.regionlib import Region
+from rasmus.bio import gff, fasta, alignlib, seqlib
 
 
 
@@ -22,13 +23,17 @@ class Browser (visual.VisObject):
         
     
     def addTrack(self, track):
+        track.browser = self
         self._tracks.append(track)
     
     
     def removeTrack(self, elm):
+        track.browser = None
         self._tracks.remove(track)
     
     def clearTracks(self):
+        for track in self._tracks:
+            track.browser = None
         self._tracks = []
     
     
@@ -48,6 +53,7 @@ class Track (visual.VisObject):
         self.size = size
         self.pos = pos[:]
         self.view = copy.copy(view)
+        self.browser = None
     
     
     def setPos(self, x, y):
@@ -72,6 +78,10 @@ class Track (visual.VisObject):
     def draw(self):
         return group()
     
+    def get_window(self):
+        
+        # get window from browser
+        return self.browser.get_window()
 
 
 
@@ -126,7 +136,7 @@ class GenomeStackBrowser (Browser):
         
         
         # setup window
-        w, h = self.win.get_window_size()
+        w, h = self.win.get_size()
         self.win.set_visible(0, y, maxend, top)
         self.win.focus(w/2, h/2)
         self.win.zoom(1, maxend / (5.0 * (top - y)))
@@ -142,7 +152,7 @@ class GenomeStackBrowser (Browser):
         
         self.win = summon.Window()
         self.win.activate()
-        self.win.set_window_size(width, height) 
+        self.win.set_size(width, height) 
         self.redraw(species=species, chrom=chrom, start=start, end=end)
         
 
@@ -152,7 +162,7 @@ class GenomeOverview (Browser):
     """Get an overview of region distribution across the genome"""
 
     def __init__(self, chroms=None):
-        visual.VisObject.__init__(self)
+        Browser.__init__(self)
         self.win = None
         
         if chroms == None:
@@ -235,7 +245,7 @@ class GenomeOverview (Browser):
         # setup window
         print maxchrom / abs(float(y+step))
         
-        w, h = self.win.get_window_size()
+        w, h = self.win.get_size()
         self.win.set_visible(0, -step, maxchrom, y+step)
         self.win.focus(w/2, h/2)
         self.win.zoom(1, maxchrom / abs(float(y+step)))
@@ -298,16 +308,15 @@ class RulerTrack (Track):
         assert self.view != None, "Track view not initialized"
     
         # change start from 1's based to 0's based
-        ruler_g = group()
-        
-        self.ruler = visual.Ruler(get_group_id(ruler_g), 
+        self.ruler = visual.Ruler(self.get_window(), 
                                   self.view.start-1, self.view.end, 
                                   height=self.top, 
                                   bottom=self.bottom,
                                   minicolor=self.minicolor,
                                   maincolor=self.maincolor,
                                   pos=self.pos)
-        return group(ruler_g)
+        
+        return group(self.ruler.draw())
     
     
     def update(self):
@@ -315,7 +324,6 @@ class RulerTrack (Track):
         # let ruler know the start and end
         self.ruler.start = self.view.start - 1
         self.ruler.end = self.view.end
-        
         self.ruler.update()
 
 
@@ -332,7 +340,7 @@ class SeqTrack (Track):
     
     def draw(self):
         self.shown = False
-        self.multiscale.init()
+        self.multiscale.init(self.get_window())
         
         # return placeholder group
         grp = group()
@@ -343,7 +351,9 @@ class SeqTrack (Track):
     def update(self):
         assert self.view != None, "Track view not initialized"
         
-        view = get_visible()
+        win = self.get_window()
+        
+        view = win.get_visible()
         x, y = self.pos
         
         if self.multiscale.atleast(4, .1, view=view):
@@ -359,7 +369,7 @@ class SeqTrack (Track):
                 # convert from inclusive to exclusive
                 end = len(seq) + start - 1
                 
-                self.gid = replace_group(self.gid, 
+                self.gid = win.replace_group(self.gid, 
                     group(translate(x, y,
                         color(0,0,0),
                         scale(1, self.size[1], 
@@ -369,7 +379,7 @@ class SeqTrack (Track):
             
         elif self.shown:
             self.shown = False
-            self.gid = replace_group(self.gid, group())
+            self.gid = win.replace_group(self.gid, group())
 
 
 class CurveTrack (Track):
@@ -384,7 +394,7 @@ class CurveTrack (Track):
         
     
     def draw(self):
-        self.multiscale.init()
+        self.multiscale.init(self.get_window())
         self.shown = False
         
         # return placeholder group
@@ -395,6 +405,8 @@ class CurveTrack (Track):
     
     def update(self):
         assert self.view != None, "Track view not initialized"
+        
+        win = self.get_window()
     
         if not self.shown or not self.multiscale.sameScale():
             self.shown = True
@@ -421,7 +433,7 @@ class CurveTrack (Track):
                 vis2.extend([self.xdata[i], y1 * self.size[1]])
 
             # draw curve on middle of base (.5)
-            self.gid = replace_group(self.gid, 
+            self.gid = win.replace_group(self.gid, 
                 group(translate(x - self.view.start + .5, y,
                       color(0,1,0), 
                       line_strip(* vis),
@@ -549,7 +561,7 @@ class AlignTrack (Track):
         
     def draw(self):
         self.textShown = False
-        self.multiscale.init()
+        self.multiscale.init(self.get_window())
     
         BASE    = 0
         GAP     = 1
@@ -628,7 +640,8 @@ class AlignTrack (Track):
     
     
     def update(self):
-        view = get_visible()
+        win = self.get_window()
+        view = win.get_visible()
         x, y = self.pos
         
         colorBases = self.colorBases
@@ -666,12 +679,12 @@ class AlignTrack (Track):
                                           end2, -i-1, 
                                           "left", "bottom"))
                 
-                self.textGid = replace_group(self.textGid, 
+                self.textGid = win.replace_group(self.textGid, 
                     group(group(*vis2), color(0,0,0), * vis))
             
         elif self.textShown:
             self.textShown = False
-            self.textGid = replace_group(self.textGid, group())
+            self.textGid = win.replace_group(self.textGid, group())
 
 
     def onClickCallback(self):
@@ -718,50 +731,13 @@ class TrackOverlay (Track):
 
 
 def showAlign(* alns):
-    prop2color = {
-        "hydrophobic":          color(1,.5, .2, ),
-        "weakly hydrophobic":   color(1,.5,.5, ),
-        "charged":              color(1, 1, .2, ),
-        "polar":                color(.2, .2, 1, ),
-        "turn":                 color(.2, 1, .2, ),
-        "met":                  color(.2, 1, .2, ),
-        "stop":                 color(0, 0, .2, ),
-    }
-
-    dna = util.Dict({"A": color(1, .5, .5),
-                     "T": color(1, 1, .5),
-                     "C": color(.5, 1, .5),
-                     "G": color(.5, .5, 1)},
-                    default=color(.5, .5, .5))
-    pep = util.Dict(default=color(.5, .5, .5))
-
-    for char in 'ARNDCEQGHILKMFPSTWYVU*':
-        pep[char] = prop2color[seqlib.AA_PROPERTY[char]]
-
-
-    def guessSeq(seq):
-        dna = "ACTG-N"
-
-        chars = util.unique(seq.upper())
-
-        for char in chars:
-            if char not in dna:
-                return "pep"
-        return "dna"
-
-
-    def guessAlign(aln):
-        if "pep" in [guessSeq(seq) for seq in aln.itervalues()]:
-            return "pep"
-        else:
-            return "dna"
-
-
+    """Quick way to visualize an alignment"""
+    
     def colorAlign(aln):
         if guessAlign(aln) == "pep":
-            return pep
+            return pep_colors
         else:
-            return dna
+            return dna_colors
     
     view = Region("", "", "", 1, 1)
     colors = []
@@ -844,167 +820,4 @@ def guessAlign(aln):
     else:
         return "dna"
 
-              
 
-
-
-"""
-
-# old
-class RegionTrack_old (Track):
-    def __init__(self, regions, col=color(0,0,1,.5), **options):
-        Track.__init__(self, **options)
-        
-        self.regions = regions
-        self.color = col
-        
-    
-    def show(self, species, chrom, start, end):
-        height = self.height
-        regions = filter(lambda x: x.seqname == chrom and 
-                                   x.species == species, self.regions)
-        
-        vis = []
-        names = []
-        for reg in regions:
-            if util.overlap(start, end, reg.start, reg.end):
-                if reg.strand == 1:
-                    vis.extend([reg.start, height/2.0,
-                                reg.end+1, height/2.0,
-                                reg.end+1, height,
-                                reg.start, height])
-                    names.append(text_clip(reg.data['ID'], 
-                                           reg.start, height/2.0,
-                                           reg.end+1, height,
-                                           6, 6))
-                else:
-                    vis.extend([reg.start, 0,
-                                reg.end+1, 0,
-                                reg.end+1, height/2.0,
-                                reg.start, height/2.0])
-                    names.append(text_clip(reg.data['ID'], 
-                                           reg.start, 0,
-                                           reg.end+1, height/2.0,
-                                           6, 6))
-                
-        
-        return group(self.color, quads(* vis), color(0,0,0), *names)
-
-
-
-class SeqTrack_old (Track):
-    def __init__(self, seqs, **options):
-        Track.__init__(self, **options)
-        
-        self.seqs = seqs
-        self.shown = False
-        self.multiscale = visual.Multiscale(marginx=.5, marginy=.5)
-
-        self.species = ""
-        self.chrom = ""
-        self.start = 0
-        self.end = 0
-    
-    
-    def setView(self, species, chrom, start, end):
-        Track.setView(self, species, chrom, start, end)
-    
-    
-    def show(self, species, chrom, start, end):
-        self.shown = False
-        self.multiscale.init()
-        
-        # return placeholder group
-        grp = group()
-        self.gid = get_group_id(grp)        
-        return grp
-    
-    
-    def update(self):
-        view = get_visible()
-        
-        if self.multiscale.atleast(4, .1, view=view):
-            if not self.shown or \
-               not self.multiscale.sameScale(view):
-                self.shown = True
-                start = max(int(self.multiscale.worldx1), self.start)
-                end = min(int(self.multiscale.worldx2), self.end)
-                seq = self.seqs.getseq(self.chrom, start, end)
-                
-                # convert from inclusive to exclusive
-                end = len(seq) + start - 1
-                
-                self.gid = replace_group(self.gid, 
-                    group(color(0,0,0),
-                    scale(1, self.height, 
-                    text_scale(seq, start, 0, end+1, 2, "left", "bottom"))))
-            
-        elif self.shown:
-            self.shown = False
-            self.gid = replace_group(self.gid, group())
-
-
-
-
-class CurveTrack_old (Track):
-    def __init__(self, xdata, ydata, **options):
-        Track.__init__(self, **options)
-        
-        self.xdata = xdata
-        self.ydata = ydata
-        self.multiscale = visual.Multiscale(marginx=.25, marginy=.25, 
-                                            scalex=4.0, scaley=4.0)
-        self.shown = False
-        
-
-
-    def show(self, species, chrom, start, end):
-        self.multiscale.init()
-        self.shown = False
-        
-        self.species = species
-        self.chrom = chrom
-        self.start = start
-        self.end = end
-        
-        # return placeholder group
-        grp = group()
-        self.gid = get_group_id(grp)        
-        return grp
-            
-    
-    def update(self):
-        if not self.shown or not self.multiscale.sameScale():
-            self.shown = True
-            
-            start = int(max(0, self.start, self.multiscale.worldx1))
-            end = int(min(len(self.xdata), self.end, self.multiscale.worldx2))
-            step = max(1, (end - start) // 400)
-            
-            vis = []
-            vis2 = []
-            for i in xrange(start, end, step):
-                dat = self.ydata[i:i+step]
-
-                assert len(dat) > 0, (start, end, step)
-
-                y1 = min(dat)
-                y2 = max(dat)
-                #y = self.ydata[i]
-                y1 = (util.clamp(y1, .33, .66) - .33) / .33
-                y2 = (util.clamp(y2, .33, .66) - .33) / .33                
-                vis.extend([self.xdata[i], y2 * self.height])
-                vis2.extend([self.xdata[i], y1 * self.height])
-
-            self.gid = replace_group(self.gid, 
-                group(color(0,1,0), 
-                      line_strip(* vis),
-                      line_strip(* vis2),
-                      color(0,0,0),
-                      lines(self.start, 0, self.end, 0,
-                            self.start, self.height, self.end, self.height)))
-
-
-
-
-"""

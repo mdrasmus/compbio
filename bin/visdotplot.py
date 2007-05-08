@@ -1,10 +1,11 @@
-#!/usr/bin/env summon
+#!/usr/bin/python -i
 
 # python libs
 import os, sys
 
 # rasmus libs
-from rasmus import util, env, genomeio, genomeutil, clustalw, fasta
+from rasmus import util, env
+from rasmus.bio import genomeio, genomeutil, clustalw, fasta, gff
 from rasmus.genomeutil import *
 
 # graphics libs
@@ -13,7 +14,9 @@ from rasmus.vis import dotplot
 
 
 options = [
-    ["g:", "genomes=", "genomes", "<genome1>,<genome2>,..."],
+    ["G:", "genomes=", "genomes", "<genome1>,<genome2>",
+        {"single": True}],
+    ["g:", "gff=", "gff", "<gff file>"],
     ["c:", "comps=", "comps", "<ortholog components file>"],
     ["s:", "synteny=", "synteny", "<synteny file>"],
     ["q", "sequence", "sequence", "", 
@@ -24,7 +27,7 @@ options = [
          "single": True}]
 ]
 
-param = util.parseOptions(sys.argv[1:], options, quit=True)
+conf = util.parseOptions(sys.argv, options, quit=True)
 
 
 # globals
@@ -34,68 +37,65 @@ param = util.parseOptions(sys.argv[1:], options, quit=True)
 # conf - visualization configuration
 #
 
-def main(param):
-    env.addPaths(param["paths"])
-    env.addEnvPaths("DATAPATH")
+
+env.addPaths(conf["paths"])
+env.addEnvPaths("DATAPATH")
 
 
 
-    # execute
-    util.tic("read")
+# execute
+util.tic("read")
 
-    # get species map
-    if "speciesmap" in param:
-        gene2species = readGene2species(* map(env.findFile, param["speciesmap"]))
-    else:
-        gene2species = genomeutil.gene2species
+# get species map
+if "speciesmap" in conf:
+    gene2species = readGene2species(* map(env.findFile, conf["speciesmap"]))
+else:
+    gene2species = genomeutil.gene2species
 
-    # read genomes
-    m = Matching()
-    genomes = param["genomes"][-1].split(",")
-    globals()["m"] = m
-    genomeio.readGenomes(m, genomes, gene2species)
-    
-    
-    util.tic("read syntenic orthologs")
-    for orth in param["comps"]:
-        genomeio.readSimpleMatches(m, env.findFile(orth))
-    util.toc()
-
-    util.tic("read synteny blocks")
-    for block in param["synteny"]:
-        genomeio.readBlockDimensions(m, env.findFile(block), True)
-    util.toc()
-        
-    util.tic("read sequences")    
-    seqs = fasta.FastaDict()
-    globals()["seqs"] = seqs
-    if "sequence" in param:
-        for genome in genomes:
-            try:
-                seqfile = env.findFile("%s.fasta" % genome)
-                util.tic("reading '%s'" % seqfile)
-                seqs.read(seqfile)
-                util.toc()
-            except: pass
-    util.toc()
-    
-    util.toc()
-    
-    
-    
-    # draw dotplot
-    util.tic("drawing")
-    set_bgcolor(1,1,1)
-    conf = dotplot.initConf()
-    vis = dotplot.Dotplot()
-    globals()["vis"] = vis
-    globals()["conf"] = conf
-    vis.setSeqs(seqs)
-    add_group(vis.draw(conf, m, genomes))
-    home()
-    util.toc()
+# read genomes
+m = Matching()
+genomes = conf["genomes"].split(",")
+for gffFile in conf["gff"]:
+    util.tic("read '%s'" % gffFile)
+    regions = gff.readGff(gffFile, format=gff.GFF3)
+    m.addRegions(regions, gene2species)
+m.autoconf(genomes)
 
 
+
+util.tic("read syntenic orthologs")
+for orth in conf["comps"]:
+    genomeio.readSimpleMatches(m, env.findFile(orth))
+util.toc()
+
+util.tic("read synteny blocks")
+for block in conf["synteny"]:
+    genomeio.readBlockDimensions(m, env.findFile(block), True)
+util.toc()
+
+util.tic("read sequences")    
+seqs = fasta.FastaDict()
+if "sequence" in conf:
+    for genome in genomes:
+        try:
+            seqfile = env.findFile("%s.fasta" % genome)
+            util.tic("reading '%s'" % seqfile)
+            seqs.read(seqfile)
+            util.toc()
+        except: pass
+util.toc()
+
+util.toc()
+
+
+
+# draw dotplot
+util.tic("drawing")
+conf = dotplot.initConf()
+vis = dotplot.Dotplot(conf, m, genomes)
+vis.setSeqs(seqs)
+vis.show()
+util.toc()
 
 
 
@@ -120,7 +120,3 @@ def align(* names):
     aln = clustalw.clustalw(seqs)
     clustalw.printAlign(aln)
 
-
-
-main(param)
-    

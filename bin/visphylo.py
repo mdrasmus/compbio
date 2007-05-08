@@ -20,8 +20,7 @@ options = [
         {"single": True}],
     ["t:", "tree=", "tree", "<newick file>",
         {"single": True}],
-    ["d:", "distmat=", "distmat", "<phylip distance matrix>",
-        {"single": True}],
+    ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
     ["M:", "maxdist=", "maxdist", "<maximum distance>",
         {"single": True,
          "parser": float}]
@@ -75,20 +74,30 @@ if "align" in conf:
 
 # read distance matrix
 if "distmat" in conf:
-    util.tic("reading matrix")
-    label, distmat = phylip.readDistMatrix(conf["distmat"])
-    util.toc()
-
+    mats = []
+    
+    currentMatrix = 0
+    
+    # read in multiple matrices
+    for matfile in conf["distmat"]:
+        util.tic("reading matrix '%s'" % matfile)
+        label, mat = phylip.readDistMatrix(matfile)
+        util.toc()
+        
+        mats.append(mat)
+    distmat = mats[0]
+        
     if "align" in conf:
         label = original_order
-    
+
     if "tree" in conf:
         lookup = util.list2lookup(label)
         rperm = util.mget(lookup, leaves)
         cperm = util.mget(lookup, leaves)
     else:
-        rperm = None
-        cperm = None
+        rperm = []
+        cperm = []
+
 
     if "maxdist" in conf:
         colormap = util.rainbowColorMap(low=0, high=conf["maxdist"])
@@ -105,13 +114,41 @@ if "distmat" in conf:
                                 cutoff=-util.INF,
                                 rperm=rperm, cperm=cperm)
     visdist.show()
+    visdist.win.set_name(conf["distmat"][0])
     visdist.win.set_bgcolor(1, 1, 1)    
     visdist.win.set_size(300, 500)
-    visdist.win.set_position(0, 0)    
+    visdist.win.set_position(0, 0)
+        
     
     windows.append(visdist.win)
     coords.append(0)
-
+    
+    
+    # allow easy switching between matrices
+    def nextMatrix():
+        global currentMatrix
+        currentMatrix = (currentMatrix + 1) % len(mats)
+        visdist.setMatrix(mats[currentMatrix], colormap=colormap, 
+                          rlabels=label, clabels=label, 
+                          cutoff=-util.INF,
+                          rperm=rperm, cperm=cperm)
+        visdist.win.set_name(conf["distmat"][currentMatrix])
+        visdist.redraw()
+    
+    def prevMatrix():
+        global currentMatrix
+        currentMatrix = (currentMatrix - 1) % len(mats)
+        visdist.setMatrix(mats[currentMatrix], colormap=colormap, 
+                          rlabels=label, clabels=label, 
+                          cutoff=-util.INF,
+                          rperm=rperm, cperm=cperm)
+        visdist.win.set_name(conf["distmat"][currentMatrix])
+        visdist.redraw()
+    
+    
+    visdist.win.set_binding(input_key("n"), nextMatrix)
+    visdist.win.set_binding(input_key("p"), prevMatrix)    
+    
 
 # show alignment
 if "align" in conf:
@@ -119,6 +156,7 @@ if "align" in conf:
     visalign.addTrack(RulerTrack(bottom=-height))
     visalign.addTrack(AlignTrack(aln, colorBases=colors))
     visalign.show()
+    visalign.win.set_name(conf["align"])
     visalign.win.set_size(580, 500)
     visalign.win.set_position(0, 0)    
 

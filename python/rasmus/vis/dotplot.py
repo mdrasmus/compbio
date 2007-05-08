@@ -2,14 +2,16 @@
 import math
 
 # summon libs
-from summon import *
-from summonlib import shapes
+from summon.core import *
+#from summon.simple import *
+import summon
+from summon import shapes
 
 # rasmus libs
 from rasmus import algorithms
-from rasmus import clustalw
-from rasmus import fasta
 from rasmus import util
+from rasmus.bio import clustalw
+from rasmus.bio import fasta
 
 
 
@@ -43,24 +45,26 @@ def displayBindings():
     print "c               toggle chrom divisions"
 
 
-class Dotplot:
+class Dotplot (summon.VisObject):
     """A dot plot visualization implemented for SUMMON"""
 
-    def __init__(self):
-        self.conf = None
-        self.matching = None
+    def __init__(self, conf=None, matching=None, genomes=None):
+        self.win = None
+        
+        self.genomes = genomes
         self.genomeOrder = []
         self.geneRegionsId = -1
         self.mode = "gene"
         self.showchrom = True
         self.seqs = fasta.FastaDict()
         
+        self.initMatching(conf, matching, genomes)
     
     def initMatching(self, conf, matching, genomes=None):
         self.conf = conf
         self.matching = matching
         self.matching.autoconf(genomes)
-        self.matching.genomeOrder = util.sublist(self.matching.genomes,
+        self.matching.genomeOrder = util.mget(self.matching.genomes,
                                                  genomes)
         
         # determine positioning and size
@@ -71,7 +75,7 @@ class Dotplot:
         
             # determine chrom order and position
             pos2 = 0
-            genome.chromOrder = util.sublist(genome.chroms,
+            genome.chromOrder = util.mget(genome.chroms,
                                              genome.getChromOrder())
             for chrom in genome.chromOrder:
                 chrom.position = pos2
@@ -81,23 +85,24 @@ class Dotplot:
         self.plotSize = self.getPlotSize()
 
     
+    def show(self):
+        self.win = summon.Window("dotplot")
+        self.win.set_bgcolor(1, 1, 1)
+        self.win.add_group(self.draw(self.conf, self.matching, self.genomes))
+        self.win.home()
+    
+    
     def setSeqs(self, seqs):
         self.seqs = seqs
             
     
     def installBindings(self):
-        # clear bindings first
-        clear_binding(input_key("r"))
-        clear_binding(input_key("r", "alt"))
-        clear_binding(input_key("c"))
-        clear_binding(input_key("a"))
-        
         # set bindings
-        set_binding(input_key("g"), self.setModeFunc("gene"))        
-        set_binding(input_key("a"), self.setModeFunc("align"))
-        set_binding(input_key("r"), self.showGeneRegions)
-        set_binding(input_key("r", "alt"), self.hideGeneRegions)
-        set_binding(input_key("c"), self.toggleChrom)
+        self.win.set_binding(input_key("g"), self.setModeFunc("gene"))        
+        self.win.set_binding(input_key("a"), self.setModeFunc("align"))
+        self.win.set_binding(input_key("r"), self.showGeneRegions)
+        self.win.set_binding(input_key("r", "alt"), self.hideGeneRegions)
+        self.win.set_binding(input_key("c"), self.toggleChrom)
     
     
     def setModeFunc(self, mode):
@@ -110,19 +115,19 @@ class Dotplot:
     def showGeneRegions(self):
             # remove old regions
             if self.geneRegionsId != -1:
-                remove_group(self.geneRegionsId)
+                self.win.remove_group(self.geneRegionsId)
             
             # add new regions
             geneRegions = self.drawGeneRegions(self.conf, self.matching)
             self.geneRegionsId = get_group_id(geneRegions)
-            add_group(geneRegions)
+            self.win.add_group(geneRegions)
             del geneRegions
 
 
     def hideGeneRegions(self):
         # remove old regions
         if self.geneRegionsId != -1:
-            remove_group(self.geneRegionsId)
+            self.win.remove_group(self.geneRegionsId)
 
 
     def toggleChrom(self):
@@ -135,8 +140,8 @@ class Dotplot:
             self.conf['color-chrom-div'] = self.conf['color-chrom-div-old']
 
         util.tic("drawing")
-        clear_groups()
-        add_group(self.draw(self.conf, self.matching, self.genomeOrder))
+        self.win.clear_groups()
+        self.win.add_group(self.draw(self.conf, self.matching, self.genomeOrder))
         util.toc()
 
     
@@ -280,7 +285,7 @@ class Dotplot:
         allSize = conf["scale"] * self.plotSize
         
         # get current view
-        view = get_visible()
+        view = self.win.get_visible()
                 
         for genome in matching.genomes.itervalues():
             for chrom in genome.chroms.itervalues():
@@ -305,7 +310,7 @@ class Dotplot:
 
                         vis.extend(self.drawGeneRegion(conf, gene, geneColor, allSize))
         
-        return list2group(vis)
+        return group(*vis)
     
     
     def drawGeneRegion(self, conf, gene, geneColor, allSize = None):
@@ -335,7 +340,6 @@ class Dotplot:
     
     
     def draw(self, conf, matching, genomes=None):
-        self.initMatching(conf, matching, genomes)
         self.installBindings()
         
         return group(self.drawMatches(conf, matching),
@@ -349,7 +353,7 @@ class Dotplot:
     #
     
     def click(self):
-        pos = get_mouse_pos('world')
+        pos = self.win.get_mouse_pos('world')
         
         if self.mode == "gene":
             self.printGeneInfo(pos[0], pos[1])
@@ -416,7 +420,7 @@ class Dotplot:
         for name in names:
             gene = self.matching.genes[name]
             vis.extend(self.drawGeneRegion(self.conf, gene, markColor, allSize))
-        add_group(group(* vis))
+        self.win.add_group(group(* vis))
     
     
     def getGenomeFromPos(self, pos):
@@ -476,15 +480,15 @@ class Dotplot:
         pos2 = block.genome2.position + block.chrom2.position
         
         if block.genome1.order < block.genome2.order:
-            set_visible(self.conf['scale'] * (block.start1 + pos1),
-                        self.conf['scale'] * (block.start2 + pos2),
-                        self.conf['scale'] * (block.end1 + pos1),
-                        self.conf['scale'] * (block.end2 + pos2))
+            self.win.set_visible(self.conf['scale'] * (block.start1 + pos1),
+                                 self.conf['scale'] * (block.start2 + pos2),
+                                 self.conf['scale'] * (block.end1 + pos1),
+                                 self.conf['scale'] * (block.end2 + pos2))
         else:
-            set_visible(self.conf['scale'] * (block.start2 + pos2),
-                        self.conf['scale'] * (block.start1 + pos1),
-                        self.conf['scale'] * (block.end2 + pos2),
-                        self.conf['scale'] * (block.end1 + pos1))
+            self.win.set_visible(self.conf['scale'] * (block.start2 + pos2),
+                                 self.conf['scale'] * (block.start1 + pos1),
+                                 self.conf['scale'] * (block.end2 + pos2),
+                                 self.conf['scale'] * (block.end1 + pos1))
 
     def findChroms(self, genomeName1, chromName1, genomeName2, chromName2):
         pos1 = self.matching.genomes[genomeName1].position + \
@@ -496,15 +500,15 @@ class Dotplot:
         
         if self.matching.genomes[genomeName1].order < \
            self.matching.genomes[genomeName2].order:
-            set_visible(self.conf['scale'] * (pos1),
-                        self.conf['scale'] * (pos2),
-                        self.conf['scale'] * (pos1 + size1),
-                        self.conf['scale'] * (pos2 + size2))
+            self.win.set_visible(self.conf['scale'] * (pos1),
+                                 self.conf['scale'] * (pos2),
+                                 self.conf['scale'] * (pos1 + size1),
+                                 self.conf['scale'] * (pos2 + size2))
         else:
-            set_visible(self.conf['scale'] * (pos2),
-                        self.conf['scale'] * (pos1),
-                        self.conf['scale'] * (pos2 + size2),
-                        self.conf['scale'] * (pos1 + size1))
+            self.win.set_visible(self.conf['scale'] * (pos2),
+                                 self.conf['scale'] * (pos1),
+                                 self.conf['scale'] * (pos2 + size2),
+                                 self.conf['scale'] * (pos1 + size1))
 
         
         

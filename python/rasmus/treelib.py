@@ -16,11 +16,13 @@ import os
 import StringIO
 
 # rasmus libs
-from rasmus import textdraw
-from rasmus import util
+import util
 
 # newick parsing support
-import pyparsing
+try:
+    import pyparsing
+except:
+    pyparsing = None
 
 
 
@@ -437,6 +439,10 @@ class Tree:
     
     
     def readNewick(self, filename, readData=None):
+        # use simple parsing if pyparsing is not available
+        if pyparsing == None:
+            return self.readBigNewick(filename)
+        
         try:
 
             # default data reader
@@ -1218,6 +1224,12 @@ def removeOutgroup(tree, outgroup):
 #=========================================================================
 # Draw Tree ASCII art 
 #
+
+try:
+    from rasmus import textdraw
+except:
+    pass
+
 
 def drawTree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
              canvas=None, x=0, y=0, display=True, labelOffset=-1,

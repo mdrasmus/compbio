@@ -10,9 +10,6 @@ import math
 import os
 import sys
 
-# xml support
-#from xml.sax import make_parser
-#import xml.sax.handler
 
 # rasmus imports
 from rasmus import cluster
@@ -26,83 +23,9 @@ from rasmus.bio import fasta
 from rasmus.bio import phylip
 
 
+# I was thinking about moving these functions over here... not sure yet
+from rasmus.genomeutil import gene2species, makeGene2species, readGene2species
 
-from rasmus.genomeutil import gene2species
-
-
-
-#=============================================================================
-# gene2species mappings and countings
-#
-
-def gene2species(genename):
-    # default gene2species mapping
-    return ensembl.id2genome(genename)
-
-
-def makeGene2species(maps):
-    # find exact matches and expressions
-    exacts = {}
-    exps = []
-    for mapping in maps:
-        if "*" not in mapping[0]:
-            exacts[mapping[0]] = mapping[1]
-        else:
-            exps.append(mapping)
-    
-    # create mapping function
-    def gene2species(gene):
-        # eval expressions first in order of appearance
-        for exp, species in exps:
-            if exp[-1] == "*":
-                if gene.startswith(exp[:-1]):
-                    return species
-            elif exp[0] == "*":
-                if gene.endswith(exp[1:]):
-                    return species
-        raise Exception("Cannot map gene '%s' to any species" % gene)
-    return gene2species
-
-
-def readGene2species(* filenames):
-    """Read a gene name to species name mapping file"""
-
-    for filename in filenames:
-        if filename == "ENSEMBL":
-            smap = ensembl.id2genome
-        elif filename == "DEFAULT":
-            smap = gene2species
-        else:
-            maps = []
-            for filename in filenames:
-                maps.extend(util.readDelim(util.skipComments(
-                            util.openStream(filename))))
-            smap = makeGene2species(maps)
-    
-    return smap
-
-    
-def genomeComposition(genomes, comp, gene2species=gene2species):
-    counts = {}
-    for genome in genomes:
-        counts[genome] = 0
-    for gene in comp:
-        genome = gene2species(gene)
-        if genome in genomes:
-            counts[genome] += 1
-    return counts
-
-
-def componentCompositions(order, comps, gene2species=gene2species):
-    compositions = util.Dict(1, 0)
-    for comp in comps:
-        counts = genomeComposition(order, comp, gene2species)
-        key = []
-        for genome in order:
-            key.append(counts[genome])
-        compositions[tuple(key)] += 1
-    return compositions.data
-    
 
 
 #=============================================================================

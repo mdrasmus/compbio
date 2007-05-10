@@ -5,12 +5,14 @@
     
 """
 
+# python libs
 import os
 import sys
 import shutil
 import time
 from itertools import izip
 
+# rasmus libs
 from rasmus import algorithms
 from rasmus import graph
 from rasmus import matrix
@@ -43,19 +45,25 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
             if order:
                 gene1 = blast.query(hit)
                 gene2 = blast.subject(hit)
+                alnlen1 = blast.queryLength(hit)
+                alnlen2 = blast.subjectLength(hit)                
             else:
                 gene2 = blast.query(hit)
-                gene1 = blast.subject(hit)            
+                gene1 = blast.subject(hit)
+                alnlen2 = blast.queryLength(hit)
+                alnlen1 = blast.subjectLength(hit)                    
             score = blast.bitscore(hit)
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
+            coverage = min(alnlen1 / float(len1), 
+                           alnlen2 / float(len2))
             
             # discard a hit that does not pass basic cutoffs
             if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
                    conf["bitspersite"] or \
-               blast.alignLength(hit) / float(max(len1, len2)) < \
-                   conf["coverage"]:
+               coverage < conf["coverage"] or \
+               blast.evalue(hit) > conf["signif"]:
                 continue
             
             #if blast.evalue(hit) > conf["signif"]:
@@ -98,24 +106,31 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
             if order:
                 gene1 = blast.query(hit)
                 gene2 = blast.subject(hit)
+                alnlen1 = blast.queryLength(hit)
+                alnlen2 = blast.subjectLength(hit)                
             else:
                 gene2 = blast.query(hit)
-                gene1 = blast.subject(hit)            
+                gene1 = blast.subject(hit)
+                alnlen2 = blast.queryLength(hit)
+                alnlen1 = blast.subjectLength(hit)                    
             score = blast.bitscore(hit)
+            
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
+            coverage = min(alnlen1 / float(len1), 
+                           alnlen2 / float(len2))
             
             # discard a hit that does not pass basic cutoffs
             if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
                    conf["bitspersite"] or \
-               blast.alignLength(hit) / float(max(len1, len2)) < \
-                   conf["coverage"]:
+               coverage < conf["coverage"] or \
+               blast.evalue(hit) > conf["signif"]:
                 continue
+            
             
             #if blast.evalue(hit) > conf["signif"]:
             #    continue
-            
             
             
             part1 = (0, lookup1[gene1])
@@ -162,24 +177,27 @@ def mergeAvg(conf, genes, parts1, parts2, blastfiles, outblastfiles):
             if order:
                 gene1 = blast.query(hit)
                 gene2 = blast.subject(hit)
+                alnlen1 = blast.queryLength(hit)
+                alnlen2 = blast.subjectLength(hit)
             else:
                 gene2 = blast.query(hit)
-                gene1 = blast.subject(hit)            
+                gene1 = blast.subject(hit)
+                alnlen2 = blast.queryLength(hit)
+                alnlen1 = blast.subjectLength(hit)
             score = blast.bitscore(hit)
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
-            
+            coverage = min(alnlen1 / float(len1), 
+                           alnlen2 / float(len2))
             
             # discard a hit that does not pass basic cutoffs
             if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
                    conf["bitspersite"] or \
-               blast.alignLength(hit) / float(max(len1, len2)) < \
-                   conf["coverage"]:
+               coverage < conf["coverage"] or \
+               blast.evalue(hit) > conf["signif"]:
                 continue
             
-            #if blast.evalue(hit) > conf["signif"]:
-            #    continue
             
             if accept and \
                (gene1 not in accept or
@@ -222,17 +240,6 @@ def mergeAvg(conf, genes, parts1, parts2, blastfiles, outblastfiles):
                 geneout = blast.query(hit)
                 genein = blast.subject(hit)            
             score = blast.bitscore(hit)
-            
-            # discard a hit that does not pass basic cutoffs
-            if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
-                   conf["bitspersite"] or \
-               blast.alignLength(hit) / float(max(len1, len2)) < \
-                   conf["coverage"]:
-                continue            
-            
-            #if blast.evalue(hit) > conf["signif"]:
-            #    continue            
-            
             
             # create a key for a partition: (side, index)
             if genein in lookup1:

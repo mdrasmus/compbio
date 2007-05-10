@@ -21,6 +21,11 @@ from rasmus.bio import fasta
 from rasmus.bio import gff
 
 
+#
+# Wed May  9 21:25:13 EDT 2007
+# someday, I hope to delete all this code; its very DEPRECATED
+#
+
 
 
 #--------------------------------------------------------------------------------
@@ -62,12 +67,12 @@ def readOptions(conf):
 #
 # TODO: I am starting to move these to phylo since I use them more 
 # over there.  However, I will not necessarily always use gene2species for
-# phylo...
+# phylo... still thinking it over...
 #
 
 def gene2species(genename):
     # default gene2species mapping
-    return ensembl.id2genome(genename)
+    return genename
 
 
 def makeGene2species(maps):
@@ -113,7 +118,9 @@ def readGene2species(* filenames):
     
     return smap
 
-    
+
+# this does not need to be in a module
+"""
 def genomeComposition(genomes, comp, gene2species=gene2species):
     counts = {}
     for genome in genomes:
@@ -134,7 +141,7 @@ def componentCompositions(order, comps, gene2species=gene2species):
             key.append(counts[genome])
         compositions[tuple(key)] += 1
     return compositions.data
-
+"""
 
 
 
@@ -565,93 +572,6 @@ class SyntenyBlock:
         self.widths = None
         self.slope = None
         self.genes = None
-        
-    
-    """
-    def getSlope(self):
-        if self.slope != None:
-            return self.slope
-        genes = self.getGenes()
-        geneIter = GeneIter(self.chrom1.genes, self.start1, self.end1)
-        
-        last = None
-        xlist = []
-        ylist = []
-        
-        while geneIter.more():
-            gene = geneIter.get()
-            if not (gene in genes):
-                continue
-            for match in gene.matches:
-                other = match.otherGene(gene)
-                if not (other in genes):
-                    continue
-                xlist.append(gene.start)
-                ylist.append(other.start)
-        
-        xysum = 0
-        xxsum = 0
-        n = len(xlist)        
-        for i in range(n):
-            xysum += xlist[i] * ylist[i]
-            xxsum += xlist[i] * xlist[i]
-        avgx = stats.mean(xlist)
-        avgy = stats.mean(ylist)
-        
-        if (xxsum - n*avgx*avgx) == 0:
-            self.slope = 1e10
-        else:
-            self.slope = (xysum - n*avgx*avgy) / (xxsum - n*avgx*avgx)
-        return self.slope
-                    
-    def getLine(self):
-        xlist = []
-        ylist = []
-        
-        for match in self.matches:
-            if match.genes[0].chrom == self.chrom1:
-                xlist.append(match.genes[0].end)
-                ylist.append(match.genes[1].end)
-            else:
-                xlist.append(match.genes[1].end)
-                ylist.append(match.genes[0].end)
-        
-        if len(self.matches) == 1:
-            if match.genes[0].chrom == self.chrom1:
-                xlist.append(match.genes[0].start)
-                ylist.append(match.genes[1].start)
-            else:
-                xlist.append(match.genes[1].start)
-                ylist.append(match.genes[0].start)
-        
-        return stats.fitLine(xlist, ylist)
-    
-    def width(self):
-        dist = self.widthDist()
-        return (max(dist) - min(dist))
-    
-    def widthDist(self):
-        if self.widths != None:
-            return self.widths
-        if len(self.matches) == [0]:
-            return 0
-        
-        base = self.start2
-        self.widths = []
-        slope = self.getSlope()
-        
-        for match in self.matches:
-            height = match.genes[1].start - base
-            x = match.genes[0].start - slope * height
-            self.widths.append(x)
-            height = match.genes[1].end - base
-            x = match.genes[0].end - slope * height
-            self.widths.append(x)
-        
-        return self.widths
-    """
-                
-    
 
 
 
@@ -962,353 +882,6 @@ class Matching:
 
         return start2, end2, direction
         
-        
-    """
-    def readRawMatches(self, matches):
-        # read matches
-        for matchInfo in matches:
-            (genomeName1, genomeName2, matchFile) = matchInfo
-            infile = file(matchFile)
-            self.readRawStreamMatches(genomeName1, genomeName2, infile)
-
-    
-    def readRawStreamMatches(self, genomeName1, genomeName2, infile, cols=[0,1,2], minscore=0):
-        timer = util.globalTimer()
-        timer.start("reading matches for "+genomeName1+", "+genomeName2)
-    
-        genome1 = self.genomes[genomeName1]
-        genome2 = self.genomes[genomeName2]
-
-        for line in infile:
-            tokens = line.split()
-            geneName1 = tokens[cols[0]]
-            geneName2 = tokens[cols[1]]
-            score     = float(tokens[cols[2]])
-
-            # skip matches with unknown genes
-            if (geneName1 == geneName2) or \
-               (score < minscore) or \
-               (geneName1 not in genome1.genes) or \
-               (geneName2 not in genome2.genes):
-                continue
-
-            gene1 = genome1.genes[geneName1]
-            gene2 = genome2.genes[geneName2]
-            
-            self.addMatch(gene1, gene2, score)
-        timer.stop()
-    
-    def readSynteny(self, syntenyFile, cont = False):
-        synteny = util.readInts(syntenyFile)
-        
-        
-        # determine if this is a continue from a previous read or not
-        if not cont:
-            self.blocks = [None] * (max(synteny) + 1)
-            boffset = 0
-            self.blockReadOffset = 0
-        else:
-            # allocate more space
-            boffset = len(self.blocks)
-            self.blocks.extend([None] * (max(synteny) + 1))            
-        
-        # label genes with their synteny memberships
-        for i in range(len(synteny)):
-            blockid = synteny[i] + boffset
-            match = self.matches[i + self.blockReadOffset]
-            
-            if match.pruned:
-                continue # skip dups
-            
-            (gene1, gene2) = match.genes
-            
-            if blockid != -1:
-                genome1 = gene1.chrom.genome
-                genome2 = gene2.chrom.genome
-                
-                # make matching easier by standardizing genome order
-                if genome2.name < genome1.name:
-                    tmp = genome1; genome1 = genome2; genome2 = tmp
-                    tmp = gene1; gene1 = gene2; gene2 = tmp
-
-                # init a block if it is uninitialized
-                if self.blocks[blockid] == None:
-                    block = SyntenyBlock()
-                    block.blockid = blockid
-                    block.genome1 = genome1 
-                    block.chrom1  = gene1.chrom
-                    block.genome2 = genome2 
-                    block.chrom2  = gene2.chrom
-                    block.start1  = gene1.start
-                    block.end1    = gene1.end
-                    block.start2  = gene2.start
-                    block.end2    = gene2.end
-                    self.blocks[blockid] = block
-                else:
-                    block = self.blocks[blockid]
-                    block.start1 = min(block.start1, gene1.start)
-                    block.end1   = max(block.end1, gene1.end)
-                    block.start2 = min(block.start2, gene2.start)
-                    block.end2   = max(block.end2, gene2.end)
-                self.blocks[blockid].matches.append(match)
-                match.block = self.blocks[blockid]
-        
-        # increment block read offset in case more is read with a cont = True
-        self.blockReadOffset += len(synteny)
-
-
-    def readHomology(self, homologyFile, labelFile = None):
-        def list 2dict(lst):
-            d = {}
-            for item in lst:
-                d[item] = True
-            return d
-        
-        if labelFile != None:
-            self.labels = self.readLabels(labelFile)
-        
-        homologyids = util.readInts(homologyFile)
-        self.homology = [None] * (max(homologyids) + 1)
-
-        # init homology groups
-        for i in range(len(self.homology)):
-            self.homology[i] = HomologyGroup(i)
-        
-        # tell each gene which homology group they belong to
-        for i in range(len(self.labels)):
-            genome = self.genomes[self.labels[i][0]]
-            if self.labels[i][1] in genome.genes:
-                gene = genome.genes[self.labels[i][1]]
-                gene.homology = self.homology[homologyids[i]]
-                self.homology[homologyids[i]].genes.append(gene)    
-
-
-    def write(self, rootFile):
-        self.writeMatches(rootFile + ".smat", rootFile + ".label")
-        self.writeSynteny(rootFile + ".block")
-        self.writeHomology(rootFile + ".part")
-    
-    
-    def getGeneOrder(self):
-        def sortFunc(a,b):
-            cmp(a.start + a.chrom.position, b.start - b.chrom.position)
-        
-        labels = []
-                
-        for genome in self.genomes.values():
-            genes = genome.genes.values()
-            genes.sort(sortFunc)
-            for gene in genes:
-                labels.append(gene)
-        
-        return labels
-    
-    
-    def writeMatches(self, smatFilename, labelFilename):
-        labels = self.getGeneOrder()
-        labelsHash = {}
-        for i in range(len(labels)):
-            labelsHash[labels[i]] = i
-        
-        self.writeLabels(labelFilename)
-        
-        out = file(smatFilename, "w")
-        
-        # calculate number of non-zeros in matrix
-        nnz = 0
-        for match in self.matches:
-            if not match.pruned:
-                nnz += 1
-        
-        # print matrix size 
-        print >>out, len(labelsHash), len(labelsHash), nnz
-        
-        # print non-zeros
-        for match in self.matches:
-            if match.pruned:
-                continue
-                
-            print >>out, labelsHash[match.genes[0]], \
-                         labelsHash[match.genes[1]], \
-                         match.score
-        out.close()
-    
-    def writeLabels(self, labelFilename, labels = None):
-        if labels == None:
-            labels = self.getGeneOrder()
-        
-        out = file(labelFilename, "w")
-        for gene in labels:
-            print >>out, "%s:%s" % (gene.chrom.genome.name, gene.name)
-        out.close()
-    
-    def writeHomology(self, filename, labelFilename = None): 
-        labels = self.getGeneOrder()
-        
-        if labelFilename != None:
-            self.writeLabels(labelFilename, labels)
-        
-        out = file(filename, "w")
-        for gene in labels:
-            print >>out, gene.homology.groupid
-    
-    def writeCluto(self, clutoFilename, labelFilename):
-        out = file(clutoFilename, "w")
-        
-        nnz = 0
-        for match in self.matches:
-            if not match.pruned:
-                nnz += 1
-        
-        genes = self.getGeneOrder()
-        labelsHash = {}
-        for i in range(len(genes)):
-            labelsHash[genes[i]] = i
-        
-        print >>out, len(genes), 2 * nnz + len(genes)
-        
-        singles = 0
-        for gene in genes:
-            print >>out, (1+labelsHash[gene]), 1.0,
-            
-            if len(gene.allMatches()) == 0:
-                singles += 1
-            
-            for match in gene.allMatches():
-                if match.pruned:
-                    continue
-                if match.otherGene(gene) != labelsHash[gene]:
-                    print >>out, (1+labelsHash[match.otherGene(gene)]), \
-                        match.score, 
-            print >>out
-            
-        out.close()
-        
-        self.writeLabels(labelFilename, genes)
-
-
-def getTranscripts(genomes):
-    transcripts = {}
-    for genome in genomes.values():
-        for gene in genome.genes.values():
-            transcripts.update(gene.trans)
-    return transcripts
-
-
-class SequenceDB:
-    infiles = {}
-    proteinFasta = {}
-
-    def __init__(self, path = None):
-        self.infiles = {}
-        if path != None:
-            self.addPath(path)
-
-    def addFile(self, chrom, filename):
-        self.infiles[chrom] = file(filename)
-    
-    def addFiles(self, filenames):
-        for f in filenames:
-            filename = f.split("/")[-1]
-            prefix = filename.split("_")[0] + "_"
-            chrom = filename.replace(prefix, "").replace(".seq", "")
-            self.addFile(chrom, f)
-    
-    def addPath(self, path):
-        files = filter(lambda x: x.endswith(".seq"), os.listdir(path))
-        files = map(lambda x: path + x, files)
-        self.addFiles(files)
-
-    def addProteinFasta(self, filename):
-        self.proteinFasta = fasta.readFasta(filename)
-    
-    def getSeq(self, chrom, start, end, dir=1):
-        if not chrom in self.infiles:
-            return ""
-        infile = self.infiles[chrom]
-        infile.seek(start-1)
-        seq = infile.read(end - start + 1)
-        if dir == 1:
-            return seq
-        else:
-            return reverseComplement(seq)
-
-    def exonSeq(self, exon):
-        return self.getSeq(exon.trans.gene.chrom.name, 
-                           exon.start, exon.end, exon.direction)
-    
-    def exonProtein(self, exon):
-        # get transcript
-        trans = exon.trans
-        
-        # find reading frame
-        seq = self.transcriptSeq(trans)
-        start = seq.find("ATG")
-        if start == -1:
-            start = 0
-        
-        # prepare amino-acid to return
-        aa = ""
-        
-        # find 5' UTR
-        i = 0
-        for e in trans.exons:
-            if i + (e.end - e.start + 1) > start:
-                aa = "." * (start - i)
-                break
-            elif e == exon:
-                return "." * ((e.end - e.start + 1) / 3)
-                break
-            i += e.end - e.start + 1
-        
-        # find current exon
-        i = 0
-        for e in trans.exons:
-            if e == exon:
-                estart = max(start - i, 0)
-                codonPos = (i + estart - start) % 3
-                aa += dna2aa("N"*codonPos + self.exonSeq(exon)[estart:])
-                
-                stop = aa.find("Z")
-                aa = aa[:stop] + "." * len(aa[stop:])
-                
-                return aa
-            i += e.end - e.start + 1
-
-    
-    def transcriptSeq(self, trans):
-        seq = ""
-        for exon in trans.exons:
-            seq += self.exonSeq(exon)
-        return seq
-    
-    
-    def geneTranscript(self, gene):
-        return self.getSeq(gene.chrom.name, gene.start, gene.end, gene.direction)
-        
-    
-    def geneCoding(self, gene):
-        seq = self.geneExons(gene)
-        start = seq.find("ATG")
-        stops = ["TAA", "TAG", "TGA"]
-        stop = 0
-        for i in range(start, len(seq), 3):
-            if seq[i:i+3] in stops:
-                stop = i
-                break
-        return seq[start:stop]
-    
-    def geneProtein(self, gene):
-        if len(self.proteinFasta) > 0:
-            if gene.name in self.proteinFasta:
-                return self.proteinFasta[gene.name]
-            else:
-                return ""
-        else:
-            seq = self.geneCoding(gene)
-            return dna2aa(seq)
-"""
-
 
 
 

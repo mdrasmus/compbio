@@ -151,7 +151,6 @@ class GenomeStackBrowser (Browser):
         summon.stop_updating()
         
         self.win = summon.Window()
-        self.win.activate()
         self.win.set_size(width, height) 
         self.redraw(species=species, chrom=chrom, start=start, end=end)
         
@@ -322,8 +321,8 @@ class RulerTrack (Track):
     def update(self):
         # change start from 1's based to 0's based
         # let ruler know the start and end
-        self.ruler.start = self.view.start - 1
-        self.ruler.end = self.view.end
+        #self.ruler.start = self.view.start - 1
+        #self.ruler.end = self.view.end
         self.ruler.update()
 
 
@@ -642,11 +641,15 @@ class AlignTrack (Track):
     def update(self):
         win = self.get_window()
         view = win.get_visible()
+        size = win.get_size()
         x, y = self.pos
+        
+        mintextSize = 4
+        minblockSize = 1
         
         colorBases = self.colorBases
         
-        if self.multiscale.atleast(4, .1, view=view):
+        if self.multiscale.atleast(minblockSize, .1, view=view, size=size):
             if not self.textShown or \
                not self.multiscale.sameScale(view):
                 self.textShown = True
@@ -674,10 +677,13 @@ class AlignTrack (Track):
                     
                     end2 = start + len(seq)
                     
-                    vis.append(text_scale(seq, 
-                                          start, -i+1, 
-                                          end2, -i-1, 
-                                          "left", "bottom"))
+                    # draw text
+                    if self.multiscale.atleast(mintextSize, 2, 
+                                               view=view, size=size):
+                        vis.append(text_scale(seq, 
+                                              start, -i+1, 
+                                              end2, -i-1, 
+                                              "left", "bottom"))
                 
                 self.textGid = win.replace_group(self.textGid, 
                     group(group(*vis2), color(0,0,0), * vis))

@@ -77,12 +77,14 @@ class Multiscale (object):
         return True
 
 
-    def atleast(self, xminres, yminres, view=None):
+    def atleast(self, xminres, yminres, view=None, size=None):
         if view == None:
             view = self.win.get_visible()
+        if size == None:
+            size = self.win.get_size()
         
         worldx1, worldy1, worldx2, worldy2 = view
-        screenwidth, screenheight = self.win.get_size()
+        screenwidth, screenheight = size
         worldwidth = worldx2 - worldx1
         worldheight = worldy2 - worldy1
         
@@ -93,7 +95,7 @@ class Multiscale (object):
 
 
 
-# TODO: convert to use multiscale
+
 class Ruler (VisObject):
     """ Ruler visualization object """
     
@@ -110,36 +112,19 @@ class Ruler (VisObject):
         self.pos = pos[:]
         self.minicolor = minicolor
         self.maincolor = maincolor
-        
-        
+        self.multiscale = Multiscale(marginx=.5, marginy=.5, scalex=10, scaley=10)
     
     
     def draw(self):
+        self.multiscale.init(self.get_window())
+        
         g = group()
         self.gid = get_group_id(g)
-        
-        worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
-        screenwidth, screenheight = self.win.get_size()
-        worldwidth = worldx2 - worldx1
-        
-        self.unit = getRulerAutoSize(screenwidth, worldwidth)
-        self.worldx1 = worldx1 - worldwidth / 2.0
-        self.worldx2 = worldx2 + worldwidth / 2.0
-        
         return g
         
     
     def update(self):
-        worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
-        screenwidth, screenheight = self.win.get_size()    
-        unit = getRulerAutoSize(screenwidth, worldx2 - worldx1)
-        
-        worldwidth = worldx2 - worldx1
-        xmargin = worldwidth / 2.0
-        
-        if unit != self.unit or \
-           worldx1 < self.worldx1 or \
-           worldx2 > self.worldx2:
+        if not self.multiscale.sameScale():
             g = drawRuler(self.pos, 
                           self.start, 
                           self.end, 
@@ -149,12 +134,7 @@ class Ruler (VisObject):
                           maincolor=self.maincolor,
                           win=self.win)
             self.gid = self.win.replace_group(self.gid, g)
-            
-            self.worldx1 = worldx1 - xmargin
-            self.worldx2 = worldx2 + xmargin            
-            self.unit = unit
-        
-        
+
 
 
 def getRulerAutoSize(screenwidth, worldwidth):

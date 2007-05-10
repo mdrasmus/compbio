@@ -26,66 +26,17 @@ options = [
 
 param = util.parseOptions(sys.argv, options, quit=True)
 
-# setup paths
-env.addEnvPaths("DATAPATH")
-env.addPaths(param["paths"])
-
-# read species map
-gene2species = genomeutil.readGene2species(* map(env.findFile, param["smap"]))
 
 
-parts = []
-for f in param["part"]:
-    if f == "-":
-        for line in sys.stdin:
-            parts.append(line.rstrip().split())
-    else:
-        parts.extend(util.readDelim(f))
-
-if "filter" in param:
-    cutoff = int(param["filter"][-1])
-    parts = filter(lambda x: len(x) >= cutoff, parts)
-    
-
-if "genomes" in param:
-    order = param["genomes"][-1].split(",")
-else:
-    order = util.cget(maps, 1)
-
-desc = {}
-if "desc" in param:
-    for f in param["desc"]:
-        desc.update(genomeio.readGeneDesc(env.findFile(f)))
-
-go = {}
-if "go" in param:
-    for f in param["go"]:
-        for line in file(f):
-            words = line.split()
-            go[words[0]] = words[1:]
-
-# default options
-param["members"] = []
-param["summary"] = []
-param["components"] = []
-#conf["z"] = []
-
-
-sizes = map(len, parts)
-comps = genomeutil.componentCompositions(order, parts, gene2species).items()
-comps.sort(lambda a, b: cmp(b[1], a[1]))
-
-
-genes = {}
-if "details" in param or "xml" in param:
-    genomes = {}
-    for genome in order:
-        util.tic("read %s genome" % genome)
-        genomes[genome] = genomeutil.Genome(genome)
-        genomeio.readEnsmartGenes(genomes[genome])
-        genomes[genome].autoconf()
-        genes.update(genomes[genome].genes)
-        util.toc()
+def componentCompositions(order, comps, gene2species):
+    compositions = util.Dict(default=0)
+    for comp in comps:
+        counts = util.Dict(util.histDict(map(gene2species, comp)), default=0)
+        key = []
+        for genome in order:
+            key.append(counts[genome])
+        compositions[tuple(key)] += 1
+    return compositions
 
 
 def cmpgenes(a, b):
@@ -178,7 +129,7 @@ def writeMain(out):
 
 
 def writePart(out, part, name):
-    counts = genomeutil.genomeComposition(order, part, gene2species)
+    counts = util.Dict(util.histDict(map(gene2species, part)), default=0)
 
     words = {} #descriptions.summary(part, desc)
     keys = words.keys()
@@ -221,6 +172,70 @@ def writePart(out, part, name):
 
     print >>out, "</part>"    
 
+
+
+
+
+# setup paths
+env.addEnvPaths("DATAPATH")
+env.addPaths(param["paths"])
+
+# read species map
+gene2species = genomeutil.readGene2species(* map(env.findFile, param["smap"]))
+
+
+parts = []
+for f in param["part"]:
+    if f == "-":
+        for line in sys.stdin:
+            parts.append(line.rstrip().split())
+    else:
+        parts.extend(util.readDelim(f))
+
+if "filter" in param:
+    cutoff = int(param["filter"][-1])
+    parts = filter(lambda x: len(x) >= cutoff, parts)
+    
+
+if "genomes" in param:
+    order = param["genomes"][-1].split(",")
+else:
+    order = util.cget(maps, 1)
+
+desc = {}
+if "desc" in param:
+    for f in param["desc"]:
+        desc.update(genomeio.readGeneDesc(env.findFile(f)))
+
+go = {}
+if "go" in param:
+    for f in param["go"]:
+        for line in file(f):
+            words = line.split()
+            go[words[0]] = words[1:]
+
+# default options
+param["members"] = []
+param["summary"] = []
+param["components"] = []
+#conf["z"] = []
+
+
+sizes = map(len, parts)
+comps = componentCompositions(order, parts, gene2species).items()
+comps.sort(lambda a, b: cmp(b[1], a[1]))
+
+
+genes = {}
+if "details" in param or "xml" in param:
+    genomes = {}
+    for genome in order:
+        util.tic("read %s genome" % genome)
+        genomes[genome] = genomeutil.Genome(genome)
+        genomeio.readEnsmartGenes(genomes[genome])
+        genomes[genome].autoconf()
+        genes.update(genomes[genome].genes)
+        util.toc()
 
 
 if "xml" in param:
@@ -279,7 +294,7 @@ else:
         for i in ind:
             part = parts[i]
 
-            counts = genomeutil.genomeComposition(order, part, gene2species)
+            counts = util.Dict(util.histDict(map(gene2species, part)), default=0)
 
             words = {} #descriptions.summary(part, desc)
             keys = words.keys()

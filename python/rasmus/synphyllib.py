@@ -1,4 +1,5 @@
-from rasmus import util, algorithms, genomeutil, blast
+from rasmus import util, algorithms
+from rasmus.bio import genomeutil, blast
 
 
 

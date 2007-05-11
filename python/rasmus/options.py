@@ -106,18 +106,19 @@ def shellparser(arg):
         return [arg]
 
 
-def parseOptions(argv, options, resthelp = "", quit=True):
+def parseOptions(argv, options, **extra):
+    extra["returnRest"] = False
+    
     try:
-        return parseArgs(argv, options, quit=quit, resthelp=resthelp, 
-                         returnRest=False)
+        return parseArgs(argv, options, **extra)
     except OptionError, e:
         print >>sys.stdout, "%s: %s" % (os.path.basename(argv[0]), e)
         sys.exit(1)
 
 
 
-def parseArgs(argv, options, quit=False, resthelp = "", returnRest=True,
-              helpOption=True, configFileOption=True):
+def parseArgs(argv, options, quit=True, resthelp = "", returnRest=True,
+              helpOption=True, configFileOption=False):
     """
     DEPRECATED
     

@@ -32,6 +32,9 @@ from rasmus.bio import blast
 def mergeBuh(conf, genes, parts1, parts2, blastfiles):
     """Merge by Best Unidirectional Hits"""
     
+    # don't use this code without double checking it
+    assert False
+    
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
     
@@ -56,7 +59,7 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
-            coverage = min(alnlen1 / float(len1), 
+            coverage = max(alnlen1 / float(len1), 
                            alnlen2 / float(len2))
             
             # discard a hit that does not pass basic cutoffs
@@ -118,7 +121,7 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
-            coverage = min(alnlen1 / float(len1), 
+            coverage = max(alnlen1 / float(len1), 
                            alnlen2 / float(len2))
             
             # discard a hit that does not pass basic cutoffs
@@ -188,13 +191,16 @@ def mergeAvg(conf, genes, parts1, parts2, blastfiles, outblastfiles):
             
             len1 = genes[gene1]["length"]
             len2 = genes[gene2]["length"]
-            coverage = min(alnlen1 / float(len1), 
-                           alnlen2 / float(len2))
-            
+            coveragesmall = min(alnlen1 / float(len1), 
+                                alnlen2 / float(len2))
+            coveragebig = max(alnlen1 / float(len1), 
+                              alnlen2 / float(len2))
+
             # discard a hit that does not pass basic cutoffs
             if blast.bitscore(hit) / float(blast.alignLength(hit)) < \
                    conf["bitspersite"] or \
-               coverage < conf["coverage"] or \
+               coveragesmall < conf["coveragesmall"] or \
+               coveragebig < conf["coveragebig"] or \
                blast.evalue(hit) > conf["signif"]:
                 continue
             

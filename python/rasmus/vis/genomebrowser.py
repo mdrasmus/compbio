@@ -566,7 +566,7 @@ class AlignTrack (Track):
         GAP     = 1
         NOBASE  = 2
         baseclasses = {'A': BASE, 'C': BASE, 'T': BASE, 'G': BASE,
-                       '-': GAP, 'N': NOBASE, '*': NOBASE}
+                       '-': GAP, 'N': NOBASE, '*': NOBASE, 'X': NOBASE}
         
         for aa in 'ARNDCEQGHILKMFPSTWYVU':
             baseclasses[aa] = BASE
@@ -583,13 +583,16 @@ class AlignTrack (Track):
                 lastclass = None
                 lasti = 0
                 for i in xrange(len(val)+1):
-                    # this extra if is being used to handle the case when
+                    # this extra is being used to handle the case when
                     # a sequence is all bases
                     if i < len(val):
                         base = val[i]
                     else:
                         base = '-'
-                    baseclass = baseclasses[base]
+                    if base not in baseclasses:
+                        baseclass = NOBASE
+                    else:
+                        baseclass = baseclasses[base]
 
                     if baseclass == lastclass:
                         continue

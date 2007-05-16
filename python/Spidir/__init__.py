@@ -1109,7 +1109,7 @@ def calcSubtreeLikelihood(root, recon, events, stree, params,
     )
     
     def walk(node):
-        # branch that recon to the species root are "free"
+        # branch that recon to the species root is "free"
         if recon[node] != stree.root:
             dist, fracs, snodes = reconBranch(node, recon, events, stree, 
                                      params, midpoints, extraBranches)

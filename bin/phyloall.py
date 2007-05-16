@@ -508,9 +508,14 @@ def displayHelp():
 def reportStatus(conf, infiles):
     exts = conf["status"].split(",")
     
-    tab = tablelib.Table(headers=["name"])
+    types = {"name": str}
+    headers=["name"]
+
     for ext in exts:
-        tab.headers.append(ext)
+        headers.append(ext)
+        types[ext] = bool
+    tab = tablelib.Table(headers=headers, types=types)
+    tab.writeHeader()
     
     for infile in infiles:
         infileType, basename = getFileType(conf, infile)
@@ -519,9 +524,8 @@ def reportStatus(conf, infiles):
         
         for ext in exts:
             row[ext] = os.path.exists(basename + ext)
-        tab.append(row)
+        tab.writeRow(sys.stdout, row)
     
-    tab.write(sys.stdout)
     return
 
 

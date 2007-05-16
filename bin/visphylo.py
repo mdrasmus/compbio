@@ -12,16 +12,34 @@ import summon
 
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip
+from rasmus.vis import distmatrixvis
 from rasmus.vis.genomebrowser import *
 
 
 options = [
+    "data files",
+    ["f:", "fasta=", "fasta", "<fasta sequences>",
+        {"single": True}],
     ["a:", "align=", "align", "<fasta alignment>",
         {"single": True}],
     ["t:", "tree=", "tree", "<newick file>",
         {"single": True}],
     ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
     ["b:", "blast=", "blast", "<blast hit -m8 format>"],
+    
+    "data file extensions",
+    ["F:", "fastaext=", "fastaext", "<fasta sequences extension>",
+        {"default": []}],
+    ["A:", "alignext=", "alignext", "<alignment extension>",
+        {"default": []}],
+    ["T:", "treeext=", "treeext", "<tree file extension>",
+        {"default": []}],
+    ["D:", "distmatext=", "distmatext", "<phylip distance matrix extension>",
+        {"default": []}],
+    ["B:", "blastext=", "blastext", "<blast hit -m8 format extension>",
+        {"default": []}],
+    
+    
     ["M:", "maxdist=", "maxdist", "<maximum distance>",
         {"single": True,
          "parser": float}]
@@ -29,6 +47,17 @@ options = [
 
 
 conf = util.parseOptions(sys.argv, options)
+
+"""
+def getBasename(conf, filename):
+    exttypes = ["fastaext", "alignext", "treeext", "distmatext", "blastext"]
+
+    for exttype in exttypes:
+        for ext in conf[exttype]:
+            if filename.endswidth(ext):
+                return util.replaceExt(filename, ext, "")
+    raise Exception("unknown file extension '%s'" % filename)
+"""
 
       
 def colorAlign(aln):
@@ -103,11 +132,59 @@ def readBlastMatrix(blastfile, order=None):
 windows = []
 coords = []
 
+# determine data files
+fastafiles = []
+alignfiles = []
+distmatfiles = []
+blastfiles = []
+treefiles = []
+
+# add explicit filenames
+if "fasta" in conf:
+    fastafiles.append(conf["fasta"])
+if "align" in conf:
+    alignfiles.append(conf["align"])
+if "distmat" in conf:
+    distmatfiles.extend(conf["distmat"])
+if "blast" in conf:
+    blastfiles.extend(conf["blast"])
+if "tree" in conf:
+    treefiles.append(conf["tree"])
+        
+
+# add any implicit files with matching extension
+if len(conf["REST"]) > 0:
+    basename = conf["REST"][0]
+
+    for ext in conf["fastaext"]:
+        fastafiles.append(basename + ext)
+    
+    for ext in conf["alignext"]:
+        alignfiles.append(basename + ext)
+    
+    for ext in conf["distmatext"]:
+        distmatfiles.append(basename + ext)
+    
+    for ext in conf["blastext"]:
+        blastfiles.append(basename + ext)
+    
+    for ext in conf["treeext"]:
+        treefiles.append(basename + ext)
+
+
+
+
+# read sequences
+if len(fastafiles) > 0:
+    seqs = fasta.readFasta(fastafiles[0])
+else:
+    seqs = None
+    
 
 # read tree
-if "tree" in conf:
-    tree = treelib.readTree(conf["tree"])
-    vistree = sumtree.SumTree(tree, name=conf["tree"])
+if len(treefiles) > 0:
+    tree = treelib.readTree(treefiles[0])
+    vistree = sumtree.SumTree(tree, name=treefiles[0])
                               #xscale=conf["usedist"]
     vistree.show()
     vistree.win.set_size(340, 500)
@@ -121,13 +198,13 @@ if "tree" in conf:
 
 
 # read alignment
-if "align" in conf:
+if len(alignfiles) > 0:
     view = Region("", "", "", 1, 1)
-    aln = fasta.readFasta(conf["align"])
+    aln = fasta.readFasta(alignfiles[0])
     
     original_order = aln.keys()
     
-    if "tree" in conf:
+    if len(treefiles) > 0:
         aln = aln.get(leaves)
     
     view.end = max(view.end, aln.alignlen())
@@ -136,20 +213,20 @@ if "align" in conf:
 
 
 # read distance matrix
-if "distmat" in conf or "blast" in conf:
+if len(distmatfiles) > 0 or len(blastfiles) > 0:
     mats = []
     matnames = []
     
     currentMatrix = 0
 
     # determine row/col labels from alignment if it exists
-    if "align" in conf:
+    if len(alignfiles) > 0:
         label = original_order
     else:
         label = None
     
     # reorder according to any given tree
-    if "tree" in conf:
+    if len(treefiles) > 0:
         lookup = util.list2lookup(label)
         rperm = util.mget(lookup, leaves)
         cperm = util.mget(lookup, leaves)
@@ -160,7 +237,14 @@ if "distmat" in conf or "blast" in conf:
     
     # setup color map
     if "maxdist" in conf:
-        colormap = util.rainbowColorMap(low=0, high=conf["maxdist"])
+        low = 0
+        high = conf["maxdist"]
+        colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
+                                  [0, util.black],
+                                  [1e-10, util.blue],
+                                  [.3 * high, util.green],
+                                  [.7 * high, util.yellow],
+                                  [     high, util.red]])
     else:
         colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
                                   [0, util.black],
@@ -172,38 +256,39 @@ if "distmat" in conf or "blast" in conf:
     
     
     # read in multiple distance matrices
-    if "distmat" in conf:
-        for matfile in conf["distmat"]:
-            util.tic("reading matrix '%s'" % matfile)
-            label, mat = phylip.readDistMatrix(matfile)
-            util.toc()
+    for matfile in distmatfiles:
+        util.tic("reading matrix '%s'" % matfile)
+        label2, mat = phylip.readDistMatrix(matfile)
+        util.toc()
+        
+        if label == None:
+            label = label2
 
-            # convert distmatrix to summon Matrix
-            mat2 = matrix.Matrix()
-            mat2.from2DList(mat, cutoff=-util.INF)
-            mat2.colormap = colormap
-            mat2.rowlabels = label
-            mat2.collabels = label
-            mat2.rperm = rperm
-            mat2.cperm = cperm
-            mat2.setup()
+        # convert distmatrix to summon Matrix
+        mat2 = matrix.Matrix()
+        mat2.from2DList(mat, cutoff=-util.INF)
+        mat2.colormap = colormap
+        mat2.rowlabels = label
+        mat2.collabels = label
+        mat2.rperm = rperm
+        mat2.cperm = cperm
+        mat2.setup()
 
-            mats.append(mat2)
-            matnames.append(matfile)
+        mats.append(mat2)
+        matnames.append(matfile)
     
     # read in multiple blast hits
-    if "blast" in conf:
-        for blastfile in conf["blast"]:
-            util.tic("reading blast file '%s'" % blastfile)
-            mat = readBlastMatrix(blastfile, order=label)
-            util.toc()
-            
-            mat.colormap = colormap
-            mat.rperm = rperm
-            mat.cperm = cperm
-            mat.setup()
-            mats.append(mat)
-            matnames.append(blastfile)
+    for blastfile in blastfiles:
+        util.tic("reading blast file '%s'" % blastfile)
+        mat = readBlastMatrix(blastfile, order=label)
+        util.toc()
+
+        mat.colormap = colormap
+        mat.rperm = rperm
+        mat.cperm = cperm
+        mat.setup()
+        mats.append(mat)
+        matnames.append(blastfile)
 
 
     
@@ -224,12 +309,12 @@ if "distmat" in conf or "blast" in conf:
     
     
     # create matrix vis
-    visdist = matrix.MatrixViewer(mats[0], conf={"style": "quads"})
+    visdist = distmatrixvis.DistMatrixViewer(mats[0], seqs=seqs)
     visdist.show()
     visdist.win.set_name(matnames[0])
     visdist.win.set_bgcolor(1, 1, 1)    
-    visdist.win.set_size(300, 500)
-    visdist.win.set_position(0, 0)
+    #visdist.win.set_size(300, 500)
+    #visdist.win.set_position(0, 0)
     
     windows.append(visdist.win)
     coords.append(0)
@@ -240,12 +325,12 @@ if "distmat" in conf or "blast" in conf:
     
 
 # show alignment
-if "align" in conf:
+if len(alignfiles) > 0:
     visalign = GenomeStackBrowser(view=view)
     visalign.addTrack(RulerTrack(bottom=-height))
     visalign.addTrack(AlignTrack(aln, colorBases=colors))
     visalign.show()
-    visalign.win.set_name(conf["align"])
+    visalign.win.set_name(alignfiles[0])
     visalign.win.set_size(580, 500)
     visalign.win.set_position(0, 0)    
 

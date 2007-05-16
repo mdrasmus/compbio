@@ -344,15 +344,23 @@ def findFourFold(aln):
     aln = filterAlignCodons(aln)
     pepAln = mapalign(aln, valfunc=translate)
     pep = pepAln.values()[0]
-    identies = calcConservation(pepAln)
+    
+    # pep conservation
+    pepcons = []
+    for i in xrange(pepAln.alignlen()):
+        col = [seq[i] for seq in pepAln.itervalues()]
+        hist = util.histDict(col)
+        if "-" in hist:
+            del hist["-"]
+        pepcons.append(len(hist) == 1 and "X" not in hist)
+        
 
     ind = []
 
     for i in range(0, len(aln.values()[0]), 3):
-        if pep[i/3] == "X":
-            continue
-        degen = AA_DEGEN[pep[i/3]]
-        if identies[i/3] == 1.0:
+        if pepcons[i//3]:
+            degen = AA_DEGEN[pep[i//3]]
+            
             for j in range(3):
                 if degen[j] == 4:
                     ind.append(i+j)

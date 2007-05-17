@@ -1,7 +1,9 @@
 #!/usr/bin/python -i
 #
+# Thu May 17 11:42:05 EDT 2007 
 # ultimate tree/alignment/distmat viewer
 #
+
 
 
 import sys
@@ -47,17 +49,6 @@ options = [
 
 
 conf = util.parseOptions(sys.argv, options)
-
-"""
-def getBasename(conf, filename):
-    exttypes = ["fastaext", "alignext", "treeext", "distmatext", "blastext"]
-
-    for exttype in exttypes:
-        for ext in conf[exttype]:
-            if filename.endswidth(ext):
-                return util.replaceExt(filename, ext, "")
-    raise Exception("unknown file extension '%s'" % filename)
-"""
 
       
 def colorAlign(aln):
@@ -191,10 +182,9 @@ if len(treefiles) > 0:
     vistree.win.set_position(0, 0)
     
     leaves = tree.leafNames()
-    leaves.reverse()
     
     windows.append(vistree.win)
-    coords.append(max(node.x for node in tree.nodes.itervalues()))
+    coords.append(max(node.y for node in tree.nodes.itervalues()))
 
 
 # read alignment
@@ -226,7 +216,7 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
         label = None
     
     # reorder according to any given tree
-    if len(treefiles) > 0:
+    if label != None:
         lookup = util.list2lookup(label)
         rperm = util.mget(lookup, leaves)
         cperm = util.mget(lookup, leaves)

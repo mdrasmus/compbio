@@ -269,6 +269,11 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
     
     # read in multiple blast hits
     for blastfile in blastfiles:
+        if label == None and len(fastafiles) > 0:
+            label = seqs.keys()
+            rperm = []
+            cperm = []
+    
         util.tic("reading blast file '%s'" % blastfile)
         mat = readBlastMatrix(blastfile, order=label)
         util.toc()

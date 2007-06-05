@@ -32,7 +32,7 @@ import scipy.optimize
 # SPIDIR libs
 from Spidir import Search
 from Spidir.Debug import *
-
+from Spidir import extension
 
 
 
@@ -1104,7 +1104,7 @@ def reconBranch(node, recon, events, stree, params,
 
 def calcSubtreeLikelihood(root, recon, events, stree, params, 
                           midpoints, extraBranches, baserate):
-    this = util.Closure(
+    this = util.Bundle(
         logl=0.0
     )
     
@@ -1142,7 +1142,7 @@ def calcSubtreeLikelihood(root, recon, events, stree, params,
 
 
 def setMidpoints(node, events, recon, midpoints, kvars):
-    this = util.Closure(i = 0)
+    this = util.Bundle(i = 0)
     
     def walk(node):
         # determine this node's midpoint
@@ -1230,7 +1230,6 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
         return [tot, 666]
     """
     
-       
     def integrate(node, nvars):
         kvars = [0] * nvars
         
@@ -1261,11 +1260,11 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
                 setMidpoints(child, events, recon, midpoints, kvars)
                 this.depth -= 1
                 
-                if this.printing < 0:
-                    debug("int:", kvars)
-                    this.printing = 100
-                else:
-                    this.printing -= 1
+                #if this.printing < 0:
+                #    debug("int:", kvars)
+                #    this.printing = 100
+                #else:
+                #    this.printing -= 1
                 
                 return math.e** \
                  calcSubtreeLikelihood(node, recon, events, stree, params, 
@@ -1302,35 +1301,325 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
             # integrate over midpoints
             nvars = countMidpointParameters(child, events)
             val, err = integrate(child, nvars)
-            if conf["debug"]:
-                #debug("integration error:", (log(err + val) - log(val)))
-                debug("int nvars:", nvars)
+            #if conf["debug"]:
+            #    #debug("integration error:", (log(err + val) - log(val)))
+            #    debug("int nvars:", nvars)
             clogl = log(val)
             child.data["logl"] = clogl
             logl += clogl
     
-    if conf["debug"]:
-        debug("int logl calls:", this.ncalls)
+    #if conf["debug"]:
+    #    debug("int logl calls:", this.ncalls)
+    
+    
+    """
+    # do random sampling integration
+    logl2 = 0.0
+    
+    midpoints[root] = 1.0
+    for child in root.children:
+        # integration is only needed if child is dup
+        if events[child] != "dup":
+            setMidpoints(child, events, recon, midpoints, [])
+            clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                      midpoints, extraBranches, baserate)
+            child.data["logl"] = clogl
+            logl2 += clogl
+        else:
+            for samples in [100]: #[50, 100, 250, 500]:        
+                val = 0.0            
+                
+                for i in xrange(samples):
+                    setMidpointsRandom(child, events, recon, midpoints, False)
+                    val += math.exp(calcSubtreeLikelihood(child, recon, events, 
+                                                     stree, params, 
+                                                     midpoints, extraBranches, 
+                                                     baserate))
+
+                clogl = log(val / float(samples))
+                
+            child.data["logl"] = clogl
+            logl2 += clogl
+    
+    
+    # do fast integration
+    logl3 = 0.0
+    midpoints[root] = 1.0
+    for child in root.children:
+        # integration is only needed if child is dup
+        if events[child] != "dup":
+            setMidpoints(child, events, recon, midpoints, [])
+            clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                      midpoints, extraBranches, baserate)
+            child.data["logl"] = clogl
+            logl3 += clogl
+        else:
+            startparams = {}
+            startfrac = {}
+            midparams = {}
+            endparams = {}
+            endfrac = {}
+            kdepend = {}
+        
+            # recon subtree
+            nodes = []
+            def walk(node):
+                nodes.append(node)
+                startparams[node], startfrac[node], midparams[node], \
+                    endparams[node], endfrac[node], kdepend[node] = \
+                    reconBranch2(node, recon, events, params)
+                
+                if events[node] == "dup":
+                    for child in node.children:
+                        walk(child)
+            walk(child)
+            
+            print "sample"
+            
+            for samples in [100]: #[50, 100, 250, 500]:        
+                val = 0.0            
+                
+                for i in xrange(samples):
+                    setMidpointsRandom2(child, events, recon, midpoints)                
+                    
+                    val2 = 0.0
+                    for node in nodes:
+                        if recon[node] != stree.root:
+                            v = branchLikelihood2(node.dist / baserate, 
+                                          node, midpoints, 
+                                          startparams[node], startfrac[node],
+                                          midparams[node], endparams[node], 
+                                          endfrac[node])
+                            val2 += v
+                            #print 'v', v
+                            
+                    val += math.exp(val2)
+                
+                clogl = log(val / float(samples))
+                
+            child.data["logl"] = clogl
+            logl3 += clogl 
+    """
+    
+    
+    #logl=logl2
+    #print "logl", logl, logl2, logl3
     
     return logl
 
+
+
+
+
+FRAC_NONE = 0
+FRAC_DIFF = 1
+FRAC_PARENT = 2
+FRAC_NODE = 3
+
+
+def reconBranch2(node, recon, events, params):
+
+    # set fractional branches
+    if recon[node] == recon[node.parent]:
+        # start reconciles to a subportion of species branch
+        if events[node] == "dup":
+            # only case k's are dependent
+            startfrac = FRAC_DIFF # k[node] - k[node.parent]
+            kdepend = node.parent
+        else:
+            startfrac = FRAC_PARENT # 1.0 - k[node.parent]
+            kdepend = None
+        startparams = params[recon[node].name]
+
+        # there is only one frac
+        endfrac = FRAC_NONE
+        endparams = None
+    else:
+        kdepend = None
+
+        if events[node.parent] == "dup":            
+            # start reconciles to last part of species branch
+            startfrac = FRAC_PARENT # 1.0 - k[node.parent]
+            startparams = params[recon[node.parent].name]
+        else:
+            startfrac = FRAC_NONE
+            startparams = None
+
+        if events[node] == "dup":
+            # end reconciles to first part of species branch
+            endfrac = FRAC_NODE # k[node]
+            endparams = params[recon[node].name]
+        else:    
+            # end reconcile to at least one whole species branch
+            endfrac = FRAC_NONE
+            endparams = None
+    
+    # set midparams
+    if recon[node] == recon[node.parent]:
+        # we begin and end on same branch
+        # there are no midparams
+        midparams = None
+    else:
+        # we begin and end on different branches
+        totmean = 0.0
+        totvar = 0.0
+
+        # determine most recent species branch which we fully recon to
+        if events[node] == "dup":
+            snode = recon[node].parent
+        else:
+            snode = recon[node]
+
+        # walk up species spath until starting species branch
+        # starting species branch is either fractional or NULL
+        parent_snode = recon[node.parent]
+        while snode != parent_snode:
+            totmean += params[snode.name][0]
+            totvar += params[snode.name][1] ** 2
+            snode = snode.parent
+
+        midparams = [totmean, math.sqrt(totvar)]
+
+    return startparams, startfrac, midparams, endparams, endfrac, kdepend
+
+
+def branchLikelihood2(dist, node, k, startparams, startfrac,
+                      midparams, endparams, endfrac):
+    totmean = 0.0
+    totvar  = 0.0
+    
+    #print k[node], startfrac, midparams, endfrac, endparams
+    
+    if startfrac == FRAC_DIFF:
+        totmean += (k[node] - k[node.parent]) * startparams[0]
+        totvar  += (k[node] - k[node.parent]) * startparams[1] ** 2
+    elif startfrac == FRAC_PARENT:
+        totmean += (1.0 - k[node.parent]) * startparams[0]
+        totvar  += (1.0 - k[node.parent]) * startparams[1] ** 2
+    #else startfrac == FRAC_NONE:
+    #    pass
+    
+    if midparams != None:
+        totmean += midparams[0]
+        totvar  += midparams[1] ** 2
+    
+    if endfrac == FRAC_PARENT:
+        totmean += (1.0 - k[node.parent]) * endparams[0]
+        totvar  += (1.0 - k[node.parent]) * endparams[1] ** 2
+    elif endfrac == FRAC_NODE:
+        totmean += k[node] * endparams[0]
+        totvar  += k[node] * endparams[1] ** 2
+    #else endfrac == FRAC_NONE:
+    #    pass
+    
+    if totvar <= 0.0:
+        print "!!!!"
+        print k[node], k[node.parent]
+        print startfrac, startparams, midparams, endfrac, endparams
+    
+    return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
+
+
+
+def setMidpointsRandom2(node, events, recon, midpoints, wholeTree=False):
+    def walk(node):
+        # determine this node's midpoint
+        if events[node] == "dup" and \
+           node.parent != None:
+            if recon[node] == recon[node.parent]:
+                # if im the same species branch as my parent 
+                # then he is my last midpoint
+                lastpoint = midpoints[node.parent]
+            else:
+                # im the first on this branch so the last midpoint is zero
+                lastpoint = 0.0
+            
+            # pick a midpoint uniformly after the last one
+            midpoints[node] = lastpoint + \
+                        (random.random() * (1 - lastpoint))
+        else:
+            # genes or speciations reconcile exactly to the end of the branch
+            # gene tree roots also reconcile exactly to the end of the branch
+            midpoints[node] = 1.0
+    
+        # recurse within dup-only subtree
+        if events[node] == "dup" or wholeTree:
+            node.recurse(walk)
+    
+    walk(node)
+
+
+
+def makePtree(tree):
+    """Make parent tree array from tree"""
+    
+    nodes = []
+    nodelookup = {}
+    ptree = []
+    
+    def walk(node):
+        for child in node.children:
+            walk(child)
+        nodelookup[node] = len(nodes)
+        nodes.append(node)
+
+    walk(tree.root)
+    
+    
+    for node in nodes:
+        if node == tree.root:
+            ptree.append(-1)
+        else:
+            ptree.append(nodelookup[node.parent])
+    
+    return ptree, nodes, nodelookup
+
+# events
+EVENT_GENE = 0
+EVENT_SPEC = 1
+EVENT_DUP = 2
+
+
+def treelikelihood_C(tree, recon, events, stree, params, generate):
+    """calculate likelihood of tree using C"""
+
+    ptree, nodes, nodelookup = makePtree(tree)
+    dists = [float(node.dist) for node in nodes]
+    
+    pstree, snodes, snodelookup = makePtree(stree)
+    
+    reconarray = [snodelookup[recon[node]] for node in nodes]
+    eventslookup = {"gene": EVENT_GENE,
+                    "spec": EVENT_SPEC,
+                    "dup": EVENT_DUP}
+    eventsarray = [eventslookup[events[node]] for node in nodes]
+    mu = [float(params[snode.name][0]) for snode in snodes]
+    sigma = [float(params[snode.name][1]) for snode in snodes]
+
+    
+    ret = extension.treelk(ptree, dists, pstree, 
+                           reconarray, eventsarray,
+                           mu, sigma, generate)
+    
+    return ret
+    
 
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     #conf["accuracy"] = .01
     conf.setdefault("bestlogl", -util.INF)
 
-    estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
+    #estlogl = treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None)
     #if "integrate" not in conf:
     #    #return estlogl
     #    pass
     #else:
     
     # skip trees that are estimated to be very bad
-    if estlogl < conf["bestlogl"] - 50:
-        debug("SKIP integration, est logl=%f" % estlogl)
-        return estlogl
-    conf["bestlogl"] = max(conf["bestlogl"], estlogl)
+    #if estlogl < conf["bestlogl"] - 50:
+    #    debug("SKIP integration, est logl=%f" % estlogl)
+    #    return estlogl
+    #conf["bestlogl"] = max(conf["bestlogl"], estlogl)
             
     #Search.printMCMC(conf, "est", tree, stree, gene2species, {})
 
@@ -1357,17 +1646,23 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     # top branch is "free"
     params[stree.root.name] = [0,0]
-    this = util.Closure(logl=0.0)
+    this = util.Bundle(logl=0.0)
+    
+    # calc likelihood in C
+    this.logl = treelikelihood_C(tree, recon, events, stree, params, baserate)
+    
     
     # recurse through indep sub-trees
-    def walk(node):
-        if events[node] == "spec" or \
-           node == tree.root:
-            this.logl += subtreeLikelihood(conf, node, recon, events, 
-                                           stree, params, baserate)
-        node.recurse(walk)
-    walk(tree.root)
+    #def walk(node):
+    #    if events[node] == "spec" or \
+    #       node == tree.root:
+    #        this.logl += subtreeLikelihood(conf, node, recon, events, 
+    #                                       stree, params, baserate)
+    #    node.recurse(walk)
+    #walk(tree.root)
     
+    #print "cmp", this.logl, this.logl2
+
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)

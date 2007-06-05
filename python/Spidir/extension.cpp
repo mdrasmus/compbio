@@ -56,8 +56,11 @@ BranchParam NULL_PARAM;
 class ReconParams
 {
 public:
-    ReconParams(int nnodes) :
-        nnodes(nnodes)
+    ReconParams(int nnodes, bool *freebranches, int unfold, float unfolddist) :
+        nnodes(nnodes),
+        freebranches(freebranches),
+        unfold(unfold),
+        unfolddist(unfolddist)
     {
         startparams = new BranchParam [nnodes];
         midparams = new BranchParam [nnodes];
@@ -87,6 +90,9 @@ public:
     int *startfrac;
     int *endfrac;
     float *midpoints;
+    bool *freebranches;
+    int unfold;
+    float unfolddist;
 };
 
 
@@ -298,43 +304,18 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
         assert(0);
     }
     
+    
+    // unhandle partially-free branches and unfold
+    if (reconparams->unfold == node)
+        dist += reconparams->unfolddist;
+    
+    // skip a branch if it is partially free
+    if (reconparams->freebranches[node]) {
+        if (dist > totmean)
+            dist = totmean;
+    }
+    
     return normallog(dist, totmean, sqrt(totvar));
-
-    /*
-    totmean = 0.0
-    totvar  = 0.0
-    
-    #print k[node], startfrac, midparams, endfrac, endparams
-    
-    if startfrac == FRAC_DIFF:
-        totmean += (k[node] - k[node.parent]) * startparams[0]
-        totvar  += (k[node] - k[node.parent]) * startparams[1] ** 2
-    elif startfrac == FRAC_PARENT:
-        totmean += (1.0 - k[node.parent]) * startparams[0]
-        totvar  += (1.0 - k[node.parent]) * startparams[1] ** 2
-    #else startfrac == FRAC_NONE:
-    #    pass
-    
-    if midparams != None:
-        totmean += midparams[0]
-        totvar  += midparams[1] ** 2
-    
-    if endfrac == FRAC_PARENT:
-        totmean += (1.0 - k[node.parent]) * endparams[0]
-        totvar  += (1.0 - k[node.parent]) * endparams[1] ** 2
-    elif endfrac == FRAC_NODE:
-        totmean += k[node] * endparams[0]
-        totvar  += k[node] * endparams[1] ** 2
-    #else endfrac == FRAC_NONE:
-    #    pass
-    
-    if totvar <= 0.0:
-        print "!!!!"
-        print k[node], k[node.parent]
-        print startfrac, startparams, midparams, endfrac, endparams
-    
-    return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
-    */
 }
 
 
@@ -343,32 +324,25 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 int nsnodes, int *pstree, 
                 int *recon, int *events,
                 float *mu, float *sigma, float generate,
+                bool *freebranches, int unfold, float unfolddist,
                 int nsamples=100)
 {
     float logl = 0.0;
     int sroot = nsnodes - 1;
     
-    ReconParams reconparams = ReconParams(nnodes);
+    ReconParams reconparams = ReconParams(nnodes, freebranches, 
+                                          unfold, unfolddist);
     
     if (events[root] != EVENT_DUP) {
         // single branch, no integration needed
-        
+                
         if (recon[root] != sroot) {
             // no midpoints, no integration needed
-            //logl = normallog(dists[root] / generate,
-            //                  mu[recon[root]], sigma[recon[root]]);
-            
             reconBranch(root, ptree, pstree, recon, events, 
                         mu, sigma, &reconparams);
             logl = branchlk(dists[root] / generate, 
                             root, ptree, &reconparams);
-            //if (logl < -10) {
-            //    printf("debug: %f %f %f %f\n", dists[root], generate, 
-            //                             mu[recon[root]], sigma[recon[root]]);
-            //}
         }
-        
-        //printf("logl.s: %f\n", logl);
     } else {
         // multiple branches, integrate
         
@@ -379,7 +353,6 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         int nodesi = 0;
         
         while ((node = walk.next()) != -1) {
-            //printf("node> %d %d\n", node, ptree[node]);
             reconBranch(node, ptree, pstree, 
                         recon, events, mu, sigma, &reconparams);
             nodes[nodesi++] = node;
@@ -415,63 +388,11 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         }
         
         logl = log(prob);
-        //printf("logl.i: %f\n", logl);
         
         // cleanup
         delete [] nodes;
     }
     
-    
-
-    /*
-    logl = 0.0
-    midpoints[root.parent] = 1.0
-    
-    # integration is only needed if child is dup
-    if events[child] != "dup":
-        setMidpoints(child, events, recon, midpoints, [])
-        logl += calcSubtreeLikelihood(child, recon, events, stree, params, 
-                  midpoints, extraBranches, baserate)
-    else:
-        startparams = {}
-        startfrac = {}
-        midparams = {}
-        endparams = {}
-        endfrac = {}
-        kdepend = {}
-
-        # recon subtree
-        nodes = []
-        def walk(node):
-            nodes.append(node)
-            startparams[node], startfrac[node], midparams[node], \
-                endparams[node], endfrac[node], kdepend[node] = \
-                reconBranch2(node, recon, events, params)
-
-            if events[node] == "dup":
-                for child in node.children:
-                    walk(child)
-        walk(child)
-
-        print "sample"
-        samples = 100
-        val = 0.0            
-
-        for i in xrange(samples):
-            setMidpointsRandom2(child, events, recon, midpoints)                
-            
-            val2 = 0.0
-            for node in nodes:
-                if recon[node] != stree.root:
-                    val2 += branchLikelihood2(node.dist / baserate, 
-                                  node, midpoints, 
-                                  startparams[node], startfrac[node],
-                                  midparams[node], endparams[node], 
-                                  endfrac[node])
-            val += math.exp(val2)
-        logl += log(val / float(samples)) 
-    */
-
     return logl;
 }
 
@@ -484,10 +405,56 @@ float treelk(int nnodes, int *ptree, float *dists,
 {
     float logl = 0.0;
     int root = nnodes - 1;
+    int sroot = nsnodes - 1;
 
     // make forward tree
     int **ftree;
     makeFtree(nnodes, ptree, &ftree);
+    
+    
+    /*
+     find free branches
+
+     A branch is an free branch if (1) its parent node reconciles to the species
+     tree root, (2) it parent node is a duplication, (3) and the node it self
+     reconciles not to the species tree root.
+
+     A top branch unfolds, if (1) its parent is the root, (2) its parent
+     reconciles to the species tree root, (3) its parent is a duplication, and
+     (4) itself does not reconcile to the species tree root. There is atmost one
+     unfolding branch per tree.
+
+     If a branch is free, augment its length to min(dist, mean)
+    */
+    
+    bool *freebranches = new bool [nnodes];
+    int unfold = -1;
+    float unfolddist = 0.0;
+    
+    for (int i=0; i<nnodes; i++) {
+        if (recon[ptree[i]] == sroot &&
+            events[ptree[i]] == EVENT_DUP &&
+            recon[i] != sroot)
+        {
+            freebranches[i] = true;
+        } else {
+            freebranches[i] = false;
+        }
+    }
+    
+    // find unfolding branch
+    if (ftree[root][0] != -1 &&
+        recon[root] == sroot &&
+        events[root] == EVENT_DUP)
+    {
+        if (recon[ftree[root][0]] != sroot) {
+            unfold = ftree[root][0];
+            unfolddist = dists[ftree[root][1]];
+        } else {
+            unfold = ftree[root][1];
+            unfolddist = dists[ftree[root][1]];
+        }
+    }   
     
     
     // loop through independent subtrees
@@ -497,13 +464,15 @@ float treelk(int nnodes, int *ptree, float *dists,
                 logl += subtreelk(nnodes, ptree, ftree, dists, ftree[i][j],
                                   nsnodes, pstree, 
                                   recon, events,
-                                  mu, sigma, generate);
+                                  mu, sigma, generate,
+                                  freebranches, unfold, unfolddist);
             }
         }
     }
     
     // clean up
     freeFtree(nnodes, ftree);
+    delete [] freebranches;
     
     return logl;
 }

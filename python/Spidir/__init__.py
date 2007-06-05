@@ -35,6 +35,18 @@ from Spidir.Debug import *
 from Spidir import extension
 
 
+# events
+EVENT_GENE = 0
+EVENT_SPEC = 1
+EVENT_DUP = 2
+
+# fractional branches
+FRAC_NONE = 0
+FRAC_DIFF = 1
+FRAC_PARENT = 2
+FRAC_NODE = 3
+
+
 
 #-------------------------------------------------------------------------------
 # SINDIR input/output
@@ -719,278 +731,14 @@ def rareEventsLikelihood(conf, tree, stree, recon, events):
         if event == "dup":
             logl += log(conf["dupprob"])
         
-        if event == "dup":
-            logl += log(conf["dupprob"])
+        #if event == "dup":
+        #    logl += log(conf["dupprob"])
         
     #nloss = len(phylo.findLoss(tree, stree, recon))
     #logl += nloss * log(conf["lossprob"])
     
     return logl
 
-
-def subtreeLikelihood_est(conf, tree, root, recon, events, stree, params, baserate):
-    this = util.Closure(
-        logl=0.0,
-        isExtra = False
-    )
-    
-    extraBranches = getExtraBranches(root, recon, events, stree)
-    depths = {root.parent: 0}
-    marks = {root.parent: 1}
-    sroot = recon[root.parent]
-    
-    
-    # process each child of subtree root
-    def walk(node, extra):        
-        # save depth of node
-        if recon[node] != recon[tree.root]:  #stree.root:
-            depths[node] = node.dist + depths[node.parent]
-        else:
-            # ignore branch length of free branches
-            depths[node] = depths[node.parent]
-        
-        # remember if extra node is in path
-        if "extra" in node.data:
-            extra = node
-        
-        
-        if events[node] == "dup":
-            # recurse within dup-only subtree
-            node.recurse(walk, extra)
-        else:
-            # we are at subtree leaf
-            # compute likelihood of path from leaf to root
-            
-            # figure out species branches that we cross
-            # get total mean and variance of this path
-            mu = 0
-            sigma2 = 0
-            snode = recon[node]
-            
-            # branch is free if we do not cross any more species
-            if snode == sroot:
-                return
-            
-            # sum means and variances along path
-            while snode != sroot and snode != stree.root:
-                mu += params[snode.name][0]
-                sigma2 += params[snode.name][1]**2
-                snode = snode.parent
-            assert abs(sigma2) > .00000001, "sigma too small"
-            sigma = math.sqrt(sigma2)
-            
-            
-            # find out how much of our path is conditioned
-            ptr = node
-            while ptr not in marks:
-                marks[ptr] = 1
-                ptr = ptr.parent
-            assert node != ptr
-            condDist = depths[ptr]
-            
-            if condDist == 0.0:
-                # if no distance to condition on denominator is 1.0
-                logdenom = log(1.0)
-            else:
-                logdenom = log(1 - stats.normalCdf(condDist/baserate, [mu, sigma]))
-            
-            # determine dist of total path
-            dist = max(depths[node], condDist)
-            #dist = depths[node]
-            
-            
-            # handle extra branches
-            if extra != None:
-                if "unfold" in extra.data:
-                    dist += extra.dist
-                
-                # determine desired shrink
-                target = min(mu, max(dist/baserate,0)) * baserate
-                shrink = dist - target
-                
-                # determine how much shrink is allowed
-                if "unfold" in extra.data:
-                    extradist = max(2 * extra.dist, 0)
-                else:
-                    extradist = max(extra.dist, 0)
-                shrink = min(shrink, extradist)
-                
-                if condDist == 0.0:
-                    dist -= shrink
-                else:
-                    condDist -= shrink
-            
-            
-            lognom = log(stats.normalPdf(dist/baserate, [mu, sigma]))
-            
-            
-            if logdenom == -util.INF or \
-               lognom   == util.INF:
-                logl = -util.INF
-                this.logl = -util.INF
-            else:
-                logl = lognom - logdenom
-                this.logl += logl
-            
-                        
-            """
-            print "\t".join(["%10s" % str(node.name), 
-                             "%.3f" % dist, 
-                             "%.3f |" % condDist,
-                             "%.3f" % (dist / baserate), 
-                             "%.3f |" % (condDist / baserate), 
-                             "%.3f" % mu, 
-                             "%.3f |" % sigma,
-                             "%.3f" % logdenom])
-            """
-            
-            
-            # debug saving
-            node.data["logl"] = logl
-            
-            if this.logl > 1e10:
-                debug(dist, condDist, baserate, mu, sigma, logl, logdenom)
-                raise Exception("logl too high")
-            
-            node.data["params"] = [[mu, sigma]]
-            node.data["fracs"] = [[1]]
-            
-    walk(root, None)    
-    
-    
-    return this.logl
-
-
-
-
-def branchLikelihoods(conf, tree, recon, events, stree, params, baserate):
-    this = util.Closure(logl=0.0)
-
-    # determine if top branch unfolds
-    if recon[tree.root] ==  stree.root and \
-       events[tree.root] == "dup":
-        for child in tree.root.children:
-            if recon[child] != stree.root:
-                child.data["unfold"] = True    
-    
-    # determine if top branch needs to slide root
-    if recon[tree.root] ==  stree.root and \
-       len(tree.root.children) == 2 and \
-       events[tree.root] == "spec" and \
-       events[tree.root.children[0]] == "spec" and \
-       events[tree.root.children[1]] == "spec":
-        
-        spath1 = 0
-        snode1 = recon[tree.root.children[0]]
-        while snode1 != stree.root:
-            spath1 += params[snode1.name][0]
-            snode1 = snode1.parent
-        
-        spath2 = 0
-        snode2 = recon[tree.root.children[1]]
-        while snode2 != stree.root:
-            spath2 += params[snode2.name][0]
-            snode2 = snode2.parent
-        
-        ratio = spath1 / float(spath1 + spath2)
-        tot = tree.root.children[0].dist + tree.root.children[1].dist
-        
-        tree.root.children[0].dist = tot * ratio
-        tree.root.children[1].dist = tot * (1 - ratio)
-    
-    
-    # recurse through indep sub-trees
-    def walk(node):
-        if events[node] == "spec" or \
-           node == tree.root:
-            for child in node.children:
-                this.logl += subtreeLikelihood_est(conf, tree, child, recon, events, 
-                                                stree, params, baserate)
-        node.recurse(walk)
-    walk(tree.root)
-    
-    return this.logl
-
-
-def treeLogLikelihood_est(conf, tree, stree, gene2species, params, baserate=None):
-    # reconcile the gene tree
-    # determine all events
-    tree.clearData("logl", "extra", "fracs", "params", "unfold")
-    recon = phylo.reconcile(tree, stree, gene2species)
-    events = phylo.labelEvents(tree, recon)
-    
-    # determine baserate
-    if baserate == None:
-        baserate = getBaserate(tree, stree, params, recon=recon)
-    
-    
-
-    
-    # calc branch length likelihoods
-    this = util.Closure(logl=0.0)
-    this.logl = branchLikelihoods(conf, tree, recon, events, 
-                                  stree, params, baserate)
-    
-    # calc baserate likelihood
-    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
-    
-    # calc probability of rare events
-    tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
-    this.logl += tree.data["eventlogl"]
-    
-    # calc penality of error
-    tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
-    this.logl += tree.data["errorlogl"]
-    
-    
-    # debugging information
-    tree.data["baserate"] = baserate
-    tree.data["logl"] = this.logl
-    
-    
-    
-    
-    return this.logl
-
-"""
-
-def treeLogLikelihoodAllRoots(conf, tree, stree, gene2species, params, 
-                              baserate=None):
-    # find reconciliation that minimizes loss
-    toplogl = -util.INF
-    toproot = None
-          
-    # make an unrooted copy of gene tree
-    tree = treelib.unroot(tree)
-    
-    # determine graph and possible roots
-    mat = treelib.tree2graph(tree)
-    newroots = util.sort(tree.nodes.keys())
-    newroots.remove(tree.root.name)
-    
-    # try rooting on everything
-    for root in newroots:
-        
-        tree2 = treelib.reroot(tree, root, mat)
-        
-        logl = treeLogLikelihood(conf, tree2, stree, gene2species, params, 
-                                 baserate=baserate)
-        
-        # keep track of min loss
-        if logl > toplogl:
-            toplogl = logl
-            toproot = root
-    
-    print toproot, toplogl
-            
-    # root tree by minroot
-    toptree = treelib.reroot(tree, toproot)
-    toplogl = treeLogLikelihood(conf, toptree, stree, gene2species, params, 
-                                baserate=baserate)
-    
-    return toptree, toplogl
-
-"""
 
 
 
@@ -1408,15 +1156,6 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
     return logl
 
 
-
-
-
-FRAC_NONE = 0
-FRAC_DIFF = 1
-FRAC_PARENT = 2
-FRAC_NODE = 3
-
-
 def reconBranch2(node, recon, events, params):
 
     # set fractional branches
@@ -1549,63 +1288,7 @@ def setMidpointsRandom2(node, events, recon, midpoints, wholeTree=False):
     walk(node)
 
 
-
-def makePtree(tree):
-    """Make parent tree array from tree"""
-    
-    nodes = []
-    nodelookup = {}
-    ptree = []
-    
-    def walk(node):
-        for child in node.children:
-            walk(child)
-        nodelookup[node] = len(nodes)
-        nodes.append(node)
-
-    walk(tree.root)
-    
-    
-    for node in nodes:
-        if node == tree.root:
-            ptree.append(-1)
-        else:
-            ptree.append(nodelookup[node.parent])
-    
-    return ptree, nodes, nodelookup
-
-# events
-EVENT_GENE = 0
-EVENT_SPEC = 1
-EVENT_DUP = 2
-
-
-def treelikelihood_C(tree, recon, events, stree, params, generate):
-    """calculate likelihood of tree using C"""
-
-    ptree, nodes, nodelookup = makePtree(tree)
-    dists = [float(node.dist) for node in nodes]
-    
-    pstree, snodes, snodelookup = makePtree(stree)
-    
-    reconarray = [snodelookup[recon[node]] for node in nodes]
-    eventslookup = {"gene": EVENT_GENE,
-                    "spec": EVENT_SPEC,
-                    "dup": EVENT_DUP}
-    eventsarray = [eventslookup[events[node]] for node in nodes]
-    mu = [float(params[snode.name][0]) for snode in snodes]
-    sigma = [float(params[snode.name][1]) for snode in snodes]
-
-    
-    ret = extension.treelk(ptree, dists, pstree, 
-                           reconarray, eventsarray,
-                           mu, sigma, generate)
-    
-    return ret
-    
-
-
-def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
+def treeLogLikelihood_old(conf, tree, stree, gene2species, params, baserate=None):
     #conf["accuracy"] = .01
     conf.setdefault("bestlogl", -util.INF)
 
@@ -1691,12 +1374,112 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     return this.logl
 
 
-### END TESTING INTEGRATION
 
 
 
+#=============================================================================
+# new C-extension
+
+def makePtree(tree):
+    """Make parent tree array from tree"""
+    
+    nodes = []
+    nodelookup = {}
+    ptree = []
+    
+    def walk(node):
+        for child in node.children:
+            walk(child)
+        nodelookup[node] = len(nodes)
+        nodes.append(node)
+
+    walk(tree.root)
+    
+    
+    for node in nodes:
+        if node == tree.root:
+            ptree.append(-1)
+        else:
+            ptree.append(nodelookup[node.parent])
+    
+    return ptree, nodes, nodelookup
 
 
+def treelikelihood_C(tree, recon, events, stree, params, generate):
+    """calculate likelihood of tree using C"""
+
+    ptree, nodes, nodelookup = makePtree(tree)
+    dists = [float(node.dist) for node in nodes]
+    
+    pstree, snodes, snodelookup = makePtree(stree)
+    
+    reconarray = [snodelookup[recon[node]] for node in nodes]
+    eventslookup = {"gene": EVENT_GENE,
+                    "spec": EVENT_SPEC,
+                    "dup": EVENT_DUP}
+    eventsarray = [eventslookup[events[node]] for node in nodes]
+    mu = [float(params[snode.name][0]) for snode in snodes]
+    sigma = [float(params[snode.name][1]) for snode in snodes]
+
+    
+    ret = extension.treelk(ptree, dists, pstree, 
+                           reconarray, eventsarray,
+                           mu, sigma, generate)
+    
+    return ret
+    
+
+def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
+    conf.setdefault("bestlogl", -util.INF)
+
+    # debug info
+    if isDebug(DEBUG_MED):
+        util.tic("find logl")
+    
+
+    # derive relative branch lengths
+    tree.clearData("logl", "extra", "fracs", "params", "unfold")
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.labelEvents(tree, recon)
+
+    # determine if top branch unfolds
+    if recon[tree.root] ==  stree.root and \
+       events[tree.root] == "dup":
+        for child in tree.root.children:
+            if recon[child] != stree.root:
+                child.data["unfold"] = True
+    
+    if baserate == None:
+        baserate = getBaserate(tree, stree, params, recon=recon)
+    
+    # top branch is "free"
+    params[stree.root.name] = [0,0]
+    this = util.Bundle(logl=0.0)
+    
+    # calc likelihood in C
+    this.logl = treelikelihood_C(tree, recon, events, stree, params, baserate)
+    
+    # calc probability of rare events
+    tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
+    this.logl += tree.data["eventlogl"]
+    
+    # calc penality of error
+    tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
+    this.logl += tree.data["errorlogl"]
+
+    # family rate likelihood
+    if conf["famprob"]:
+        this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
+    
+    tree.data["baserate"] = baserate
+    tree.data["logl"] = this.logl
+    
+    if isDebug(DEBUG_MED):
+        util.toc()
+        debug("\n\n")
+        drawTreeLogl(tree, events=events)
+    
+    return this.logl
 
 
 #-------------------------------------------------------------------------------

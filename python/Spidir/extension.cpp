@@ -327,14 +327,13 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 int nsnodes, int *pstree, 
                 int *recon, int *events,
                 float *mu, float *sigma, float generate,
-                bool *freebranches, int unfold, float unfolddist,
+                ReconParams *reconparams,
                 int nsamples=100)
 {
     float logl = 0.0;
     int sroot = nsnodes - 1;
     
-    ReconParams reconparams = ReconParams(nnodes, freebranches, 
-                                          unfold, unfolddist);
+    //
     
     if (events[root] != EVENT_DUP) {
         // single branch, no integration needed
@@ -344,7 +343,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             reconBranch(root, ptree, pstree, recon, events, 
                         mu, sigma, &reconparams);
             logl = branchlk(dists[root] / generate, 
-                            root, ptree, &reconparams);
+                            root, ptree, reconparams);
         }
     } else {
         // multiple branches, integrate
@@ -357,7 +356,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         
         while ((node = walk.next()) != -1) {
             reconBranch(node, ptree, pstree, 
-                        recon, events, mu, sigma, &reconparams);
+                        recon, events, mu, sigma, reconparams);
             nodes[nodesi++] = node;
             
             if (events[node] == EVENT_DUP) {
@@ -376,7 +375,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             
             // propose a setting of midpoints
             setRandomMidpoints(root, ptree, nodes, nodesi,
-                               recon, events, &reconparams);
+                               recon, events, reconparams);
             
             // loop through all branches in subtree
             for (int j=0; j<nodesi; j++) {
@@ -384,7 +383,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 
                 if (recon[node] != sroot) {
                     sampleLogl += branchlk(dists[node] / generate, 
-                                           node, ptree, &reconparams);
+                                           node, ptree, reconparams);
                 }
             }
             
@@ -417,18 +416,18 @@ float treelk(int nnodes, int *ptree, float *dists,
     
     
     /*
-     find free branches
+      find free branches
 
-     A branch is an free branch if (1) its parent node reconciles to the species
-     tree root, (2) it parent node is a duplication, (3) and the node it self
-     reconciles not to the species tree root.
+      A branch is an free branch if (1) its parent node reconciles to the species
+      tree root, (2) it parent node is a duplication, (3) and the node it self
+      reconciles not to the species tree root.
 
-     A top branch unfolds, if (1) its parent is the root, (2) its parent
-     reconciles to the species tree root, (3) its parent is a duplication, and
-     (4) itself does not reconcile to the species tree root. There is atmost one
-     unfolding branch per tree.
+      A top branch unfolds, if (1) its parent is the root, (2) its parent
+      reconciles to the species tree root, (3) its parent is a duplication, and
+      (4) itself does not reconcile to the species tree root. There is atmost one
+      unfolding branch per tree.
 
-     If a branch is free, augment its length to min(dist, mean)
+      If a branch is free, augment its length to min(dist, mean)
     */
     
     bool *freebranches = new bool [nnodes];
@@ -460,6 +459,8 @@ float treelk(int nnodes, int *ptree, float *dists,
         }
     }   
     
+    ReconParams reconparams = ReconParams(nnodes, freebranches, 
+                                          unfold, unfolddist);
     
     // loop through independent subtrees
     for (int i=0; i<nnodes; i++) {
@@ -469,7 +470,7 @@ float treelk(int nnodes, int *ptree, float *dists,
                                   nsnodes, pstree, 
                                   recon, events,
                                   mu, sigma, generate,
-                                  freebranches, unfold, unfolddist);
+                                  &reconparams);
             }
         }
     }

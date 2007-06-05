@@ -298,11 +298,14 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     }
     // endfrac == FRAC_NONE, do nothing
     
-    if (totvar < 1e-10) {
-        printf("%f %f\n", totmean, totvar);
-        printf("%d %d\n", startfrac, endfrac);
+    /*
+    if (totvar < 1e-10) {        
+        printf("totmean=%f totvar=%f\n", totmean, totvar);
+        printf("startfrac=%d endfrac=%d\n", startfrac, endfrac);
+        printf("k[p]=%f k[n]=%f\n", k[ptree[node]], k[node]);
         assert(0);
     }
+    */
     
     
     // unhandle partially-free branches and unfold
@@ -364,6 +367,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         
         // choose number of samples based on number of nodes to integrate over
         nsamples = int(100*log(nodesi)) + 50;
+        if (nsamples > 400) nsamples = 400;
         
         // perform integration by sampling
         float prob = 0.0;
@@ -482,10 +486,11 @@ float treelk(int nnodes, int *ptree, float *dists,
 // computes the log(normalPdf(x | u, s^2))
 float normallog(float x, float u, float s)
 {
-    assert(s > 1e-10);
-    
-    //return 1.0/(s * sqrt(2.0*PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s));
+    if (s < 1e-10 || u < 1e-10) {
+        return -INFINITY;
+    }    
     return - logf(s * sqrt(2.0*PI)) - (x-u)*(x-u) / (2.0*s*s);
+    //return log(1.0/(s * sqrt(2.0*PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
 }
 
 

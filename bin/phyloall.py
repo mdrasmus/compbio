@@ -5,10 +5,10 @@ import copy
 import os
 import sys
 import StringIO
+import shutil
 
 
 # rasmus libs
-
 from rasmus import depend
 from rasmus import env
 from rasmus import stats
@@ -99,6 +99,8 @@ options = [
      "default": ""}],
 
   "Misc options",
+  ["", "fixdist=", "fixdist", "<backup file>",
+    {"single": True}],
   ["", "status=", "status", "<ext1>,<ext2>,...",
     {"single": True,
      "help": "report the existance of each file with ext1, ext2, etc."}],
@@ -124,6 +126,8 @@ align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
                    "puzzledist"]
 
 tree2distProgs = ["tree2dist"]
+
+dist2distProgs = ["fixdist"]
 
 
 
@@ -293,7 +297,10 @@ def run(conf, infile, test=False):
                 continue
             if not test:
                 tree2dist(conf, prog, treefile, labelfile, distfile, basename)
-            
+        
+        elif prog in dist2distProgs:
+            dist2dist(conf, prog, distfile, conf["fixdist"], basename)
+        
         else:
             raise "unknown program '%s'" % prog
         
@@ -478,6 +485,20 @@ def tree2dist(conf, prog, treefile, labelfile, distfile, basename):
         mat = phylo.tree2distmat(tree, labels)
         
     phylip.writeDistMatrix(mat, out=distfile)
+
+
+def dist2dist(conf, prog, distfile, backupext, basename):
+    labels, distmat = phylip.readDistMatrix(distfile)
+    #labels = fasta.readFasta(labelfile).keys()
+    
+    # backup distance matrix
+    shutil.copy(distfile, basename + backupext)
+    
+    if prog == "fixdist":
+        distmat = phylip.correctDistMatrix(distmat)
+    
+    phylip.writeDistMatrix(distmat, labels=labels, out=distfile)
+    
     
 
 def displayHelp():
@@ -502,7 +523,10 @@ def displayHelp():
     print >>sys.stderr, "Tree to distance matrix"
     print >>sys.stderr, " ", " ".join(tree2distProgs)
     print >>sys.stderr    
-    
+
+    print >>sys.stderr, "distance matrix manipulation"
+    print >>sys.stderr, " ", " ".join(dist2distProgs)
+    print >>sys.stderr
 
 
 def reportStatus(conf, infiles):

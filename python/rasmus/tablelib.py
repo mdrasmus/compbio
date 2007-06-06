@@ -928,17 +928,20 @@ class Table (list):
            
            extra options:
            default=None
+           uselast=False    # allow multiple rows, just use last
         """
         
         options.setdefault("default", None)
+        options.setdefault("uselast", False)
         lookup = util.Dict(dim=len(keys), default=options["default"])
+        uselast = options["uselast"]
         
         for row in self:
             keys2 = util.mget(row, keys)
             ptr = lookup
             for i in xrange(len(keys2) - 1):
                 ptr = lookup[keys2[i]]
-            if keys2[-1] in ptr:
+            if not uselast and keys2[-1] in ptr:
                 raise Exception("duplicate key '%s'" % str(keys2[-1]))
             ptr[keys2[-1]] = row
         

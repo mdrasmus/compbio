@@ -151,6 +151,58 @@ public:
 };
 
 
+
+class Node
+{
+public:
+    Node(int nchildren=-1) :
+        children(NULL)
+    {
+        if (nchildren != -1)
+            setChildren(nchildren);
+    }
+    
+    ~Node()
+    {
+        if (children)
+            delete [] children;
+    }
+    
+    void setChildren(int _nchildren)
+    {
+        nchildren = _nchildren;
+        children = new int [nchildren];
+    }
+
+    int name;
+    int parent;
+    int *children;
+    int nchildren;
+};
+
+
+class Tree
+{
+public:
+    Tree(int nnodes) :
+        nnodes(nnodes),
+        nodes(NULL)
+    {
+        nodes = new Node [nnodes];
+    }
+    
+    ~Tree()
+    {
+        if (nodes)
+            delete [] nodes;
+    }
+    
+    int nnodes;
+    int root;
+    Node *nodes;
+};
+
+
 void reconBranch(int node, int *ptree, int *pstree, int *recon, int *events, 
                  float *mu, float *sigma,
                  ReconParams *reconparams)
@@ -298,16 +350,6 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     }
     // endfrac == FRAC_NONE, do nothing
     
-    /*
-    if (totvar < 1e-10) {        
-        printf("totmean=%f totvar=%f\n", totmean, totvar);
-        printf("startfrac=%d endfrac=%d\n", startfrac, endfrac);
-        printf("k[p]=%f k[n]=%f\n", k[ptree[node]], k[node]);
-        assert(0);
-    }
-    */
-    
-    
     // unhandle partially-free branches and unfold
     if (reconparams->unfold == node)
         dist += reconparams->unfolddist;
@@ -332,8 +374,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
 {
     float logl = 0.0;
     int sroot = nsnodes - 1;
-    
-    //
+
     
     if (events[root] != EVENT_DUP) {
         // single branch, no integration needed
@@ -341,7 +382,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         if (recon[root] != sroot) {
             // no midpoints, no integration needed
             reconBranch(root, ptree, pstree, recon, events, 
-                        mu, sigma, &reconparams);
+                        mu, sigma, reconparams);
             logl = branchlk(dists[root] / generate, 
                             root, ptree, reconparams);
         }

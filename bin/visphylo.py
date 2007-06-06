@@ -185,7 +185,8 @@ if len(treefiles) > 0:
     
     windows.append(vistree.win)
     coords.append(max(node.y for node in tree.nodes.itervalues()))
-
+else:
+    leaves = None
 
 # read alignment
 if len(alignfiles) > 0:
@@ -216,7 +217,7 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
         label = None
     
     # reorder according to any given tree
-    if label != None:
+    if leaves != None:
         lookup = util.list2lookup(label)
         rperm = util.mget(lookup, leaves)
         cperm = util.mget(lookup, leaves)

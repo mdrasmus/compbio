@@ -389,7 +389,7 @@ def writeAlignment(out, seqs):
 
 
 
-#
+#=============================================================================
 # common conversions
 #
 
@@ -416,7 +416,7 @@ def renameTreeWithIds(tree, labels):
 
 
 
-#
+#=============================================================================
 # tree building programs
 #
 
@@ -635,7 +635,7 @@ def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
     
     
 
-#
+#=============================================================================
 # distance estimation programs
 #
 
@@ -696,6 +696,31 @@ def dnadist(seqs, output=None, verbose=True, force = False, args=None):
         name, mat = readDistMatrix("outfile")    
         cleanupTempDir(cwd)
         return labels, mat
+
+
+def correctDistMatrix(distmat, maxdist=40, fardist=None):
+    """remove -1 and extremely large distances, replace them with 
+       maxdist in matrix"""
+
+    if fardist == None:
+        fardist = 0
+
+        for row in distmat:
+            for x in row:
+                if x < maxdist:
+                    fardist = max(fardist, x)
+    
+    distmat2 = []
+    for row in distmat:
+        distmat2.append([])
+        for x in row:
+            if x == -1 or x > maxdist:
+                distmat2[-1].append(fardist)
+            else:
+                distmat2[-1].append(x)
+    
+    return distmat2
+    
 
 
 def bootNeighbor(seqs, iters=100, seed=1, output=None, 

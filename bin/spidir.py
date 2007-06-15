@@ -174,6 +174,7 @@ options = ["""\
      "parser": int,
      "help": "set SPIDIR debug level"}],
  ["", "integrate", "integrate", ""],
+ ["", "python_only", "python_only", ""],
 
  ["P:", "paths=", "paths", "<files path>",
     {"single": True,

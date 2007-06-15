@@ -5,7 +5,7 @@
 #
 
 # python libs
-import math, StringIO, copy, random, sys
+import math, StringIO, copy, random, sys, time
 
 
 # rasmus libs
@@ -574,6 +574,10 @@ def mleBaserate(lens, means, sdevs, baserateparam):
             for i in range(len(lens))) / beta
     c = - sum(lens[i] ** 2 / sdevs[i] ** 2
               for i in range(len(lens))) / beta
+    
+    #p = util.plotfunc(lambda x: x*x*x + a+x*x + b*x + c, -50, 50, .1)
+    #p.plot([-50, 50], [0, 0], style="lines")
+    #time.sleep(10)
     
     #print filter(lambda x: x>0, stats.solveCubic(a, b, c))
     return max(stats.solveCubic(a, b, c))
@@ -1405,7 +1409,8 @@ def makePtree(tree):
     return ptree, nodes, nodelookup
 
 
-def treelikelihood_C(tree, recon, events, stree, params, generate):
+def treeLikelihood_C(conf, tree, recon, events, stree, params, generate, 
+                     gene2species):
     """calculate likelihood of tree using C"""
 
     ptree, nodes, nodelookup = makePtree(tree)
@@ -1418,19 +1423,39 @@ def treelikelihood_C(tree, recon, events, stree, params, generate):
                     "spec": EVENT_SPEC,
                     "dup": EVENT_DUP}
     eventsarray = [eventslookup[events[node]] for node in nodes]
+    
+    gene2speciesarray = []
+    for node in nodes:
+        if node.isLeaf():
+            gene2speciesarray.append(snodelookup[
+                                     stree.nodes[gene2species(node.name)]])
+        else:
+            gene2speciesarray.append(-1)
+    
     mu = [float(params[snode.name][0]) for snode in snodes]
     sigma = [float(params[snode.name][1]) for snode in snodes]
 
     
     ret = extension.treelk(ptree, dists, pstree, 
-                           reconarray, eventsarray,
-                           mu, sigma, generate)
+                           gene2speciesarray,
+                           mu, sigma, 
+                           float(params["baserate"][0]), 
+                           float(params["baserate"][1]),
+                           generate,
+                           float(tree.data["error"]),
+                           float(conf["predupprob"]),
+                           float(conf["dupprob"]),
+                           float(conf["errorcost"]))
     
     return ret
     
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     conf.setdefault("bestlogl", -util.INF)
+
+    if "python_only" in conf and conf["python_only"]:
+        return treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
+                                        baserate=baserate)
 
     # debug info
     if isDebug(DEBUG_MED):
@@ -1457,7 +1482,66 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     this = util.Bundle(logl=0.0)
     
     # calc likelihood in C
-    this.logl = treelikelihood_C(tree, recon, events, stree, params, baserate)
+    this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
+                                 baserate, gene2species)
+    
+    # calc probability of rare events
+    tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
+    #this.logl += tree.data["eventlogl"]
+    
+    # calc penality of error
+    tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
+    #this.logl += tree.data["errorlogl"]
+
+    # family rate likelihood
+    #if conf["famprob"]:
+    #    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
+    
+    tree.data["baserate"] = baserate
+    tree.data["logl"] = this.logl
+    
+    if isDebug(DEBUG_MED):
+        util.toc()
+        debug("\n\n")
+        drawTreeLogl(tree, events=events)
+    
+    return this.logl
+
+
+def treeLogLikelihood_python(conf, tree, stree, gene2species, params, baserate=None):
+
+    # debug info
+    if isDebug(DEBUG_MED):
+        util.tic("find logl")
+    
+    # derive relative branch lengths
+    tree.clearData("logl", "extra", "fracs", "params", "unfold")
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.labelEvents(tree, recon)
+
+    # determine if top branch unfolds
+    if recon[tree.root] ==  stree.root and \
+       events[tree.root] == "dup":
+        for child in tree.root.children:
+            if recon[child] != stree.root:
+                child.data["unfold"] = True
+    
+    if baserate == None:
+        baserate = getBaserate(tree, stree, params, recon=recon)
+    
+    # top branch is "free"
+    params[stree.root.name] = [0,0]
+    this = util.Closure(logl=0.0)
+    
+    # recurse through indep sub-trees
+    def walk(node):
+        if events[node] == "spec" or \
+           node == tree.root:
+            this.logl += subtreeLikelihood(conf, node, recon, events, 
+                                           stree, params, baserate)
+        node.recurse(walk)
+    walk(tree.root)
+    
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
@@ -1473,6 +1557,10 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
+    
+    #print >> conf["intcmp"], "%f\t%f" % (this.logl, estlogl)
+    #conf["intcmp"].flush()
+    
     
     if isDebug(DEBUG_MED):
         util.toc()

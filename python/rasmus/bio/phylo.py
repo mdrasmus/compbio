@@ -745,87 +745,6 @@ def neighborjoin(distmat, genes, usertree=None):
     return tree
 
 
-#=============================================================================
-# Sequence Distance Estimation
-
-
-def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
-    aln = fasta.FastaDict()
-    aln["0"] = seq1
-    aln["1"] = seq2
-    
-    if os.path.isfile("infile"):
-        raise Exception("infile already exists")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madePhylip = True
-    else:
-        madePhylip = False
-    
-    
-    
-    # write file
-    if infile == None:
-        infile = util.tempfile(".", "tmp_in", ".align")
-        madeInfile = True
-    else:
-        madeInfile = False
-    if outfile == None:    
-        outfile = util.tempfile(".", "tmp_out", ".dist")
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    if os.path.exists(outfile):
-        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
-    else:
-        args = "%s\nf\n%s\ny\n" % (infile, outfile)
-    
-    phylip.writePhylipAlign(file(infile, "w"), aln)
-    phylip.execPhylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.readDistMatrix(outfile)
-
-    if madePhylip:
-        os.remove("outfile")
-    
-    if madeInfile:
-        os.remove(infile)
-    if madeOutfile:
-        os.remove(outfile)
-    
-    return distmat[0][1]
-
-    
-def getGaplessDistMatrix(aln):
-    infile = util.tempfile("/tmp/", "tmp_in", ".align")
-    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
-    keys = aln.keys()
-    
-    for i in xrange(0, len(aln)):
-        for j in xrange(i+1, len(aln)):
-            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
-                                           infile=infile, outfile=outfile)
-            distmat[j][i] = distmat[i][j]
-    
-    
-    if madeOutfile:
-        os.remove("outfile")
-    
-    os.remove(infile)
-    os.remove(outfile)
-    
-    return distmat
 
 
 #=============================================================================
@@ -975,6 +894,87 @@ def setBranchLengths(tree, edges, edgelens, paths, resids,
         tree.nodes[gene1].dist = edgelens[i]
 
 
+#=============================================================================
+# Sequence Distance Estimation
+
+
+def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
+    aln = fasta.FastaDict()
+    aln["0"] = seq1
+    aln["1"] = seq2
+    
+    if os.path.isfile("infile"):
+        raise Exception("infile already exists")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madePhylip = True
+    else:
+        madePhylip = False
+    
+    
+    
+    # write file
+    if infile == None:
+        infile = util.tempfile(".", "tmp_in", ".align")
+        madeInfile = True
+    else:
+        madeInfile = False
+    if outfile == None:    
+        outfile = util.tempfile(".", "tmp_out", ".dist")
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    if os.path.exists(outfile):
+        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
+    else:
+        args = "%s\nf\n%s\ny\n" % (infile, outfile)
+    
+    phylip.writePhylipAlign(file(infile, "w"), aln)
+    phylip.execPhylip("dnadist", args, verbose=False)
+    labels, distmat = phylip.readDistMatrix(outfile)
+
+    if madePhylip:
+        os.remove("outfile")
+    
+    if madeInfile:
+        os.remove(infile)
+    if madeOutfile:
+        os.remove(outfile)
+    
+    return distmat[0][1]
+
+    
+def getGaplessDistMatrix(aln):
+    infile = util.tempfile("/tmp/", "tmp_in", ".align")
+    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
+    keys = aln.keys()
+    
+    for i in xrange(0, len(aln)):
+        for j in xrange(i+1, len(aln)):
+            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
+                                           infile=infile, outfile=outfile)
+            distmat[j][i] = distmat[i][j]
+    
+    
+    if madeOutfile:
+        os.remove("outfile")
+    
+    os.remove(infile)
+    os.remove(outfile)
+    
+    return distmat
 
 #============================================================================
 # branch splits

@@ -257,8 +257,11 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
     int seqlen = strlen(seqs[0]);
     
     // check seqs
+    // CHANGE N's to gaps
     for (int i=0; i<nseqs; i++) {
         for (int j=0; j<seqlen; j++) {
+            if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
+                seqs[i][j] = '-';
             assert(seqs[i][j] == '-' || dna2int[seqs[i][j]] != -1);
         }
     }

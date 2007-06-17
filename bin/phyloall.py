@@ -118,7 +118,8 @@ conf = util.parseOptions(sys.argv, options,
 fasta2alignProgs = ["clustalw", "muscle"]
 
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
-             "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep"]
+             "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep",
+             "spidir_pars"]
              
 dist2treeProgs = ["bionj", "lse", "wls", "nj"]
 
@@ -381,7 +382,12 @@ def align2tree(conf, prog, alignfile, basename):
                                seqtype=seqtype,
                                verbose=conf["verbose"],
                                saveOutput=conf["extraoutput"])
-        
+
+    elif prog in ["spidir_pars"]:
+        import Spidir
+        assert usertree != None
+        Spidir.parsimony(aln, usertree)
+        tree = usertree
     else:
         raise "unknown phylogeny program '%s'" % prog
     

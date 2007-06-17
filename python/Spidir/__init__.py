@@ -32,7 +32,7 @@ import scipy.optimize
 # SPIDIR libs
 from Spidir import Search
 from Spidir.Debug import *
-from Spidir import extension
+from Spidir import pyspidir
 
 
 # events
@@ -227,6 +227,11 @@ def drawParamTree(tree, params, *args, **kargs):
 def setTreeDistances(conf, tree, distmat, genes):
     if isDebug(DEBUG_MED):
         util.tic("fit branch lengths")
+    
+    if "parsimony" in conf:
+        parsimony_C(conf["aln"], tree)
+        tree.data["error"] = 0.0
+        return
     
     # perform LSE
     lse = phylo.leastSquareError(tree, distmat, genes)
@@ -1394,11 +1399,22 @@ def makePtree(tree):
     def walk(node):
         for child in node.children:
             walk(child)
-        nodelookup[node] = len(nodes)
         nodes.append(node)
-
+    
     walk(tree.root)
     
+    def leafsort(a, b):
+        if type(a.name) != type(b.name):
+            if isinstance(a.name, str):
+                return -1
+            else:
+                return 1
+        else:
+            return 0
+    
+    # bring leaves to front
+    nodes.sort(cmp=leafsort)
+    nodelookup = util.list2lookup(nodes)
     
     for node in nodes:
         if node == tree.root:
@@ -1436,7 +1452,7 @@ def treeLikelihood_C(conf, tree, recon, events, stree, params, generate,
     sigma = [float(params[snode.name][1]) for snode in snodes]
 
     
-    ret = extension.treelk(ptree, dists, pstree, 
+    ret = pyspidir.treelk(ptree, dists, pstree, 
                            gene2speciesarray,
                            mu, sigma, 
                            float(params["baserate"][0]), 
@@ -1448,6 +1464,24 @@ def treeLikelihood_C(conf, tree, recon, events, stree, params, generate,
                            float(conf["errorcost"]))
     
     return ret
+
+
+def parsimony(aln, usertree):
+    return parsimony_C(aln, usertree)
+
+def parsimony_C(aln, tree):    
+    ptree, nodes, nodelookup = makePtree(tree)
+    leaves = [x.name for x in nodes if isinstance(x.name, str)]
+    seqs = util.mget(aln, leaves)
+    
+    dists = pyspidir.parsimony(ptree, seqs)
+    
+    for i in xrange(len(dists)):
+        nodes[i].dist = dists[i]
+    
+    
+    #treelib.drawTreeLens(tree)
+    
     
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
@@ -1481,22 +1515,20 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     params[stree.root.name] = [0,0]
     this = util.Bundle(logl=0.0)
     
+    # test out C parsimony
+    if "aln" in conf:
+        parsimony_C(conf["aln"], tree)
+    
     # calc likelihood in C
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
                                  baserate, gene2species)
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
-    #this.logl += tree.data["eventlogl"]
     
     # calc penality of error
     tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
-    #this.logl += tree.data["errorlogl"]
-
-    # family rate likelihood
-    #if conf["famprob"]:
-    #    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))
-    
+        
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
     

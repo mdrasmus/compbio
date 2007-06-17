@@ -8,15 +8,57 @@
 
 =============================================================================*/
 
-
+#include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <math.h>
-#include <assert.h>
+#include <string.h>
+
 
 #include "spidir.h"
 #include "common.h"
 
+
+#define matind(m, i, j) ((m)*(i) + (j))
+#define DNA_A 0
+#define DNA_C 1
+#define DNA_G 2
+#define DNA_T 3
+
+
+#define MAX_COST 1000000000
+
+
+
+int dna2int [256] = 
+{
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 9
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 19
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 29
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 39
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 49
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 59
+    -1, -1, -1, -1, -1,  0, -1,  1, -1, -1,   // 69
+    -1,  2, -1, -1, -1, -1, -1, -1, -1, -1,   // 79
+    -1, -1, -1, -1,  3, -1, -1, -1, -1, -1,   // 89
+    -1, -1, -1, -1, -1, -1, -1,  0, -1,  1,   // 99
+    -1, -1, -1,  2, -1, -1, -1, -1, -1, -1,   // 109
+    -1, -1, -1, -1, -1, -1,  3, -1, -1, -1,   // 119
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 129
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 139
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 149
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 159
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 169
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 179
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 189
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 199
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 209
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 219
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 229
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 239
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 249
+    -1, -1, -1, -1, -1, -1
+};
 
 
 //=============================================================================
@@ -101,6 +143,200 @@ void labelEvents(Tree *tree, int *recon, int *events)
     }
 }
 
+
+//=============================================================================
+// Parsimony algorithm
+
+
+float subcost[4][4] = {
+    {0, 1, 1, 1},
+    {1, 0, 1, 1},
+    {1, 1, 0, 1},
+    {1, 1, 1, 0}
+};
+
+
+struct ParsimonyCell
+{   
+    float cost;
+    float leftcost;
+    float rightcost;
+    int leftbase;
+    int rightbase;
+    bool gap;
+};
+
+
+// assume binary tree
+void parsimony_helper(Tree *tree, int node, int nseqs, char **seqs, 
+                    ParsimonyCell *table)
+{
+    for (node=nseqs; node<tree->nnodes; node++) {
+        int left = tree->nodes[node].children[0];
+        int right = tree->nodes[node].children[1];       
+        
+        // process this node
+        for (int a=0; a<4; a++) {
+            int minleft = 0, minright = 0;
+            float minleftcost = MAX_COST, minrightcost = MAX_COST;
+            float leftsub = 0;
+            float rightsub = 0;
+            float leftmatch = 2;
+            float rightmatch = 2;
+            
+            for (int b=0; b<4; b++) {
+                float sub = subcost[a][b];
+                float leftcost = table[matind(4, left, b)].cost + sub;
+                float rightcost = table[matind(4, right, b)].cost + sub;
+                
+                if (leftcost < minleftcost ||
+                    (leftcost == minleftcost &&
+                     (rand() / float(RAND_MAX)) < (1/leftmatch)))
+                {
+                    minleftcost = leftcost;
+                    minleft = b;
+                    leftsub = sub;
+                    if (leftcost == minleftcost)
+                        leftmatch += 1;                    
+                    else
+                        leftmatch = 2;
+                }
+                
+                
+                if (rightcost < minrightcost ||
+                    (rightcost == minrightcost && 
+                           (rand() / float(RAND_MAX)) < (1/rightmatch)))
+                {
+                    minrightcost = rightcost;
+                    minright = b;
+                    rightsub = sub;
+                    
+                    if (rightcost == minrightcost)
+                        rightmatch += 1;
+                    else
+                        rightmatch = 2;
+                }
+            }
+            
+            // save cost and pointers
+            int k = matind(4, node, a);
+            table[k].cost = minleftcost + minrightcost;
+            table[k].leftcost = leftsub;
+            table[k].rightcost = rightsub;
+            table[k].leftbase = minleft;
+            table[k].rightbase = minright;
+            table[k].gap = table[matind(4, left, 0)].gap && \
+                           table[matind(4, right, 0)].gap;
+        }
+    }
+}
+
+
+void getParsimonyCost(Tree *tree, int node, int base, 
+                      ParsimonyCell *table, float *dists)
+{
+    if (tree->nodes[node].nchildren > 0) {
+        int left = tree->nodes[node].children[0];
+        int right = tree->nodes[node].children[1];
+        
+        dists[left] += table[matind(4, node, base)].leftcost;
+        dists[right] += table[matind(4, node, base)].rightcost;
+        
+        // recurse
+        getParsimonyCost(tree, left, table[matind(4, node, base)].leftbase, 
+                         table, dists);
+        getParsimonyCost(tree, right, table[matind(4, node, base)].rightbase, 
+                         table, dists);
+    }
+}
+
+
+
+void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
+{
+    int seqlen = strlen(seqs[0]);
+    
+    // check seqs
+    for (int i=0; i<nseqs; i++) {
+        for (int j=0; j<seqlen; j++) {
+            assert(seqs[i][j] == '-' || dna2int[seqs[i][j]] != -1);
+        }
+    }
+    
+
+    // create tree objects
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    
+    // allocate dynamic table
+    ParsimonyCell *table = new ParsimonyCell [nnodes * 4];
+    int *gapless = new int [nnodes];
+    
+    // initalize distances
+    for (int i=0; i<nnodes; i++) {
+        dists[i] = 0.0;
+        gapless[i] = 0;
+    }
+    
+    
+    for (int i=0; i<seqlen; i++) {
+        
+        // initialize leaves
+        // iterate just over the leaves
+        
+        for (int j=0; j<nseqs; j++) {
+            if (seqs[j][i] == '-') {
+                // gap
+                for (int k=0; k<4; k++) {             
+                    table[matind(4, j, k)].cost = 0;
+                    table[matind(4, j, k)].gap = true;
+                }
+            } else {
+                for (int k=0; k<4; k++) {
+                    table[matind(4, j, k)].cost = MAX_COST;
+                    table[matind(4, j, k)].gap = false;
+                }
+                table[matind(4, j, dna2int[seqs[j][i]])].cost = 0;
+            }
+        }
+        
+        // populate cost table
+        parsimony_helper(&tree, tree.root, nseqs, seqs, table);
+        
+        
+        // find min cost at root
+        float mincost = MAX_COST;
+        int minbase= 0;
+        int root = tree.root;
+        dists[root] = 0;
+        
+        for (int a=0; a<4; a++) {
+            if (table[matind(4, root, a)].cost < mincost) {
+                mincost = table[matind(4, root, a)].cost;
+                minbase = a;
+            }
+        }
+        
+        // add up dist
+        getParsimonyCost(&tree, root, minbase, table, dists);
+        
+        // add up ungapped chars
+        for (int j=0; j<nnodes; j++) {
+            gapless[j] += table[matind(4, j, 0)].gap ? 0 : 1;
+        }
+    }
+    
+    // divide subsitutions by number of sites
+    for (int i=0; i<nnodes; i++)
+        dists[i] /= gapless[i];
+        //float(seqlen);
+    // TODO: need to protect against divide by zero
+    
+    
+    // cleanup
+    delete [] table;
+    delete [] gapless;
+}
 
 
 //=============================================================================

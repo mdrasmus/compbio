@@ -195,6 +195,8 @@ public:
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);
+void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists);
+
 
 //=============================================================================
 // Math

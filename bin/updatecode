@@ -6,4 +6,4 @@
 #chmod +x ~/projects/compbio/bin/*
 
 
-cd ~/projects/rasmus.git && git pull
+cd ~/projects/rasmus && git pull

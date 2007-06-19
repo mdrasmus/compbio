@@ -7,4 +7,4 @@ else
 fi
 
 #cd ~/projects/rasmus && cvs commit
-cd ~/projects/rasmus && git commit -a -m $MSG
+cd ~/projects/rasmus && git commit -a -m $MSG && git push

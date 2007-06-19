@@ -1,3 +1,38 @@
+=============================================================================
+Tue Jun 19 11:40:37 EDT 2007
+Matt Rasmussen
+
+
+To use my 'rasmus' scripts, you will need to set the following environment
+variables (add them to your ~/.bashrc file if you use bash):
+
+# root of compbio AFS directory
+COMPBIO=/afs/csail.mit.edu/group/compbio/software
+
+# for my binaries
+export PATH=$PATH:$COMPBIO/software/rasmus/bin
+
+# for python libraries
+export PYTHONPATH=$PYTHONPATH:$COMPBIO/rasmus/python
+
+# for summon visualization
+export PYTHONPATH=$PYTHONPATH:$COMPBIO/software/summon/lib
+export PATH=$PATH:$COMPBIO/bin
+
+
+
+To checkout my git directory use the following git commands:
+
+git clone compbio.mit.edu:/afs/csail/group/compbio/git/rasmus
+
+
+To get my latest updates do:
+
+cd <path to checkout code>/rasmus
+git pull
+
+
+
 ---------------------------------------------------------------------------------
 Fri Jun 30 12:35:25 EDT 2006
 Matt Rasmussen

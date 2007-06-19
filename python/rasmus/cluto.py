@@ -1,3 +1,7 @@
+#
+# python wrapper for CLUTO clustering toolkit
+#
+
 
 # python libs
 import os

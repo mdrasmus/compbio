@@ -1,7 +1,9 @@
 #!/bin/sh
 
-cd ~/projects/rasmus && cvs update -d
+#cd ~/projects/rasmus && cvs update -d
 
-chmod +x ~/projects/rasmus/bin/*
-chmod +x ~/projects/compbio/bin/*
+#chmod +x ~/projects/rasmus/bin/*
+#chmod +x ~/projects/compbio/bin/*
 
+
+cd ~/projects/rasmus.git && git pull

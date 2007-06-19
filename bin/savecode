@@ -1,4 +1,10 @@
 #!/bin/sh
 
-cd ~/projects/rasmus && cvs commit
+if [ $# -gt 1 ];
+    MSG=$1
+else
+    MSG='no message'
+fi
 
+#cd ~/projects/rasmus && cvs commit
+cd ~/projects/rasmus.git && git commit -a -m $MSG

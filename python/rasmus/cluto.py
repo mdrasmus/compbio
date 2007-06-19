@@ -1,6 +1,6 @@
-#
-# python wrapper for CLUTO clustering toolkit
-#
+"""
+ python wrapper for CLUTO clustering toolkit
+"""
 
 
 # python libs

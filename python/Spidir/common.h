@@ -45,7 +45,7 @@ class Node
 public:
     Node(int nchildren=0) :
         name(-1),
-        parent(-1),
+        parent(NULL),
         children(NULL),
         nchildren(nchildren)        
     {
@@ -62,17 +62,17 @@ public:
     void setChildren(int _nchildren)
     {
         nchildren = _nchildren;
-        children = new int [nchildren];
+        children = new Node* [nchildren];
     }
     
     void allocChildren(int _nchildren)
     {
-        children = new int [_nchildren];
+        children = new Node* [_nchildren];
     }
 
     int name;
-    int parent;
-    int *children;
+    Node *parent;
+    Node **children;
     int nchildren;
     
     // thinking about whether to keep this here...
@@ -85,7 +85,7 @@ class Tree
 public:
     Tree(int nnodes) :
         nnodes(nnodes),
-        root(-1),
+        root(NULL),
         nodes(NULL)
     {
         nodes = new Node [nnodes];
@@ -104,7 +104,7 @@ public:
     }
     
     int nnodes;
-    int root;
+    Node *root;
     Node *nodes;
 };
 
@@ -119,15 +119,15 @@ public:
     }
     
     
-    void setDepths(int node=-1, int depth=0)
+    void setDepths(Node *node=NULL, int depth=0)
     {
-        if (node == -1)
+        if (node == NULL)
             node = root;
         
-        depths[node] = depth;
+        depths[node->name] = depth;
         
-        for (int i=0; i<nodes[node].nchildren; i++)
-            setDepths(nodes[node].children[i], depth+1);
+        for (int i=0; i<node->nchildren; i++)
+            setDepths(node->children[i], depth+1);
     }
     
     int *depths;
@@ -222,6 +222,7 @@ void tree2ptree(Tree *tree, int *ptree);
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
 void printFtree(int nnodes, int **ftree);
-void printTree(Tree *tree, int node=-1, int depth=0);
+void printTree(Tree *tree, Node *node=NULL, int depth=0);
+void writeNewick(Tree *tree, Node *node=NULL, int depth=0);
 
 #endif // SPIDIR_COMMON_H

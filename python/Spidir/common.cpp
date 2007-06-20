@@ -66,29 +66,29 @@ int dna2int [256] =
 
 
 // Find Last Common Ancestor
-int treeLca(SpeciesTree *stree, int node1, int node2)
+Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)
 {
-    int depth1 = stree->depths[node1];
-    int depth2 = stree->depths[node2];
+    int depth1 = stree->depths[node1->name];
+    int depth2 = stree->depths[node2->name];
     Node *nodes = stree->nodes;
     
     // get nodes to same depth
     if (node1 != node2) {
         while (depth1 > depth2) {
-            node1 = nodes[node1].parent;
-            depth1 = stree->depths[node1];
+            node1 = node1->parent;
+            depth1 = stree->depths[node1->name];
         }
         
         while (depth2 > depth1) {
-            node2 = nodes[node2].parent;
-            depth2 = stree->depths[node2];
+            node2 = node2->parent;
+            depth2 = stree->depths[node2->name];
         }
     }
     
     // walk up both nodes until they meet
     while (node1 != node2) {
-        node1 = nodes[node1].parent;
-        node2 = nodes[node2].parent;
+        node1 = node1->parent;
+        node2 = node2->parent;
     }
     
     return node1;
@@ -96,18 +96,20 @@ int treeLca(SpeciesTree *stree, int node1, int node2)
 
 
 // NOTE: assumes binary species tree
-void reconcile_helper(Tree *tree, int node, SpeciesTree *stree, int *recon)
+void reconcile_helper(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
 {
-    Node *n = &tree->nodes[node];
-
     // recurse
-    for (int i=0; i<n->nchildren; i++)
-        reconcile_helper(tree, n->children[i], stree, recon);
+    for (int i=0; i<node->nchildren; i++)
+        reconcile_helper(tree, node->children[i], stree, recon);
     
-    if (n->nchildren > 0) {
+    if (node->nchildren > 0) {
+        int sname1 = recon[node->children[0]->name];
+        int sname2 = recon[node->children[1]->name];
+    
         // this node's species is lca of children species
-        recon[node] = treeLca(stree, recon[n->children[0]], 
-                                     recon[n->children[1]]);
+        recon[node->name] = treeLca(stree, 
+                                    &(stree->nodes[sname1]), 
+                                    &(stree->nodes[sname2]))->name;
     }
 }
 
@@ -135,8 +137,8 @@ void labelEvents(Tree *tree, int *recon, int *events)
         if (nodes[i].nchildren == 0)
             events[i] = EVENT_GENE;
         else 
-        if (recon[i] == recon[nodes[i].children[0]] ||
-            recon[i] == recon[nodes[i].children[1]])
+        if (recon[i] == recon[nodes[i].children[0]->name] ||
+            recon[i] == recon[nodes[i].children[1]->name])
             events[i] = EVENT_DUP;
         else
             events[i] = EVENT_SPEC;
@@ -168,12 +170,12 @@ struct ParsimonyCell
 
 
 // assume binary tree
-void parsimony_helper(Tree *tree, int node, int nseqs, char **seqs, 
+void parsimony_helper(Tree *tree, int nseqs, char **seqs, 
                     ParsimonyCell *table)
 {
-    for (node=nseqs; node<tree->nnodes; node++) {
-        int left = tree->nodes[node].children[0];
-        int right = tree->nodes[node].children[1];       
+    for (int i=nseqs; i<tree->nnodes; i++) {
+        int left = tree->nodes[i].children[0]->name;
+        int right = tree->nodes[i].children[1]->name;
         
         // process this node
         for (int a=0; a<4; a++) {
@@ -219,7 +221,7 @@ void parsimony_helper(Tree *tree, int node, int nseqs, char **seqs,
             }
             
             // save cost and pointers
-            int k = matind(4, node, a);
+            int k = matind(4, i, a);
             table[k].cost = minleftcost + minrightcost;
             table[k].leftcost = leftsub;
             table[k].rightcost = rightsub;
@@ -232,20 +234,20 @@ void parsimony_helper(Tree *tree, int node, int nseqs, char **seqs,
 }
 
 
-void getParsimonyCost(Tree *tree, int node, int base, 
+void getParsimonyCost(Tree *tree, Node *node, int base, 
                       ParsimonyCell *table, float *dists)
 {
-    if (tree->nodes[node].nchildren > 0) {
-        int left = tree->nodes[node].children[0];
-        int right = tree->nodes[node].children[1];
+    if (node->nchildren > 0) {
+        Node *left = node->children[0];
+        Node *right = node->children[1];
         
-        dists[left] += table[matind(4, node, base)].leftcost;
-        dists[right] += table[matind(4, node, base)].rightcost;
+        dists[left->name] += table[matind(4, node->name, base)].leftcost;
+        dists[right->name] += table[matind(4, node->name, base)].rightcost;
         
         // recurse
-        getParsimonyCost(tree, left, table[matind(4, node, base)].leftbase, 
+        getParsimonyCost(tree, left, table[matind(4, node->name, base)].leftbase, 
                          table, dists);
-        getParsimonyCost(tree, right, table[matind(4, node, base)].rightbase, 
+        getParsimonyCost(tree, right, table[matind(4, node->name, base)].rightbase, 
                          table, dists);
     }
 }
@@ -304,13 +306,13 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         }
         
         // populate cost table
-        parsimony_helper(&tree, tree.root, nseqs, seqs, table);
+        parsimony_helper(&tree, nseqs, seqs, table);
         
         
         // find min cost at root
         float mincost = MAX_COST;
         int minbase= 0;
-        int root = tree.root;
+        int root = tree.root->name;
         dists[root] = 0;
         
         for (int a=0; a<4; a++) {
@@ -321,7 +323,7 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         }
         
         // add up dist
-        getParsimonyCost(&tree, root, minbase, table, dists);
+        getParsimonyCost(&tree, tree.root, minbase, table, dists);
         
         // add up ungapped chars
         for (int j=0; j<nnodes; j++) {
@@ -336,11 +338,11 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
     // TODO: need to protect against divide by zero
     
     // place root in middle of top branch
-    Node *rootnode = &tree.nodes[tree.root];
-    float totlen = dists[rootnode->children[0]] + 
-                   dists[rootnode->children[1]];
-    dists[rootnode->children[0]] = totlen / 2.0;
-    dists[rootnode->children[1]] = totlen / 2.0;
+    Node *rootnode = tree.root;
+    float totlen = dists[rootnode->children[0]->name] + 
+                   dists[rootnode->children[1]->name];
+    dists[rootnode->children[0]->name] = totlen / 2.0;
+    dists[rootnode->children[1]->name] = totlen / 2.0;
     
     // cleanup
     delete [] table;
@@ -447,15 +449,18 @@ void ptree2tree(int nnodes, int *ptree, Tree *tree)
     // store parent and child pointers
     for (int i=0; i<nnodes; i++) {
         int parent = ptree[i];
-    
-        nodes[i].parent = parent;
         
-        if (parent != -1)
-            nodes[parent].children[nodes[parent].nchildren++] = i;
+        if (parent != -1) {
+            Node *parentnode = &nodes[parent];            
+            parentnode->children[parentnode->nchildren++] = &nodes[i];
+            nodes[i].parent = parentnode;
+        } else {
+            nodes[i].parent = NULL;
+        }
     }
     
     // set root
-    tree->root = nnodes - 1;
+    tree->root = &nodes[nnodes - 1];
 }
 
 
@@ -466,7 +471,7 @@ void tree2ptree(Tree *tree, int *ptree)
     int nnodes = tree->nnodes;
     
     for (int i=0; i<nnodes; i++)
-        ptree[i] = nodes[i].parent;
+        ptree[i] = nodes[i].parent->name;
 }
 
 
@@ -497,15 +502,15 @@ void printFtree(int nnodes, int **ftree)
 
 
 // write out the newick notation of a tree
-void printTree(Tree *tree, int node, int depth)
+void printTree(Tree *tree, Node *node, int depth)
 {
-    if (node == -1) {
-        if (tree->root != -1) {
+    if (node == NULL) {
+        if (tree->root != NULL) {
             printTree(tree, tree->root, 0);
             printf(";\n");
         }
     } else {
-        if (tree->nodes[node].nchildren == 0) {
+        if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
             printf("%d", node);
         } else {
@@ -513,13 +518,12 @@ void printTree(Tree *tree, int node, int depth)
             for (int i=0; i<depth; i++) printf("  ");
             printf("%d=(\n", node);
             
-            int nchildren = tree->nodes[node].nchildren;
-            for (int i=0; i<nchildren - 1; i++) {
-                printTree(tree, tree->nodes[node].children[i], depth+1);
+            for (int i=0; i<node->nchildren - 1; i++) {
+                printTree(tree, node->children[i], depth+1);
                 printf(",\n");
             }
             
-            printTree(tree, tree->nodes[node].children[nchildren-1], depth+1);
+            printTree(tree, node->children[node->nchildren-1], depth+1);
             printf("\n");
             
             for (int i=0; i<depth; i++) printf("  ");
@@ -529,29 +533,28 @@ void printTree(Tree *tree, int node, int depth)
 }
 
 // write out the newick notation of a tree
-void writeNewick(Tree *tree, int node, int depth)
+void writeNewick(Tree *tree, Node *node, int depth)
 {
-    if (node == -1) {
-        if (tree->root != -1) {
+    if (node == NULL) {
+        if (tree->root != NULL) {
             printTree(tree, tree->root, 0);
             printf(";\n");
         }
     } else {
-        if (tree->nodes[node].nchildren == 0) {
+        if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
             printf("%d", node);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");
-            printf("(\n");
+            printf("%d=(\n", node);
             
-            int nchildren = tree->nodes[node].nchildren;
-            for (int i=0; i<nchildren - 1; i++) {
-                writeNewick(tree, tree->nodes[node].children[i], depth+1);
+            for (int i=0; i<node->nchildren - 1; i++) {
+                writeNewick(tree, node->children[i], depth+1);
                 printf(",\n");
             }
             
-            writeNewick(tree, tree->nodes[node].children[nchildren-1], depth+1);
+            writeNewick(tree, node->children[node->nchildren-1], depth+1);
             printf("\n");
             
             for (int i=0; i<depth; i++) printf("  ");

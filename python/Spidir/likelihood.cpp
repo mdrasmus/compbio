@@ -142,32 +142,34 @@ float mleGenerate(int count, float *dists, float *means, float *sdevs,
 
 // help set depths for every node
 // depth is distance to next subtree root
-void estimateGenerate_helper(Tree *tree, int node, float *depths, int *sroots,
+void estimateGenerate_helper(Tree *tree, Node *node, float *depths, int *sroots,
                              int *recon, int *events, bool free)
 {
-    if (events[node] == EVENT_SPEC)
+    int name = node->name;
+    
+    if (events[name] == EVENT_SPEC)
         free = false;
     
     if (node != tree->root) {
-        int parent = tree->nodes[node].parent;    
+        int parent = node->parent->name;
         
         if (free) {
             // mark freebranches with -1
-            depths[node] = -1;
-            sroots[node] = sroots[parent];
+            depths[name] = -1;
+            sroots[name] = sroots[parent];
         } else {
             if (events[parent] == EVENT_DUP) {
-                depths[node] = depths[parent] + tree->nodes[node].dist;
-                sroots[node] = sroots[parent];
+                depths[name] = depths[parent] + node->dist;
+                sroots[name] = sroots[parent];
             } else {
-                depths[node] = tree->nodes[node].dist;
-                sroots[node] = recon[parent];
+                depths[name] = node->dist;
+                sroots[name] = recon[parent];
             }
         }
     }
     
-    for (int i=0; i<tree->nodes[node].nchildren; i++)
-        estimateGenerate_helper(tree, tree->nodes[node].children[i], 
+    for (int i=0; i<node->nchildren; i++)
+        estimateGenerate_helper(tree, node->children[i], 
                                 depths, sroots, recon, events, free);    
 }
 
@@ -179,12 +181,12 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
     float *depths = new float [tree->nnodes];
     int *sroots = new int [tree->nnodes];   // species roots
     
-    depths[tree->root] = 0;
-    sroots[tree->root] = recon[tree->root];
+    depths[tree->root->name] = 0;
+    sroots[tree->root->name] = recon[tree->root->name];
     
     // determine if top subtree is free
-    bool free = (recon[tree->root] == stree->root && 
-                 events[tree->root] == EVENT_DUP);
+    bool free = (recon[tree->root->name] == stree->root->name && 
+                 events[tree->root->name] == EVENT_DUP);
     
     estimateGenerate_helper(tree, tree->root, depths, sroots, 
                             recon, events, free);
@@ -199,7 +201,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
     int count = 0;
     
     for (int i=0; i<tree->nnodes; i++) {
-        if (events[i] != EVENT_DUP && i != tree->root) {
+        if (events[i] != EVENT_DUP && i != tree->root->name) {
             // we are at suvtree leaf
             
             // figure out species branches that we cross
@@ -211,10 +213,10 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
             // branch is also free if we do not cross any more species
             // don't estimate baserates from extra branches
             if (snode != sroots[i] && depths[i] != -1) {
-                while (snode != sroots[i] && snode != stree->root) {
+                while (snode != sroots[i] && snode != stree->root->name) {
                     u += mu[snode];
                     s2 += sigma[snode]*sigma[snode];
-                    snode = stree->nodes[snode].parent;
+                    snode = stree->nodes[snode].parent->name;
                 }
                 if (fabs(s2) < .0000001) {
                     printf("gene tree\n");
@@ -227,7 +229,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
                     printf("snode     = %d\n", snode);
                     printf("recon[i]  = %d\n", recon[i]);
                     printf("events[i] = %d\n", events[i]);
-                    printf("events[p] = %d\n", events[tree->nodes[i].parent]);
+                    printf("events[p] = %d\n", events[tree->nodes[i].parent->name]);
                     printf("sroots[i] = %d\n", sroots[i]);
                     printf("depths[i] = %f\n", depths[i]);
                     assert(0);

@@ -19,7 +19,7 @@
 
 
 
-
+// substitution cost table
 float subcost[4][4] = {
     {0, 1, 1, 1},
     {1, 0, 1, 1},
@@ -28,6 +28,7 @@ float subcost[4][4] = {
 };
 
 
+// The structure for one cell in the parsimony dynamic table
 struct ParsimonyCell
 {
     ParsimonyCell() :
@@ -64,6 +65,7 @@ void parsimony_helper(Tree *tree, int nseqs, char **seqs,
                 float leftcost = table[matind(4, left, b)].cost + sub;
                 float rightcost = table[matind(4, right, b)].cost + sub;
                 
+                // find min_b leftcost(b)
                 if (leftcost < minleftcost ||
                     (leftcost == minleftcost &&
                      (rand() / float(RAND_MAX)) < (1/leftmatch)))
@@ -77,7 +79,7 @@ void parsimony_helper(Tree *tree, int nseqs, char **seqs,
                         leftmatch = 2;
                 }
                 
-                
+                // find min_b rightcost(b)
                 if (rightcost < minrightcost ||
                     (rightcost == minrightcost && 
                            (rand() / float(RAND_MAX)) < (1/rightmatch)))
@@ -213,9 +215,8 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     
     // divide subsitutions by number of sites
     for (int i=0; i<tree->nnodes; i++)
-        tree->nodes[i].dist /= gapless[i];
-        //float(seqlen);
-    // TODO: need to protect against divide by zero
+        if (gapless[i] != 0.0)
+            tree->nodes[i].dist /= gapless[i];
     
     // place root in middle of top branch
     Node *rootnode = tree->root;

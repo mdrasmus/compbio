@@ -394,7 +394,6 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
 {
     float totmean = 0.0;
     float totvar = 0.0;
-    float sigma;
     BranchParam bparam;
     
     

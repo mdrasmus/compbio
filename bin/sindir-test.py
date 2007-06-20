@@ -8,16 +8,18 @@ import sys, os
 import math, StringIO, copy, random
 
 # rasmus libs
-from rasmus import alignlib
 from rasmus import env
 from rasmus import depend
-from rasmus import fasta
-from rasmus import genomeutil
-from rasmus import phyloutil
 from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib
 from rasmus import util
+
+
+from rasmus.bio import alignlib
+from rasmus.bio import fasta
+from rasmus.bio import phylo
+from rasmus.bio import genomeutil
 
 # SPIDIR lib
 import Spidir

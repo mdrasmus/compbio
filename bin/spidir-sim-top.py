@@ -4,10 +4,12 @@
 import sys, time, os, random, math
 
 # rasmus libs
-from rasmus import env, treelib, alignlib
-from rasmus import fasta, util
-from rasmus import stats, phyloutil, genomeutil
+from rasmus import env, treelib
+from rasmus import util
+from rasmus import stats
 import Spidir
+
+from rasmus.bio import alignlib, fasta, phylo, genomeutil
 
 # scipy libs
 #from scipy import matrixmultiply as mm
@@ -107,8 +109,8 @@ def simTree(conf, tree, stree, params, gene2species):
 def simTreeLens(conf, tree, stree, params, gene2species, baserate):
     tree2 = tree.copy()
     
-    recon = phyloutil.reconcile(tree2, stree, gene2species)
-    events = phyloutil.labelEvents(tree2, recon)
+    recon = phylo.reconcile(tree2, stree, gene2species)
+    events = phylo.labelEvents(tree2, recon)
     
     # set midpoint randomly
     midpoints = {}

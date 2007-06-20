@@ -496,7 +496,7 @@ def proposeTree3(conf, tree,  distmat, labels,
     
     nodes = tree.nodes.values()
     nodes.remove(tree.root)
-    weights = [x.data["error"] for x in nodes]
+    weights = [1 for x in nodes] #[x.data["error"] for x in nodes]
     badgene = nodes[stats.sample(weights)]
     
     

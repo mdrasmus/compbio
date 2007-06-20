@@ -15,5 +15,6 @@ float treelk(int nnodes, int *ptree, float *dists,
              float predupprob=1.0, float dupprob=1.0, float errorlogl=0,
              float alpha=0, float beta=0);
 
+void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists);
 
 #endif // SPIDIR_H

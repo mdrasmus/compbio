@@ -60,7 +60,7 @@ def proposeNni(tree, node1, node2, change=0):
         uncle = 0
         
         if len(node2.children[0].children) < 2 and \
-           len(node2.children[1].children):
+           len(node2.children[1].children) < 2:
             # can't do NNI on this branch
             return
     else:   

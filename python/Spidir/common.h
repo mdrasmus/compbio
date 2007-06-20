@@ -38,6 +38,7 @@ enum {
     FRAC_NODE
 };
 
+extern int dna2int[256];
 
 // A node in the phylogenetic tree
 class Node
@@ -68,6 +69,10 @@ public:
     void allocChildren(int _nchildren)
     {
         children = new Node* [_nchildren];
+    }
+    
+    bool isLeaf() {
+        return nchildren == 0;
     }
 
     int name;
@@ -102,6 +107,11 @@ public:
     {
         for (int i=0; i<nnodes; i++)
             nodes[i].dist = dists[i];
+    }
+    
+    bool isRooted()
+    {
+        return (root != NULL && root->nchildren == 2);
     }
     
     int nnodes;
@@ -196,7 +206,6 @@ public:
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);
-void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists);
 
 
 //=============================================================================

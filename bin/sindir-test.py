@@ -170,8 +170,8 @@ def checkOutput(conf, infile, stree, gene2species):
     tree1 = treelib.readTree(outfile)
     tree2 = treelib.readTree(correctTreefile)
 
-    phyloutil.reconRoot(tree1, stree, gene2species, newCopy=False)
-    phyloutil.reconRoot(tree2, stree, gene2species, newCopy=False)
+    phylo.reconRoot(tree1, stree, gene2species, newCopy=False)
+    phylo.reconRoot(tree2, stree, gene2species, newCopy=False)
         
     return tree1, tree2
 
@@ -207,12 +207,12 @@ def makeReport(conf):
         
         error = Spidir.robinsonFouldsError(tree1, tree2)
         
-        hash1 = phyloutil.hashTree(tree1)
-        hash2 = phyloutil.hashTree(tree2)
+        hash1 = phylo.hashTree(tree1)
+        hash2 = phylo.hashTree(tree2)
         
         # make a species hash
-        shash1 = phyloutil.hashTree(tree1, gene2species)
-        shash2 = phyloutil.hashTree(tree2, gene2species)
+        shash1 = phylo.hashTree(tree1, gene2species)
+        shash2 = phylo.hashTree(tree2, gene2species)
         counts[(shash1,shash2)] += 1
         
         results.append([basefile, hash1 == hash2, error])
@@ -285,11 +285,11 @@ def makeReport(conf):
 
 
 def testOrthologs(tree1, tree2, stree, gene2species):
-    recon1 = phyloutil.reconcile(tree1, stree, gene2species)
-    recon2 = phyloutil.reconcile(tree2, stree, gene2species)
+    recon1 = phylo.reconcile(tree1, stree, gene2species)
+    recon2 = phylo.reconcile(tree2, stree, gene2species)
     
-    orths1 = phyloutil.findAllOrthologs(tree1, stree, recon1)
-    orths2 = phyloutil.findAllOrthologs(tree2, stree, recon2)
+    orths1 = phylo.findAllOrthologs(tree1, stree, recon1)
+    orths2 = phylo.findAllOrthologs(tree2, stree, recon2)
     
     set1 = set(map(tuple, orths1))
     set2 = set(map(tuple, orths2))

@@ -136,7 +136,8 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         for (int j=0; j<seqlen; j++) {
             if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
                 seqs[i][j] = '-';
-            assert(seqs[i][j] == '-' || dna2int[seqs[i][j]] != -1);
+            assert(seqs[i][j] == '-' || 
+                   dna2int[(int) (unsigned char) seqs[i][j]] != -1);
         }
     }
     
@@ -173,7 +174,7 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
                     table[matind(4, j, k)].cost = MAX_COST;
                     table[matind(4, j, k)].gap = false;
                 }
-                table[matind(4, j, dna2int[seqs[j][i]])].cost = 0;
+                table[matind(4, j, dna2int[(int) (unsigned char) seqs[j][i]])].cost = 0;
             }
         }
         

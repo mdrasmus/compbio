@@ -67,8 +67,7 @@ Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)
 {
     int depth1 = stree->depths[node1->name];
     int depth2 = stree->depths[node2->name];
-    Node *nodes = stree->nodes;
-    
+        
     // get nodes to same depth
     if (node1 != node2) {
         while (depth1 > depth2) {
@@ -305,11 +304,11 @@ void printTree(Tree *tree, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d", node);
+            printf("%d", node->name);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d=(\n", node);
+            printf("%d=(\n", node->name);
             
             for (int i=0; i<node->nchildren - 1; i++) {
                 printTree(tree, node->children[i], depth+1);
@@ -336,11 +335,11 @@ void writeNewick(Tree *tree, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d", node);
+            printf("%d", node->name);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d=(\n", node);
+            printf("%d=(\n", node->name);
             
             for (int i=0; i<node->nchildren - 1; i++) {
                 writeNewick(tree, node->children[i], depth+1);

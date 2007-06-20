@@ -38,7 +38,7 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
 
     // ensure node1 is the child of node2
     if (node1->parent != node2) {
-        Node *tmp = node1; node1 = node2; node2 = node1;
+        Node *tmp = node1; node1 = node2; node2 = tmp;
     }
     assert(node1->parent == node2);
     return;
@@ -80,9 +80,9 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
     node2->children[uncle]->parent = node1;
     
     // swap child pointers
-    node2->children[uncle], node1->children[change] = 
-        node1->children[change], node2->children[uncle];
-    
+    Node *tmp = node2->children[uncle];
+    node2->children[uncle] = node1->children[change];
+    node1->children[change] = tmp;
     
     // renumbering
     if (node1->isLeaf() != node2->isLeaf()) {

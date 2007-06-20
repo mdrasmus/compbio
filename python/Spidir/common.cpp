@@ -170,10 +170,10 @@ struct ParsimonyCell
 
 
 // assume binary tree
-void parsimony_helper(Tree *tree, Node *node, int nseqs, char **seqs, 
+void parsimony_helper(Tree *tree, int nseqs, char **seqs, 
                     ParsimonyCell *table)
 {
-    for (int i=nseqs; i<tree->nnodes; node++) {
+    for (int i=nseqs; i<tree->nnodes; i++) {
         int left = tree->nodes[i].children[0]->name;
         int right = tree->nodes[i].children[1]->name;
         
@@ -306,7 +306,7 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         }
         
         // populate cost table
-        parsimony_helper(&tree, tree.root, nseqs, seqs, table);
+        parsimony_helper(&tree, nseqs, seqs, table);
         
         
         // find min cost at root
@@ -449,12 +449,14 @@ void ptree2tree(int nnodes, int *ptree, Tree *tree)
     // store parent and child pointers
     for (int i=0; i<nnodes; i++) {
         int parent = ptree[i];
-        Node *parentnode = &nodes[parent];
-    
-        nodes[i].parent = parentnode;
         
-        if (parent != -1)
+        if (parent != -1) {
+            Node *parentnode = &nodes[parent];            
             parentnode->children[parentnode->nchildren++] = &nodes[i];
+            nodes[i].parent = parentnode;
+        } else {
+            nodes[i].parent = NULL;
+        }
     }
     
     // set root

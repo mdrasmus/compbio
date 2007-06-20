@@ -3,6 +3,7 @@
 
 
 #include "common.h"
+#include "Tree.h"
 
 
 /*
@@ -120,10 +121,9 @@ void proposeRandomNni(Tree *tree)
 
 
 
-void searchMCMC(int nseqs, char **seqs, int *gene2species, 
-                float *mu, float *sigma, 
-                SpeciesTree *stree,
-                Tree *initTree=NULL)
+void searchMCMC(Tree *initTree, SpeciesTree *stree,
+                SpidirParams *params, int *gene2species,
+                int nseqs, char **seqs)
 {
     Tree *toptree = NULL;
     float toplogl = -1e-10;

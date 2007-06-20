@@ -9,7 +9,7 @@ variables (add them to your ~/.bashrc file if you use bash):
 # root of compbio AFS directory
 COMPBIO=/afs/csail.mit.edu/group/compbio/software
 
-# for my binaries
+# for my binaries/scripts
 export PATH=$PATH:$COMPBIO/software/rasmus/bin
 
 # for python libraries

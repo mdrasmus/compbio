@@ -11,6 +11,7 @@
 
 #include "spidir.h"
 #include "common.h"
+#include "Tree.h"
 
 
 #define matind(m, i, j) ((m)*(i) + (j))
@@ -106,53 +107,60 @@ void parsimony_helper(Tree *tree, int nseqs, char **seqs,
 }
 
 
-void getParsimonyCost(Tree *tree, Node *node, int base, 
-                      ParsimonyCell *table, float *dists)
+void getParsimonyCost(Tree *tree, Node *node, int base, ParsimonyCell *table)
 {
     if (node->nchildren > 0) {
         Node *left = node->children[0];
         Node *right = node->children[1];
         
-        dists[left->name] += table[matind(4, node->name, base)].leftcost;
-        dists[right->name] += table[matind(4, node->name, base)].rightcost;
+        left->dist += table[matind(4, node->name, base)].leftcost;
+        right->dist += table[matind(4, node->name, base)].rightcost;
         
         // recurse
         getParsimonyCost(tree, left, table[matind(4, node->name, base)].leftbase, 
-                         table, dists);
+                         table);
         getParsimonyCost(tree, right, table[matind(4, node->name, base)].rightbase, 
-                         table, dists);
+                         table);
     }
 }
 
 
-
-void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
+// ensures that all characters in the alignment are sensible
+// TODO: do not change alignment (keep Ns)
+bool checkSequences(int nseqs, int seqlen, char **seqs)
 {
-    int seqlen = strlen(seqs[0]);
-    
     // check seqs
     // CHANGE N's to gaps
     for (int i=0; i<nseqs; i++) {
         for (int j=0; j<seqlen; j++) {
             if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
+                // treat Ns as gaps
                 seqs[i][j] = '-';
-            assert(seqs[i][j] == '-' || 
-                   dna2int[(int) (unsigned char) seqs[i][j]] != -1);
+            if (seqs[i][j] != '-' &&
+                dna2int[(int) (unsigned char) seqs[i][j]] == -1)
+            {
+                // a unknown character is in the alignment
+                return false;
+            }
         }
     }
     
+    return true;
+}
 
-    // create tree objects
-    Tree tree(nnodes);
-    ptree2tree(nnodes, ptree, &tree);
+
+void parsimony(Tree *tree, int nseqs, char **seqs,
+               bool buildAncestral, char **ancetralSeqs)
+{
+    int seqlen = strlen(seqs[0]);
     
     // allocate dynamic table
-    ParsimonyCell *table = new ParsimonyCell [nnodes * 4];
-    int *gapless = new int [nnodes];
+    ParsimonyCell *table = new ParsimonyCell [tree->nnodes * 4];
+    int *gapless = new int [tree->nnodes];
     
     // initalize distances
-    for (int i=0; i<nnodes; i++) {
-        dists[i] = 0.0;
+    for (int i=0; i<tree->nnodes; i++) {
+        tree->nodes[i].dist = 0.0;
         gapless[i] = 0;
     }
     
@@ -179,14 +187,13 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         }
         
         // populate cost table
-        parsimony_helper(&tree, nseqs, seqs, table);
+        parsimony_helper(tree, nseqs, seqs, table);
         
         
         // find min cost at root
         float mincost = MAX_COST;
         int minbase= 0;
-        int root = tree.root->name;
-        dists[root] = 0;
+        int root = tree->root->name;
         
         for (int a=0; a<4; a++) {
             if (table[matind(4, root, a)].cost < mincost) {
@@ -196,28 +203,46 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         }
         
         // add up dist
-        getParsimonyCost(&tree, tree.root, minbase, table, dists);
+        getParsimonyCost(tree, tree->root, minbase, table);
         
         // add up ungapped chars
-        for (int j=0; j<nnodes; j++) {
+        for (int j=0; j<tree->nnodes; j++) {
             gapless[j] += table[matind(4, j, 0)].gap ? 0 : 1;
         }
     }
     
     // divide subsitutions by number of sites
-    for (int i=0; i<nnodes; i++)
-        dists[i] /= gapless[i];
+    for (int i=0; i<tree->nnodes; i++)
+        tree->nodes[i].dist /= gapless[i];
         //float(seqlen);
     // TODO: need to protect against divide by zero
     
     // place root in middle of top branch
-    Node *rootnode = tree.root;
-    float totlen = dists[rootnode->children[0]->name] + 
-                   dists[rootnode->children[1]->name];
-    dists[rootnode->children[0]->name] = totlen / 2.0;
-    dists[rootnode->children[1]->name] = totlen / 2.0;
+    Node *rootnode = tree->root;
+    float totlen = rootnode->children[0]->dist + 
+                   rootnode->children[1]->dist;
+    rootnode->children[0]->dist = totlen / 2.0;
+    rootnode->children[1]->dist = totlen / 2.0;
     
     // cleanup
     delete [] table;
     delete [] gapless;
+    
+}
+
+
+void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
+               bool buildAncestral, char **ancetralSeqs)
+{
+    int seqlen = strlen(seqs[0]);
+    
+    // check seqs
+    assert(checkSequences(nseqs, seqlen, seqs));
+    
+    // create tree objects
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    
+    parsimony(&tree, nseqs, seqs, buildAncestral, ancetralSeqs);
+    tree.getDists(dists);
 }

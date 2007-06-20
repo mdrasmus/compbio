@@ -17,9 +17,12 @@ from rasmus import genecluster
 
 
 options = [
+    "actions",
     ["", "make=", "make", "<partfile>", {"single": True}],
-    ["", "to_part", "to_part", ""],
+    ["", "to_part", "to_part", "", {"single": True}],
+    ["", "stats", "stats", "", {"single": True}],
     
+    "options",
     ["f:", "famid=", "famid", "<famtab file>", {"single": True}],
     ["", "startid=", "startid", "<starting famid>", 
         {"single": True,
@@ -42,13 +45,16 @@ def main(conf):
         famtab = genecluster.makeFamtab(parts, famid=conf["startid"])
         famtab.write()
     
-    elif "to_part" in conf:
+    elif conf["to_part"]:
         # convert famid file to parts file
         
         partstab = tablelib.readTable(conf["famid"])
         
         for row in partstab:
             print row["genes"].replace(",", "\t")
-        
+    
+    elif conf["stats"]:
+        # print out stats about a Family database
+        pass
 
 main(conf)

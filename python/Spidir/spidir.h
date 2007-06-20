@@ -1,12 +1,19 @@
 #ifndef SPIDIR_H
 #define SPIDIR_H
 
-// publicly visible interface
+/*=============================================================================
 
+    SPIDIR - SPecies Informed DIstance-base Reconstruction
+    Matt Rasmussen
+    Copyright 2007
+    
+    Public interface to spidir C++ library.
+    
+=============================================================================*/
 
+// make functions linkable with C
+extern "C" {
 
-
-// function prototypes
 
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
@@ -15,6 +22,11 @@ float treelk(int nnodes, int *ptree, float *dists,
              float predupprob=1.0, float dupprob=1.0, float errorlogl=0,
              float alpha=0, float beta=0);
 
-void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists);
+void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
+               bool buildAncestral=false, char **ancetralSeqs=NULL);
+
+
+} // extern C
+
 
 #endif // SPIDIR_H

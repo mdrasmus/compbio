@@ -4,11 +4,13 @@ OBJS = \
     pyspidir.o \
     common.o \
     likelihood.o \
+    parsimony.o \
     search.o \
-    parsimony.o
+    Tree.o \
+
 
 CFLAGS = \
-    -O3 \
+    -g \
     -Wall \
     -I/usr/include/python2.4 \
     -I/util/include/python2.4

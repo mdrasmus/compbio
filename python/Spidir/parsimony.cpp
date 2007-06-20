@@ -168,7 +168,6 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     
     
     for (int i=0; i<seqlen; i++) {
-        
         // initialize leaves
         // iterate just over the leaves
         

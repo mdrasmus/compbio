@@ -4,6 +4,8 @@
 
 #include "common.h"
 #include "Tree.h"
+#include "Matrix.h"
+#include "parsimony.h"
 
 
 /*
@@ -123,7 +125,7 @@ void proposeRandomNni(Tree *tree)
 
 void searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
-                int nseqs, char **seqs)
+                int nseqs, int seqlen, char **seqs)
 {
     Tree *toptree = NULL;
     float toplogl = -1e-10;
@@ -134,11 +136,20 @@ void searchMCMC(Tree *initTree, SpeciesTree *stree,
     if (initTree != NULL)
         tree = initTree;
     else {
-        /*
-        tree = phylo.neighborjoin(distmat, labels)
-        tree = phylo.reconRoot(tree, stree, gene2species)
-        Spidir.setTreeDistances(conf, tree, distmat, labels)
-        */
+        int nnodes = nseqs * 2 - 1;
+        int *ptree = new int [nnodes];
+        float *dists = new float [nnodes];
+        Matrix<float> distmat(nseqs, nseqs);
+        
+        calcDistMatrix(nseqs, seqlen, seqs, distmat.getMatrix());
+        neighborjoin(nseqs, distmat.getMatrix(), ptree, dists);
+        tree = new Tree(nnodes);
+        ptree2tree(nnodes, ptree, tree);
+        
+        // reconroot        
+        // tree = phylo.reconRoot(tree, stree, gene2species)
+        
+        parsimony(tree, nseqs, seqs);
     }
 
     /*

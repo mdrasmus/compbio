@@ -57,6 +57,35 @@ int dna2int [256] =
 };
 
 
+// calculate the pairwise distances between sequences
+// NOTE: simple version implemented first
+void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
+{
+    for (int i=0; i<nseqs; i++) {
+        distmat[i][i] = 0.0;
+    
+        for (int j=i+1; j<nseqs; j++) {
+            float changes = 0.0;
+            int len = 0;
+            
+            for (int k=0; k<seqlen; k++) {
+                if (seqs[i][k] != '-' && seqs[j][k] != '-') {
+                    len++;                
+                    if (seqs[i][k] != seqs[j][k]) {
+                        changes += 1;
+                    }
+                }
+            }
+            
+            assert(len > 0);
+            
+            distmat[i][j] = changes / len;
+            distmat[j][i] = changes / len;
+        }
+    }
+}
+
+
 //=============================================================================
 // Math
 

@@ -1,7 +1,9 @@
 //=============================================================================
 // SPIDIR Tree datastructure
 
+#include <assert.h>
 #include <stdio.h>
+
 
 #include "Tree.h"
 #include "Matrix.h"
@@ -16,8 +18,8 @@
 // Neighbor-joining algorithm
 void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
 {
-    Matrix<float> dists(ngenes*2, ngenes*2);
-    float *restdists = new float [ngenes*2];
+    Matrix<float> dists(ngenes*2-1, ngenes*2-1);
+    float *restdists = new float [ngenes*2-1];
     bool *leaves = new bool [ngenes];
     int nleaves = ngenes;
     int newnode = ngenes;
@@ -103,6 +105,8 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
     branches[gene1] = dists[gene1][gene2] / 2.0;
     branches[gene2] = dists[gene1][gene2] / 2.0;
     branches[parent] = 0.0;
+    
+    assert(parent == ngenes*2);
     
     delete [] restdists;
     delete [] leaves;
@@ -221,6 +225,8 @@ def neighborjoin(distmat, genes, usertree=None):
     
     return tree
 */
+
+
 
 // Find Last Common Ancestor
 Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)

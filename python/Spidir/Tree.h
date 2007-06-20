@@ -195,6 +195,7 @@ void tree2ptree(Tree *tree, int *ptree);
 
 //=============================================================================
 // reconciliation functions
+void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches);
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);

@@ -63,6 +63,7 @@ public:
 
 
 
+void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat);
 
 //=============================================================================
 // Math

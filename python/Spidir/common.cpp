@@ -335,6 +335,12 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists)
         //float(seqlen);
     // TODO: need to protect against divide by zero
     
+    // place root in middle of top branch
+    Node *rootnode = &tree.nodes[tree.root];
+    float totlen = dists[rootnode->children[0]] + 
+                   dists[rootnode->children[1]];
+    dists[rootnode->children[0]] = totlen / 2.0;
+    dists[rootnode->children[1]] = totlen / 2.0;
     
     // cleanup
     delete [] table;

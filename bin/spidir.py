@@ -225,7 +225,9 @@ def trainTree(conf, stree, gene2species):
     
     for arg in args:
         treefiles.extend(util.shellparser(arg))
-    
+
+    # this is temporary
+    print "NOTE: CHANGING ROOTING BRANCH LENGTHS"
 
     util.tic("reading trees")
     trees = []
@@ -233,6 +235,13 @@ def trainTree(conf, stree, gene2species):
     for treefile in treefiles:
         prog.update()
         trees.append(treelib.readTree(treefile))
+        
+        # even out top two branches
+        totlen = trees[-1].root.children[0].dist + \
+                 trees[-1].root.children[1].dist
+        trees[-1].root.children[0].dist = totlen / 2.0
+        trees[-1].root.children[1].dist = totlen / 2.0
+        
     util.toc()
     
     params = Spidir.learnModel(trees, stree, gene2species, conf["trainstats"],

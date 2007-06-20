@@ -1,10 +1,10 @@
 #!/bin/sh
 
 if [ $# -gt 1 ]; then
-    MSG=$1
+    MSG="-m '$1'"
 else
-    MSG='no message'
+    MSG=
 fi
 
 #cd ~/projects/rasmus && cvs commit
-cd ~/projects/rasmus && git commit -a -m $MSG
+cd ~/projects/rasmus && git commit -a $MSG && git push

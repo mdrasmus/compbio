@@ -159,7 +159,10 @@ float subcost[4][4] = {
 
 
 struct ParsimonyCell
-{   
+{
+    ParsimonyCell() :
+        gap(false)
+    {}
     float cost;
     float leftcost;
     float rightcost;

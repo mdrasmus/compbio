@@ -39,7 +39,7 @@ enum {
 };
 
 
-
+// A node in the phylogenetic tree
 class Node
 {
 public:
@@ -80,6 +80,7 @@ public:
 };
 
 
+// A phylogenetic tree
 class Tree
 {
 public:

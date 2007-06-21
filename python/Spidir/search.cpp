@@ -35,7 +35,7 @@
     both leaves or both all internal.    
     Renumbering is simply a swap of the two nodes otherwise
 */
-void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
+void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
 {
     int uncle = 0;
 
@@ -44,7 +44,6 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
         Node *tmp = node1; node1 = node2; node2 = tmp;
     }
     assert(node1->parent == node2);
-    return;
     
     
     // try to see if edge is one branch (not root edge)
@@ -57,7 +56,6 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
         
         // if edge is not an internal edge, give up
         assert(node2->nchildren >= 2);
-        return;
     }
     
     if (node1->parent == tree->root &&
@@ -69,7 +67,6 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
             node2->children[1]->nchildren < 2) {
             // can't do NNI on this branch
             assert(0);
-            return;
         }
     } else {
         // find uncle
@@ -87,6 +84,10 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
     node2->children[uncle] = node1->children[change];
     node1->children[change] = tmp;
     
+    /*
+    Renumbering is never needed because a leaf remains a leaf and an internal
+    node remains an internal node.
+    
     // renumbering
     if (node1->isLeaf() != node2->isLeaf()) {
         Node tmp = *node1;
@@ -97,6 +98,7 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0)
         tmp.children = NULL; // don't let tmp free children
         // TODO: return permutation vector
     }
+    */
 }
 
 

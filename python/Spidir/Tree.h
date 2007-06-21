@@ -5,6 +5,9 @@
 #define SPIDIR_TREE_H
 
 #include <stdlib.h>
+#include <string>
+
+using namespace std;
 
 
 // events
@@ -204,7 +207,7 @@ void labelEvents(Tree *tree, int *recon, int *events);
 // Input/output
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
-void writeNewick(Tree *tree, Node *node=NULL, int depth=0);
+void writeNewick(Tree *tree, string *names, Node *node=NULL, int depth=0);
 
 
 #endif // SPDIR_TREE_H

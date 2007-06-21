@@ -127,28 +127,6 @@ void getParsimonyCost(Tree *tree, Node *node, int base, ParsimonyCell *table)
 }
 
 
-// ensures that all characters in the alignment are sensible
-// TODO: do not change alignment (keep Ns)
-bool checkSequences(int nseqs, int seqlen, char **seqs)
-{
-    // check seqs
-    // CHANGE N's to gaps
-    for (int i=0; i<nseqs; i++) {
-        for (int j=0; j<seqlen; j++) {
-            if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
-                // treat Ns as gaps
-                seqs[i][j] = '-';
-            if (seqs[i][j] != '-' &&
-                dna2int[(int) (unsigned char) seqs[i][j]] == -1)
-            {
-                // a unknown character is in the alignment
-                return false;
-            }
-        }
-    }
-    
-    return true;
-}
 
 
 void parsimony(Tree *tree, int nseqs, char **seqs,

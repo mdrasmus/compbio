@@ -86,6 +86,125 @@ void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
 }
 
 
+
+Sequences *readFasta(const char *filename)
+{
+    FILE *infile = NULL;
+    
+    if ((infile = fopen(filename, "r")) == NULL) {
+        fprintf(stderr, "cannot read file '%s'\n", filename);
+        return NULL;
+    }
+    
+    int linesize = 100000;
+    int readsize;
+    char *line = (char*) malloc(sizeof(char)*linesize);
+    Sequences *seqs = new Sequences();
+    string key;
+    ExtendArray<char> seq(NULL, 0, 10, 10);
+    
+    do {
+        readsize = readLine(infile, &line, &linesize);
+        chomp(line);
+        
+        if (line[0] == '>') {
+            if (seq.size() > 0) {  
+                // add new sequence
+                seqs->append(key, seq.getArray());
+                seq.detach();
+            }
+        
+            // new key found
+            key = string(&line[1]);
+        } else {
+            seq.extend(line, strlen(line));
+        }
+        
+    } while (readsize > 0);
+    
+    // add last sequence
+    if (seq.size() > 0) {
+        seqs->append(key, seq.getArray());
+        seq.detach();
+    }
+    
+    free(line);
+    fclose(infile);
+    
+    return seqs;
+}
+
+
+bool writeFasta(const char *filename, Sequences *seqs)
+{
+    FILE *stream = NULL;
+    
+    if ((stream = fopen(filename, "w")) == NULL) {
+        fprintf(stderr, "cannot open '%s'\n", filename);
+        return false;
+    }
+
+    for (int i=0; i<seqs->nseqs; i++) {
+        fprintf(stream, ">%s\n", seqs->names[i].c_str());
+        fprintf(stream, "%s\n", seqs->seqs[i]);
+    }
+    
+    fclose(stream);
+    return true;
+}
+
+
+bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
+                     string *names)
+{
+    FILE *stream = NULL;
+    
+    if ((stream = fopen(filename, "w")) == NULL) {
+        fprintf(stderr, "cannot open '%s'\n", filename);
+        return false;
+    }
+    
+    // print number of genes
+    fprintf(stream, "%d\n", ngenes);
+    
+    for (int i=0; i<ngenes; i++) {
+        fprintf(stream, "%s ", names[i].c_str());
+        
+        for (int j=0; j<ngenes; j++) {
+            fprintf(stream, "%f ", dists[i][j]);
+        }
+        fprintf(stream, "\n");
+    }
+    
+    fclose(stream);
+    return true;
+}
+
+
+// ensures that all characters in the alignment are sensible
+// TODO: do not change alignment (keep Ns)
+bool checkSequences(int nseqs, int seqlen, char **seqs)
+{
+    // check seqs
+    // CHANGE N's to gaps
+    for (int i=0; i<nseqs; i++) {
+        for (int j=0; j<seqlen; j++) {
+            if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
+                // treat Ns as gaps
+                seqs[i][j] = '-';
+            if (seqs[i][j] != '-' &&
+                dna2int[(int) (unsigned char) seqs[i][j]] == -1)
+            {
+                // a unknown character is in the alignment
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+
 //=============================================================================
 // Math
 
@@ -134,7 +253,7 @@ float gammalog(float x, float a, float b)
 
 
 //=============================================================================
-// debug
+// input/output
 
 void printIntArray(int *array, int size)
 {
@@ -151,10 +270,35 @@ void printFloatArray(float *array, int size)
 }
 
 
-void printFtree(int nnodes, int **ftree)
+int readLine(FILE *stream, char **line, int *size)
 {
-    for (int i=0; i<nnodes; i++) {
-        printf("%2d: %2d %2d\n", i, ftree[i][0], ftree[i][1]);
+    int pos = 0;
+    
+    while (!feof(stream)) {
+        char *ret = fgets(&(*line[pos]), *size-pos, stream);
+        int readsize = strlen(&(*line)[pos]);
+        
+        if (ret == NULL)
+            return 0;
+        
+        if (pos + readsize < *size - 1)
+            return pos + readsize;
+        
+        *size *= 2;
+        *line =(char*)  realloc(*line, sizeof(char) * *size);
+        pos += readsize;
     }
+    
+    return pos;
+}
+
+bool chomp(char *str)
+{
+   int len = strlen(str);
+   if (str[len-1] == '\n') {
+      str[len-1] = '\0';
+      return true;
+   } else
+      return false;
 }
 

@@ -8,7 +8,7 @@
 #include "Tree.h"
 #include "Matrix.h"
 
-#define MIN_FLOAT -1e10
+#define MAX_FLOAT 1e10
 
 
 //=============================================================================
@@ -20,7 +20,7 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
 {
     Matrix<float> dists(ngenes*2-1, ngenes*2-1);
     float *restdists = new float [ngenes*2-1];
-    bool *leaves = new bool [ngenes];
+    int *leaves = new int [ngenes];
     int nleaves = ngenes;
     int newnode = ngenes;
     
@@ -42,7 +42,7 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
     // join loop
     while (nleaves > 2) {
         // search for closest genes
-        float low = MIN_FLOAT;
+        float low = MAX_FLOAT;
         int lowi = -1, lowj = -1;
         
         for (int i=0; i<nleaves; i++) {
@@ -100,13 +100,13 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
     int parent = newnode++;
     
     ptree[gene1] = parent;
-    ptree[gene1] = parent;
+    ptree[gene2] = parent;
     ptree[parent] = -1;
     branches[gene1] = dists[gene1][gene2] / 2.0;
     branches[gene2] = dists[gene1][gene2] / 2.0;
     branches[parent] = 0.0;
     
-    assert(parent == ngenes*2);
+    assert(parent == ngenes*2-2);
     
     delete [] restdists;
     delete [] leaves;
@@ -226,6 +226,116 @@ def neighborjoin(distmat, genes, usertree=None):
     return tree
 */
 
+
+void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
+{
+    
+}
+
+
+/*
+def reconRoot(gtree, stree, gene2species = gene2species, 
+               rootby = "duploss", newCopy=True):
+    # make a consistent unrooted copy of gene tree
+    if newCopy:
+        gtree = gtree.copy()
+    treelib.unroot(gtree, newCopy=False)
+    treelib.reroot(gtree, 
+                   gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 
+                   onBranch=False, newCopy=False)
+    
+    
+    # make recon root consistent for rerooting tree of the same names
+    # TODO: there is the possibility of ties, they are currently broken
+    # arbitrarily.  In order to make comparison of reconRooted trees with 
+    # same gene names accurate, hashOrdering must be done, for now.
+    hashOrderTree(gtree, gene2species)
+    
+    # get list of edges to root on
+    edges = []
+    def walk(node):
+        edges.append((node, node.parent))
+        if not node.isLeaf():
+            node.recurse(walk)
+            edges.append((node, node.parent))
+    for child in gtree.root.children:
+        walk(child)
+    
+    
+    # try initial root and recon    
+    treelib.reroot(gtree, edges[0][0].name, newCopy=False)
+    recon = reconcile(gtree, stree, gene2species)
+    events = labelEvents(gtree, recon)     
+    
+    # find reconciliation that minimizes loss
+    minroot = edges[0]
+    rootedge = sorted(edges[0])
+    if rootby == "dup": 
+        cost = countDup(gtree, events)
+    elif rootby == "loss":
+        cost = len(findLoss(gtree, stree, recon))
+    elif rootby == "duploss":
+        cost = countDupLoss(gtree, stree, recon, events)
+    else:
+        raise "unknown rootby value '%s'"  % rootby
+    mincost = cost
+    
+    
+    # try rooting on everything
+    for edge in edges[1:-1]:
+        if sorted(edge) == rootedge:
+            continue
+        rootedge = sorted(edge)
+        
+        node1, node2 = edge
+        if node1.parent != node2:
+            node1, node2 = node2, node1
+        assert node1.parent == node2, "%s %s" % (node1.name, node2.name)
+        
+        # uncount cost
+        if rootby in ["dup", "duploss"]:
+            if events[gtree.root] == "dup":
+                cost -= 1
+            if events[node2] == "dup":
+                cost -= 1
+        if rootby in ["loss", "duploss"]:
+            cost -= len(findLossNode(gtree.root, recon))
+            cost -= len(findLossNode(node2, recon))
+        
+        # new root and recon
+        treelib.reroot(gtree, node1.name, newCopy=False)        
+        
+        recon[node2] = reconcileNode(node2, stree, recon)
+        recon[gtree.root] = reconcileNode(gtree.root, stree, recon)
+        events[node2] = labelEventsNode(node2, recon)
+        events[gtree.root] = labelEventsNode(gtree.root, recon)
+        
+        if rootby in ["dup", "duploss"]:
+            if events[node2] ==  "dup":
+                cost += 1
+            if events[gtree.root] ==  "dup":
+                cost += 1
+        if rootby in ["loss", "duploss"]:
+            cost += len(findLossNode(gtree.root, recon))
+            cost += len(findLossNode(node2, recon))
+        
+        #print edge[0].name, edge[1].name, cost
+        
+        # keep track of min cost
+        if cost < mincost:
+            mincost = cost
+            minroot = edge
+    
+    # root tree by minroot
+    if edge != minroot:
+        node1, node2 = minroot
+        if node1.parent != node2:
+            node1, node2 = node2, node1
+        assert node1.parent == node2
+        treelib.reroot(gtree, node1.name, newCopy=False)
+    
+    return gtree
+*/
 
 
 // Find Last Common Ancestor
@@ -396,6 +506,14 @@ void tree2ptree(Tree *tree, int *ptree)
 // Input/output
 
 
+void printFtree(int nnodes, int **ftree)
+{
+    for (int i=0; i<nnodes; i++) {
+        printf("%2d: %2d %2d\n", i, ftree[i][0], ftree[i][1]);
+    }
+}
+
+
 // write out the newick notation of a tree
 void printTree(Tree *tree, Node *node, int depth)
 {
@@ -428,32 +546,35 @@ void printTree(Tree *tree, Node *node, int depth)
 }
 
 // write out the newick notation of a tree
-void writeNewick(Tree *tree, Node *node, int depth)
+void writeNewick(Tree *tree, string *names, Node *node, int depth)
 {
     if (node == NULL) {
         if (tree->root != NULL) {
-            printTree(tree, tree->root, 0);
+            writeNewick(tree, names, tree->root, 0);
             printf(";\n");
         }
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d", node->name);
+            printf("%s:%f", names[node->name].c_str(), node->dist);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d=(\n", node->name);
+            printf("(\n");
             
             for (int i=0; i<node->nchildren - 1; i++) {
-                writeNewick(tree, node->children[i], depth+1);
+                writeNewick(tree, names, node->children[i], depth+1);
                 printf(",\n");
             }
             
-            writeNewick(tree, node->children[node->nchildren-1], depth+1);
+            writeNewick(tree, names, node->children[node->nchildren-1], depth+1);
             printf("\n");
             
             for (int i=0; i<depth; i++) printf("  ");
             printf(")");
+            
+            if (depth > 0)
+                printf(":%f", node->dist);
         }
     }
 }

@@ -66,7 +66,7 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
         if (node2->children[0]->nchildren < 2 && 
             node2->children[1]->nchildren < 2) {
             // can't do NNI on this branch
-            assert(0);
+            return;
         }
     } else {
         // find uncle
@@ -83,22 +83,6 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
     Node *tmp = node2->children[uncle];
     node2->children[uncle] = node1->children[change];
     node1->children[change] = tmp;
-    
-    /*
-    Renumbering is never needed because a leaf remains a leaf and an internal
-    node remains an internal node.
-    
-    // renumbering
-    if (node1->isLeaf() != node2->isLeaf()) {
-        Node tmp = *node1;
-        tree->nodes[node1->name] = *node2;
-        tree->nodes[node2->name] = tmp;
-        tree->nodes[node1->name].name = node1->name;
-        tree->nodes[node2->name].name = node2->name;
-        tmp.children = NULL; // don't let tmp free children
-        // TODO: return permutation vector
-    }
-    */
 }
 
 
@@ -116,18 +100,19 @@ void proposeRandomNni(Tree *tree)
     int choice = tree->root->name;
     do {
         choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
-    } while (tree->nodes[choice].isLeaf() || 
-             tree->nodes[choice].parent == NULL);
+    } while (tree->nodes[choice]->isLeaf() || 
+             tree->nodes[choice]->parent == NULL);
     
-    proposeNni(tree, &tree->nodes[choice], tree->nodes[choice].parent, 
-               int(rand() / float(RAND_MAX)));
+    proposeNni(tree, tree->nodes[choice], tree->nodes[choice]->parent, 
+               int(rand() / float(RAND_MAX) * 2));
 }
 
 
 
 void searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
-                int nseqs, int seqlen, char **seqs)
+                int nseqs, int seqlen, char **seqs,
+                int niter=500)
 {
     Tree *toptree = NULL;
     float toplogl = -1e-10;
@@ -135,9 +120,10 @@ void searchMCMC(Tree *initTree, SpeciesTree *stree,
     Tree *tree = NULL;
     
     // init with NJ    
-    if (initTree != NULL)
+    if (initTree != NULL) {
+        // need to do a copy
         tree = initTree;
-    else {
+    } else {
         int nnodes = nseqs * 2 - 1;
         int *ptree = new int [nnodes];
         float *dists = new float [nnodes];
@@ -153,20 +139,31 @@ void searchMCMC(Tree *initTree, SpeciesTree *stree,
         
         parsimony(tree, nseqs, seqs);
     }
-
-    /*
-    // init likelihood score
-    toplogl = treelk(tree->nnodes, ptree, dists,
-                     stree->nnodes, pstree, 
-                     recon, events,
-                     mu, sigma, generate, disterror,
-                     predupprob, dupprob, errorlogl,
-                     alpha, beta);
-    toptree = tree;
     
+    /*
+    float predupprob=.001, dupprob=1.0, errorlogl=0;
+    
+    // init likelihood score
+    toplogl = treelk(tree, stree,
+                     recon, events, params,
+                     -1, 0,
+                     predupprob, dupprob, errorlogl);
+    toptree = tree->copy();
+    
+    
+    for (int i=0; i<niter; i++) {
+        proposeRandomNni(tree);
+        parsimony(tree, nseqs, seqs);
+        float logl = treelk(tree, stree,
+                            recon, events, params,
+                            -1, 0,
+                            predupprob, dupprob, errorlogl);
         
+    }
+    */
+    
+    /*    
     // proposal function
-
     def propose(chain, tree):
         tree2 = proposeFunc(conf, tree,  distmat, labels, 
                             stree, gene2species, params, visited)

@@ -68,6 +68,18 @@ protected:
 
 
 
+template <class T>
+int findval(T *array, int size, const T &val)
+{
+    for (int i=0; i<size; i++)
+        if (array[i] == val)
+            return i;
+    return -1;
+}
+
+
+
+
 // spidir parameters
 class SpidirParams
 {

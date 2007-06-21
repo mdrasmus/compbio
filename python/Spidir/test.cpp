@@ -39,20 +39,21 @@ int main(int argc, char **argv)
     
     // do neighbor joining
     int nnodes = aln->nseqs * 2 - 1;
+    Tree tree(nnodes);    
     ExtendArray<int> ptree(nnodes);
     ExtendArray<float> dists(nnodes);
     
     neighborjoin(aln->nseqs, distmat, ptree, dists);
-    
-    Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
-    tree.setDists(dists);
-    
     parsimony(&tree, aln->nseqs, aln->seqs);
     
-    writeNewick(&tree, aln->names.get());
-    
-    proposeNni(&tree, tree.nodes[0].parent, tree.nodes[0].parent->parent, 0);
-    
-    writeNewick(&tree, aln->names);
+    for (int i=0; i<100; i++) {
+        Node *node = tree.root;
+        while (node->parent == NULL || node->name < aln->nseqs)
+            node = tree.nodes[int(rand() / float(RAND_MAX) * tree.nnodes)];
+        proposeNni(&tree, node, node->parent, int(rand() / float(RAND_MAX) * 2));
+        
+        parsimony(&tree, aln->nseqs, aln->seqs);
+        //printTree(&tree);
+    }
 }

@@ -236,6 +236,9 @@ void Tree::reroot(Node *newroot, bool onBranch)
           root->children[1] == newroot)))
         return;
     
+    ExtendArray<Node*> path(0, nnodes);
+        
+    
     // determine where to stop ascending
     Node *oldroot = root;
     Node *stop1=NULL, *stop2=NULL;
@@ -247,26 +250,21 @@ void Tree::reroot(Node *newroot, bool onBranch)
         stop1 = root;
     }
 
-    Node *ptr = NULL, *ptr2 = NULL;
+    // start the reversal
+    Node *ptr1 = NULL, *ptr2 = NULL;
     
     if (onBranch) {
         if (isRooted()) {
             // just need to stick current root somewhere else
+            Node *other = newroot->parent;            
+            
             oldroot->children[0] = newroot;
-            oldroot->children[1] = newroot->parent;
-
-            Node *other = newroot->parent;
-            ptr = other;
-            ptr2 = oldroot;
+            oldroot->children[1] = other;            
+            newroot->parent = oldroot;
+            path.append(oldroot);
             
-            if (ptr->children[0] == newroot)
-                ptr->children[0] = ptr->parent;
-            else
-                ptr->children[1] = ptr->parent;
-            
-            ptr->parent = ptr2;
-            
-            
+            ptr1 = other;
+            ptr2 = newroot;
         } else {
             // need to add a new node to be root
             assert(0);
@@ -283,67 +281,48 @@ void Tree::reroot(Node *newroot, bool onBranch)
     
     
     // reverse parent child relationships
-
-    while (ptr != stop1 && ptr != stop2) {
+    while (ptr1 != stop1 && ptr1 != stop2) {
+        int oldchild = findval(ptr1->children, ptr1->nchildren, ptr2);
+        assert(oldchild != -1);
         
+        Node *next = ptr1->parent;
+        
+        // ptr1 is now fixed
+        ptr1->children[oldchild] = next;
+        ptr1->parent = ptr2;
+        path.append(ptr1);
+        
+        // move pointers
+        ptr2 = ptr1;
+        ptr1 = next;
     }
     
+    
+    // handle last two nodes
+    if (stop2 != NULL) {
+        // make stop1 parent of stop2
+        if (stop2 == ptr1) {        
+            Node *tmp = stop1;
+            stop1 = ptr1;
+            stop2 = tmp;
+        }
+        assert(ptr1 == stop1);
+        
+        int oldchild = findval(stop1->children, stop1->nchildren, ptr2);        
+        stop1->children[oldchild] = stop2;
+        stop1->parent = ptr2;
+        stop2->parent = stop1;
+        path.append(stop2);
+    }
+    
+    
+    // renumber nodes
+    // - all leaves don't change numbers
+    assert(root->name = nnodes-1);
 }
 
 
-/*
 
-
-def reroot(tree, newroot, onBranch=True):
-
-    unroot(tree, newCopy=False)
-    
-    if onBranch:
-        # add new root in middle of branch
-        newNode = TreeNode(tree.newName())
-        node1 = tree.nodes[newroot]
-        rootdist = node1.dist
-        node1.dist = rootdist / 2.0
-        newNode.dist = rootdist / 2.0
-        node2 = node1.parent
-        node2.children.remove(node1)
-        tree.addChild(newNode, node1)
-        tree.addChild(node2, newNode)
-        
-        ptr = node2
-        ptr2 = newNode
-        newRoot = newNode
-    else:
-        # root directly on node
-        ptr2 = tree.nodes[newroot]
-        ptr = ptr2.parent
-        newRoot = ptr2
-    
-    newRoot.parent = None
-    
-    # reverse parent child relationship of all nodes on path node1 to root
-    oldroot = tree.root    
-    nextDist = ptr2.dist
-    ptr2.dist = 0
-    while True:
-        nextPtr = ptr.parent
-        ptr.children.remove(ptr2)
-        tree.addChild(ptr2, ptr)
-        
-        tmp = ptr.dist
-        ptr.dist = nextDist
-        nextDist = tmp
-        
-        ptr2 = ptr
-        ptr = nextPtr
-        
-        if nextPtr is None:
-            break
-    tree.root = newRoot
-    
-    return tree
-
-*/
 
 
 // Find Last Common Ancestor
@@ -388,8 +367,8 @@ void reconcile_helper(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
     
         // this node's species is lca of children species
         recon[node->name] = treeLca(stree, 
-                                    &(stree->nodes[sname1]), 
-                                    &(stree->nodes[sname2]))->name;
+                                    stree->nodes[sname1], 
+                                    stree->nodes[sname2])->name;
     }
 }
 
@@ -400,7 +379,7 @@ void reconcile(Tree *tree, SpeciesTree *stree,
 {  
     // label gene leaves with their species
     for (int i=0; i<tree->nnodes; i++)
-        if (tree->nodes[i].nchildren == 0)
+        if (tree->nodes[i]->nchildren == 0)
             recon[i] = gene2species[i];
     
     reconcile_helper(tree, tree->root, stree, recon);    
@@ -411,14 +390,14 @@ void reconcile(Tree *tree, SpeciesTree *stree,
 // NOTE: assumes binary gene tree
 void labelEvents(Tree *tree, int *recon, int *events)
 {
-    Node *nodes = tree->nodes;
+    Node **nodes = tree->nodes;
 
     for (int i=0; i<tree->nnodes; i++) {
-        if (nodes[i].nchildren == 0)
+        if (nodes[i]->nchildren == 0)
             events[i] = EVENT_GENE;
         else 
-        if (recon[i] == recon[nodes[i].children[0]->name] ||
-            recon[i] == recon[nodes[i].children[1]->name])
+        if (recon[i] == recon[nodes[i]->children[0]->name] ||
+            recon[i] == recon[nodes[i]->children[1]->name])
             events[i] = EVENT_DUP;
         else
             events[i] = EVENT_SPEC;
@@ -468,13 +447,13 @@ void freeFtree(int nnodes, int **ftree)
 // create a tree object from a parent tree array
 void ptree2tree(int nnodes, int *ptree, Tree *tree)
 {
-    Node *nodes = tree->nodes;
+    Node **nodes = tree->nodes;
     
     // allocate children
     for (int i=0; i<nnodes; i++) {
-        nodes[i].allocChildren(2);
-        nodes[i].name = i;
-        nodes[i].nchildren = 0;
+        nodes[i]->allocChildren(2);
+        nodes[i]->name = i;
+        nodes[i]->nchildren = 0;
     }
     
     // store parent and child pointers
@@ -482,28 +461,28 @@ void ptree2tree(int nnodes, int *ptree, Tree *tree)
         int parent = ptree[i];
         
         if (parent != -1) {
-            Node *parentnode = &nodes[parent];            
-            parentnode->children[parentnode->nchildren++] = &nodes[i];
-            nodes[i].parent = parentnode;
+            Node *parentnode = nodes[parent];            
+            parentnode->children[parentnode->nchildren++] = nodes[i];
+            nodes[i]->parent = parentnode;
         } else {
-            nodes[i].parent = NULL;
+            nodes[i]->parent = NULL;
         }
     }
     
     // set root
-    tree->root = &nodes[nnodes - 1];
+    tree->root = nodes[nnodes - 1];
 }
 
 
 // create a tree object from a parent tree array
 void tree2ptree(Tree *tree, int *ptree)
 {
-    Node *nodes = tree->nodes;
+    Node **nodes = tree->nodes;
     int nnodes = tree->nnodes;
     
     for (int i=0; i<nnodes; i++) {
-        if (nodes[i].parent)
-            ptree[i] = nodes[i].parent->name;
+        if (nodes[i]->parent)
+            ptree[i] = nodes[i]->parent->name;
         else
             ptree[i] = -1;
     }

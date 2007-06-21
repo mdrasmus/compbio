@@ -75,25 +75,30 @@ public:
         root(NULL),
         nodes(NULL)
     {
-        nodes = new Node [nnodes];
+        nodes = new Node* [nnodes];
+        for (int i=0; i<nnodes; i++)
+            nodes[i] = new Node();
     }
     
     virtual ~Tree()
     {
-        if (nodes)
+        if (nodes) {
+            for (int i=0; i<nnodes; i++)
+                delete nodes[i];
             delete [] nodes;
+        }
     }
     
     void setDists(float *dists)
     {
         for (int i=0; i<nnodes; i++)
-            nodes[i].dist = dists[i];
+            nodes[i]->dist = dists[i];
     }
     
     void getDists(float *dists)
     {
         for (int i=0; i<nnodes; i++)
-            dists[i] = nodes[i].dist;
+            dists[i] = nodes[i]->dist;
     }
     
     bool isRooted()
@@ -101,11 +106,16 @@ public:
         return (root != NULL && root->nchildren == 2);
     }
     
+    Node *get(int name)
+    {
+        return nodes[name];
+    }
+    
     void reroot(Node *newroot, bool onBranch=true);
     
     int nnodes;
     Node *root;
-    Node *nodes;
+    Node **nodes;
 };
 
 

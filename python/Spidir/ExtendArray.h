@@ -1,7 +1,9 @@
 #ifndef SPIDIR_EXTEND_ARRAY_H
 #define SPIDIR_EXTEND_ARRAY_H
 
+#include <assert.h>
 #include <algorithm>
+
 
 
 /*=============================================================================

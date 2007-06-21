@@ -45,11 +45,12 @@ struct ParsimonyCell
 
 // assume binary tree
 void parsimony_helper(Tree *tree, int nseqs, char **seqs, 
-                    ParsimonyCell *table)
+                      ParsimonyCell *table, int *postorder)
 {
-    for (int i=nseqs; i<tree->nnodes; i++) {
-        int left = tree->nodes[i].children[0]->name;
-        int right = tree->nodes[i].children[1]->name;
+    for (int ii=nseqs; ii<tree->nnodes; ii++) {
+        int i = postorder[ii];
+        int left = tree->nodes[i]->children[0]->name;
+        int right = tree->nodes[i]->children[1]->name;
         
         // process this node
         for (int a=0; a<4; a++) {
@@ -127,6 +128,23 @@ void getParsimonyCost(Tree *tree, Node *node, int base, ParsimonyCell *table)
 }
 
 
+void getPostOrder_helper(Node *node, ExtendArray<int> *order)
+{
+    for (int i=0; i<node->nchildren; i++)
+        getPostOrder_helper(node->children[i], order);
+    if (!node->isLeaf())
+        order->append(node->name);
+}
+
+void getPostOrder(Tree *tree, ExtendArray<int> *order)
+{
+    // set leaves
+    for (int i=0; i<(tree->nnodes + 1) / 2; i++)
+        order->append(i);
+    
+    // set internal nodes
+    getPostOrder_helper(tree->root, order);
+}
 
 
 void parsimony(Tree *tree, int nseqs, char **seqs,
@@ -140,10 +158,14 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     
     // initalize distances
     for (int i=0; i<tree->nnodes; i++) {
-        tree->nodes[i].dist = 0.0;
+        tree->nodes[i]->dist = 0.0;
         gapless[i] = 0;
     }
     
+    // get recursion order
+    ExtendArray<int> postorder(0, tree->nnodes);
+    getPostOrder(tree, &postorder);
+
     
     for (int i=0; i<seqlen; i++) {
         // initialize leaves
@@ -166,7 +188,7 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
         }
         
         // populate cost table
-        parsimony_helper(tree, nseqs, seqs, table);
+        parsimony_helper(tree, nseqs, seqs, table, postorder);
         
         
         // find min cost at root
@@ -193,7 +215,7 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     // divide subsitutions by number of sites
     for (int i=0; i<tree->nnodes; i++)
         if (gapless[i] != 0.0)
-            tree->nodes[i].dist /= gapless[i];
+            tree->nodes[i]->dist /= gapless[i];
     
     // place root in middle of top branch
     Node *rootnode = tree->root;

@@ -23,37 +23,36 @@ int main(int argc, char **argv)
 {
 
     // read sequences
-    Sequences *seqs = readFasta(argv[1]);
-    seqs->setAlignLength();
-    assert(checkSequences(seqs->nseqs, seqs->seqlen, seqs->seqs.getArray()));
+    Sequences *aln = readAlignFasta(argv[1]);
+    writeFasta("out.fa", aln);
+    assert(checkSequences(aln->nseqs, aln->seqlen, aln->seqs));
     
     // calc distmatrix
-    Matrix<float> distmat(seqs->nseqs, seqs->nseqs);
-    calcDistMatrix(seqs->nseqs, seqs->seqlen, seqs->seqs.getArray(), 
-                   distmat.getMatrix());
+    Matrix<float> distmat(aln->nseqs, aln->nseqs);
+    calcDistMatrix(aln->nseqs, aln->seqlen, aln->seqs, 
+                   distmat);
     
     // write dist matrix
     if (argc > 2)
-        writeDistMatrix(argv[2], seqs->nseqs, distmat.getMatrix(), 
-                        seqs->names.getArray());
+        writeDistMatrix(argv[2], aln->nseqs, distmat, aln->names);
     
     
     // do neighbor joining
-    int nnodes = seqs->nseqs * 2 - 1;
-    int *ptree = new int [nnodes];
-    float *dists = new float [nnodes];
+    int nnodes = aln->nseqs * 2 - 1;
+    ExtendArray<int> ptree(nnodes);
+    ExtendArray<float> dists(nnodes);
     
-    neighborjoin(seqs->nseqs, distmat.getMatrix(), ptree, dists);
+    neighborjoin(aln->nseqs, distmat, ptree, dists);
     
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
     tree.setDists(dists);
     
-    parsimony(&tree, seqs->nseqs, seqs->seqs.getArray());
+    parsimony(&tree, aln->nseqs, aln->seqs);
     
-    writeNewick(&tree, seqs->names.getArray());
+    writeNewick(&tree, aln->names.get());
     
     proposeNni(&tree, tree.nodes[0].parent, tree.nodes[0].parent->parent, 0);
-
-    writeNewick(&tree, seqs->names.getArray());
+    
+    writeNewick(&tree, aln->names);
 }

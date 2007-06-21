@@ -15,6 +15,8 @@ template <class ValueType>
 class Matrix
 {
 public:
+    typedef ValueType** ValuePtrType;
+
     Matrix(int nrows, int ncols) :
         m_nrows(nrows),
         m_ncols(ncols)
@@ -47,6 +49,11 @@ public:
     }
     
     inline ValueType **getMatrix()
+    {
+        return m_data;
+    }
+    
+    operator ValuePtrType()
     {
         return m_data;
     }

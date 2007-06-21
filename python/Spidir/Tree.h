@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string>
 
+#include "common.h"
+
 using namespace std;
 
 
@@ -41,8 +43,8 @@ public:
     
     void setChildren(int _nchildren)
     {
+        children = resize(children, nchildren, _nchildren);
         nchildren = _nchildren;
-        children = new Node* [nchildren];
     }
     
     void allocChildren(int _nchildren)
@@ -98,6 +100,8 @@ public:
     {
         return (root != NULL && root->nchildren == 2);
     }
+    
+    void reroot(Node *newroot, bool onBranch=true);
     
     int nnodes;
     Node *root;

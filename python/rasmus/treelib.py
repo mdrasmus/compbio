@@ -1054,7 +1054,7 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
         ptr2 = newNode
         newRoot = newNode
     else:
-        # root directly on root
+        # root directly on node
         ptr2 = tree.nodes[newroot]
         ptr = ptr2.parent
         newRoot = ptr2

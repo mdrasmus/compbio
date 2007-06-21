@@ -113,119 +113,6 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
 }
 
 
-/*
-def neighborjoin(distmat, genes, usertree=None):
-    """Neighbor joining algorithm"""
-    
-    tree = treelib.Tree()
-    leaves = {}
-    dists = util.Dict(2, None)
-    restdists = {}
-    
-    
-    # initialize distances
-    for i in range(len(genes)):
-        r = 0
-        for j in range(len(genes)):
-            dists[genes[i]][genes[j]] = distmat[i][j]
-            r += distmat[i][j]
-        restdists[genes[i]] = r / (len(genes) - 2)
-        
-    # initialize leaves
-    for gene in genes:
-        tree.add(treelib.TreeNode(gene))
-        leaves[gene] = 1
-    
-    # if usertree is given, determine merging order
-    merges = []
-    newnames = {}
-    if usertree != None:
-        def walk(node):
-            if not node.isLeaf():
-                assert len(node.children) == 2, \
-                    Exception("usertree is not binary")
-            
-                for child in node:
-                    walk(child)
-                merges.append(node)
-                newnames[node] = len(merges)
-            else:
-                newnames[node] = node.name
-        walk(usertree.root)
-        merges.reverse()
-    
-    # join loop
-    while len(leaves) > 2:
-        # search for closest genes
-        if not usertree:
-            low = util.INF
-            lowpair = (None, None)
-            leaveslst = leaves.keys()
-
-            for i in range(len(leaves)):
-                for j in range(i+1, len(leaves)):
-                    gene1, gene2 = leaveslst[i], leaveslst[j]
-                    dist = dists[gene1][gene2] - restdists[gene1] \
-                                               - restdists[gene2]
-                    if dist < low:
-                        low = dist
-                        lowpair = (gene1, gene2)
-        else:
-            node = merges.pop()
-            lowpair = (newnames[node.children[0]],
-                       newnames[node.children[1]])
-        
-        # join gene1 and gene2
-        gene1, gene2 = lowpair
-        parent = treelib.TreeNode(tree.newName())
-        tree.addChild(parent, tree.nodes[gene1])
-        tree.addChild(parent, tree.nodes[gene2])
-        
-        # set distances
-        tree.nodes[gene1].dist = (dists[gene1][gene2] + restdists[gene1] - 
-                                  restdists[gene2]) / 2.0
-        tree.nodes[gene2].dist = dists[gene1][gene2] - tree.nodes[gene1].dist
-        
-        # gene1 and gene2 are no longer leaves
-        del leaves[gene1]
-        del leaves[gene2]
-        
-        gene3 = parent.name
-        r = 0
-        for gene in leaves:
-            dists[gene3][gene] = (dists[gene1][gene] + dists[gene2][gene] -
-                                  dists[gene1][gene2]) / 2.0
-            dists[gene][gene3] = dists[gene3][gene]
-            r += dists[gene3][gene]
-        leaves[gene3] = 1
-        
-        if len(leaves) > 2:
-            restdists[gene3] = r / (len(leaves) - 2)
-    
-    # join the last two genes into a tribranch
-    gene1, gene2 = leaves.keys()
-    if type(gene1) != int:
-        gene1, gene2 = gene2, gene1
-    tree.addChild(tree.nodes[gene1], tree.nodes[gene2])
-    tree.nodes[gene2].dist = dists[gene1][gene2]
-    tree.root = tree.nodes[gene1]
-
-    # root tree according to usertree    
-    if usertree != None and treelib.isRooted(usertree):
-        roots = set([newnames[usertree.root.children[0]],
-                     newnames[usertree.root.children[1]]])
-        newroot = None
-        for child in tree.root.children:
-            if child.name in roots:
-                newroot = child
-        
-        assert newroot != None
-        
-        treelib.reroot(tree, newroot.name, newCopy=False)
-    
-    return tree
-*/
-
 
 void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
 {
@@ -335,6 +222,127 @@ def reconRoot(gtree, stree, gene2species = gene2species,
         treelib.reroot(gtree, node1.name, newCopy=False)
     
     return gtree
+*/
+
+
+
+void Tree::reroot(Node *newroot, bool onBranch)
+{
+    // handle trivial case, newroot is root
+    if (root == newroot ||
+        (onBranch &&
+         root->nchildren == 2 &&
+         (root->children[0] == newroot ||
+          root->children[1] == newroot)))
+        return;
+    
+    // determine where to stop ascending
+    Node *oldroot = root;
+    Node *stop1=NULL, *stop2=NULL;
+    
+    if (isRooted()) {
+        stop1 = root->children[0];
+        stop2 = root->children[1];
+    } else {
+        stop1 = root;
+    }
+
+    Node *ptr = NULL, *ptr2 = NULL;
+    
+    if (onBranch) {
+        if (isRooted()) {
+            // just need to stick current root somewhere else
+            oldroot->children[0] = newroot;
+            oldroot->children[1] = newroot->parent;
+
+            Node *other = newroot->parent;
+            ptr = other;
+            ptr2 = oldroot;
+            
+            if (ptr->children[0] == newroot)
+                ptr->children[0] = ptr->parent;
+            else
+                ptr->children[1] = ptr->parent;
+            
+            ptr->parent = ptr2;
+            
+            
+        } else {
+            // need to add a new node to be root
+            assert(0);
+        }
+    } else {
+        if (isRooted()) {
+            // need to remove the root node, nad make tribranch
+            assert(0);
+        } else {
+            // just need to swap node positions
+            assert(0);
+        }
+    }
+    
+    
+    // reverse parent child relationships
+
+    while (ptr != stop1 && ptr != stop2) {
+        
+    }
+    
+}
+
+
+/*
+
+
+def reroot(tree, newroot, onBranch=True):
+
+    unroot(tree, newCopy=False)
+    
+    if onBranch:
+        # add new root in middle of branch
+        newNode = TreeNode(tree.newName())
+        node1 = tree.nodes[newroot]
+        rootdist = node1.dist
+        node1.dist = rootdist / 2.0
+        newNode.dist = rootdist / 2.0
+        node2 = node1.parent
+        node2.children.remove(node1)
+        tree.addChild(newNode, node1)
+        tree.addChild(node2, newNode)
+        
+        ptr = node2
+        ptr2 = newNode
+        newRoot = newNode
+    else:
+        # root directly on node
+        ptr2 = tree.nodes[newroot]
+        ptr = ptr2.parent
+        newRoot = ptr2
+    
+    newRoot.parent = None
+    
+    # reverse parent child relationship of all nodes on path node1 to root
+    oldroot = tree.root    
+    nextDist = ptr2.dist
+    ptr2.dist = 0
+    while True:
+        nextPtr = ptr.parent
+        ptr.children.remove(ptr2)
+        tree.addChild(ptr2, ptr)
+        
+        tmp = ptr.dist
+        ptr.dist = nextDist
+        nextDist = tmp
+        
+        ptr2 = ptr
+        ptr = nextPtr
+        
+        if nextPtr is None:
+            break
+    tree.root = newRoot
+    
+    return tree
+
 */
 
 

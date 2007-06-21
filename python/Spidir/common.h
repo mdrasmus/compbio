@@ -17,11 +17,11 @@
 #include <math.h>
 #include <assert.h>
 #include <string>
-#include <vector>
-#include <algorithm>
-// #include <cstddef>
+
+#include "ExtendArray.h"
 
 using namespace std;
+
 
 
 #define PI 3.1415926
@@ -29,6 +29,42 @@ using namespace std;
 
 
 extern int dna2int[256];
+
+
+
+class BufferedReader
+{
+public:
+    BufferedReader(FILE *stream) :
+        m_stream(stream),
+        m_line(0, 10000)
+    {}
+    
+    char *readLine()
+    {
+        while (!feof(m_stream)) {
+            int pos = m_line.size();
+            char *ret = fgets(&(m_line.get()[pos]), 
+                              m_line.capacity()-m_line.size(), m_stream);
+            int readsize = strlen(&(m_line.get()[pos]));
+            
+            if (ret == NULL)
+                return NULL;
+            
+            if (m_line.size() + readsize < m_line.capacity() - 1)
+                return m_line.get();
+
+            assert(m_line.increaseCapacity());
+            m_line.setSize(m_line.size() + readsize);
+        }
+        
+        return NULL;
+    }
+    
+protected:
+    FILE *m_stream;
+    ExtendArray<char> m_line;
+};
 
 
 
@@ -63,119 +99,6 @@ public:
     float beta;
 };
 
-
-template <class T>
-T *resize(T *array, size_t oldsize, size_t newsize)
-{
-   T *tmp = new T[newsize];
-
-    if (oldsize == 0)
-        return tmp;
-
-   copy(array, array + oldsize, tmp);
-   
-   delete [] array;
-   return tmp;
-}
-
-
-/*
-    len  -- the length of the data
-    size -- the size of the allocated array
-    
-    easy, detachable wrapper for arrays
-*/
-template <class ValueType>
-class ExtendArray
-{
-public:
-    ExtendArray(ValueType *_data=NULL, int _len=0, int size=0,
-                int _minsize=40) :
-        data(_data),
-        len(_len),
-        datasize(size),
-        minsize(_minsize)
-    {
-        if (data == NULL && datasize != 0) {
-            data = new ValueType [datasize];
-        }
-    }
-    
-    ~ExtendArray()
-    {
-        if (data)
-            delete [] data;
-    }
-    
-    void detach()
-    {
-        data = NULL;
-        len = 0;
-        datasize = 0;
-    }
-    
-    bool alloc(int needed=0)
-    {
-        int oldsize = datasize;
-        
-        if (datasize < minsize)
-            datasize = minsize;
-        
-        while (datasize < needed)
-            datasize *= 2;
-        
-        data = resize(data, oldsize, datasize);
-        
-        return true;
-    }
-    
-    bool ensureSize(int needed)
-    {
-        if (needed <= datasize)
-            return true;
-        return alloc(needed);
-    }
-    
-    void append(ValueType &val)
-    {
-        ensureSize(len + 1);
-        data[len++] = val;
-    }
-    
-    void extend(ValueType *vals, int nvals)
-    {
-        ensureSize(len + nvals);
-        
-        for (int i=0; i<nvals; i++)
-            data[len++] = vals[i];
-    }
-    
-    inline ValueType &operator[](const int i)
-    {
-        return data[i];
-    }
-    
-    inline int size()
-    {
-        return len;
-    }
-    
-    inline void setSize(int _size)
-    {
-        len = _size;
-    }
-    
-    inline ValueType *getArray()
-    {
-        return data;
-    }
-    
-protected:    
-    ValueType *data;
-    int len;
-    int datasize;
-    int minsize;
-};
 
 
 class Sequences
@@ -215,6 +138,8 @@ bool checkSequences(int nseqs, int seqlen, char **seqs);
 
 void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat);
 Sequences *readFasta(const char *filename);
+Sequences *readAlignFasta(const char *filename);
+bool writeFasta(const char *filename, Sequences *seqs);
 bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
                      string *names);
 
@@ -233,7 +158,6 @@ float gammalog(float x, float a, float b);
 
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
-int readLine(FILE *stream, char **line, int *size);
 bool chomp(char *str);
 
 #endif // SPIDIR_COMMON_H

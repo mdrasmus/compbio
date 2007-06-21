@@ -87,6 +87,7 @@ void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
 
 
 
+
 Sequences *readFasta(const char *filename)
 {
     FILE *infile = NULL;
@@ -96,22 +97,22 @@ Sequences *readFasta(const char *filename)
         return NULL;
     }
     
-    int linesize = 100000;
-    int readsize;
-    char *line = (char*) malloc(sizeof(char)*linesize);
+    BufferedReader reader(infile);
+    char *line;
+    
     Sequences *seqs = new Sequences();
     string key;
-    ExtendArray<char> seq(NULL, 0, 10, 10);
+    ExtendArray<char> seq(0, 10000);
+
     
-    do {
-        readsize = readLine(infile, &line, &linesize);
+    while ((line = reader.readLine())) {
         chomp(line);
         
         if (line[0] == '>') {
             if (seq.size() > 0) {  
                 // add new sequence
-                seqs->append(key, seq.getArray());
-                seq.detach();
+                seq.append('\0');
+                seqs->append(key, seq.detach());
             }
         
             // new key found
@@ -120,18 +121,27 @@ Sequences *readFasta(const char *filename)
             seq.extend(line, strlen(line));
         }
         
-    } while (readsize > 0);
+    }
     
     // add last sequence
     if (seq.size() > 0) {
-        seqs->append(key, seq.getArray());
-        seq.detach();
+        seq.append('\0');
+        seqs->append(key, seq.detach());
     }
     
-    free(line);
     fclose(infile);
     
     return seqs;
+}
+
+
+Sequences *readAlignFasta(const char *filename)
+{
+    Sequences *seq = readFasta(filename);
+    if (!seq)
+        return NULL;
+    seq->setAlignLength();
+    return seq;
 }
 
 
@@ -269,28 +279,6 @@ void printFloatArray(float *array, int size)
     printf("\n");
 }
 
-
-int readLine(FILE *stream, char **line, int *size)
-{
-    int pos = 0;
-    
-    while (!feof(stream)) {
-        char *ret = fgets(&(*line[pos]), *size-pos, stream);
-        int readsize = strlen(&(*line)[pos]);
-        
-        if (ret == NULL)
-            return 0;
-        
-        if (pos + readsize < *size - 1)
-            return pos + readsize;
-        
-        *size *= 2;
-        *line =(char*)  realloc(*line, sizeof(char) * *size);
-        pos += readsize;
-    }
-    
-    return pos;
-}
 
 bool chomp(char *str)
 {

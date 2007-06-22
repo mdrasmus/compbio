@@ -232,7 +232,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
                 while (snode != sroots[i] && snode != stree->root->name) {
                     u += mu[snode];
                     s2 += sigma[snode]*sigma[snode];
-                    snode = stree->nodes[snode].parent->name;
+                    snode = stree->nodes[snode]->parent->name;
                 }
                 if (fabs(s2) < .0000001) {
                     printf("gene tree\n");
@@ -245,7 +245,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
                     printf("snode     = %d\n", snode);
                     printf("recon[i]  = %d\n", recon[i]);
                     printf("events[i] = %d\n", events[i]);
-                    printf("events[p] = %d\n", events[tree->nodes[i].parent->name]);
+                    printf("events[p] = %d\n", events[tree->nodes[i]->parent->name]);
                     printf("sroots[i] = %d\n", sroots[i]);
                     printf("depths[i] = %f\n", depths[i]);
                     assert(0);
@@ -504,8 +504,8 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         }
         
         // choose number of samples based on number of nodes to integrate over
-        nsamples = int(100*log(nodesi)) + 50;
-        if (nsamples > 400) nsamples = 400;
+        nsamples = int(500*log(nodesi)) + 500;
+        if (nsamples > 2000) nsamples = 2000;
         
         // perform integration by sampling
         float prob = 0.0;
@@ -564,9 +564,9 @@ void determineFreeBranches(Tree *tree, SpeciesTree *stree,
     *unfolddist = 0.0;
     
     for (int i=0; i<tree->nnodes; i++) {
-        if (tree->nodes[i].parent &&
-            recon[tree->nodes[i].parent->name] == sroot &&
-            events[tree->nodes[i].parent->name] == EVENT_DUP &&
+        if (tree->nodes[i]->parent &&
+            recon[tree->nodes[i]->parent->name] == sroot &&
+            events[tree->nodes[i]->parent->name] == EVENT_DUP &&
             recon[i] != sroot)
         {
             freebranches[i] = true;
@@ -685,7 +685,7 @@ float treelk(int nnodes, int *ptree, float *dists,
     ptree2tree(nsnodes, pstree, &stree);
     stree.setDepths();
     
-    SpidirParams params = SpidirParams(nsnodes, mu, sigma, alpha, beta);
+    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
     
     return treelk(&tree, &stree,
                   recon, events, &params, 

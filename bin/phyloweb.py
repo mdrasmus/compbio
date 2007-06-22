@@ -6,9 +6,12 @@ import math
 
 
 
-from rasmus import util, env, genomeutil, treelib, progress, phylip, phyloutil
+from rasmus import util, env, treelib, progress
 from rasmus.vis import treevis
-from rasmus import svg, tablelib, fasta
+from rasmus import svg, tablelib
+
+from rasmus.bio import fasta, genomeutil, phylip, phylo
+
 import Spidir
 
 
@@ -980,7 +983,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
         for prog, resultdir, resulturl in resultdirs:
             #treefile = getResultTreeFile(conf, resultdir, treename)
             #tree = treelib.readTree(treefile)
-            #thash = phyloutil.hashTree(tree, conf["gene2species"])
+            #thash = phylo.hashTree(tree, conf["gene2species"])
             thash = results[prog][treename]["species_hash"]
             
             row[prog] = thash
@@ -1051,8 +1054,8 @@ def generateRateTable(conf, datadir):
         row2 = {"treeid": treename}
         
         tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
-        recon = phyloutil.reconcile(tree, conf["stree"], conf["gene2species"])
-        events = phyloutil.labelEvents(tree, recon)
+        recon = phylo.reconcile(tree, conf["stree"], conf["gene2species"])
+        events = phylo.labelEvents(tree, recon)
         
         
         assert len(util.unique(recon.values())) == len(recon)

@@ -45,11 +45,12 @@ struct ParsimonyCell
 
 // assume binary tree
 void parsimony_helper(Tree *tree, int nseqs, char **seqs, 
-                    ParsimonyCell *table)
+                      ParsimonyCell *table, int *postorder)
 {
-    for (int i=nseqs; i<tree->nnodes; i++) {
-        int left = tree->nodes[i].children[0]->name;
-        int right = tree->nodes[i].children[1]->name;
+    for (int ii=nseqs; ii<tree->nnodes; ii++) {
+        int i = postorder[ii];
+        int left = tree->nodes[i]->children[0]->name;
+        int right = tree->nodes[i]->children[1]->name;
         
         // process this node
         for (int a=0; a<4; a++) {
@@ -127,27 +128,22 @@ void getParsimonyCost(Tree *tree, Node *node, int base, ParsimonyCell *table)
 }
 
 
-// ensures that all characters in the alignment are sensible
-// TODO: do not change alignment (keep Ns)
-bool checkSequences(int nseqs, int seqlen, char **seqs)
+void getPostOrder_helper(Node *node, ExtendArray<int> *order)
 {
-    // check seqs
-    // CHANGE N's to gaps
-    for (int i=0; i<nseqs; i++) {
-        for (int j=0; j<seqlen; j++) {
-            if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
-                // treat Ns as gaps
-                seqs[i][j] = '-';
-            if (seqs[i][j] != '-' &&
-                dna2int[(int) (unsigned char) seqs[i][j]] == -1)
-            {
-                // a unknown character is in the alignment
-                return false;
-            }
-        }
-    }
+    for (int i=0; i<node->nchildren; i++)
+        getPostOrder_helper(node->children[i], order);
+    if (!node->isLeaf())
+        order->append(node->name);
+}
+
+void getPostOrder(Tree *tree, ExtendArray<int> *order)
+{
+    // set leaves
+    for (int i=0; i<(tree->nnodes + 1) / 2; i++)
+        order->append(i);
     
-    return true;
+    // set internal nodes
+    getPostOrder_helper(tree->root, order);
 }
 
 
@@ -162,13 +158,16 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     
     // initalize distances
     for (int i=0; i<tree->nnodes; i++) {
-        tree->nodes[i].dist = 0.0;
+        tree->nodes[i]->dist = 0.0;
         gapless[i] = 0;
     }
     
+    // get recursion order
+    ExtendArray<int> postorder(0, tree->nnodes);
+    getPostOrder(tree, &postorder);
+
     
     for (int i=0; i<seqlen; i++) {
-        
         // initialize leaves
         // iterate just over the leaves
         
@@ -189,7 +188,7 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
         }
         
         // populate cost table
-        parsimony_helper(tree, nseqs, seqs, table);
+        parsimony_helper(tree, nseqs, seqs, table, postorder);
         
         
         // find min cost at root
@@ -216,7 +215,7 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
     // divide subsitutions by number of sites
     for (int i=0; i<tree->nnodes; i++)
         if (gapless[i] != 0.0)
-            tree->nodes[i].dist /= gapless[i];
+            tree->nodes[i]->dist /= gapless[i];
     
     // place root in middle of top branch
     Node *rootnode = tree->root;

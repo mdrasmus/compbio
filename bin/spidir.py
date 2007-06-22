@@ -14,14 +14,16 @@ import StringIO
 import sys
 
 # rasmus libs
-from rasmus import genomeutil
-from rasmus import fasta
-from rasmus import phylip
-from rasmus import phylo
 from rasmus import progress
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
+
+# rasmus.bio libs
+from rasmus.bio import genomeutil
+from rasmus.bio import fasta
+from rasmus.bio import phylip
+from rasmus.bio import phylo
 
 # spidir lib
 import Spidir

@@ -5,6 +5,11 @@
 #define SPIDIR_TREE_H
 
 #include <stdlib.h>
+#include <string>
+
+#include "common.h"
+
+using namespace std;
 
 
 // events
@@ -38,8 +43,8 @@ public:
     
     void setChildren(int _nchildren)
     {
+        children = resize(children, nchildren, _nchildren);
         nchildren = _nchildren;
-        children = new Node* [nchildren];
     }
     
     void allocChildren(int _nchildren)
@@ -68,27 +73,28 @@ public:
     Tree(int nnodes) :
         nnodes(nnodes),
         root(NULL),
-        nodes(NULL)
+        nodes(nnodes)
     {
-        nodes = new Node [nnodes];
+        for (int i=0; i<nnodes; i++)
+            nodes[i] = new Node();
     }
     
     virtual ~Tree()
     {
-        if (nodes)
-            delete [] nodes;
+        for (int i=0; i<nnodes; i++)
+            delete nodes[i];
     }
     
     void setDists(float *dists)
     {
         for (int i=0; i<nnodes; i++)
-            nodes[i].dist = dists[i];
+            nodes[i]->dist = dists[i];
     }
     
     void getDists(float *dists)
     {
         for (int i=0; i<nnodes; i++)
-            dists[i] = nodes[i].dist;
+            dists[i] = nodes[i]->dist;
     }
     
     bool isRooted()
@@ -96,9 +102,17 @@ public:
         return (root != NULL && root->nchildren == 2);
     }
     
+    Node *get(int name)
+    {
+        return nodes[name];
+    }
+    
+    void reroot(Node *newroot, bool onBranch=true);
+    Tree *copy();
+    
     int nnodes;
     Node *root;
-    Node *nodes;
+    ExtendArray<Node*> nodes;
 };
 
 
@@ -195,6 +209,7 @@ void tree2ptree(Tree *tree, int *ptree);
 
 //=============================================================================
 // reconciliation functions
+void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches);
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);
@@ -203,7 +218,7 @@ void labelEvents(Tree *tree, int *recon, int *events);
 // Input/output
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
-void writeNewick(Tree *tree, Node *node=NULL, int depth=0);
+void writeNewick(Tree *tree, string *names, Node *node=NULL, int depth=0);
 
 
 #endif // SPDIR_TREE_H

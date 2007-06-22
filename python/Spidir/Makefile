@@ -19,6 +19,10 @@ CFLAGS = \
     -I/usr/include/python2.4 \
     -I/util/include/python2.4
 
+all: $(MODULE) test_spidir
+
+
+
 $(MODULE): $(MODULE_OBJS)
 	g++ -shared $(MODULE_OBJS) -o $(MODULE)
 

@@ -84,15 +84,19 @@ int findval(T *array, int size, const T &val)
 class SpidirParams
 {
 public:
-    SpidirParams(int size, float *_mu, float *_sigma, float _alpha, float _beta) :
+    SpidirParams(int size, string *_names, 
+                 float *_mu, float *_sigma, float _alpha, float _beta) :
         nsnodes(size),
         alpha(_alpha),
         beta(_beta)
     {
+        names = new string [nsnodes];
         mu = new float [nsnodes];
         sigma = new float [nsnodes];
         
         for (int i=0; i<nsnodes; i++) {
+            if (_names)
+                names[i] = _names[i];
             mu[i] = _mu[i];
             sigma[i] = _sigma[i];
         }
@@ -100,11 +104,13 @@ public:
     
     ~SpidirParams()
     {
+        delete [] names;
         delete [] mu;
         delete [] sigma;
     }
 
     int nsnodes;
+    string *names;
     float *mu;
     float *sigma;
     float alpha;
@@ -154,6 +160,7 @@ Sequences *readAlignFasta(const char *filename);
 bool writeFasta(const char *filename, Sequences *seqs);
 bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
                      string *names);
+SpidirParams *readSpidirParams(const char* filename);
 
 
 //=============================================================================

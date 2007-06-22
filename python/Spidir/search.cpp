@@ -5,7 +5,9 @@
 #include "common.h"
 #include "Tree.h"
 #include "Matrix.h"
+#include "likelihood.h"
 #include "parsimony.h"
+
 
 
 /*
@@ -87,7 +89,7 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
 
 
 
-void proposeRandomNni(Tree *tree)
+void proposeRandomNni(Tree *tree, Node **node1, Node **node2, int *change)
 {
     /*
     if random.random() < conf["rerootprob"]:
@@ -103,30 +105,33 @@ void proposeRandomNni(Tree *tree)
     } while (tree->nodes[choice]->isLeaf() || 
              tree->nodes[choice]->parent == NULL);
     
-    proposeNni(tree, tree->nodes[choice], tree->nodes[choice]->parent, 
-               int(rand() / float(RAND_MAX) * 2));
+    *node1 = tree->nodes[choice];
+    *node2 = tree->nodes[choice]->parent;
+    *change = int(rand() / float(RAND_MAX) * 2);
 }
 
 
 
-void searchMCMC(Tree *initTree, SpeciesTree *stree,
+Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 int nseqs, int seqlen, char **seqs,
                 int niter=500)
 {
     Tree *toptree = NULL;
-    float toplogl = -1e-10;
-    int iter = 0;
+    float toplogl = -1e10, logl=-1e10;
     Tree *tree = NULL;
+    int nnodes = nseqs * 2 - 1;
+    
+    float predupprob=.001, dupprob=1.0, errorlogl=0;
+    
     
     // init with NJ    
     if (initTree != NULL) {
         // need to do a copy
         tree = initTree;
     } else {
-        int nnodes = nseqs * 2 - 1;
-        int *ptree = new int [nnodes];
-        float *dists = new float [nnodes];
+        ExtendArray<int> ptree(nnodes);
+        ExtendArray<float> dists(nnodes);
         Matrix<float> distmat(nseqs, nseqs);
         
         calcDistMatrix(nseqs, seqlen, seqs, distmat.getMatrix());
@@ -140,81 +145,59 @@ void searchMCMC(Tree *initTree, SpeciesTree *stree,
         parsimony(tree, nseqs, seqs);
     }
     
-    /*
-    float predupprob=.001, dupprob=1.0, errorlogl=0;
     
     // init likelihood score
-    toplogl = treelk(tree, stree,
-                     recon, events, params,
-                     -1, 0,
-                     predupprob, dupprob, errorlogl);
+    ExtendArray<int> recon(nnodes);
+    ExtendArray<int> events(nnodes);
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+    
+    logl = treelk(tree, stree,
+                  recon, events, params,
+                  -1, 0,
+                  predupprob, dupprob, errorlogl);
+    toplogl = logl;
     toptree = tree->copy();
     
     
+    // MCMC loop
     for (int i=0; i<niter; i++) {
-        proposeRandomNni(tree);
+        Node *node1, *node2;
+        int change;
+    
+        // propose new tree
+        proposeRandomNni(tree, &node1, &node2, &change);
+        proposeNni(tree, node1, node2, change);
         parsimony(tree, nseqs, seqs);
-        float logl = treelk(tree, stree,
-                            recon, events, params,
-                            -1, 0,
-                            predupprob, dupprob, errorlogl);
         
-    }
-    */
-    
-    /*    
-    // proposal function
-    def propose(chain, tree):
-        tree2 = proposeFunc(conf, tree,  distmat, labels, 
-                            stree, gene2species, params, visited)
+        // calc new likelihood
+        reconcile(tree, stree, gene2species, recon);
+        labelEvents(tree, recon, events);
         
-        # check visited dict
-        thash = phylo.hashTree(tree2)
-        if thash in visited:
-            logl, tree2, count = visited[thash]
-            this.nold += 1
-        else:
-            Spidir.setTreeDistances(conf, tree2, distmat, labels)
-            logl = Spidir.treeLogLikelihood(conf, tree2, stree, gene2species, params)
-            
-            #tree2, logl = Spidir.treeLogLikelihoodAllRoots(conf, tree2, stree, 
-            #                                        gene2species, params)
-            this.nold = 0
+        float nextlogl = treelk(tree, stree,
+                                recon, events, params,
+                                -1, 0,
+                                predupprob, dupprob, errorlogl);
         
-        addVisited(conf, visited, tree2, gene2species, thash)
-        
-        # best yet tree
-        if logl > this.toplogl:
-            printMCMC(conf, "%d:%d" % (chain.name, this.iter), 
-                      tree2, stree, gene2species, visited)
-            this.toplogl = logl
-            this.toptree = tree2.copy()
-            
-            # move some other chains to best state
-            #chains2 = sorted(chains, key=lambda x: x.logl)
-            #for chain in chains2[:1]:
-            #    chain.state = this.toptree.copy()
-            #    chain.logl = this.toplogl
-        
-        # alter logl to influence search only
-        chain.relax = conf["speedup"] * this.nold
-               
-        return tree2, logl
-        
-    # init chains    
-    chains = []
-    for i in range(conf["nchains"]):
-        chains.append(McmcChain(i, tree.copy(), this.toplogl, propose))
-    
-    
-    # run chains
-    for i in xrange(1, conf["iters"]):
-        this.iter += 1
-        
-        for chain in chains:
-            chain.step()   
-   
+        // acceptance rule
+        if (nextlogl > logl ||
+            nextlogl - logl > log(rand() / float(RAND_MAX)))
+        {
+            // accept
+            logl = nextlogl;
 
-    return this.toptree, this.toplogl
-    */
+            // keep track of toptree            
+            if (logl > toplogl) {
+                delete toptree;
+                toptree = tree->copy();
+                toplogl = logl;
+            }
+        } else {
+            // reject, undo topology change
+            proposeNni(tree, node1, node2, change);
+        }
+    }
+    
+    
+    return toptree;
 }

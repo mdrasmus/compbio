@@ -37,6 +37,8 @@ int main(int argc, char **argv)
         writeDistMatrix(argv[2], aln->nseqs, distmat, aln->names);
     
     
+    //SpidirParams params = SpidirParams(nsnodes, mu, sigma, alpha, beta);
+    
     // do neighbor joining
     int nnodes = aln->nseqs * 2 - 1;
     Tree tree(nnodes);    
@@ -46,6 +48,7 @@ int main(int argc, char **argv)
     neighborjoin(aln->nseqs, distmat, ptree, dists);
     ptree2tree(nnodes, ptree, &tree);
     parsimony(&tree, aln->nseqs, aln->seqs);
+    
     
     for (int i=0; i<100; i++) {
         Node *node = tree.root;

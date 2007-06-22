@@ -1,13 +1,18 @@
 #!/usr/bin/env python
 
+import sys
+
+
 from rasmus import env
-from rasmus import fasta
-from rasmus import genomeutil
-from rasmus import phylip
-from rasmus import phyloutil
 from rasmus import util
 from rasmus import treelib
-import sys
+
+from rasmus.bio import fasta
+from rasmus.bio import genomeutil
+from rasmus.bio import phylip
+from rasmus.bio import phylo
+
+
 
 
 options = [
@@ -38,7 +43,7 @@ def main(conf):
         util.logger("%d of %d (%s)" % (i, len(files), f))
         
         seqs = fasta.readFasta(f)
-        tree = phyloutil.stree2gtree(stree, seqs.keys(), gene2species)
+        tree = phylo.stree2gtree(stree, seqs.keys(), gene2species)
         tree.writeNewick(f.replace(conf["fastaext"], conf["treeext"]))
 
     util.toc()

@@ -11,6 +11,271 @@
 #define MAX_FLOAT 1e10
 
 
+
+// return a copy of the tree
+Tree *Tree::copy()
+{
+    Tree *tree2 = new Tree(nnodes);
+    Node **nodes2 = tree2->nodes;
+    
+    for (int i=0; i<nnodes; i++) {
+        nodes2[i]->setChildren(nodes[i]->nchildren);
+        nodes2[i]->name = i;
+        nodes2[i]->dist = nodes[i]->dist;
+    }
+    
+    for (int i=0; i<nnodes; i++) {
+        for (int j=0; j<nodes[i]->nchildren; j++) {
+            Node *child = nodes[i]->children[j];
+            if (child)
+                nodes2[i]->children[j] = nodes2[child->name];
+            else
+                nodes2[i]->children[j] = NULL;
+        }
+        Node *parent = nodes[i]->parent;
+        if (parent)
+            nodes2[i]->parent = nodes2[parent->name];
+        else
+            nodes2[i]->parent = NULL;
+    }
+    
+    tree2->root = nodes2[root->name];
+    
+    return tree2;
+}
+
+
+
+void Tree::reroot(Node *newroot, bool onBranch)
+{
+    // handle trivial case, newroot is root
+    if (root == newroot ||
+        (onBranch &&
+         root->nchildren == 2 &&
+         (root->children[0] == newroot ||
+          root->children[1] == newroot)))
+        return;
+    
+    ExtendArray<Node*> path(0, nnodes);
+        
+    
+    // determine where to stop ascending
+    Node *oldroot = root;
+    Node *stop1=NULL, *stop2=NULL;
+    
+    if (isRooted()) {
+        stop1 = root->children[0];
+        stop2 = root->children[1];
+    } else {
+        stop1 = root;
+    }
+
+    // start the reversal
+    Node *ptr1 = NULL, *ptr2 = NULL;
+    
+    if (onBranch) {
+        if (isRooted()) {
+            // just need to stick current root somewhere else
+            Node *other = newroot->parent;            
+            
+            oldroot->children[0] = newroot;
+            oldroot->children[1] = other;            
+            newroot->parent = oldroot;
+            path.append(oldroot);
+            
+            ptr1 = other;
+            ptr2 = newroot;
+        } else {
+            // need to add a new node to be root
+            assert(0);
+        }
+    } else {
+        if (isRooted()) {
+            // need to remove the root node, nad make tribranch
+            assert(0);
+        } else {
+            // just need to swap node positions
+            assert(0);
+        }
+    }
+    
+    
+    // reverse parent child relationships
+    while (ptr1 != stop1 && ptr1 != stop2) {
+        int oldchild = findval(ptr1->children, ptr1->nchildren, ptr2);
+        assert(oldchild != -1);
+        
+        Node *next = ptr1->parent;
+        
+        // ptr1 is now fixed
+        ptr1->children[oldchild] = next;
+        ptr1->parent = ptr2;
+        path.append(ptr1);
+        
+        // move pointers
+        ptr2 = ptr1;
+        ptr1 = next;
+    }
+    
+    
+    // handle last two nodes
+    if (stop2 != NULL) {
+        // make stop1 parent of stop2
+        if (stop2 == ptr1) {        
+            Node *tmp = stop1;
+            stop1 = ptr1;
+            stop2 = tmp;
+        }
+        assert(ptr1 == stop1);
+        
+        int oldchild = findval(stop1->children, stop1->nchildren, ptr2);        
+        stop1->children[oldchild] = stop2;
+        stop1->parent = ptr2;
+        stop2->parent = stop1;
+        path.append(stop2);
+    }
+    
+    
+    // renumber nodes
+    // - all leaves don't change numbers
+    assert(root->name = nnodes-1);
+}
+
+
+//=============================================================================
+
+char readChar(FILE *stream, int &depth)
+{
+    char chr;
+    do {
+        if (fread(&chr, sizeof(char), 1, stream) != 1) {
+            // indicate EOF
+            return '\0';
+        }
+    } while (chr == ' ' && chr == '\n');
+    
+    // keep track of paren depth
+    if (chr == '(') depth++;
+    if (chr == ')') depth--;
+    
+    return chr;
+}
+
+
+char readUntil(FILE *stream, string &token, char *stops, int &depth)
+{
+    char chr;
+    token = "";
+    while (true) {
+        chr = readChar(stream, depth);
+        if (!chr)
+            return chr;
+        
+        // compare char to stop characters
+        for (char *i=stops; *i; i++) {
+            if (chr == *i)
+                return chr;
+        }
+        token += chr;
+    }
+}
+
+
+string trim(const char *word)
+{
+    char buf[101];
+    sscanf(word, "%100s", buf);
+    return string(buf);
+}
+
+
+float readDist(FILE *infile, int &depth)
+{
+    float dist = 0;
+    fscanf(infile, "%f", &dist);
+    return dist;
+}
+
+/*
+TreeNode ReadNode(FILE *infile, TreeNode *parent, int &depth)
+{
+    char chr, char1;
+    TreeNode *node;
+    string token;
+
+    // read first character
+    if (!(char1  = ReadChar(infile, depth))) {
+        Error("unexpected end of file");
+        return NULL;
+    }
+    
+
+    if (char1 == '(') {
+        // read internal node
+    
+        int depth2 = depth;
+        node = AddNode(NULL, parent);
+        
+        // read all child nodes at this depth
+        while (depth == depth2) {
+            TreeNode *child = ReadNode(infile, node, depth);
+            if (!child)
+                return NULL;
+        }
+        
+        // read distance for this node
+        char chr = ReadUntil(infile, token, "):,", depth);
+        if (chr == ':')
+            node->SetDistance(ReadDist(infile, depth));
+        if (!(chr = ReadUntil(infile, token, "):,", depth)))
+            return NULL;
+        return node;
+    } else {
+        // read leaf
+        
+        node = AddNode(NULL, parent);
+        
+        // read name
+        if (!(chr = ReadUntil(infile, token, ":),", depth)))
+            return NULL;
+        token = char1 + Trim(token.c_str());
+        node->SetName(token);
+        
+        // read distance for this node
+        if (chr == ':')
+            node->SetDistance(ReadDist(infile, depth));
+        if (!(chr = ReadUntil(infile, token, ":),", depth)))
+            return NULL;
+        return node;
+    }
+}
+
+
+
+bool Tree::readNewick(FILE *infile)
+{
+    Node *node;
+    int depth = 0;
+    string token;
+    
+    // init tree with root
+    m_root = AddNode();
+    
+    // ensure that tree begins with open paren
+    char chr = ReadUntil(infile, token, "(", depth);    
+    if (chr != '(')
+        return false;
+    
+    // add nodes to root
+    while ((depth > 0) && (node = ReadNode(infile, m_root, depth)));
+    
+    // return success status
+    return depth == 0;
+}
+*/
+
+
+
 //=============================================================================
 // phylogeny functions
 
@@ -226,105 +491,6 @@ def reconRoot(gtree, stree, gene2species = gene2species,
 
 
 
-void Tree::reroot(Node *newroot, bool onBranch)
-{
-    // handle trivial case, newroot is root
-    if (root == newroot ||
-        (onBranch &&
-         root->nchildren == 2 &&
-         (root->children[0] == newroot ||
-          root->children[1] == newroot)))
-        return;
-    
-    ExtendArray<Node*> path(0, nnodes);
-        
-    
-    // determine where to stop ascending
-    Node *oldroot = root;
-    Node *stop1=NULL, *stop2=NULL;
-    
-    if (isRooted()) {
-        stop1 = root->children[0];
-        stop2 = root->children[1];
-    } else {
-        stop1 = root;
-    }
-
-    // start the reversal
-    Node *ptr1 = NULL, *ptr2 = NULL;
-    
-    if (onBranch) {
-        if (isRooted()) {
-            // just need to stick current root somewhere else
-            Node *other = newroot->parent;            
-            
-            oldroot->children[0] = newroot;
-            oldroot->children[1] = other;            
-            newroot->parent = oldroot;
-            path.append(oldroot);
-            
-            ptr1 = other;
-            ptr2 = newroot;
-        } else {
-            // need to add a new node to be root
-            assert(0);
-        }
-    } else {
-        if (isRooted()) {
-            // need to remove the root node, nad make tribranch
-            assert(0);
-        } else {
-            // just need to swap node positions
-            assert(0);
-        }
-    }
-    
-    
-    // reverse parent child relationships
-    while (ptr1 != stop1 && ptr1 != stop2) {
-        int oldchild = findval(ptr1->children, ptr1->nchildren, ptr2);
-        assert(oldchild != -1);
-        
-        Node *next = ptr1->parent;
-        
-        // ptr1 is now fixed
-        ptr1->children[oldchild] = next;
-        ptr1->parent = ptr2;
-        path.append(ptr1);
-        
-        // move pointers
-        ptr2 = ptr1;
-        ptr1 = next;
-    }
-    
-    
-    // handle last two nodes
-    if (stop2 != NULL) {
-        // make stop1 parent of stop2
-        if (stop2 == ptr1) {        
-            Node *tmp = stop1;
-            stop1 = ptr1;
-            stop2 = tmp;
-        }
-        assert(ptr1 == stop1);
-        
-        int oldchild = findval(stop1->children, stop1->nchildren, ptr2);        
-        stop1->children[oldchild] = stop2;
-        stop1->parent = ptr2;
-        stop2->parent = stop1;
-        path.append(stop2);
-    }
-    
-    
-    // renumber nodes
-    // - all leaves don't change numbers
-    assert(root->name = nnodes-1);
-}
-
-
-
-
-
 // Find Last Common Ancestor
 Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)
 {
@@ -407,7 +573,7 @@ void labelEvents(Tree *tree, int *recon, int *events)
 
 
 //=============================================================================
-// conversion functions
+// basic tree format conversion functions
 
 // creates a forward tree from a parent tree
 void makeFtree(int nnodes, int *ptree, int ***ftree)

@@ -1500,7 +1500,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     tree.clearData("logl", "extra", "fracs", "params", "unfold")
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
-
+    
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
        events[tree.root] == "dup":
@@ -1769,45 +1769,6 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
     i = util.argmax([x.data["logl"] for x in trees])
     return trees[i], trees[i].data["logl"]
     
-
-
-def consensusTree(trees, counts):
-    splits = util.Dict(default=0)
-    
-    genes = util.sort(trees[0].leaveNames())
-    
-    # count up splits
-    for tree, count in zip(trees, counts):
-        network = treelib.tree2graph(treelib.unroot(tree))
-        splits2 = findSplits(network, set(tree.leaveNames()))
-        
-        print len(splits2)
-        
-        for key, (set1, set2) in splits2.iteritems():
-            if len(set1) > len(set2):
-                set1, set2 = set2, set1
-            splitkey = tuple([int(gene in set1) for gene in genes])
-            splits[splitkey] += count
-    
-    splits = splits.items()
-    splits.sort(key=lambda x: x[1], reverse=True)
-    
-    half = len(trees) / 2.0
-    if util.count(lambda x: x[1] >= half, splits):
-        debug("consensus exists")
-    
-    # print splits
-    if isDebug(DEBUG_LOW):
-        mat = [genes + ["COUNT"]]
-        for key, val in splits:
-            mat.append(list(key))
-            mat[-1].append(val)
-        util.printcols(mat, out=DEBUG)
-
-    
-    return tree, tree.data["logl"]
-
-
 
 
 

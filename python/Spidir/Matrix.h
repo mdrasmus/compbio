@@ -16,12 +16,13 @@ class Matrix
 {
 public:
     typedef ValueType** ValuePtrType;
+    typedef ValueType* ValueRowType;
 
     Matrix(int nrows, int ncols) :
         m_nrows(nrows),
         m_ncols(ncols)
     {
-        m_data = new (ValueType*)[nrows];
+        m_data = new ValueRowType[nrows];
         for (int i=0; i<nrows; i++)
             m_data[i] = new ValueType[ncols];
     }

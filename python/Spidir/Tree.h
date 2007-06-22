@@ -73,20 +73,16 @@ public:
     Tree(int nnodes) :
         nnodes(nnodes),
         root(NULL),
-        nodes(NULL)
+        nodes(nnodes)
     {
-        nodes = new Node* [nnodes];
         for (int i=0; i<nnodes; i++)
             nodes[i] = new Node();
     }
     
     virtual ~Tree()
     {
-        if (nodes) {
-            for (int i=0; i<nnodes; i++)
-                delete nodes[i];
-            delete [] nodes;
-        }
+        for (int i=0; i<nnodes; i++)
+            delete nodes[i];
     }
     
     void setDists(float *dists)
@@ -112,10 +108,11 @@ public:
     }
     
     void reroot(Node *newroot, bool onBranch=true);
+    Tree *copy();
     
     int nnodes;
     Node *root;
-    Node **nodes;
+    ExtendArray<Node*> nodes;
 };
 
 

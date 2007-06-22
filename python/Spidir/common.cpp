@@ -191,6 +191,47 @@ bool writeDistMatrix(const char *filename, int ngenes, float **dists,
 }
 
 
+SpidirParams *readSpidirParams(const char* filename)
+{
+    FILE *infile = NULL;
+    
+    if ((infile = fopen(filename, "r")) == NULL) {
+        fprintf(stderr, "cannot read file '%s'\n", filename);
+        return NULL;
+    }
+    
+    const int MAX_NAME = 51;
+    float param1, param2;
+    float alpha, beta;
+    ExtendArray<float> mu(0, 40);
+    ExtendArray<float> sigma(0, 40);
+    ExtendArray<string> names(0, 40);
+    
+    char name[MAX_NAME];
+    
+    while (!feof(infile)) {
+        if (fscanf(infile, "%50s\t%f\t%f", name, &param1, &param2) != 3)
+            return NULL;
+        
+        if (name == "baserate") {
+            alpha = param1;
+            beta = param2;
+        } else {
+            names.append(name);
+            mu.append(param1);
+            sigma.append(param2);
+        }
+    }
+    
+    SpidirParams *params = new SpidirParams(names.size(), names, 
+                                            mu, sigma, alpha, beta);
+    
+    fclose(infile);
+    
+    return params;
+}
+
+
 // ensures that all characters in the alignment are sensible
 // TODO: do not change alignment (keep Ns)
 bool checkSequences(int nseqs, int seqlen, char **seqs)

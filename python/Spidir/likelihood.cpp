@@ -685,7 +685,7 @@ float treelk(int nnodes, int *ptree, float *dists,
     ptree2tree(nsnodes, pstree, &stree);
     stree.setDepths();
     
-    SpidirParams params = SpidirParams(nsnodes, mu, sigma, alpha, beta);
+    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
     
     return treelk(&tree, &stree,
                   recon, events, &params, 

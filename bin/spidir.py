@@ -177,6 +177,7 @@ options = ["""\
      "help": "set SPIDIR debug level"}],
  ["", "integrate", "integrate", ""],
  ["", "python_only", "python_only", ""],
+ ["", "lkcmp", "lkcmp", ""], 
  ["", "parsimony", "parsimony", ""],
 
  ["P:", "paths=", "paths", "<files path>",

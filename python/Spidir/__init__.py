@@ -559,6 +559,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     # use only best means and sdevs (highest means)
     
+    """
     ind = range(len(means))
     ind.sort(lambda a, b: cmp(means[b], means[a]))
     ind = ind[:max(4, len(ind) / 2 + 1)]
@@ -566,7 +567,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     means = util.mget(means, ind)
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)
-    
+    """
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
@@ -958,7 +959,8 @@ def makeKDepend(node, events, recon):
     return kdepend, korder, korderrev
 
 
-def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
+def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
+                      integration="quad"):
     midpoints = {}
     extraBranches = getExtraBranches(root, recon, events, stree)
     
@@ -986,6 +988,8 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
         
         return [tot, 666]
     """
+    
+    print "INT", integration
     
     def integrate(node, nvars):
         kvars = [0] * nvars
@@ -1043,120 +1047,117 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate):
         return quad(func, .0001, .9999, n=20)
     
     
-    # process each child of subtree root
-    logl = 0.0
-    midpoints[root] = 1.0
-    for child in root.children:
-        # integration is only needed if child is dup
-        if events[child] != "dup":
-            setMidpoints(child, events, recon, midpoints, [])
-            clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
-                      midpoints, extraBranches, baserate)
-            child.data["logl"] = clogl
-            logl += clogl
-        else:
-            # integrate over midpoints
-            nvars = countMidpointParameters(child, events)
-            val, err = integrate(child, nvars)
-            #if conf["debug"]:
-            #    #debug("integration error:", (log(err + val) - log(val)))
-            #    debug("int nvars:", nvars)
-            clogl = log(val)
-            child.data["logl"] = clogl
-            logl += clogl
+    if integration == "quad":
+        # process each child of subtree root
+        logl = 0.0
+        midpoints[root] = 1.0
+        for child in root.children:
+            # integration is only needed if child is dup
+            if events[child] != "dup":
+                setMidpoints(child, events, recon, midpoints, [])
+                clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                          midpoints, extraBranches, baserate)
+                child.data["logl"] = clogl
+                logl += clogl
+            else:
+                # integrate over midpoints
+                nvars = countMidpointParameters(child, events)
+                val, err = integrate(child, nvars)
+                #if conf["debug"]:
+                #    #debug("integration error:", (log(err + val) - log(val)))
+                #    debug("int nvars:", nvars)
+                clogl = log(val)
+                child.data["logl"] = clogl
+                logl += clogl
     
-    #if conf["debug"]:
-    #    debug("int logl calls:", this.ncalls)
-    
-    
-    """
     # do random sampling integration
-    logl2 = 0.0
-    
-    midpoints[root] = 1.0
-    for child in root.children:
-        # integration is only needed if child is dup
-        if events[child] != "dup":
-            setMidpoints(child, events, recon, midpoints, [])
-            clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
-                      midpoints, extraBranches, baserate)
-            child.data["logl"] = clogl
-            logl2 += clogl
-        else:
-            for samples in [100]: #[50, 100, 250, 500]:        
-                val = 0.0            
-                
-                for i in xrange(samples):
-                    setMidpointsRandom(child, events, recon, midpoints, False)
-                    val += math.exp(calcSubtreeLikelihood(child, recon, events, 
-                                                     stree, params, 
-                                                     midpoints, extraBranches, 
-                                                     baserate))
+    if integration == "sampling":        
+        logl = 0.0
 
-                clogl = log(val / float(samples))
-                
-            child.data["logl"] = clogl
-            logl2 += clogl
+        midpoints[root] = 1.0
+        for child in root.children:
+            # integration is only needed if child is dup
+            if events[child] != "dup":
+                setMidpoints(child, events, recon, midpoints, [])
+                clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                          midpoints, extraBranches, baserate)
+                child.data["logl"] = clogl
+                logl += clogl
+            else:
+                for samples in [100]: #[50, 100, 250, 500]:        
+                    val = 0.0            
+
+                    for i in xrange(samples):
+                        setMidpointsRandom(child, events, recon, midpoints, False)
+                        val += math.exp(calcSubtreeLikelihood(child, recon, events, 
+                                                         stree, params, 
+                                                         midpoints, extraBranches, 
+                                                         baserate))
+
+                    clogl = log(val / float(samples))
+
+                child.data["logl"] = clogl
+                logl += clogl
     
     
-    # do fast integration
-    logl3 = 0.0
-    midpoints[root] = 1.0
-    for child in root.children:
-        # integration is only needed if child is dup
-        if events[child] != "dup":
-            setMidpoints(child, events, recon, midpoints, [])
-            clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
-                      midpoints, extraBranches, baserate)
-            child.data["logl"] = clogl
-            logl3 += clogl
-        else:
-            startparams = {}
-            startfrac = {}
-            midparams = {}
-            endparams = {}
-            endfrac = {}
-            kdepend = {}
-        
-            # recon subtree
-            nodes = []
-            def walk(node):
-                nodes.append(node)
-                startparams[node], startfrac[node], midparams[node], \
-                    endparams[node], endfrac[node], kdepend[node] = \
-                    reconBranch2(node, recon, events, params)
+    if integration == "fastsampling":
+        # do fast integration
+        logl3 = 0.0
+        midpoints[root] = 1.0
+        for child in root.children:
+            # integration is only needed if child is dup
+            if events[child] != "dup":
+                setMidpoints(child, events, recon, midpoints, [])
+                clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                          midpoints, extraBranches, baserate)
+                child.data["logl"] = clogl
+                logl3 += clogl
+            else:
+                startparams = {}
+                startfrac = {}
+                midparams = {}
+                endparams = {}
+                endfrac = {}
+                kdepend = {}
+
+                # recon subtree
+                nodes = []
+                def walk(node):
+                    nodes.append(node)
+                    startparams[node], startfrac[node], midparams[node], \
+                        endparams[node], endfrac[node], kdepend[node] = \
+                        reconBranch2(node, recon, events, params)
+
+                    if events[node] == "dup":
+                        for child in node.children:
+                            walk(child)
+                walk(child)
                 
-                if events[node] == "dup":
-                    for child in node.children:
-                        walk(child)
-            walk(child)
-            
-            print "sample"
-            
-            for samples in [100]: #[50, 100, 250, 500]:        
-                val = 0.0            
-                
-                for i in xrange(samples):
-                    setMidpointsRandom2(child, events, recon, midpoints)                
-                    
-                    val2 = 0.0
-                    for node in nodes:
-                        if recon[node] != stree.root:
-                            v = branchLikelihood2(node.dist / baserate, 
-                                          node, midpoints, 
-                                          startparams[node], startfrac[node],
-                                          midparams[node], endparams[node], 
-                                          endfrac[node])
-                            val2 += v
-                            #print 'v', v
-                            
-                    val += math.exp(val2)
-                
-                clogl = log(val / float(samples))
-                
-            child.data["logl"] = clogl
-            logl3 += clogl 
-    """
+
+                for samples in [100]: #[50, 100, 250, 500]:        
+                    val = 0.0            
+
+                    for i in xrange(samples):
+                        setMidpointsRandom2(child, events, recon, midpoints)                
+
+                        val2 = 0.0
+                        for node in nodes:
+                            if recon[node] != stree.root:
+                                v = branchLikelihood2(node.dist / baserate, 
+                                              node, midpoints, 
+                                              startparams[node], startfrac[node],
+                                              midparams[node], endparams[node], 
+                                              endfrac[node])
+                                val2 += v
+                                #print 'v', v
+
+                        val += math.exp(val2)
+
+                    clogl = log(val / float(samples))
+
+                child.data["logl"] = clogl
+                logl3 += clogl 
+        logl = logl3
     
     
     #logl=logl2
@@ -1264,6 +1265,16 @@ def branchLikelihood2(dist, node, k, startparams, startfrac,
         print "!!!!"
         print k[node], k[node.parent]
         print startfrac, startparams, midparams, endfrac, endparams
+    
+    
+    # handle partially-free branches and unfold
+    if "unfold" in node.data:
+        dist *= 2;
+    
+    # augment a branch if it is partially free
+    if "extra" in node.data:
+        if dist > totmean:
+            dist = totmean
     
     return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
 
@@ -1491,6 +1502,16 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         return treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
                                         baserate=baserate)
 
+    if "lkcmp" in conf and conf["lkcmp"]:
+        pysampling = treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
+                                     baserate=baserate, integration="sampling")
+
+        pyfastsampling = treeLogLikelihood_python(conf, tree, stree, gene2species, params,
+                                  baserate=baserate, integration="fastsampling")
+
+
+        pyquad = treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
+                                          baserate=baserate, integration="quad")
     # debug info
     if isDebug(DEBUG_MED):
         util.tic("find logl")
@@ -1525,10 +1546,16 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
+    #this.logl += tree.data["eventlogl"]
     
     # calc penality of error
     tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
-        
+    #this.logl += tree.data["errorlogl"]
+    
+    # generate
+    #if conf["famprob"]:
+    #    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))    
+    
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
     
@@ -1537,10 +1564,17 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         debug("\n\n")
         drawTreeLogl(tree, events=events)
     
+    if "lkcmp" in conf:
+        tree.write(sys.stdout, oneline=True)
+        print
+        print "LKCMP\t%f\t%f\t%f\t%f" % \
+                (pyquad, pysampling, pyfastsampling, this.logl)
+    
     return this.logl
 
 
-def treeLogLikelihood_python(conf, tree, stree, gene2species, params, baserate=None):
+def treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
+                             baserate=None, integration="quad"):
 
     # debug info
     if isDebug(DEBUG_MED):
@@ -1570,7 +1604,8 @@ def treeLogLikelihood_python(conf, tree, stree, gene2species, params, baserate=N
         if events[node] == "spec" or \
            node == tree.root:
             this.logl += subtreeLikelihood(conf, node, recon, events, 
-                                           stree, params, baserate)
+                                           stree, params, baserate, 
+                                           integration=integration)
         node.recurse(walk)
     walk(tree.root)
     

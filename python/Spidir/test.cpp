@@ -18,9 +18,12 @@
 
 using namespace std;
 
+float maxCubicRoot(float a, float b, float c);
 
 int main(int argc, char **argv)
 {
+    printf("cube %f\n", maxCubicRoot(1, -5, -5));
+    return 0;
 
     // read sequences
     Sequences *aln = readAlignFasta(argv[1]);

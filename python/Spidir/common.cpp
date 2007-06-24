@@ -262,10 +262,9 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
 // computes the log(normalPdf(x | u, s^2))
 float normallog(float x, float u, float s)
 {
-    if (s < 1e-10) {
+    if (s == 0.0)
         return -INFINITY;
-    }
-    return - logf(s * sqrt(2.0*PI)) - (x-u)*(x-u) / (2.0*s*s);
+    return - log(s) - log(sqrt(2.0*PI)) - (x-u)*(x-u) / (2.0*s*s);
     //return log(1.0/(s * sqrt(2.0*PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
 }
 

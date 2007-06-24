@@ -559,6 +559,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     # use only best means and sdevs (highest means)
     
+    """
     ind = range(len(means))
     ind.sort(lambda a, b: cmp(means[b], means[a]))
     ind = ind[:max(4, len(ind) / 2 + 1)]
@@ -566,7 +567,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     means = util.mget(means, ind)
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)
-    
+    """
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
@@ -1265,6 +1266,16 @@ def branchLikelihood2(dist, node, k, startparams, startfrac,
         print k[node], k[node.parent]
         print startfrac, startparams, midparams, endfrac, endparams
     
+    
+    # handle partially-free branches and unfold
+    if "unfold" in node.data:
+        dist *= 2;
+    
+    # augment a branch if it is partially free
+    if "extra" in node.data:
+        if dist > totmean:
+            dist = totmean
+    
     return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
 
 
@@ -1535,15 +1546,15 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
-    this.logl += tree.data["eventlogl"]
+    #this.logl += tree.data["eventlogl"]
     
     # calc penality of error
     tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
-    this.logl += tree.data["errorlogl"]
+    #this.logl += tree.data["errorlogl"]
     
     # generate
-    if conf["famprob"]:
-        this.logl += log(stats.gammaPdf(baserate, params["baserate"]))    
+    #if conf["famprob"]:
+    #    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))    
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
@@ -1554,6 +1565,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         drawTreeLogl(tree, events=events)
     
     if "lkcmp" in conf:
+        tree.write(sys.stdout, oneline=True)
+        print
         print "LKCMP\t%f\t%f\t%f\t%f" % \
                 (pyquad, pysampling, pyfastsampling, this.logl)
     

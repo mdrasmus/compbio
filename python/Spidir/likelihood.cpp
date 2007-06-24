@@ -128,11 +128,25 @@ float maxCubicRoot(float a, float b, float c)
     return x;
 }
 
+int floatcmp(const void *a, const void *b)
+{
+    float fa = *((float*)a);
+    float fb = *((float*)b);
+    
+    if (fa < fb)
+        return -1;
+    else if (fa > fb)
+        return 1;
+    else
+        return 0;
+}
+
 
 float mleGenerate(int count, float *dists, float *means, float *sdevs,
                   float alpha, float beta)
 {
     float a, b, c;
+    float threshold = 0;
     
     a = (1.0 - alpha) / beta;
 
@@ -141,11 +155,26 @@ float mleGenerate(int count, float *dists, float *means, float *sdevs,
     // c = - sum(lens[i] ** 2 / sdevs[i] ** 2
     //          for i in range(len(lens))) / beta    
     
+
+    ExtendArray<float> dists2(0, count);
+    dists2.extend(dists, count);
+    qsort((void*) dists2.get(), dists2.size(), sizeof(float),
+                  floatcmp);
+    //printFloatArray(dists2, dists2.size());
+    //printFloatArray(dists, dists2.size());
+    int limit = int(count * .5) + 1;
+    if (limit < 4) limit = 4;
+    threshold = dists2[limit];
+    //printf("threshold %f\n", threshold);
+    
+    
     b = 0.0;
     c = 0.0;    
     for (int i=0; i<count; i++) {
-        b += means[i] * dists[i] / (sdevs[i] * sdevs[i]);
-        c += dists[i] * dists[i] / (sdevs[i] * sdevs[i]);
+        if (dists[i] > threshold && sdevs[i] > 0.0001) {
+            b += means[i] * dists[i] / (sdevs[i] * sdevs[i]);
+            c += dists[i] * dists[i] / (sdevs[i] * sdevs[i]);
+        }
     }
     b /= beta;
     c = -c / beta;
@@ -198,7 +227,6 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
     sroots[tree->root->name] = recon[tree->root->name];
     
     // determine if top subtree is free
-    // TODO: use freebranches array
     bool free = (recon[tree->root->name] == stree->root->name && 
                  events[tree->root->name] == EVENT_DUP);
     
@@ -387,7 +415,7 @@ void setRandomMidpoints(int root, int *ptree,
             // pick a midpoint uniformly after the last one
             float remain = 1.0 - lastpoint;
             reconparams->midpoints[node] = lastpoint + esp * remain +
-                                           (1.0-esp) * remain *
+                                           (1.0-2*esp) * remain *
                                            (rand() / float(RAND_MAX));
         } else {
             // genes or speciations reconcile exactly to the end of the branch
@@ -441,7 +469,6 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     }
     // endfrac == FRAC_NONE, do nothing
     
-    /*
     // handle partially-free branches and unfold
     if (reconparams->unfold == node)
         dist += reconparams->unfolddist;
@@ -450,7 +477,7 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     if (reconparams->freebranches[node]) {
         if (dist > totmean)
             dist = totmean;
-    }*/
+    }
     
     return normallog(dist, totmean, sqrt(totvar));
 }
@@ -532,7 +559,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 }
             }
             
-            prob += expf(sampleLogl);
+            prob += exp(sampleLogl);
         }
         
         logl = log(prob  / nsamples);
@@ -620,8 +647,8 @@ float treelk(Tree *tree,
     float generate2 = estimateGenerate(tree, stree, 
                        recon, events, params);
     
-    //printf("generate: %f %f\n", generate, generate2);
-    //generate = generate2;
+    printf("generate: %f %f\n", generate, generate2);
+    generate = generate2;
     
     bool *freebranches = new bool [tree->nnodes];
     int unfold;
@@ -632,20 +659,23 @@ float treelk(Tree *tree,
     ReconParams reconparams = ReconParams(tree->nnodes, freebranches, 
                                           unfold, unfolddist);
     
+    printTree(tree);
+    
     // loop through independent subtrees
     for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_SPEC || i == tree->root->name) {
             for (int j=0; j<2; j++) {
-                logl += subtreelk(tree->nnodes, ptree, ftree, dists, ftree[i][j],
+                float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, ftree[i][j],
                                   stree->nnodes, pstree, 
                                   recon, events, params,
                                   generate,
                                   &reconparams);
+                logl += slogl;
+                printf("slogl=%d %f\n", ftree[i][j], slogl);
             }
         }
     }
     
-    /*
     // rare events
     logl += rareEventsLikelihood(tree->nnodes, recon, events, stree->nnodes,
                                  predupprob, dupprob);
@@ -658,7 +688,6 @@ float treelk(Tree *tree,
     // generate probability
     if (params->alpha > 0 && params->beta > 0)
         logl += gammalog(generate, params->alpha, params->beta);
-   */
     
     // clean up
     delete [] ptree;

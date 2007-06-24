@@ -37,57 +37,58 @@ sys.setrecursionlimit(4000)
 #
 # TODO: try D-parser, it might be faster
 #
-def makeNewickParser():
-    # pyparsing
-    from pyparsing import Combine, Optional, Literal, CaselessLiteral, \
-                       Word, alphanums, \
-                       nums, oneOf, Group, Dict, Forward, \
-                       ParseResults, CharsNotIn, ZeroOrMore
+if pyparsing:
+    def makeNewickParser():
+        # pyparsing
+        from pyparsing import Combine, Optional, Literal, CaselessLiteral, \
+                           Word, alphanums, \
+                           nums, oneOf, Group, Dict, Forward, \
+                           ParseResults, CharsNotIn, ZeroOrMore
 
 
-    # literals
-    lparen    = Literal("(").suppress()
-    rparen    = Literal(")").suppress()
-    colon     = Literal(":").suppress()
-    semicolon = Literal(":").suppress()
-    comma     = Literal(",").suppress()
-    point     = Literal(".")
-    e         = CaselessLiteral("E")
+        # literals
+        lparen    = Literal("(").suppress()
+        rparen    = Literal(")").suppress()
+        colon     = Literal(":").suppress()
+        semicolon = Literal(":").suppress()
+        comma     = Literal(",").suppress()
+        point     = Literal(".")
+        e         = CaselessLiteral("E")
 
 
-    # terminal rules
-    name    = Word(alphanums + "_" + "-" + "." + "+")
-    fnumber = Combine(Word("+-"+nums, nums) + 
-                      Optional(point + Optional(Word(nums))) +
-                      Optional(e + Word("+-"+nums, nums)))
-    dist      = fnumber
-    bootstrap = fnumber
-    
-    
-    # recursive rules
-    subtree = Forward()
-    subtreelist = Forward()
+        # terminal rules
+        name    = Word(alphanums + "_" + "-" + "." + "+")
+        fnumber = Combine(Word("+-"+nums, nums) + 
+                          Optional(point + Optional(Word(nums))) +
+                          Optional(e + Word("+-"+nums, nums)))
+        dist      = fnumber
+        bootstrap = fnumber
 
-    subtree << \
-        Group(
-            (
-                (lparen + subtreelist + rparen).setResultsName("subtree") |
-                name.setResultsName("name")
-            ) +
-            Optional(
-                CharsNotIn(",);").setResultsName("data")
+
+        # recursive rules
+        subtree = Forward()
+        subtreelist = Forward()
+
+        subtree << \
+            Group(
+                (
+                    (lparen + subtreelist + rparen).setResultsName("subtree") |
+                    name.setResultsName("name")
+                ) +
+                Optional(
+                    CharsNotIn(",);").setResultsName("data")
+                )
             )
-        )
-    subtreelist << subtree + Optional(comma + subtreelist)
-    
-    
-    # top level rule
-    tree = subtree + Word(";").suppress()
-    
-    
-    return tree.parseString
+        subtreelist << subtree + Optional(comma + subtreelist)
 
-newickParser = makeNewickParser()
+
+        # top level rule
+        tree = subtree + Word(";").suppress()
+
+
+        return tree.parseString
+
+    newickParser = makeNewickParser()
 
 
 

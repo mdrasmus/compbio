@@ -8,7 +8,6 @@
 #include "Tree.h"
 #include "Matrix.h"
 
-#define MAX_FLOAT 1e10
 
 
 
@@ -45,7 +44,7 @@ Tree *Tree::copy()
 }
 
 
-
+// root tree by a new branch/node 
 void Tree::reroot(Node *newroot, bool onBranch)
 {
     // handle trivial case, newroot is root
@@ -143,58 +142,7 @@ void Tree::reroot(Node *newroot, bool onBranch)
 
 
 //=============================================================================
-
-char readChar(FILE *stream, int &depth)
-{
-    char chr;
-    do {
-        if (fread(&chr, sizeof(char), 1, stream) != 1) {
-            // indicate EOF
-            return '\0';
-        }
-    } while (chr == ' ' || chr == '\n');
-    
-    // keep track of paren depth
-    if (chr == '(') depth++;
-    if (chr == ')') depth--;
-    
-    return chr;
-}
-
-
-char readUntil(FILE *stream, string &token, char *stops, int &depth)
-{
-    char chr;
-    token = "";
-    while (true) {
-        chr = readChar(stream, depth);
-        if (!chr)
-            return chr;
-        
-        // compare char to stop characters
-        for (char *i=stops; *i; i++) {
-            if (chr == *i)
-                return chr;
-        }
-        token += chr;
-    }
-}
-
-
-string trim(const char *word)
-{
-    char buf[101];
-    sscanf(word, "%100s", buf);
-    return string(buf);
-}
-
-
-float readDist(FILE *infile, int &depth)
-{
-    float dist = 0;
-    fscanf(infile, "%f", &dist);
-    return dist;
-}
+// Tree Input/Output
 
 
 Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
@@ -375,6 +323,8 @@ bool Tree::writeNewick(const char *filename)
 }
 
 
+
+//=============================================================================
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()
 {
@@ -705,7 +655,7 @@ void labelEvents(Tree *tree, int *recon, int *events)
 
 
 //=============================================================================
-// basic tree format conversion functions
+// primitive tree format conversion functions
 
 // creates a forward tree from a parent tree
 void makeFtree(int nnodes, int *ptree, int ***ftree)
@@ -788,7 +738,7 @@ void tree2ptree(Tree *tree, int *ptree)
 
 
 //=============================================================================
-// Input/output
+// primitive input/output
 
 
 void printFtree(int nnodes, int **ftree)

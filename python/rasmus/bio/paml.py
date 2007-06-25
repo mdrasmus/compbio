@@ -3,10 +3,9 @@
 import os
 
 # rasmus libs
-from rasmus import phylip
 from rasmus import util
-from rasmus import alignlib
-
+from rasmus.bio import alignlib
+from rasmus.bio import phylip
 
 
 def removeStopCodons(seq):

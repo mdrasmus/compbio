@@ -76,7 +76,7 @@ public:
 class Tree
 {
 public:
-    Tree(int nnodes) :
+    Tree(int nnodes=0) :
         nnodes(nnodes),
         root(NULL),
         nodes(nnodes, 100)
@@ -151,10 +151,15 @@ public:
 class SpeciesTree : public Tree
 {
 public:
-    SpeciesTree(int nnodes) :
-        Tree(nnodes)
+    SpeciesTree(int nnodes=0) :
+        Tree(nnodes),
+        depths(NULL)
     {
-        depths = new int [nnodes];
+    }
+    
+    virtual ~SpeciesTree()
+    {
+        delete [] depths;
     }
     
     
@@ -162,6 +167,9 @@ public:
     {
         if (node == NULL)
             node = root;
+        
+        if (depths == NULL)
+            depths = new int [nnodes];
         
         depths[node->name] = depth;
         

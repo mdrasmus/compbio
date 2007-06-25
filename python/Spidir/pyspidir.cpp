@@ -229,12 +229,8 @@ pyspidir_treelk(PyObject *self, PyObject *args)
         reconcile(&tree, &stree, gene2species, recon);
         labelEvents(&tree, recon, events);
 
-        /*
-        printf("recons\n");
-        printIntArray(recon, nnodes);
-        printIntArray(recon2, nnodes);
-        printf("\n");
 
+        /*
         printf("events\n");
         printIntArray(events, nnodes);
         printIntArray(events2, nnodes);
@@ -248,10 +244,10 @@ pyspidir_treelk(PyObject *self, PyObject *args)
 
         // calculate likelihood
         logl = treelk(nnodes, ptree, dists,
-                            nsnodes, pstree, 
-                            recon, events,
-                            mu, sigma, generate, disterror,
-                            predupprob, dupprob, errorprob, alpha, beta);
+                      nsnodes, pstree, 
+                      recon, events,
+                      mu, sigma, generate, disterror,
+                      predupprob, dupprob, errorprob, alpha, beta);
 
 
 
@@ -260,12 +256,12 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     }
     
     cleanup:
-        if (ptree) delete [] ptree;
-        if (dists) delete [] dists;
-        if (pstree) delete [] pstree;
-        if (gene2species) delete [] gene2species;
-        if (mu) delete [] mu;
-        if (sigma) delete [] sigma;
+    if (ptree) delete [] ptree;
+    if (dists) delete [] dists;
+    if (pstree) delete [] pstree;
+    if (gene2species) delete [] gene2species;
+    if (mu) delete [] mu;
+    if (sigma) delete [] sigma;
         
     
     if (error)

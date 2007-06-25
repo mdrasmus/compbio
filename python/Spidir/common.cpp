@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -330,3 +331,67 @@ bool chomp(char *str)
       return false;
 }
 
+void printError(const char *fmt, ...)
+{
+   va_list ap;   
+   va_start(ap, fmt);
+   
+   fprintf(stderr, "error: ");
+   vfprintf(stderr, fmt, ap);
+   fprintf(stderr, "\n");
+   
+   va_end(ap);
+}
+
+
+char readChar(FILE *stream, int &depth)
+{
+    char chr;
+    do {
+        if (fread(&chr, sizeof(char), 1, stream) != 1) {
+            // indicate EOF
+            return '\0';
+        }
+    } while (chr == ' ' || chr == '\n');
+    
+    // keep track of paren depth
+    if (chr == '(') depth++;
+    if (chr == ')') depth--;
+    
+    return chr;
+}
+
+
+char readUntil(FILE *stream, string &token, char *stops, int &depth)
+{
+    char chr;
+    token = "";
+    while (true) {
+        chr = readChar(stream, depth);
+        if (!chr)
+            return chr;
+        
+        // compare char to stop characters
+        for (char *i=stops; *i; i++) {
+            if (chr == *i)
+                return chr;
+        }
+        token += chr;
+    }
+}
+
+
+string trim(const char *word)
+{
+    char buf[101];
+    sscanf(word, "%100s", buf);
+    return string(buf);
+}
+
+
+float readDist(FILE *infile, int &depth)
+{
+    float dist = 0;
+    fscanf(infile, "%f", &dist);
+    return dist;
+}

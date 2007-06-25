@@ -8,7 +8,6 @@
 #include "Tree.h"
 #include "Matrix.h"
 
-#define MAX_FLOAT 1e10
 
 
 
@@ -45,7 +44,7 @@ Tree *Tree::copy()
 }
 
 
-
+// root tree by a new branch/node 
 void Tree::reroot(Node *newroot, bool onBranch)
 {
     // handle trivial case, newroot is root
@@ -143,137 +142,220 @@ void Tree::reroot(Node *newroot, bool onBranch)
 
 
 //=============================================================================
-
-char readChar(FILE *stream, int &depth)
-{
-    char chr;
-    do {
-        if (fread(&chr, sizeof(char), 1, stream) != 1) {
-            // indicate EOF
-            return '\0';
-        }
-    } while (chr == ' ' && chr == '\n');
-    
-    // keep track of paren depth
-    if (chr == '(') depth++;
-    if (chr == ')') depth--;
-    
-    return chr;
-}
+// Tree Input/Output
 
 
-char readUntil(FILE *stream, string &token, char *stops, int &depth)
-{
-    char chr;
-    token = "";
-    while (true) {
-        chr = readChar(stream, depth);
-        if (!chr)
-            return chr;
-        
-        // compare char to stop characters
-        for (char *i=stops; *i; i++) {
-            if (chr == *i)
-                return chr;
-        }
-        token += chr;
-    }
-}
-
-
-string trim(const char *word)
-{
-    char buf[101];
-    sscanf(word, "%100s", buf);
-    return string(buf);
-}
-
-
-float readDist(FILE *infile, int &depth)
-{
-    float dist = 0;
-    fscanf(infile, "%f", &dist);
-    return dist;
-}
-
-/*
-TreeNode ReadNode(FILE *infile, TreeNode *parent, int &depth)
+Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
 {
     char chr, char1;
-    TreeNode *node;
+    Node *node;
     string token;
 
     // read first character
-    if (!(char1  = ReadChar(infile, depth))) {
-        Error("unexpected end of file");
+    if (!(char1  = readChar(infile, depth))) {
+        printError("unexpected end of file");
         return NULL;
     }
     
-
+    
     if (char1 == '(') {
         // read internal node
     
         int depth2 = depth;
-        node = AddNode(NULL, parent);
+        node = addNode(new Node());
+        if (parent)
+            parent->addChild(node);
         
         // read all child nodes at this depth
         while (depth == depth2) {
-            TreeNode *child = ReadNode(infile, node, depth);
+            Node *child = readNode(infile, node, depth);
             if (!child)
                 return NULL;
         }
         
         // read distance for this node
-        char chr = ReadUntil(infile, token, "):,", depth);
+        char chr = readUntil(infile, token, "):,;", depth);
         if (chr == ':')
-            node->SetDistance(ReadDist(infile, depth));
-        if (!(chr = ReadUntil(infile, token, "):,", depth)))
+            node->dist = readDist(infile, depth);
+        if (chr == ';' && depth == 0)
+            return node;
+        if (!(chr = readUntil(infile, token, "):,", depth)))
             return NULL;
+        
         return node;
     } else {
         // read leaf
         
-        node = AddNode(NULL, parent);
+        node = addNode(new Node());
+        if (parent)
+            parent->addChild(node);
         
         // read name
-        if (!(chr = ReadUntil(infile, token, ":),", depth)))
+        if (!(chr = readUntil(infile, token, ":),", depth)))
             return NULL;
-        token = char1 + Trim(token.c_str());
-        node->SetName(token);
+        token = char1 + trim(token.c_str());
+        node->leafname = token;
         
         // read distance for this node
         if (chr == ':')
-            node->SetDistance(ReadDist(infile, depth));
-        if (!(chr = ReadUntil(infile, token, ":),", depth)))
+            node->dist = readDist(infile, depth);
+        if (!(chr = readUntil(infile, token, ":),", depth)))
             return NULL;
+        
         return node;
     }
 }
 
 
+int nodeNameCmp(const void *_a, const void *_b)
+{
+    Node *a = *((Node**) _a);
+    Node *b = *((Node**) _b);
+    
+    if (a->nchildren == 0) {
+        if (b->nchildren == 0)
+            return 0;
+        else
+            return -1;
+    } else {
+        if (b->nchildren == 0)
+            return 1;
+        else
+            return 0;
+    }
+}
+
 
 bool Tree::readNewick(FILE *infile)
 {
-    Node *node;
     int depth = 0;
-    string token;
+    root = readNode(infile, NULL, depth);
     
-    // init tree with root
-    m_root = AddNode();
+    // renumber nodes in a valid order
+    // 1. leaves come first
+    // 2. root is last
     
-    // ensure that tree begins with open paren
-    char chr = ReadUntil(infile, token, "(", depth);    
-    if (chr != '(')
+    if (root != NULL) {
+        nodes[root->name] = nodes[nnodes-1];    
+        nodes[nnodes-1] = root;
+        nodes[root->name]->name = root->name;
+        root->name = nnodes - 1;
+        
+        qsort((void*) nodes.get(), nodes.size(), sizeof(Node*),
+               nodeNameCmp);
+        
+        // update names
+        for (int i=0; i<nnodes; i++)
+            nodes[i]->name = i;
+        
+        return true;
+    } else
         return false;
-    
-    // add nodes to root
-    while ((depth > 0) && (node = ReadNode(infile, m_root, depth)));
-    
-    // return success status
-    return depth == 0;
 }
-*/
 
+
+bool Tree::readNewick(const char *filename)
+{
+    FILE *infile = NULL;
+    
+    if ((infile = fopen(filename, "r")) == NULL) {
+        printError("cannot read file '%s'\n", filename);
+        return false;
+    }
+
+    bool ret = readNewick(infile);
+    
+    if (!ret) {
+        printError("format error in '%s'\n", filename);
+    }
+    
+    fclose(infile);
+    
+    return ret;
+}
+
+
+// write out the newick notation of a tree
+void Tree::writeNewick(FILE *out, Node *node, int depth)
+{
+    if (node == NULL) {
+        assert(root != NULL);
+        writeNewick(out, root, 0);
+        fprintf(out, ";\n");
+    } else {
+        if (node->nchildren == 0) {
+            for (int i=0; i<depth; i++) fprintf(out, "  ");
+            fprintf(out, "%s:%f", node->leafname.c_str(), node->dist);
+        } else {
+            // indent
+            for (int i=0; i<depth; i++) fprintf(stdout, "  ");
+            fprintf(out, "(\n");
+            
+            for (int i=0; i<node->nchildren - 1; i++) {
+                writeNewick(out, node->children[i], depth+1);
+                fprintf(out, ",\n");
+            }
+            
+            writeNewick(out, node->children[node->nchildren-1], depth+1);
+            fprintf(out, "\n");
+            
+            for (int i=0; i<depth; i++) fprintf(out, "  ");
+            fprintf(out, ")");
+            
+            if (depth > 0)
+                fprintf(out, ":%f", node->dist);
+        }
+    }
+}
+
+
+bool Tree::writeNewick(const char *filename)
+{
+    FILE *out = NULL;
+    
+    if ((out = fopen(filename, "w")) == NULL) {
+        printError("cannot write file '%s'\n", filename);
+        return false;
+    }
+
+    writeNewick(out);
+    return true;
+}
+
+
+
+//=============================================================================
+// assert that the tree datastructure is self-consistent
+bool Tree::assertTree()
+{
+    if (root == NULL) return false;
+    if (nnodes != nodes.size()) return false;
+    if (root->parent != NULL) return false;
+    if (root->name != nnodes - 1) return false;
+    
+    bool leaves = true;
+    for (int i=0; i<nnodes; i++) {
+        if (nodes[i] == NULL) return false;
+        
+        // names are correct
+        if (nodes[i]->name != i) return false;
+        
+        // do leaves come first 
+        if (nodes[i]->isLeaf()) {
+            if (!leaves)
+                return false;
+        } else
+            leaves = false;
+        
+        // check parent child pointers
+        for (int j=0; j<nodes[i]->nchildren; j++) {
+            if (nodes[i]->children[j] == NULL) return false;
+            if (nodes[i]->children[j]->parent != nodes[i]) return false;
+        }
+    }
+    
+    return true;
+}
 
 
 //=============================================================================
@@ -573,7 +655,7 @@ void labelEvents(Tree *tree, int *recon, int *events)
 
 
 //=============================================================================
-// basic tree format conversion functions
+// primitive tree format conversion functions
 
 // creates a forward tree from a parent tree
 void makeFtree(int nnodes, int *ptree, int ***ftree)
@@ -656,7 +738,7 @@ void tree2ptree(Tree *tree, int *ptree)
 
 
 //=============================================================================
-// Input/output
+// primitive input/output
 
 
 void printFtree(int nnodes, int **ftree)
@@ -697,38 +779,3 @@ void printTree(Tree *tree, Node *node, int depth)
         }
     }
 }
-
-// write out the newick notation of a tree
-void writeNewick(Tree *tree, string *names, Node *node, int depth)
-{
-    if (node == NULL) {
-        if (tree->root != NULL) {
-            writeNewick(tree, names, tree->root, 0);
-            printf(";\n");
-        }
-    } else {
-        if (node->nchildren == 0) {
-            for (int i=0; i<depth; i++) printf("  ");
-            printf("%s:%f", names[node->name].c_str(), node->dist);
-        } else {
-            // indent
-            for (int i=0; i<depth; i++) printf("  ");
-            printf("(\n");
-            
-            for (int i=0; i<node->nchildren - 1; i++) {
-                writeNewick(tree, names, node->children[i], depth+1);
-                printf(",\n");
-            }
-            
-            writeNewick(tree, names, node->children[node->nchildren-1], depth+1);
-            printf("\n");
-            
-            for (int i=0; i<depth; i++) printf("  ");
-            printf(")");
-            
-            if (depth > 0)
-                printf(":%f", node->dist);
-        }
-    }
-}
-

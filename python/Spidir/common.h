@@ -25,9 +25,10 @@ using namespace std;
 
 
 #define PI 3.1415926
+#define MAX_FLOAT 1e10
 
 
-
+// convert dna characters into standard numbers
 extern int dna2int[256];
 
 
@@ -178,5 +179,12 @@ float gammalog(float x, float a, float b);
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
 bool chomp(char *str);
+void printError(const char *fmt, ...);
+char readChar(FILE *stream, int &depth);
+char readUntil(FILE *stream, string &token, char *stops, int &depth);
+string trim(const char *word);
+float readDist(FILE *infile, int &depth);
+
+
 
 #endif // SPIDIR_COMMON_H

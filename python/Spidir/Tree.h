@@ -29,7 +29,7 @@ public:
         name(-1),
         parent(NULL),
         children(NULL),
-        nchildren(nchildren)        
+        nchildren(nchildren)
     {
         if (nchildren != 0)
             setChildren(nchildren);
@@ -55,14 +55,20 @@ public:
     bool isLeaf() {
         return nchildren == 0;
     }
+    
+    void addChild(Node *node)
+    {
+        setChildren(nchildren + 1);
+        children[nchildren - 1] = node;
+        node->parent = this;
+    }
 
     int name;
     Node *parent;
     Node **children;
     int nchildren;
-    
-    // thinking about whether to keep this here...
     float dist;
+    string leafname;
 };
 
 
@@ -73,7 +79,7 @@ public:
     Tree(int nnodes) :
         nnodes(nnodes),
         root(NULL),
-        nodes(nnodes)
+        nodes(nnodes, 100)
     {
         for (int i=0; i<nnodes; i++)
             nodes[i] = new Node();
@@ -97,18 +103,44 @@ public:
             dists[i] = nodes[i]->dist;
     }
     
+    void setLeafNames(string *names)
+    {
+        for (int i=0; i<nnodes; i++)
+            nodes[i]->leafname = names[i];
+    }
+    
+    void getLeafNames(string *names)
+    {
+        for (int i=0; i<nnodes; i++)
+            names[i] = nodes[i]->leafname;
+    }
+    
     bool isRooted()
     {
         return (root != NULL && root->nchildren == 2);
     }
     
-    Node *get(int name)
+    Node *getNode(int name)
     {
         return nodes[name];
     }
     
+    Node *addNode(Node *node)
+    {
+        nodes.append(node);
+        node->name = nodes.size() - 1;
+        nnodes = nodes.size();
+        return node;
+    }
+    
     void reroot(Node *newroot, bool onBranch=true);
     Tree *copy();
+    Node *readNode(FILE *infile, Node *parent, int &depth);
+    bool readNewick(FILE *infile);
+    bool readNewick(const char *filename);
+    void writeNewick(FILE *out=stdout, Node *node=NULL, int depth=0);
+    bool writeNewick(const char *filename);
+    bool assertTree();
     
     int nnodes;
     Node *root;
@@ -218,7 +250,6 @@ void labelEvents(Tree *tree, int *recon, int *events);
 // Input/output
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
-void writeNewick(Tree *tree, string *names, Node *node=NULL, int depth=0);
 
 
 #endif // SPDIR_TREE_H

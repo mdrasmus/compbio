@@ -475,8 +475,8 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     
     // augment a branch if it is partially free
     if (reconparams->freebranches[node]) {
-        if (dist > totmean)
-            dist = totmean;
+        //if (dist > totmean)
+        //    dist = totmean;
     }
     
     return normallog(dist, totmean, sqrt(totvar));
@@ -523,14 +523,15 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         // multiple branches, integrate
         
         // set reconparams by traversing subtree
-        TreeWalker walk = TreeWalker(nnodes, ftree, root);
+        //TreeWalker walk = TreeWalker(nnodes, ftree, root);
         ExtendArray<int> subnodes(0, nnodes);
         getSubtree(ftree, root, events, &subnodes);
         
-        for (int i=0; i<subnodes.size(); i++)
+        
+        for (int i=0; i<subnodes.size(); i++) {
             reconBranch(subnodes[i], ptree, pstree, 
                         recon, events, params, reconparams);
-
+        }
         
         // choose number of samples based on number of nodes to integrate over
         nsamples = int(500*log(subnodes.size())) + 500;
@@ -648,30 +649,30 @@ float treelk(Tree *tree,
                        recon, events, params);
     
     printf("generate: %f %f\n", generate, generate2);
-    generate = generate2;
+    //generate = generate2;
     
     bool *freebranches = new bool [tree->nnodes];
     int unfold;
     float unfolddist;
     determineFreeBranches(tree, stree, recon, events, generate,
                           &unfold, &unfolddist, freebranches);
-    
+    printf("UNFOLD: %d %f\n", unfold, unfolddist);    
     ReconParams reconparams = ReconParams(tree->nnodes, freebranches, 
                                           unfold, unfolddist);
     
-    printTree(tree);
-    
+        
     // loop through independent subtrees
     for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_SPEC || i == tree->root->name) {
             for (int j=0; j<2; j++) {
-                float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, ftree[i][j],
-                                  stree->nnodes, pstree, 
-                                  recon, events, params,
-                                  generate,
-                                  &reconparams);
+                int node = tree->nodes[i]->children[j]->name;
+                float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                                        node,
+                                        stree->nnodes, pstree, 
+                                        recon, events, params,
+                                        generate,
+                                        &reconparams);
                 logl += slogl;
-                printf("slogl=%d %f\n", ftree[i][j], slogl);
             }
         }
     }
@@ -715,7 +716,8 @@ float treelk(int nnodes, int *ptree, float *dists,
     
     SpeciesTree stree(nsnodes);
     ptree2tree(nsnodes, pstree, &stree);
-    stree.setDepths();
+    stree.setDepths();    
+
     
     SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
     

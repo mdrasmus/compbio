@@ -1107,11 +1107,24 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
         for child in root.children:
             # integration is only needed if child is dup
             if events[child] != "dup":
-                setMidpoints(child, events, recon, midpoints, [])
-                clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
-                          midpoints, extraBranches, baserate)
-                child.data["logl"] = clogl
-                logl3 += clogl
+                #setMidpoints(child, events, recon, midpoints, [])
+                #clogl = calcSubtreeLikelihood(child, recon, events, stree, params, 
+                #          midpoints, extraBranches, baserate)
+                
+                node = child
+                if recon[node] != stree.root:
+                    startparams, startfrac, midparams, \
+                        endparams, endfrac, kdepend = \
+                        reconBranch2(node, recon, events, params)
+                
+                    setMidpoints(child, events, recon, midpoints, [])            
+                    clogl = branchLikelihood2(node.dist / baserate, 
+                                              node, midpoints, 
+                                              startparams, startfrac,
+                                              midparams, endparams, 
+                                              endfrac)
+                else:
+                    clogl = 0.0
             else:
                 startparams = {}
                 startfrac = {}
@@ -1152,11 +1165,10 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
                                 #print 'v', v
 
                         val += math.exp(val2)
-
                     clogl = log(val / float(samples))
-
-                child.data["logl"] = clogl
-                logl3 += clogl 
+                    
+            child.data["logl"] = clogl
+            logl3 += clogl 
         logl = logl3
     
     
@@ -1276,7 +1288,12 @@ def branchLikelihood2(dist, node, k, startparams, startfrac,
         if dist > totmean:
             dist = totmean
     
-    return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
+    try:
+        return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
+    except:
+        print >>sys.stderr, dist, node.name, \
+                  k, startparams, startfrac, midparams, endparams, endfrac
+        raise
 
 
 
@@ -1411,17 +1428,19 @@ def makePtree(tree):
         for child in node.children:
             walk(child)
         nodes.append(node)
-    
     walk(tree.root)
     
     def leafsort(a, b):
-        if type(a.name) != type(b.name):
-            if isinstance(a.name, str):
-                return -1
+        if a.isLeaf():
+            if b.isLeaf():
+                return 0
             else:
-                return 1
+                return -1
         else:
-            return 0
+            if b.isLeaf():
+                return 1
+            else:
+                return 0
     
     # bring leaves to front
     nodes.sort(cmp=leafsort)
@@ -1433,12 +1452,15 @@ def makePtree(tree):
         else:
             ptree.append(nodelookup[node.parent])
     
+    assert nodes[-1] == tree.root
+    
     return ptree, nodes, nodelookup
 
 
 def treeLikelihood_C(conf, tree, recon, events, stree, params, generate, 
                      gene2species):
     """calculate likelihood of tree using C"""
+
 
     ptree, nodes, nodelookup = makePtree(tree)
     dists = [float(node.dist) for node in nodes]
@@ -1461,8 +1483,8 @@ def treeLikelihood_C(conf, tree, recon, events, stree, params, generate,
     
     mu = [float(params[snode.name][0]) for snode in snodes]
     sigma = [float(params[snode.name][1]) for snode in snodes]
-
     
+        
     ret = pyspidir.treelk(ptree, dists, pstree, 
                            gene2speciesarray,
                            mu, sigma, 
@@ -1497,7 +1519,7 @@ def parsimony_C(aln, tree):
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     conf.setdefault("bestlogl", -util.INF)
-
+    
     if "python_only" in conf and conf["python_only"]:
         return treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
                                         baserate=baserate)
@@ -1518,7 +1540,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
 
     # derive relative branch lengths
-    tree.clearData("logl", "extra", "fracs", "params", "unfold")
+    #tree.clearData("logl", "extra", "fracs", "params", "unfold")
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
     
@@ -1537,8 +1559,10 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     this = util.Bundle(logl=0.0)
     
     # test out C parsimony
-    if "aln" in conf:
+    if "aln" in conf and "parsimony" in conf:
+        print "HERE"
         parsimony_C(conf["aln"], tree)
+    
     
     # calc likelihood in C
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 

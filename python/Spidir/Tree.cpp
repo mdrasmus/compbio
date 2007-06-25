@@ -175,12 +175,13 @@ Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
         
         // read distance for this node
         char chr = readUntil(infile, token, "):,;", depth);
-        if (chr == ':')
+        if (chr == ':') {
             node->dist = readDist(infile, depth);
-        if (chr == ';' && depth == 0)
-            return node;
-        if (!(chr = readUntil(infile, token, "):,", depth)))
-            return NULL;
+            if (!(chr = readUntil(infile, token, "):,", depth)))
+                return NULL;
+        }
+        //if (chr == ';' && depth == 0)
+        //    return node;
         
         return node;
     } else {
@@ -197,10 +198,11 @@ Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
         node->leafname = token;
         
         // read distance for this node
-        if (chr == ':')
+        if (chr == ':') {
             node->dist = readDist(infile, depth);
-        if (!(chr = readUntil(infile, token, ":),", depth)))
-            return NULL;
+            if (!(chr = readUntil(infile, token, ":),", depth)))
+                return NULL;
+        }
         
         return node;
     }
@@ -719,6 +721,7 @@ void ptree2tree(int nnodes, int *ptree, Tree *tree)
     
     // set root
     tree->root = nodes[nnodes - 1];
+    assert(tree->assertTree());
 }
 
 
@@ -749,7 +752,7 @@ void printFtree(int nnodes, int **ftree)
 }
 
 
-// write out the newick notation of a tree
+// write out the names of internal nodes
 void printTree(Tree *tree, Node *node, int depth)
 {
     if (node == NULL) {
@@ -760,7 +763,7 @@ void printTree(Tree *tree, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d", node->name);
+            printf("%d=%s", node->name, node->leafname.c_str());
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");

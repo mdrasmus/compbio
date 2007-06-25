@@ -178,5 +178,6 @@ float gammalog(float x, float a, float b);
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
 bool chomp(char *str);
+void printError(const char *fmt, ...);
 
 #endif // SPIDIR_COMMON_H

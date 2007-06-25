@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -330,3 +331,14 @@ bool chomp(char *str)
       return false;
 }
 
+void printError(const char *fmt, ...)
+{
+   va_list ap;   
+   va_start(ap, fmt);
+   
+   fprintf(stderr, "error: ");
+   vfprintf(stderr, fmt, ap);
+   fprintf(stderr, "\n");
+   
+   va_end(ap);
+}

@@ -22,7 +22,12 @@ float maxCubicRoot(float a, float b, float c);
 
 int main(int argc, char **argv)
 {
-    printf("cube %f\n", maxCubicRoot(1, -5, -5));
+    Tree tree2(0);
+    
+    tree2.readNewick(argv[1]);
+    printf("%d\n", tree2.assertTree());
+    tree2.writeNewick();
+    
     return 0;
 
     // read sequences

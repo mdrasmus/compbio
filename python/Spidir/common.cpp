@@ -130,8 +130,6 @@ Sequences *readFasta(const char *filename)
         seqs->append(key, seq.detach());
     }
     
-    fclose(infile);
-    
     return seqs;
 }
 
@@ -255,6 +253,45 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
     
     return true;
 }
+
+
+
+
+
+
+
+
+/*
+
+def makeGene2species(maps):
+    # find exact matches and expressions
+    exacts = {}
+    exps = []
+    for mapping in maps:
+        if "*" not in mapping[0]:
+            exacts[mapping[0]] = mapping[1]
+        else:
+            exps.append(mapping)
+    
+    # create mapping function
+    def gene2species(gene):
+        # eval expressions first in order of appearance
+        for exp, species in exps:
+            if exp[-1] == "*":
+                if gene.startswith(exp[:-1]):
+                    return species
+            elif exp[0] == "*":
+                if gene.endswith(exp[1:]):
+                    return species
+        
+        if gene in exacts:
+            return exacts[gene]
+        
+        raise Exception("Cannot map gene '%s' to any species" % gene)
+    return gene2species
+
+
+*/
 
 
 //=============================================================================

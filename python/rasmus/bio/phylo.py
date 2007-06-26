@@ -270,6 +270,67 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     return gtree
 
 
+def midrootRecon(tree, stree, recon, params):
+
+    node1, node2 = tree.root.children
+
+    specs1 = []
+    specs2 = []
+    
+    # find nearest specs/genes
+    def walk(node, specs):
+        if events[node] == "dup" or node == tree.root:
+            for child in node.children:
+                walk(child, specs)
+        else:
+            specs.append(node)
+    walk(node1, specs1)
+    walk(node2, specs2)
+    
+    def getDists(start, end):
+        exp_dist = 0
+        obs_dist = 0
+
+        sstart = recon[start]
+        send = recon[end]
+        while sstart != send:
+            exp_dist += params[sstart.name][0]
+            sstart = sstart.parent
+
+        while start != end:
+            obs_dist += start.dist
+            start = start.parent
+
+        return exp_dist, obs_dist
+    
+    diffs1 = []
+    for spec in specs1:
+        if events[tree.root] == "spec":
+            exp_dist1, obs_dist1 = getDists(spec, tree.root)
+        else:
+            exp_dist1, obs_dist1 = getDists(spec, node1)
+        diffs1.append(obs_dist1 - exp_dist1)        
+
+    diffs2 = []
+    for spec in specs2:
+        if events[tree.root] == "spec":
+            exp_dist2, obs_dist2 = getDists(spec, tree.root)
+        else:
+            exp_dist2, obs_dist2 = getDists(spec, node2)
+        diffs2.append(obs_dist2 - exp_dist2)
+    
+    totdist = node1.dist + node2.dist
+
+    left = totdist / 2.0 - mean(diffs1)
+    right = totdist / 2.0 + mean(diffs2)
+
+    mid = clamp((left + right) / 2.0, 0, totdist)
+    
+    node1.dist = mid
+    node2.dist = totdist - mid
+
+
+
 
 
 def partitionTree(tree, stree, gene2species):

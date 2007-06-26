@@ -22,45 +22,10 @@ float maxCubicRoot(float a, float b, float c);
 
 int main(int argc, char **argv)
 {
-    Tree tree;
-    SpeciesTree stree;
     
-    tree.readNewick(argv[1]);
-    stree.readNewick(argv[2]);
-    stree.setDepths();
+    Gene2species g;
     
-    stree.writeNewick();
-    
-    ExtendArray<string> names(tree.nnodes);
-    tree.getLeafNames(names);
-    
-    ExtendArray<string> snames(stree.nnodes);
-    stree.getLeafNames(snames);
-    
-    /*
-    for (int i=0; i<tree.nnodes; i++) {
-        printf("name %d = '%s'\n", i, names[i].c_str());
-    }
-    
-    for (int i=0; i<stree.nnodes; i++) {
-        printf("sname %d = '%s'\n", i, snames[i].c_str());
-    }*/
-    
-    int gene2species[17] = {5,   0,  11, 10,  9,  7,  6, 3, 4, 
-                            -1, -1, -1, -1, -1, -1, -1, -1};
-    
-    
-    
-    ExtendArray<int> recon(tree.nnodes);
-    ExtendArray<int> events(tree.nnodes);
-    reconcile(&tree, &stree, gene2species, recon);
-    labelEvents(&tree, recon, events);
-    
-    printTree(&tree);
-    printTree(&stree);
-    
-    printIntArray(recon, recon.size());
-    printIntArray(events, events.size());
+    g.read(argv[1]);
     
     return 0;
 

@@ -1544,6 +1544,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
     
+    phylo.midrootRecon(tree, stree, recon, params)
+    
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
        events[tree.root] == "dup":

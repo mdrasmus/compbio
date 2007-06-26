@@ -36,10 +36,31 @@ extern int dna2int[256];
 class BufferedReader
 {
 public:
-    BufferedReader(FILE *stream) :
+    BufferedReader(FILE *stream=NULL, bool autoclose=true) :
         m_stream(stream),
-        m_line(0, 10000)
+        m_line(0, 10000),
+        m_autoclose(autoclose)
     {}
+    
+    virtual ~BufferedReader()
+    {
+        if (m_autoclose && m_stream)
+            fclose(m_stream);
+    }
+    
+    
+    bool open(const char *filename, char *mode, 
+              const char *errmsg="cannot read file '%s'\n")
+    {
+        m_stream = fopen(filename, mode);
+        
+        if (!m_stream) {
+            fprintf(stderr, errmsg, filename);        
+            return false;
+        }
+        return true;
+    }
+    
     
     char *readLine()
     {
@@ -62,9 +83,19 @@ public:
         return NULL;
     }
     
+    
+    void close()
+    {
+        if (m_stream)
+            fclose(m_stream);
+        m_stream = NULL;
+    }
+    
+    
 protected:
     FILE *m_stream;
     ExtendArray<char> m_line;
+    bool m_autoclose;
 };
 
 
@@ -152,6 +183,102 @@ public:
     ExtendArray<char*> seqs;
     ExtendArray<string> names;
 };
+
+
+
+class Gene2speciesRule
+{
+public:
+    Gene2speciesRule(int rule=PREFIX, string expr="", string species="") :
+        rule(rule),
+        expr(expr),
+        species(species)
+    {
+    }
+    
+    enum {
+        PREFIX,
+        SUFFIX,
+        EXACT
+    };
+    
+    int rule;
+    string expr;
+    string species;
+};
+
+
+class Gene2species
+{
+public:
+    Gene2species() :
+        m_rules(0, 20)
+    {}
+    
+
+    
+    bool read(const char *filename)
+    {
+        BufferedReader reader;
+        if (!reader.open(filename, "r"))
+            return false;
+        
+        char *line;
+        string expr, species;
+        char *ptr;
+        while ((line = reader.readLine())) {
+            //chomp(line);
+            
+            expr = strtok_r(line, "\t", &ptr);
+            species = strtok_r(NULL, "\n", &ptr);
+            
+            if (expr[0] == '*') {
+                // suffix
+                m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
+                                                expr, species));
+            } else if (expr[expr.size() - 1] == '*') {
+                // prefix
+                m_rules.append(Gene2speciesRule(Gene2speciesRule::PREFIX,
+                                                expr, species));
+            } else {
+                // exact match
+                assert(0);
+            }
+        }
+        
+        return false;
+    }
+    
+    string getSpecies(string gene)
+    {
+        for (int i=0; i<m_rules.size(); i++) {
+            switch (m_rules[i].rule) {
+                case Gene2speciesRule::PREFIX:
+                    
+                    break;
+                case Gene2speciesRule::SUFFIX:
+                    break;
+                case Gene2speciesRule::EXACT:
+                    break;
+            }
+        }
+    
+        return NULL_SPECIES;
+    }
+    
+    bool getMap(string *names, int nnames, int *map)
+    {
+        return false;
+    }
+    
+    const static string NULL_SPECIES;
+    
+protected:
+    ExtendArray<Gene2speciesRule> m_rules;
+    
+};
+
+
 
 bool checkSequences(int nseqs, int seqlen, char **seqs);
 

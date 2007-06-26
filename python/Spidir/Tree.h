@@ -115,6 +115,19 @@ public:
             names[i] = nodes[i]->leafname;
     }
     
+    void getNames(string *names)
+    {
+        for (int i=0; i<nnodes; i++) {
+            if (nodes[i]->isLeaf())
+                names[i] = nodes[i]->leafname;
+            else {
+                char numstr[21];
+                snprintf(numstr, 20, "%d", nodes[i]->name);
+                names[i] = numstr;
+            }
+        }
+    }
+    
     bool isRooted()
     {
         return (root != NULL && root->nchildren == 2);

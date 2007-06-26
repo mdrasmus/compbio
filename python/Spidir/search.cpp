@@ -57,7 +57,9 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
             node2 = node2->children[0];
         
         // if edge is not an internal edge, give up
-        assert(node2->nchildren >= 2);
+        //assert(node2->nchildren >= 2);
+        if (node2->nchildren < 2)
+            return;
     }
     
     if (node1->parent == tree->root &&
@@ -159,15 +161,36 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     toplogl = logl;
     toptree = tree->copy();
     
+    float speed = 0;
     
     // MCMC loop
     for (int i=0; i<niter; i++) {
-        Node *node1, *node2;
-        int change;
+        printf("iter %d\n", i);
+        Node *node1, *node2, *node3=NULL, *node4=NULL;
+        int change1, change2;
     
         // propose new tree
-        proposeRandomNni(tree, &node1, &node2, &change);
-        proposeNni(tree, node1, node2, change);
+        proposeRandomNni(tree, &node1, &node2, &change1);
+        proposeNni(tree, node1, node2, change1);
+        
+        if (frand() < .2) {
+            proposeRandomNni(tree, &node3, &node4, &change2);        
+            proposeNni(tree, node3, node4, change2);
+        }
+        
+        // TODO: need random reroot or recon root.
+        Node *oldroot = tree->root->children[0];
+        //int choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
+        //tree->reroot(tree->nodes[choice]);
+        int choice1 = int(frand() * 2);
+        int choice2 = int(frand() * 2);
+        if (tree->root->children[choice1]->nchildren == 2)
+            tree->reroot(tree->root->children[choice1]->children[choice2]);
+        else
+            tree->reroot(tree->root->children[!choice1]->children[choice2]);
+        
+        assert(tree->assertTree());
+        
         parsimony(tree, nseqs, seqs);
         
         // calc new likelihood
@@ -180,21 +203,33 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                                 predupprob, dupprob, errorlogl);
         
         // acceptance rule
+        //printf("%f %f\n", nextlogl - logl, log(rand() / float(RAND_MAX)));
         if (nextlogl > logl ||
-            nextlogl - logl > log(rand() / float(RAND_MAX)))
+            nextlogl - logl + speed > log(rand() / float(RAND_MAX)))
         {
+            printf("accept %f  %f\n", nextlogl, logl);
             // accept
             logl = nextlogl;
+            speed /= 2.0;
 
             // keep track of toptree            
             if (logl > toplogl) {
                 delete toptree;
+                speed = 0.0;
                 toptree = tree->copy();
                 toplogl = logl;
             }
         } else {
+            printf("reject\n");
+            speed = (speed + 1) * 1.3;
+            
             // reject, undo topology change
-            proposeNni(tree, node1, node2, change);
+            tree->reroot(oldroot);
+            //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
+            //       node2->name, node2->nchildren);
+            if (node3)
+                proposeNni(tree, node3, node3->parent, change2);
+            proposeNni(tree, node1, node1->parent, change1);
         }
     }
     

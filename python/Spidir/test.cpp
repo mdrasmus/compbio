@@ -24,24 +24,36 @@ using namespace std;
 
 
 
-
 int main(int argc, char **argv)
 {
     // TODO: add default values
     
-    
-    string smap;
+    // parameters
+    string alignfile;    
+    string smapfile;
+    string streefile;
+    string paramsfile;
     int niter = 0;
     
     
     // parse arguments
     ConfigParser config;
-    config.add(new ConfigParam<string>("-S", "--smap", "<species map>", 
-                                       &smap, "gene to species map"));
+    config.add(new ConfigParam<string>(
+        "-a", "--align", "<alignment fasta>", &alignfile, 
+        "sequence alignment in fasta format"));
+    config.add(new ConfigParam<string>(
+        "-S", "--smap", "<species map>", &smapfile, 
+        "gene to species map"));
+    config.add(new ConfigParam<string>(
+        "-s", "--stree", "<species tree>", &streefile, 
+        "species tree file in newick format"));
+    config.add(new ConfigParam<string>(
+        "-p", "--param", "<spidir params file>", &paramsfile, 
+        "SPIDIR branch length parameters file"));
     
     config.add(new ConfigParamComment("Miscellaneous"));
     config.add(new ConfigParam<int>("-i", "--niter", "<# iterations>", 
-                                       &niter, "number of iterations"));
+                                    &niter, 100, "number of iterations"));
     
     
     if (argc < 2)
@@ -49,47 +61,81 @@ int main(int argc, char **argv)
     if (!config.parse(argc, (const char**) argv)) {
         return 1;
     }
+
     
+    //============================================================
+    // read species tree
+    SpeciesTree stree;
+    stree.readNewick(streefile.c_str());
+    stree.setDepths();
     
-/*
+    // read gene2species map
+    Gene2species g;
+    g.read(smapfile.c_str());
+    
+
     // read sequences
-    Sequences *aln = readAlignFasta(argv[1]);
-    writeFasta("out.fa", aln);
-    assert(checkSequences(aln->nseqs, aln->seqlen, aln->seqs));
+    Sequences *aln;
     
-    // calc distmatrix
+    if ((aln = readAlignFasta(alignfile.c_str())) == NULL ||
+        !checkSequences(aln->nseqs, aln->seqlen, aln->seqs)) {
+        printError("bad alignment file");
+        return 1;
+    }
+
+    // read SPIDIR parameters
+    SpidirParams *params;
+    if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
+    {
+        printError("bad parameters file");
+        return 1;
+    }
+    
+    if (!params->order(&stree)) {
+        printError("parameters do not correspond to the given species tree");
+        return 1;
+    }
+    
+    
+    // calc distmatrix for neighbor joining
     Matrix<float> distmat(aln->nseqs, aln->nseqs);
-    calcDistMatrix(aln->nseqs, aln->seqlen, aln->seqs, 
-                   distmat);
-    
-    // write dist matrix
-    if (argc > 2)
-        writeDistMatrix(argv[2], aln->nseqs, distmat, aln->names);
+    calcDistMatrix(aln->nseqs, aln->seqlen, aln->seqs, distmat);
     
     
-    //SpidirParams params = SpidirParams(nsnodes, mu, sigma, alpha, beta);
-    
-    // do neighbor joining
+    // do neighbor joining and parsimony distance
     int nnodes = aln->nseqs * 2 - 1;
-    Tree tree(nnodes);    
+    /*
     ExtendArray<int> ptree(nnodes);
     ExtendArray<float> dists(nnodes);
     
     neighborjoin(aln->nseqs, distmat, ptree, dists);
+    Tree tree(nnodes);    
     ptree2tree(nnodes, ptree, &tree);
     parsimony(&tree, aln->nseqs, aln->seqs);
+    */
+
+    // produce mapping array
+    ExtendArray<string> genes(0, nnodes);
+    ExtendArray<string> species(stree.nnodes);
+    ExtendArray<int> gene2species(nnodes);
+    genes.extend(aln->names, aln->nseqs);
+    for (int i=aln->nseqs; i<nnodes; i++)
+        genes.append("");
+    stree.getLeafNames(species);   
+    
+    g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
     
     
-    for (int i=0; i<100; i++) {
-        Node *node = tree.root;
-        while (node->parent == NULL || node->name < aln->nseqs)
-            node = tree.nodes[int(rand() / float(RAND_MAX) * tree.nnodes)];
-        proposeNni(&tree, node, node->parent, int(rand() / float(RAND_MAX) * 2));
-        
-        parsimony(&tree, aln->nseqs, aln->seqs);
-        //printTree(&tree);
-    }
-*/
+    // search
+    Tree *toptree = searchMCMC(NULL, &stree,
+                               params, gene2species,
+                               aln->nseqs, aln->seqlen, aln->seqs,
+                               niter);
+    
+    toptree->setLeafNames(genes);
+    toptree->writeNewick();
+    
+    delete toptree;
 }
 
 

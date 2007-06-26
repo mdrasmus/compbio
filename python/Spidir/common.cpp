@@ -18,6 +18,7 @@
 
 #include "spidir.h"
 #include "common.h"
+#include "Tree.h"
 
 
 #define DNA_A 0
@@ -209,10 +210,14 @@ SpidirParams *readSpidirParams(const char* filename)
     char name[MAX_NAME];
     
     while (!feof(infile)) {
-        if (fscanf(infile, "%50s\t%f\t%f", name, &param1, &param2) != 3)
+        int ntokens = fscanf(infile, "%50s\t%f\t%f", name, &param1, &param2);
+        if (ntokens <= 0)
+            break;
+        if (ntokens != 3) {
             return NULL;
+        }
         
-        if (name == "baserate") {
+        if (!strcmp(name, "baserate")) {
             alpha = param1;
             beta = param2;
         } else {
@@ -221,13 +226,87 @@ SpidirParams *readSpidirParams(const char* filename)
             sigma.append(param2);
         }
     }
+    fclose(infile);    
     
-    SpidirParams *params = new SpidirParams(names.size(), names, 
-                                            mu, sigma, alpha, beta);
+    return new SpidirParams(names.size(), names, mu, sigma, alpha, beta);
+}
+
+
+
+template <class T>
+void permute(T* array, int *perm, int size)
+{
+    ExtendArray<T> tmp(0, size);
+    tmp.extend(array, size);
     
-    fclose(infile);
+    // transfer permutation to temp array
+    for (int i=0; i<size; i++)
+        tmp[perm[i]] = array[i];
     
-    return params;
+    // copy permutation back to original array
+    for (int i=0; i<size; i++)
+        array[i] = tmp[i];
+}
+
+
+// get the preorder traversal of the species tree
+void paramsOrder_helper(Node *node, ExtendArray<Node*> *nodeorder)
+{
+    nodeorder->append(node);
+    for (int i=0; i<node->nchildren; i++) {
+        paramsOrder_helper(node->children[i], nodeorder);
+    }
+}
+
+
+// UNDER CONSTRUCTION
+bool SpidirParams::order(SpeciesTree *stree)
+{
+    if (stree->nnodes != nsnodes) {
+        printf("%d %d\n", stree->nnodes, nsnodes);
+        return false;
+    }
+    
+    ExtendArray<Node*> nodeorder(0, stree->nnodes);
+    paramsOrder_helper(stree->root, &nodeorder);
+    ExtendArray<int> perm(0, stree->nnodes);
+    
+    // make interior node names
+    ExtendArray<int> inodes(0, stree->nnodes);
+    
+    int inodename = 1;
+    for (int i=0; i<stree->nnodes; i++) {
+        if (nodeorder[i]->isLeaf()) {
+            inodes.append(-1);
+        } else {
+            inodes.append(inodename++);
+        }
+    }
+    
+    
+    // loop through preordered nodes to construct permutation
+    for (int j=0; j<nsnodes; j++) {
+        for (int i=0; i<stree->nnodes; i++) {
+            if (nodeorder[i]->isLeaf()) {
+                if (names[j] == nodeorder[i]->leafname) {
+                    perm.append(i);
+                    break;
+                }
+            } else {
+                if (atoi(names[j].c_str()) == inodes[i]) {
+                    perm.append(i);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // apply permutation
+    permute(names, perm, nsnodes);
+    permute(mu, perm, nsnodes);
+    permute(sigma, perm, nsnodes);
+    
+    return true;
 }
 
 

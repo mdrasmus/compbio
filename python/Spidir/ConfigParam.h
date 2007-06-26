@@ -20,7 +20,7 @@ class ConfigParamBase
 {
 public:
     ConfigParamBase(string shortarg, string longarg, string argstr,
-                string help="") :
+                    string help="") :
         kind(OPTION_ARG),
         shortarg(shortarg),
         longarg(longarg),
@@ -72,19 +72,32 @@ class ConfigParam : public ConfigParamBase
 {
 public:
     ConfigParam(string shortarg, string longarg, string argstr,
-                T *value, string help="") :
+                T *value, string help) :
         ConfigParamBase(shortarg, longarg, argstr, help),
-        value(value)
+        value(value),
+        hasDefault(false)
     {
     }
+    
+    ConfigParam(string shortarg, string longarg, string argstr,
+                T *value, T defaultValue, string help) :
+        ConfigParamBase(shortarg, longarg, argstr, help),
+        value(value),
+        defaultValue(defaultValue),
+        hasDefault(true)
+    {
+        *value = defaultValue;
+    }    
     
     virtual int parse(int argc, const char **argv)
     {
         if (argc > 0) {
             *value = T(argv[0]);
             return 1;
-        } else
+        } else {
+            fprintf(stderr, "error: argument value expected\n");
             return -1;
+        }
     }
     
     string shortarg;
@@ -92,28 +105,38 @@ public:
     string argstr;
     string help;
     T *value;
+    T defaultValue;
+    bool hasDefault;
 };
 
 
 int ConfigParam<int>::parse(int argc, const char **argv)
 {
     if (argc > 0) {
-        if (sscanf(argv[0], "%d", value) != 1)
+        if (sscanf(argv[0], "%d", value) != 1) {
+            fprintf(stderr, "error: int expected '%s'\n", argv[0]);        
             return -1;
+        }
         return 1;
-    } else
+    } else {
+        fprintf(stderr, "error: argument value expected\n");    
         return -1;
+    }
 }
 
 
 int ConfigParam<float>::parse(int argc, const char **argv)
 {
     if (argc > 0) {
-        if (sscanf(argv[0], "%f", value) != 1)
+        if (sscanf(argv[0], "%f", value) != 1) {
+            fprintf(stderr, "error: float expected '%s'\n", argv[0]);
             return -1;
+        }
         return 1;
-    } else
+    } else {
+        fprintf(stderr, "error: argument value expected\n");
         return -1;
+    }
 }
 
 

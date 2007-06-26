@@ -35,5 +35,8 @@ $(MODULE_OBJS): %.o: %.cpp
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 
+install: test_spidir
+	cp test_spidir ../../bin/
+
 clean:
 	rm -rf $(MODULE_OBJS) $(MODULE) test_spidir

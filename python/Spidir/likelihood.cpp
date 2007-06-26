@@ -475,8 +475,8 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     
     // augment a branch if it is partially free
     if (reconparams->freebranches[node]) {
-        //if (dist > totmean)
-        //    dist = totmean;
+        if (dist > totmean)
+            dist = totmean;
     }
     
     return normallog(dist, totmean, sqrt(totvar));
@@ -648,15 +648,15 @@ float treelk(Tree *tree,
     float generate2 = estimateGenerate(tree, stree, 
                        recon, events, params);
     
-    printf("generate: %f %f\n", generate, generate2);
-    //generate = generate2;
+    //printf("generate: %f %f\n", generate, generate2);
+    generate = generate2;
     
     bool *freebranches = new bool [tree->nnodes];
     int unfold;
     float unfolddist;
     determineFreeBranches(tree, stree, recon, events, generate,
                           &unfold, &unfolddist, freebranches);
-    printf("UNFOLD: %d %f\n", unfold, unfolddist);    
+    //printf("UNFOLD: %d %f\n", unfold, unfolddist);    
     ReconParams reconparams = ReconParams(tree->nnodes, freebranches, 
                                           unfold, unfolddist);
     

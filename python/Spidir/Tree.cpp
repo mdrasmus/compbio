@@ -81,16 +81,21 @@ void Tree::reroot(Node *newroot, bool onBranch)
             oldroot->children[1] = other;            
             newroot->parent = oldroot;
             path.append(oldroot);
-            
+                        
             ptr1 = other;
-            ptr2 = newroot;
+
+            int oldchild = findval(ptr1->children, ptr1->nchildren, newroot);
+            assert(oldchild != -1);
+            
+            ptr1->children[oldchild] = oldroot;
+            ptr2 = oldroot;            
         } else {
             // need to add a new node to be root
             assert(0);
         }
     } else {
         if (isRooted()) {
-            // need to remove the root node, nad make tribranch
+            // need to remove the root node, and make tribranch
             assert(0);
         } else {
             // just need to swap node positions
@@ -337,6 +342,7 @@ bool Tree::assertTree()
     
     bool leaves = true;
     for (int i=0; i<nnodes; i++) {
+        //printf("assert %d\n", i);
         if (nodes[i] == NULL) return false;
         
         // names are correct
@@ -351,10 +357,14 @@ bool Tree::assertTree()
         
         // check parent child pointers
         for (int j=0; j<nodes[i]->nchildren; j++) {
+            //printf("assert %d %d\n", i, j);
             if (nodes[i]->children[j] == NULL) return false;
+            //printf("assert %d %d parent\n", i, j);
             if (nodes[i]->children[j]->parent != nodes[i]) return false;
         }
     }
+    
+    //printf("done\n");
     
     return true;
 }

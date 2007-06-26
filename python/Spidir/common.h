@@ -111,6 +111,8 @@ int findval(T *array, int size, const T &val)
 
 
 
+// forward declaration
+class SpeciesTree;
 
 // spidir parameters
 class SpidirParams
@@ -140,6 +142,9 @@ public:
         delete [] mu;
         delete [] sigma;
     }
+    
+    // sorts the parameters to match newnames
+    bool order(SpeciesTree *tree);    
 
     int nsnodes;
     string *names;
@@ -227,6 +232,11 @@ protected:
     
 };
 
+
+inline float frand()
+{
+    return rand() / float(RAND_MAX);
+}
 
 
 bool checkSequences(int nseqs, int seqlen, char **seqs);

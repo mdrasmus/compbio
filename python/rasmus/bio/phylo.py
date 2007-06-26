@@ -15,6 +15,7 @@ import sys
 from rasmus import cluster
 from rasmus import graph
 from rasmus import tablelib
+from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
@@ -270,7 +271,7 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     return gtree
 
 
-def midrootRecon(tree, stree, recon, params):
+def midrootRecon(tree, stree, recon, events, params):
 
     node1, node2 = tree.root.children
 
@@ -321,10 +322,10 @@ def midrootRecon(tree, stree, recon, params):
     
     totdist = node1.dist + node2.dist
 
-    left = totdist / 2.0 - mean(diffs1)
-    right = totdist / 2.0 + mean(diffs2)
+    left = totdist / 2.0 - stats.mean(diffs1)
+    right = totdist / 2.0 + stats.mean(diffs2)
 
-    mid = clamp((left + right) / 2.0, 0, totdist)
+    mid = util.clamp((left + right) / 2.0, 0, totdist)
     
     node1.dist = mid
     node2.dist = totdist - mid

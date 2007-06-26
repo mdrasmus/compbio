@@ -4,31 +4,53 @@
 
 =============================================================================*/
 
-
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
+#include <vector>
+
 
 #include "common.h"
 #include "parsimony.h"
 #include "search.h"
 #include "Matrix.h"
 #include "Tree.h"
+#include "ConfigParam.h"
 
 
 using namespace std;
 
-float maxCubicRoot(float a, float b, float c);
+
+
+
 
 int main(int argc, char **argv)
 {
+    // TODO: add default values
     
-    Gene2species g;
     
-    g.read(argv[1]);
+    string smap;
+    int niter = 0;
     
-    return 0;
-
+    
+    // parse arguments
+    ConfigParser config;
+    config.add(new ConfigParam<string>("-S", "--smap", "<species map>", 
+                                       &smap, "gene to species map"));
+    
+    config.add(new ConfigParamComment("Miscellaneous"));
+    config.add(new ConfigParam<int>("-i", "--niter", "<# iterations>", 
+                                       &niter, "number of iterations"));
+    
+    
+    if (argc < 2)
+        config.printHelp();
+    if (!config.parse(argc, (const char**) argv)) {
+        return 1;
+    }
+    
+    
 /*
     // read sequences
     Sequences *aln = readAlignFasta(argv[1]);
@@ -68,4 +90,34 @@ int main(int argc, char **argv)
         //printTree(&tree);
     }
 */
+}
+
+
+int test_gene2species(int argc, char **argv)
+{
+    Gene2species g;
+    Tree tree, stree;
+    
+    tree.readNewick(argv[1]);
+    stree.readNewick(argv[2]);
+    g.read(argv[3]);
+    
+    ExtendArray<string> genes(tree.nnodes);
+    tree.getLeafNames(genes);
+
+    ExtendArray<string> species(stree.nnodes);
+    stree.getLeafNames(species);
+
+    
+    for (int i=0; i<tree.nnodes; i++) {
+        printf("'%s' -> '%s'\n", genes[i].c_str(), 
+               g.getSpecies(genes[i]).c_str());
+    }
+    
+    ExtendArray<int> map(tree.nnodes);
+    g.getMap(genes, tree.nnodes, species, stree.nnodes, map);
+    
+    printIntArray(map, tree.nnodes);
+    
+    return 0;
 }

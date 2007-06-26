@@ -1,7 +1,7 @@
 #
 # SPIDIR library
 #
-# note: SPIDIR was a codename, it may still be present in the code.
+# note: SINDIR was a codename, it may still be present in the code.
 #
 
 # python libs
@@ -23,10 +23,13 @@ from rasmus.vis import treevis
 
 # scipy libs
 # (needed for numerical integration and least square error fitting)
-import scipy
-import scipy.linalg
-import scipy.integrate
-import scipy.optimize
+try:
+    import scipy
+    import scipy.linalg
+    import scipy.integrate
+    import scipy.optimize
+except:
+    pass
 
 
 # SPIDIR libs
@@ -49,7 +52,7 @@ FRAC_NODE = 3
 
 
 #-------------------------------------------------------------------------------
-# SINDIR input/output
+# SPIDIR input/output
 #-------------------------------------------------------------------------------
 
 def writeParams(filename, params):
@@ -230,7 +233,8 @@ def setTreeDistances(conf, tree, distmat, genes):
     
     if "parsimony" in conf:
         parsimony_C(conf["aln"], tree)
-        tree.data["error"] = 0.0
+        tree.data["error"] = sum(node.dist 
+                                 for node in tree.nodes.itervalues())
         return
     
     # perform LSE

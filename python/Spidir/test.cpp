@@ -27,12 +27,15 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+    // TODO: add default values
     
-    ConfigParser config;
     
     string smap;
     int niter = 0;
     
+    
+    // parse arguments
+    ConfigParser config;
     config.add(new ConfigParam<string>("-S", "--smap", "<species map>", 
                                        &smap, "gene to species map"));
     
@@ -41,14 +44,13 @@ int main(int argc, char **argv)
                                        &niter, "number of iterations"));
     
     
-    
     if (argc < 2)
         config.printHelp();
     if (!config.parse(argc, (const char**) argv)) {
         return 1;
     }
     
-
+    
 /*
     // read sequences
     Sequences *aln = readAlignFasta(argv[1]);

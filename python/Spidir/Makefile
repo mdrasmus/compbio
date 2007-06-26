@@ -27,7 +27,7 @@ $(MODULE): $(MODULE_OBJS)
 	g++ -shared $(MODULE_OBJS) -o $(MODULE)
 
 test_spidir: $(PROG_OBJS) test.cpp
-	g++ $(PROG_OBJS) test.cpp -o test_spidir
+	g++ $(PROG_OBJS) -g test.cpp -o test_spidir
 
 
 # basic compile rule

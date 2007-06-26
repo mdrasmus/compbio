@@ -255,7 +255,87 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
 }
 
 
+//=============================================================================
+// Gene2species
 
+const string Gene2species::NULL_SPECIES;
+
+bool Gene2species::read(const char *filename)
+{
+    BufferedReader reader;
+    if (!reader.open(filename, "r"))
+        return false;
+
+    char *line;
+    string expr, species;
+    char *ptr;
+    while ((line = reader.readLine())) {
+        //chomp(line);
+
+        expr = strtok_r(line, "\t", &ptr);
+        species = strtok_r(NULL, "\n", &ptr);
+
+        if (expr[0] == '*') {
+            // suffix
+            m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
+                                            expr.substr(1, expr.size()-1), 
+                                            species));
+        } else if (expr[expr.size() - 1] == '*') {
+            // prefix
+            m_rules.append(Gene2speciesRule(Gene2speciesRule::PREFIX,
+                                            expr.substr(0, expr.size()-1), 
+                                            species));
+        } else {
+            // exact match
+            assert(0);
+        }
+    }
+
+    return false;
+}
+
+string Gene2species::getSpecies(string gene)
+{
+    for (int i=0; i<m_rules.size(); i++) {
+        switch (m_rules[i].rule) {
+            case Gene2speciesRule::PREFIX:
+                if (gene.find(m_rules[i].expr, 0) == 0)
+                    return m_rules[i].species;
+                break;
+
+            case Gene2speciesRule::SUFFIX:
+                if (gene.rfind(m_rules[i].expr, gene.size()-1) == 
+                    gene.size() - m_rules[i].expr.size())
+                    return m_rules[i].species;
+                break;                
+
+            case Gene2speciesRule::EXACT:
+                break;
+        }
+    }
+
+    return NULL_SPECIES;
+}
+
+bool Gene2species::getMap(string *genes, int ngenes, 
+                          string *species, int nspecies, int *map)
+{
+    for (int i=0; i<ngenes; i++) {
+        string sp = getSpecies(genes[i]);
+
+        if (sp.size() == 0) {
+            map[i] = -1;
+        } else {
+            map[i] = -1;
+            for (int j=0; j<nspecies; j++) {
+                if (sp == species[j])
+                    map[i] = j;
+            }
+        }
+    }
+
+    return true;
+}
 
 
 

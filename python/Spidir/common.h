@@ -215,63 +215,12 @@ public:
         m_rules(0, 20)
     {}
     
-
-    
-    bool read(const char *filename)
-    {
-        BufferedReader reader;
-        if (!reader.open(filename, "r"))
-            return false;
-        
-        char *line;
-        string expr, species;
-        char *ptr;
-        while ((line = reader.readLine())) {
-            //chomp(line);
-            
-            expr = strtok_r(line, "\t", &ptr);
-            species = strtok_r(NULL, "\n", &ptr);
-            
-            if (expr[0] == '*') {
-                // suffix
-                m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
-                                                expr, species));
-            } else if (expr[expr.size() - 1] == '*') {
-                // prefix
-                m_rules.append(Gene2speciesRule(Gene2speciesRule::PREFIX,
-                                                expr, species));
-            } else {
-                // exact match
-                assert(0);
-            }
-        }
-        
-        return false;
-    }
-    
-    string getSpecies(string gene)
-    {
-        for (int i=0; i<m_rules.size(); i++) {
-            switch (m_rules[i].rule) {
-                case Gene2speciesRule::PREFIX:
-                    
-                    break;
-                case Gene2speciesRule::SUFFIX:
-                    break;
-                case Gene2speciesRule::EXACT:
-                    break;
-            }
-        }
-    
-        return NULL_SPECIES;
-    }
-    
-    bool getMap(string *names, int nnames, int *map)
-    {
-        return false;
-    }
-    
     const static string NULL_SPECIES;
+    
+    bool read(const char *filename);
+    string getSpecies(string gene);
+    bool getMap(string *genes, int ngenes, string *species, int nspecies, 
+                int *map);
     
 protected:
     ExtendArray<Gene2speciesRule> m_rules;

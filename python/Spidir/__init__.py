@@ -1544,7 +1544,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
     
-    phylo.midrootRecon(tree, stree, recon, events, params)
+    
     
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
@@ -1565,6 +1565,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         print "HERE"
         parsimony_C(conf["aln"], tree)
     
+    phylo.midrootRecon(tree, stree, recon, events, params)
     
     # calc likelihood in C
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 

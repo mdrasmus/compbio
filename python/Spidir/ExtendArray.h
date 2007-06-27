@@ -79,6 +79,13 @@ public:
         return ret;
     }
     
+    void attach(ValueType* _data, int _len, int _size)
+    {
+        data = _data;
+        len = _len;
+        datasize = _size;
+    }
+    
     //=========================================================================
     // capacity management
     
@@ -179,6 +186,33 @@ protected:
     int len;
     int datasize;
     int minsize;
+};
+
+
+
+template <class ValueType>
+class StackPointer
+{
+public:
+    StackPointer(ValueType *ptr=NULL, bool isArray=false) :
+        m_ptr(ptr),
+        m_isArray(isArray)
+    {
+    }
+    
+    ~StackPointer()
+    {
+        if (m_ptr) {
+            if (m_isArray)
+                delete [] m_ptr;
+            else
+                delete m_ptr;
+        }
+    }
+    
+protected:
+    ValueType *m_ptr;
+    bool m_isArray;
 };
 
 

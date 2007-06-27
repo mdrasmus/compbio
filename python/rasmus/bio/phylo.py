@@ -271,7 +271,7 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     return gtree
 
 
-def midrootRecon(tree, stree, recon, events, params):
+def midrootRecon(tree, stree, recon, events, params, generate):
 
     node1, node2 = tree.root.children
 
@@ -280,13 +280,15 @@ def midrootRecon(tree, stree, recon, events, params):
     
     # find nearest specs/genes
     def walk(node, specs):
-        if events[node] == "dup" or node == tree.root:
+        if events[node] == "dup":
             for child in node.children:
                 walk(child, specs)
         else:
             specs.append(node)
-    walk(node1, specs1)
-    walk(node2, specs2)
+    #walk(node1, specs1)
+    #walk(node2, specs2)
+    specs1 = node1.leaves()
+    specs2 = node2.leaves()
     
     def getDists(start, end):
         exp_dist = 0
@@ -302,7 +304,7 @@ def midrootRecon(tree, stree, recon, events, params):
             obs_dist += start.dist
             start = start.parent
 
-        return exp_dist, obs_dist
+        return exp_dist, obs_dist / generate
     
     diffs1 = []
     for spec in specs1:
@@ -320,15 +322,18 @@ def midrootRecon(tree, stree, recon, events, params):
             exp_dist2, obs_dist2 = getDists(spec, node2)
         diffs2.append(obs_dist2 - exp_dist2)
     
-    totdist = node1.dist + node2.dist
+    totdist = (node1.dist + node2.dist) / generate
 
-    left = totdist / 2.0 - stats.mean(diffs1)
-    right = totdist / 2.0 + stats.mean(diffs2)
-
+    left = node1.dist - stats.mean(diffs1)
+    right =  totdist - node2.dist + stats.mean(diffs2)
+    
+    #print diffs1, diffs2    
+    #print stats.mean(diffs1), stats.mean(diffs2)
+    
     mid = util.clamp((left + right) / 2.0, 0, totdist)
     
-    node1.dist = mid
-    node2.dist = totdist - mid
+    node1.dist = mid * generate
+    node2.dist = (totdist - mid) * generate
 
 
 
@@ -1037,6 +1042,19 @@ def getGaplessDistMatrix(aln):
     os.remove(outfile)
     
     return distmat
+
+
+
+def jukecCantorCorrection(dist):
+    """Applies the Jukes Cantor correction to distances
+       
+       Only valid for distances less than .75 sub/site
+    """
+    assert (dist < .75)
+    return - (3/4.0) * log(1 - (4/3.) * dist)
+
+
+
 
 #============================================================================
 # branch splits

@@ -97,22 +97,7 @@ int main(int argc, char **argv)
     }
     
     
-    // calc distmatrix for neighbor joining
-    Matrix<float> distmat(aln->nseqs, aln->nseqs);
-    calcDistMatrix(aln->nseqs, aln->seqlen, aln->seqs, distmat);
-    
-    
-    // do neighbor joining and parsimony distance
     int nnodes = aln->nseqs * 2 - 1;
-    /*
-    ExtendArray<int> ptree(nnodes);
-    ExtendArray<float> dists(nnodes);
-    
-    neighborjoin(aln->nseqs, distmat, ptree, dists);
-    Tree tree(nnodes);    
-    ptree2tree(nnodes, ptree, &tree);
-    parsimony(&tree, aln->nseqs, aln->seqs);
-    */
 
     // produce mapping array
     ExtendArray<string> genes(0, nnodes);

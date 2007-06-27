@@ -563,7 +563,6 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     
     # use only best means and sdevs (highest means)
     
-    """
     ind = range(len(means))
     ind.sort(lambda a, b: cmp(means[b], means[a]))
     ind = ind[:max(4, len(ind) / 2 + 1)]
@@ -571,7 +570,7 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     means = util.mget(means, ind)
     sdevs = util.mget(sdevs, ind)
     lens = util.mget(lens, ind)
-    """
+    
     
     # protect against zero
     ind = util.findgt(.0001, sdevs)
@@ -1548,28 +1547,27 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
     
-    
-    
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
        events[tree.root] == "dup":
         for child in tree.root.children:
             if recon[child] != stree.root:
                 child.data["unfold"] = True
-    
-    if baserate == None:
-        baserate = getBaserate(tree, stree, params, recon=recon)
-    
+
     # top branch is "free"
     params[stree.root.name] = [0,0]
     this = util.Bundle(logl=0.0)
     
     # test out C parsimony
-    if "aln" in conf and "parsimony" in conf:
-        print "HERE"
-        parsimony_C(conf["aln"], tree)
+    #if "aln" in conf and "parsimony" in conf:
+    #    parsimony_C(conf["aln"], tree)
+
     
-    phylo.midrootRecon(tree, stree, recon, events, params)
+    if baserate == None:
+        baserate = getBaserate(tree, stree, params, recon=recon)
+        
+    
+    phylo.midrootRecon(tree, stree, recon, events, params, baserate)
     
     # calc likelihood in C
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
@@ -1615,7 +1613,7 @@ def treeLogLikelihood_python(conf, tree, stree, gene2species, params,
     tree.clearData("logl", "extra", "fracs", "params", "unfold")
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.labelEvents(tree, recon)
-
+    
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
        events[tree.root] == "dup":
@@ -1625,6 +1623,8 @@ def treeLogLikelihood_python(conf, tree, stree, gene2species, params,
     
     if baserate == None:
         baserate = getBaserate(tree, stree, params, recon=recon)
+
+    phylo.midrootRecon(tree, stree, recon, events, params, baserate)
     
     # top branch is "free"
     params[stree.root.name] = [0,0]

@@ -705,7 +705,7 @@ def main(conf):
             args.remove("-i")
         if "--stdin" in args:
             args.remove("--stdin")
-        prefix = " ".join(args) + " "
+        prefix = " ".join(map(lambda x: "'%s'" % x, args)) + " "
         jobs = []
         
         

@@ -21,10 +21,6 @@
 #include "Tree.h"
 
 
-#define DNA_A 0
-#define DNA_C 1
-#define DNA_G 2
-#define DNA_T 3
 
 
 
@@ -57,6 +53,16 @@ int dna2int [256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 249
     -1, -1, -1, -1, -1, -1
 };
+
+char *int2dna = "ACGT";
+
+int dnatype[] = { 
+    DNA_PURINE,     // A
+    DNA_PRYMIDINE,  // C
+    DNA_PURINE,     // G
+    DNA_PRYMIDINE   // T
+};    
+
 
 
 // calculate the pairwise distances between sequences

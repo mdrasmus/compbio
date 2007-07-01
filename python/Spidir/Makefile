@@ -1,6 +1,7 @@
 CC = g++
 MODULE = pyspidir.so
 PROG_OBJS = \
+    branchlen.o \
     common.o \
     likelihood.o \
     parsimony.o \

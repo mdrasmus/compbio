@@ -23,10 +23,8 @@ using namespace std;
 
 
 
-
 int main(int argc, char **argv)
 {
-    // TODO: add default values
     
     // parameters
     string alignfile;    
@@ -34,6 +32,7 @@ int main(int argc, char **argv)
     string streefile;
     string paramsfile;
     int niter = 0;
+    bool help = false;
     
     
     // parse arguments
@@ -51,15 +50,25 @@ int main(int argc, char **argv)
         "-p", "--param", "<spidir params file>", &paramsfile, 
         "SPIDIR branch length parameters file"));
     
+    
     config.add(new ConfigParamComment("Miscellaneous"));
-    config.add(new ConfigParam<int>("-i", "--niter", "<# iterations>", 
-                                    &niter, 100, "number of iterations"));
+    config.add(new ConfigParam<int>(
+        "-i", "--niter", "<# iterations>", &niter, 100, 
+        "number of iterations"));
+    config.add(new ConfigSwitch(
+        "-h", "--help", &help, "display help information"));
+
     
     
-    if (argc < 2)
-        config.printHelp();
     if (!config.parse(argc, (const char**) argv)) {
+        if (argc < 2)
+            config.printHelp();
         return 1;
+    }
+    
+    if (help) {
+        config.printHelp();
+        return 0;
     }
 
     

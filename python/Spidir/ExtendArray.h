@@ -194,26 +194,68 @@ template <class ValueType>
 class StackPointer
 {
 public:
-    StackPointer(ValueType *ptr=NULL, bool isArray=false) :
-        m_ptr(ptr),
-        m_isArray(isArray)
+    typedef ValueType* ValuePtrType;
+    typedef ValueType** ValuePtrPtrType;
+
+    StackPointer(ValueType *ptr=NULL) :
+        ptr(ptr)
     {
     }
     
     ~StackPointer()
     {
-        if (m_ptr) {
-            if (m_isArray)
-                delete [] m_ptr;
-            else
-                delete m_ptr;
-        }
+        if (ptr)
+            delete ptr;
     }
     
+    ValuePtrType &get()
+    { return ptr; }
+    
+    operator ValuePtrType()
+    { return ptr; }
+
+    ValuePtrPtrType operator &()
+    { return &ptr; }
+        
+    
 protected:
-    ValueType *m_ptr;
-    bool m_isArray;
+    ValueType *ptr;
 };
+
+
+template <class ValueType>
+class StackArray
+{
+public:
+    typedef ValueType* ValuePtrType;
+    typedef ValueType** ValuePtrPtrType;
+
+    StackArray(ValueType *ptr=NULL) :
+        ptr(ptr)
+    {
+    }
+    
+    ~StackArray()
+    {
+        if (ptr)
+            delete [] ptr;
+    }
+    
+    ValuePtrType &get()
+    { return ptr; }
+    
+    operator ValuePtrType()
+    { return ptr; }
+
+    ValuePtrPtrType operator &()
+    { return &ptr; }
+        
+    
+protected:
+    ValueType *ptr;
+};
+
+
 
 
 

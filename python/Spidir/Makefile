@@ -1,5 +1,4 @@
-CC = g++
-MODULE = pyspidir.so
+PYTHON_MODULE = pyspidir.so
 PROG_OBJS = \
     branchlen.o \
     common.o \
@@ -8,36 +7,43 @@ PROG_OBJS = \
     search.o \
     Tree.o \
 
-MODULE_OBJS = \
+PYTHON_MODULE_OBJS = \
     pyspidir.o \
     $(PROG_OBJS)
 
 
+CC = g++
 
 CFLAGS = \
-    -g \
+    -O3 \
     -Wall \
     -I/usr/include/python2.4 \
     -I/util/include/python2.4
 
-all: $(MODULE) test_spidir
+all: $(PYTHON_MODULE) spidir test_spidir
+
+# stand along program
+spidir: $(PROG_OBJS) spidir.o
+	g++ $(PROG_OBJS) $(CFLAGS) spidir.o -o spidir
+
+# testing program
+test_spidir: $(PROG_OBJS) test.o
+	g++ $(PROG_OBJS) $(CFLAGS) test.o -o test_spidir
+
+# python module
+$(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
+	g++ -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
 
 
-
-$(MODULE): $(MODULE_OBJS)
-	g++ -shared $(MODULE_OBJS) -o $(MODULE)
-
-test_spidir: $(PROG_OBJS) test.cpp
-	g++ $(PROG_OBJS) -g test.cpp -o test_spidir
 
 
 # basic compile rule
-$(MODULE_OBJS): %.o: %.cpp
+$(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 
-install: test_spidir
-	cp test_spidir ../../bin/
+install: spidir
+	cp spidir ../../bin/
 
 clean:
-	rm -rf $(MODULE_OBJS) $(MODULE) test_spidir
+	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) test_spidir

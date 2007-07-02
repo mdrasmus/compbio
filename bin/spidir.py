@@ -179,6 +179,7 @@ options = ["""\
  ["", "python_only", "python_only", ""],
  ["", "lkcmp", "lkcmp", ""], 
  ["", "parsimony", "parsimony", ""],
+ ["", "mlhkydist", "mlhkydist", ""],
 
  ["P:", "paths=", "paths", "<files path>",
     {"single": True,

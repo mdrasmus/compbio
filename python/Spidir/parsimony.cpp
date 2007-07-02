@@ -14,7 +14,7 @@
 #include "Tree.h"
 
 
-#define matind(m, i, j) ((m)*(i) + (j))
+
 #define MAX_COST 1000000000
 
 

@@ -127,6 +127,7 @@ public:
 };
 
 
+template <>
 int ConfigParam<int>::parse(int argc, const char **argv)
 {
     if (argc > 0) {
@@ -142,6 +143,7 @@ int ConfigParam<int>::parse(int argc, const char **argv)
 }
 
 
+template <>
 int ConfigParam<float>::parse(int argc, const char **argv)
 {
     if (argc > 0) {

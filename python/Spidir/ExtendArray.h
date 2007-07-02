@@ -134,13 +134,13 @@ public:
     
     //=========================================================================
     // data access
-    void append(const ValueType &val)
+    inline void append(const ValueType &val)
     {
         assert(ensureSize(len + 1));
         data[len++] = val;
     }
     
-    void extend(ValueType *vals, int nvals)
+    inline void extend(ValueType *vals, int nvals)
     {
         assert(ensureSize(len + nvals));
         
@@ -148,10 +148,15 @@ public:
             data[len++] = vals[i];
     }
     
-    ValueType pop()
+    inline ValueType pop()
     {
         assert(len > 0);
         return data[--len];
+    }
+    
+    inline void clear()
+    {
+        len = 0;
     }
     
     inline ValueType &operator[](const int i)
@@ -165,7 +170,7 @@ public:
     }
     
     // easy access to underling data
-    operator ValuePtrType()
+    inline operator ValuePtrType()
     {
         return data;
     }
@@ -208,6 +213,13 @@ public:
             delete ptr;
     }
     
+    ValueType *detach()
+    {
+        ValueType *ret = ptr;
+        ptr = NULL;
+        return ret;
+    }
+    
     ValuePtrType &get()
     { return ptr; }
     
@@ -223,6 +235,7 @@ protected:
 };
 
 
+// TODO: remove
 template <class ValueType>
 class StackArray
 {
@@ -240,6 +253,13 @@ public:
         if (ptr)
             delete [] ptr;
     }
+    
+    ValueType *detach()
+    {
+        ValueType *ret = ptr;
+        ptr = NULL;
+        return ret;
+    }    
     
     ValuePtrType &get()
     { return ptr; }

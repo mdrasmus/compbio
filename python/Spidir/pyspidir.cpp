@@ -331,6 +331,90 @@ pyspidir_parsimony(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+pyspidir_mlhkydist(PyObject *self, PyObject *args)
+{
+    PyObject *ret = NULL;
+    bool error = false;
+    
+    // check number of args
+    if (PyTuple_GET_SIZE(args) < 2) {
+        printf("wrong number of args\n");
+        return NULL;
+    }
+    
+    // parse args
+    PyObject *pyptree = PyTuple_GET_ITEM(args, 0);
+    PyObject *pyseqs = PyTuple_GET_ITEM(args, 1);
+    PyObject *pybgfreq = PyTuple_GET_ITEM(args, 2);
+    PyObject *pyratio = PyTuple_GET_ITEM(args, 3);
+    PyObject *pymaxiter = PyTuple_GET_ITEM(args, 4);
+    
+    
+    // check arg types
+    if (!PyList_Check(pyptree) || 
+        !PyList_Check(pyseqs) ||
+        !PyList_Check(pybgfreq) ||
+        !PyFloat_Check(pyratio) ||
+        !PyInt_Check(pymaxiter))
+    {
+        printf("wrong argument types\n");
+        return NULL;
+    }
+    
+    
+    // gene tree
+    int nnodes;
+    int *ptree = NULL;
+    char **seqs = NULL;
+    float *bgfreq = NULL;
+    int nseqs;
+    int nbases;
+    float ratio = PyFloat_AS_DOUBLE(pyratio);
+    int maxiter = PyInt_AS_LONG(pymaxiter);
+    
+    // convert data
+    if (!makeIntArray(pyptree, &ptree, &nnodes)) {
+        printf("bad ptree\n");
+        error = true;
+        goto cleanup;
+    }
+
+    if (!makeStringArray(pyseqs, &seqs, &nseqs)) {
+        printf("bad seqs\n");
+        error = true;
+        goto cleanup;
+    }
+    
+    if (!makeFloatArray(pybgfreq, &bgfreq, &nbases)) {
+        printf("bad bgfreq\n");
+        error = true;
+        goto cleanup;
+    }
+    
+    
+    // call C code
+    {
+        float *dists = new float [nnodes];
+        for (int i=0; i<nnodes; i++) dists[i] = 0;
+        //parsimony(nnodes, ptree, nseqs, seqs, dists);
+        findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
+                               dists, bgfreq, ratio, maxiter);
+        ret = makeFloatListPy(dists, nnodes);
+        delete [] dists;    
+    }
+    
+    cleanup:
+        if (ptree) delete [] ptree;
+        if (seqs) freeStringArray(seqs, nseqs);
+        if (bgfreq) delete [] bgfreq;
+
+    
+    return ret;
+}
+
+
+
 PyMODINIT_FUNC
 initpyspidir(void)
 {
@@ -341,6 +425,8 @@ initpyspidir(void)
          "Tree likelihood"},
         {"parsimony",  pyspidir_parsimony, METH_VARARGS,
          "Parsimony method"},
+        {"mlhkydist", pyspidir_mlhkydist, METH_VARARGS,
+         "ML estimates of branch lengths by HKY"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
     };
     

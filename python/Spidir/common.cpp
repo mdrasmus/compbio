@@ -51,7 +51,7 @@ int dna2int [256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 229
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 239
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 249
-    -1, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1                    // 255
 };
 
 char *int2dna = "ACGT";
@@ -208,7 +208,7 @@ SpidirParams *readSpidirParams(const char* filename)
     
     const int MAX_NAME = 51;
     float param1, param2;
-    float alpha, beta;
+    float alpha = -1, beta = -1;
     ExtendArray<float> mu(0, 40);
     ExtendArray<float> sigma(0, 40);
     ExtendArray<string> names(0, 40);
@@ -238,6 +238,13 @@ SpidirParams *readSpidirParams(const char* filename)
 }
 
 
+// Invert a permutation
+void invertPerm(int *perm, int *inv, int size)
+{
+    for (int i=0; i<size; i++)
+        inv[perm[i]] = i;
+}
+
 
 template <class T>
 void permute(T* array, int *perm, int size)
@@ -247,7 +254,7 @@ void permute(T* array, int *perm, int size)
     
     // transfer permutation to temp array
     for (int i=0; i<size; i++)
-        tmp[perm[i]] = array[i];
+        tmp[i] = array[perm[i]];
     
     // copy permutation back to original array
     for (int i=0; i<size; i++)
@@ -276,6 +283,7 @@ bool SpidirParams::order(SpeciesTree *stree)
     ExtendArray<Node*> nodeorder(0, stree->nnodes);
     paramsOrder_helper(stree->root, &nodeorder);
     ExtendArray<int> perm(0, stree->nnodes);
+    ExtendArray<int> invperm(0, stree->nnodes);
     
     // make interior node names
     ExtendArray<int> inodes(0, stree->nnodes);
@@ -295,12 +303,12 @@ bool SpidirParams::order(SpeciesTree *stree)
         for (int i=0; i<stree->nnodes; i++) {
             if (nodeorder[i]->isLeaf()) {
                 if (names[j] == nodeorder[i]->leafname) {
-                    perm.append(i);
+                    invperm.append(i);
                     break;
                 }
             } else {
                 if (atoi(names[j].c_str()) == inodes[i]) {
-                    perm.append(i);
+                    invperm.append(i);
                     break;
                 }
             }
@@ -308,6 +316,7 @@ bool SpidirParams::order(SpeciesTree *stree)
     }
     
     // apply permutation
+    invertPerm(invperm, perm, nsnodes);
     permute(names, perm, nsnodes);
     permute(mu, perm, nsnodes);
     permute(sigma, perm, nsnodes);

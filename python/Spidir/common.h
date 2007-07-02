@@ -27,6 +27,10 @@ using namespace std;
 #define PI 3.1415926
 #define MAX_FLOAT 1e10
 
+// indexing a matrix stored as a single array
+#define matind(m, i, j) ((m)*(i) + (j))
+
+
 
 // convert dna characters into standard numbers
 extern int dna2int[256];

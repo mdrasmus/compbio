@@ -237,6 +237,12 @@ def setTreeDistances(conf, tree, distmat, genes):
                                  for node in tree.nodes.itervalues())
         return
     
+    if "mlhkydist" in conf:
+        mlhkydist_C(conf["aln"], tree, [.25]*4, .5, 4)
+        tree.data["error"] = 0.0 #sum(node.dist 
+                               #  for node in tree.nodes.itervalues())
+        return
+    
     # perform LSE
     lse = phylo.leastSquareError(tree, distmat, genes)
     
@@ -1518,6 +1524,16 @@ def parsimony_C(aln, tree):
     
     #treelib.drawTreeLens(tree)
     
+
+def mlhkydist_C(aln, tree, bgfreq, ratio, maxiter):
+    ptree, nodes, nodelookup = makePtree(tree)
+    leaves = [x.name for x in nodes if isinstance(x.name, str)]
+    seqs = util.mget(aln, leaves)
+    
+    dists = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
+    
+    for i in xrange(len(dists)):
+        nodes[i].dist = dists[i]
     
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):

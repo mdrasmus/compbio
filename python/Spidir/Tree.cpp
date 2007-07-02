@@ -54,9 +54,7 @@ void Tree::reroot(Node *newroot, bool onBranch)
          (root->children[0] == newroot ||
           root->children[1] == newroot)))
         return;
-    
-    ExtendArray<Node*> path(0, nnodes);
-        
+            
     
     // determine where to stop ascending
     Node *oldroot = root;
@@ -71,24 +69,29 @@ void Tree::reroot(Node *newroot, bool onBranch)
 
     // start the reversal
     Node *ptr1 = NULL, *ptr2 = NULL;
+    float nextDist = 0;
+    float rootdist;
     
     if (onBranch) {
         if (isRooted()) {
             // just need to stick current root somewhere else
             Node *other = newroot->parent;            
+            rootdist = stop1->dist + stop2->dist;
             
             oldroot->children[0] = newroot;
             oldroot->children[1] = other;            
             newroot->parent = oldroot;
-            path.append(oldroot);
-                        
+            newroot->dist /= 2.0;
+            
             ptr1 = other;
 
             int oldchild = findval(ptr1->children, ptr1->nchildren, newroot);
             assert(oldchild != -1);
             
+            // prepare for reversing loop
             ptr1->children[oldchild] = oldroot;
-            ptr2 = oldroot;            
+            ptr2 = oldroot;
+            nextDist = newroot->dist;
         } else {
             // need to add a new node to be root
             assert(0);
@@ -114,7 +117,11 @@ void Tree::reroot(Node *newroot, bool onBranch)
         // ptr1 is now fixed
         ptr1->children[oldchild] = next;
         ptr1->parent = ptr2;
-        path.append(ptr1);
+        
+        // swap distances
+        float tmpdist = ptr1->dist;
+        ptr1->dist = nextDist;
+        nextDist = tmpdist;
         
         // move pointers
         ptr2 = ptr1;
@@ -135,8 +142,9 @@ void Tree::reroot(Node *newroot, bool onBranch)
         int oldchild = findval(stop1->children, stop1->nchildren, ptr2);        
         stop1->children[oldchild] = stop2;
         stop1->parent = ptr2;
+        stop1->dist = nextDist;
         stop2->parent = stop1;
-        path.append(stop2);
+        stop2->dist = rootdist;
     }
     
     
@@ -144,6 +152,35 @@ void Tree::reroot(Node *newroot, bool onBranch)
     // - all leaves don't change numbers
     assert(root->name = nnodes-1);
 }
+
+
+void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
+{
+    if (!node)
+        node = tree->root;
+
+    // recurse
+    for (int i=0; i<node->nchildren; i++)
+        getTreePostOrder(tree, nodes, node->children[i]);
+    
+    // record post-process
+    nodes->append(node);
+}
+
+
+void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
+{
+    if (!node)
+        node = tree->root;
+
+    // record pre-process
+    nodes->append(node);
+
+    // recurse
+    for (int i=0; i<node->nchildren; i++)
+        getTreePostOrder(tree, nodes, node->children[i]);
+}
+
 
 
 //=============================================================================
@@ -295,7 +332,7 @@ void Tree::writeNewick(FILE *out, Node *node, int depth)
             fprintf(out, "%s:%f", node->leafname.c_str(), node->dist);
         } else {
             // indent
-            for (int i=0; i<depth; i++) fprintf(stdout, "  ");
+            for (int i=0; i<depth; i++) fprintf(out, "  ");
             fprintf(out, "(\n");
             
             for (int i=0; i<node->nchildren - 1; i++) {
@@ -773,7 +810,7 @@ void printTree(Tree *tree, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d=%s", node->name, node->leafname.c_str());
+            printf("%d=%s:%f", node->name, node->leafname.c_str(), node->dist);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");
@@ -789,6 +826,9 @@ void printTree(Tree *tree, Node *node, int depth)
             
             for (int i=0; i<depth; i++) printf("  ");
             printf(")");
+            
+            if (depth > 0)
+                printf(":%f", node->dist);
         }
     }
 }

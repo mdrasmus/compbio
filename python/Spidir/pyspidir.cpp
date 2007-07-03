@@ -399,7 +399,8 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
         for (int i=0; i<nnodes; i++) dists[i] = 0;
         //parsimony(nnodes, ptree, nseqs, seqs, dists);
         findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
-                               dists, bgfreq, ratio, maxiter);
+                               dists, bgfreq, ratio, maxiter,
+                               true);
         ret = makeFloatListPy(dists, nnodes);
         delete [] dists;    
     }

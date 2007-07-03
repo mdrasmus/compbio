@@ -353,7 +353,7 @@ class Tree:
         return map(lambda x: x.name, self.leaves(node))
     
     
-    #
+    #=======================================================================
     # input and output
     #
     def write(self, out = sys.stdout, writeData=None, oneline=False):
@@ -636,9 +636,6 @@ class Tree:
         return stream.getvalue()
     
     
-
-    
-    
     #
     # should I make these external?
     #
@@ -662,7 +659,7 @@ class Tree:
 
 
 #============================================================================
-# Misc. functions for manipulating trees
+# Convenient Input/Output functions
 #
 
 def readTree(filename):
@@ -678,6 +675,11 @@ def parseNewick(newick):
     stream = StringIO.StringIO(newick)
     tree.readNewick(stream)
     return tree
+
+
+#============================================================================
+# Misc. functions for manipulating trees
+#
 
 
 def assertTree(tree):
@@ -727,6 +729,42 @@ def lca(nodes):
             set2.add(node2)
     else:
         raise Exception("No nodes given")
+
+
+def findDist(tree, name1, name2):
+    """Returns the branch distance between two nodes in a tree"""
+
+    if not name1 in tree.nodes or \
+       not name2 in tree.nodes:
+        raise Exception("nodes '%s' and '%s' are not in tree" %
+                        (name1, name2))
+    
+    # find root path for node1
+    node1 = tree.nodes[name1]
+    path1 = [node1]    
+    while node1 != tree.root:
+        node1 = node1.parent
+        path1.append(node1)
+    
+    # find root path for node2
+    node2 = tree.nodes[name2]
+    path2 = [node2]
+    while node2 != tree.root:
+        node2 = node2.parent
+        path2.append(node2)
+    
+    # find when paths diverge
+    i = 1
+    while i <= len(path1) and i <= len(path2) and (path1[-i] == path2[-i]):
+        i += 1
+    
+    dist = 0
+    for j in range(i, len(path1)+1):
+        dist += path1[-j].dist
+    for j in range(i, len(path2)+1):
+        dist += path2[-j].dist
+    
+    return dist
         
 
 def countDescendents(node, sizes=None):
@@ -772,72 +810,6 @@ def subtree(tree, node):
     return tree2
 
 
-def findDist(tree, name1, name2):
-    """Returns the branch distance between two nodes in a tree"""
-
-    if not name1 in tree.nodes or \
-       not name2 in tree.nodes:
-        raise Exception("nodes '%s' and '%s' are not in tree" %
-                        (name1, name2))
-    
-    # find root path for node1
-    node1 = tree.nodes[name1]
-    path1 = [node1]    
-    while node1 != tree.root:
-        node1 = node1.parent
-        path1.append(node1)
-    
-    # find root path for node2
-    node2 = tree.nodes[name2]
-    path2 = [node2]
-    while node2 != tree.root:
-        node2 = node2.parent
-        path2.append(node2)
-    
-    # find when paths diverge
-    i = 1
-    while i <= len(path1) and i <= len(path2) and (path1[-i] == path2[-i]):
-        i += 1
-    
-    dist = 0
-    for j in range(i, len(path1)+1):
-        dist += path1[-j].dist
-    for j in range(i, len(path2)+1):
-        dist += path2[-j].dist
-    
-    return dist
-
-"""
-def findPath(tree, name1, name2):
-    '''
-    TODO: double check this code before use
-    '''
-    if not name1 in tree.nodes or \
-       not name2 in tree.nodes:
-        return None
-
-    # find root path for node1
-    node1 = tree.nodes[name1]        
-    path1 = [node1]
-    while node1 != tree.root:
-        node1 = node1.parent
-        path1.append(node1)
-
-    # find root path for node2
-    node2 = tree.nodes[name2]        
-    path2 = [node2]
-    while node2 != tree.root:
-        node2 = node2.parent
-        path2.append(node2)
-
-    # find when paths diverge
-    i = -1
-    while i < len(path1) and i < len(path2) and (path1[i] == path2[i]):
-        i -= 1
-
-    return path1[i+1:] + path2[i+1:]
-"""
-
 def smallSubtrees(tree, maxsize):
     trees = []
     sizes = countDescendents(tree.root)
@@ -852,6 +824,35 @@ def smallSubtrees(tree, maxsize):
     walk(tree.root)
     
     return trees
+
+
+def maxDisjointSubtrees(tree, subroots):
+    """Returns a list of rooted subtrees with atmost one node from 
+       the list 'subroots'
+    """
+    
+    marks = {}
+
+    # mark the path from each subroot to the root
+    for subroot in subroots:
+        ptr = subroot
+        while ptr != None:
+            lst = marks.setdefault(ptr, [])
+            lst.append(subroot)
+            ptr = ptr.parent
+
+    # subtrees are those trees with nodes that have at most one mark
+    subroots2 = []
+    def walk(node):
+        marks.setdefault(node, [])
+        if len(marks[node]) < 2 and \
+           (not node.parent or len(marks[node.parent]) >= 2):
+            subroots2.append(node)
+        node.recurse(walk)
+    walk(tree.root)
+    
+    return subroots2
+
 
 
 def tree2graph(tree):
@@ -894,34 +895,6 @@ def graph2tree(mat, root, closedset=None):
     tree.nextname = max(filter(lambda x: type(x) == int, tree.nodes.keys()))
     
     return tree
-
-
-def maxDisjointSubtrees(tree, subroots):
-    """Returns a list of rooted subtrees with atmost one node from 
-       the list 'subroots'
-    """
-    
-    marks = {}
-
-    # mark the path from each subroot to the root
-    for subroot in subroots:
-        ptr = subroot
-        while ptr != None:
-            lst = marks.setdefault(ptr, [])
-            lst.append(subroot)
-            ptr = ptr.parent
-
-    # subtrees are those trees with nodes that have at most one mark
-    subroots2 = []
-    def walk(node):
-        marks.setdefault(node, [])
-        if len(marks[node]) < 2 and \
-           (not node.parent or len(marks[node.parent]) >= 2):
-            subroots2.append(node)
-        node.recurse(walk)
-    walk(tree.root)
-    
-    return subroots2
 
 
 def removeSingleChildren(tree):
@@ -1020,12 +993,11 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
     """
     Change the rooting of a tree
     """
+
+    # mat is a DEPRECATED parameter.    
+    assert mat == None
     
-    # mat is a DEPRECATED parameter.  But if it is used then call old function
     # TODO: remove newCopy (or assert newCopy=False)
-    if mat != None:
-        return reroot_old(tree, newroot, mat, onBranch=onBranch)
-    
     if newCopy:
         tree = tree.copy()
     
@@ -1083,143 +1055,8 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
     tree.root = newRoot
     
     return tree
-    
 
-
-def reroot_old(tree, newroot, mat = None, onBranch=True):
-    # handle trivial case
-    if tree.root.name == newroot or \
-       (newroot in map(lambda x: x.name, tree.root.children) and \
-        len(tree.root.children) == 2):
-        return tree        
-    
-    # convert tree to a graph
-    if mat == None:
-        mat = tree2graph(tree)
-        assert len(mat.keys()) == len(tree.nodes.keys())
-        for i in mat:
-            for j in mat[i]:
-                assert mat[j][i] == mat[i][j]
-        #print mat, newroot
-        
-    # intialize new tree
-    tree2 = Tree(nextname = tree.newName())
-    
-    # generate new node if rooting on a branch
-    # branch designated as branch above newroot
-    if onBranch:
-        name1 = newroot
-        name2 = tree.nodes[newroot].parent.name
-        dist = mat[name1][name2]
-        del mat[name1][name2]
-        del mat[name2][name1]
-        
-        # create new name for newroot
-        newroot = tree2.newName()
-        mat[newroot] = {}
-        mat[newroot][name1] = dist / 2.0
-        mat[name1][newroot] = dist / 2.0
-        mat[newroot][name2] = dist / 2.0
-        mat[name2][newroot] = dist / 2.0
-        
-        #print name1, name2, newroot
-    
-    # build new tree   
-    tree2.makeRoot(newroot)
-    closedset = {newroot:1}
-    def walk(node):
-        for child in mat[node]:
-            if not child in closedset:
-                childNode = TreeNode(child)
-                childNode.dist = mat[child][node]
-                childNode.data = copy.copy(tree.nodes[child].data)
-                tree2.addChild(tree2.nodes[node], childNode)
-                closedset[child] = 1
-                walk(child)
-    walk(newroot)
-    
-    # copy over data
-    # TODO: need to fix how extra data is copied, should be copied with dist above
-    # branches have changed identies
-    tree2.copyData(tree)
-    
-    assert len(tree2.nodes.keys()) >= len(tree.nodes.keys())
-    
-    # clean up tree and update mat
-    removed = removeSingleChildren(tree2)
-    
-    # undo changes to mat
-    if onBranch:
-        mat[name1][name2] = dist
-        mat[name2][name1] = dist
-        del mat[newroot]
-        del mat[name1][newroot]
-        del mat[name2][newroot]
-    
-    assert len(tree2.nodes.keys()) >= len(tree.nodes.keys())
-    
-    return tree2
-
-
-
-
-
-def outgroupRoot(tree, outgroup, closedset = None):
-    # find root of outgroup
-    mat = tree2graph(tree)
-    neighbors = []
-    if closedset == None:
-        closedset = {}
-    roots = {}
-    
-    # remove a vertex from a graph
-    def remove(mat, v):
-        for u in mat[v]:
-            del mat[u][v]
-        del mat[v]
-    
-    # start a special bfs
-    openset = outgroup
-    while len(openset) > 0:
-        vertex = openset[0]
-        openset = openset[1:]
-        
-        # skip closed vertices
-        if vertex in closedset:
-            continue
-
-        # visit vertex
-        if len(mat[vertex]) == 1:
-            # add neighbors to openset
-            openset.extend(mat[vertex].keys())
-            
-            # close and remove this vertex
-            closedset[vertex] = 1
-            remove(mat, vertex)
-            if vertex in roots:
-                del roots[vertex]
-        else:
-            roots[vertex] = 1
-        
-    return roots.keys()
-
-
-def removeOutgroup(tree, outgroup):
-    removed = {}
-    roots = outgroupRoot(tree, outgroup, removed)
-
-    if len(roots) == 1:
-        tree2 = reroot(tree, roots[0])
-    else:
-        tree2 = tree
-        
-    for root in roots:
-        for child in tree2.nodes[root].children:
-            if child.name in removed:
-                tree2.removeTree(child)
-    
-    return (tree2, len(roots) == 1)
-    
+   
 
 
 #=========================================================================

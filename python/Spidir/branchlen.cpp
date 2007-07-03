@@ -10,6 +10,7 @@
 
 #include <math.h>
 #include "spidir.h"
+#include "parsimony.h"
 #include "common.h"
 #include "Matrix.h"
 #include "Tree.h"
@@ -168,7 +169,7 @@ float secantRoot(Func &f, float x0, float x1, int maxiter,
             return x0;
         float f1 = f(x1);
         float x2 = x1 - (x1 - x0) * f1 / (f1 - f0);
-        printf("%f %f | %f %f\n", x0, x1, f0, f1);
+        //printf("%f %f | %f %f\n", x0, x1, f0, f1);
         
         x0 = x1;
         x1 = (x2 > minx) ? x2 : minx;
@@ -237,7 +238,7 @@ class DistLikelihoodFunc
 public:
     DistLikelihoodFunc(float *probs1, float *probs2, int seqlen, 
                        float *bgfreq, Model *model, float step=.001,
-                       int _sample=200) :
+                       int _sample=200, float *_probs3=NULL) :
         probs1(probs1),
         probs2(probs2),
         seqlen(seqlen),
@@ -246,24 +247,69 @@ public:
         step(step),
         sample(_sample),
         bases(_sample),
-        transmat1(4, 4),
-        transmat2(4, 4),
-        probs3(seqlen*4*4)
+        transmat1(16),
+        transmat2(16),
+        probs3(_probs3)
     {
-        // choose a random sample of bases for estimating branch length
-        for (int i=0; i<sample; i++) 
-            bases[i] = int(frand() * seqlen);
+        if (sample == 0) {
+            sample = seqlen;
+            bases.setCapacity(seqlen);
+            
+            for (int i=0; i<sample; i++) 
+                bases[i] = i;
+        } else {
+            // choose a random sample of bases for estimating branch length
+            for (int i=0; i<sample; i++) 
+                bases[i] = int(frand() * seqlen);
+        }
         
-        float logbgfreq[4];
+        
+        // save log back ground frequency
         logbgfreq[0] = log(bgfreq[0]);
         logbgfreq[1] = log(bgfreq[1]);
         logbgfreq[2] = log(bgfreq[2]);
         logbgfreq[3] = log(bgfreq[3]);        
         
+        // allocate if needed the precomputed probability terms
+        if (!probs3) {
+            probs3 = new float [seqlen*4*4];
+            ownProbs3 = true;
+        } else
+            ownProbs3 = false;
+        
         // interate over sequence
         for (int kk=0; kk<sample; kk++) {
             int k = bases[kk];
             
+            float terms1[4];
+            float terms2[4];
+            
+            for (int i=0; i<4; i++)
+                terms1[i] = expf(logbgfreq[i] + probs1[matind(4, k, i)]);
+            
+            for (int j=0; j<4; j++)
+                terms2[j] = expf(probs2[matind(4, k, j)]);
+            
+            float *ptr = &probs3[matind(16, k, 0)];
+            for (int ij=0; ij<16; ij++) {
+                int i = ij >> 2;
+                int j = ij & 3;
+                ptr[ij] = terms1[i] * terms2[j];
+            }
+            
+            
+            /*
+            // integrate over all transitions
+            for (int ij=0; ij<16; ij++) {
+                int i = ij / 4;
+                int j = ij % 4;
+                float logterm = logbgfreq[i] + probs1[matind(4, k, i)];
+                probs3[matind(16, k, i*4 + j)] = 
+                        expf(logterm + probs2[matind(4, k, j)]);
+            }
+            */
+            
+            /*
             // integrate over all transitions
             for (int i=0; i<4; i++) {
                 float logterm = logbgfreq[i] + probs1[matind(4, k, i)];
@@ -272,7 +318,14 @@ public:
                         expf(logterm + probs2[matind(4, k, j)]);
                 }
             }
+            */
         }
+    }
+    
+    ~DistLikelihoodFunc()
+    {
+        if (ownProbs3)
+            delete [] probs3;
     }
 
 
@@ -283,34 +336,30 @@ public:
             return INFINITY;
 
         float logl = 0;
-        float logbgfreq[4];
-        logbgfreq[0] = log(bgfreq[0]);
-        logbgfreq[1] = log(bgfreq[1]);
-        logbgfreq[2] = log(bgfreq[2]);
-        logbgfreq[3] = log(bgfreq[3]);
+
         
         // build transition matrices
         for (int i=0; i<4; i++) {
             for (int j=0; j<4; j++) {
-                transmat1[i][j] = (*model)(i, j, t+step);
-                transmat2[i][j] = (*model)(i, j, t);
+                transmat1[4*i+j] = (*model)(i, j, t+step);
+                transmat2[4*i+j] = (*model)(i, j, t);
             }
         }
         
+        // iterate over sites
         for (int kk=0; kk<sample; kk++) {
             int k = bases[kk];
             float prob1 = 0.0, prob2 = 0.0;
 
             // integrate over all transitions
-            for (int i=0; i<4; i++) {
-                for (int j=0; j<4; j++) {
-                    float term2 = probs3[matind(4, k, 4*i + j)];
-                    prob1 += term2 * transmat1[i][j];
-                    prob2 += term2 * transmat2[i][j];
-                }
+            float *termptr = &probs3[matind(16, k, 0)];
+            for (int ij=0; ij<16; ij++) {
+                float term2 = termptr[ij];
+                prob1 += term2 * transmat1[ij];
+                prob2 += term2 * transmat2[ij];
             }
             logl += logf(prob1 / prob2);
-        }        
+        }
         
         /*
         // interate over sequence
@@ -342,9 +391,11 @@ public:
     float step;
     int sample;
     ExtendArray<int> bases;
-    Matrix<float> transmat1;
-    Matrix<float> transmat2;
-    ExtendArray<float> probs3;
+    ExtendArray<float> transmat1;
+    ExtendArray<float> transmat2;
+    float *probs3;
+    bool ownProbs3;
+    float logbgfreq[4];
 };
 
 
@@ -357,15 +408,14 @@ public:
 template <class Model>
 float mleDistance(float *probs1, float *probs2, int seqlen, 
                   float *bgfreq, Model &model, 
-                  float t0=.001, float t1=1, float step=.0001)
+                  float t0=.001, float t1=1, float step=.0001,
+                  float *probs3=NULL, int samples=500)
 {
     const int maxiter = 20;
-    int samples = 200;
-    if (t0 < .05)
-        samples = 400;
     
     DistLikelihoodFunc<Model> df(probs1, probs2, seqlen, bgfreq, &model, step,
-                                 samples);
+                                 samples, probs3);
+    
     //return secantRoot(df, t0, t1, maxiter);
     return bisectRoot(df, t0, t1, maxiter);
 }
@@ -395,7 +445,7 @@ float mleDistance(float *probs1, float *probs2, int seqlen,
 
 // conditional likelihood recurrence
 template <class Model>
-void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
+inline void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
                  int a, int b, int c, float adist, float bdist)
 {
     static Matrix<float> atransmat(4, 4);
@@ -409,17 +459,25 @@ void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
         }
     }
     
-
+    float *lktablea = lktable[a];
+    float *lktableb = lktable[b];
+    
     // iterate over sites
     for (int j=0; j<seqlen; j++) {
+        float terma[4];
+        float termb[4];
+        
+        for (int x=0; x<4; x++) {
+            terma[x] = expf(lktablea[matind(4, j, x)]);
+            termb[x] = expf(lktableb[matind(4, j, x)]);
+        }
+    
         for (int k=0; k<4; k++) {
             float prob1 = 0.0, prob2 = 0.0;                
 
             for (int x=0; x<4; x++) {                
-                prob1 += atransmat[k][x] * 
-                         expf(lktable[a][matind(4, j, x)]);
-                prob2 += btransmat[k][x] * 
-                         expf(lktable[b][matind(4, j, x)]);
+                prob1 += atransmat[k][x] * terma[x];
+                prob2 += btransmat[k][x] * termb[x];
             }
 
             lktable[c][matind(4, j, k)] = logf(prob1 * prob2);
@@ -469,6 +527,36 @@ void initCondLkTable(ExtendArray<float*> &lktable, Tree *tree,
 }
 
 
+// calculate P(D | T, B)
+template <class Model>
+float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree, 
+                         int seqlen, Model &model, float *bgfreq)
+{
+    // find total likelihood
+    calcLkTable(lktable, seqlen, model, 
+                tree->root->children[0]->name, 
+                tree->root->children[1]->name, 
+                tree->root->name,
+                tree->root->children[0]->dist, 
+                tree->root->children[1]->dist);
+    
+    float lk = 0.0;
+    for (int k=0; k<seqlen; k++) {
+        float prob = 0.0;
+        for (int x=0; x<4; x++) {
+            prob += bgfreq[x] * 
+                    expf(lktable[tree->root->name][matind(4, k, x)]);
+        }
+        lk += logf(prob);
+    }
+    return lk;
+}
+
+
+
+//=============================================================================
+// find MLE branch lengths
+
 // NOTE: assumes binary Tree
 template <class Model>
 void findMLBranchLengths(Tree *tree, int nseqs, char **seqs, 
@@ -476,6 +564,9 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
                          int maxiter=10)
 {
     int seqlen = strlen(seqs[0]);
+    float lastLogl = 0.0, logl = 0.0;
+    float converge = log(2);
+    
     
     // allocate conditional likelihood dynamic programming table
     ExtendArray<float*> lktable(tree->nnodes);
@@ -485,69 +576,105 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
             lktable[i][j] = -INFINITY;
     }
     
+    // allocate auxiliary likelihood table
+    ExtendArray<float> probs3(seqlen*4*4);
+    
     // initialize the condition likelihood table
     initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
     
     
-    // determine rerooting order 
-    ExtendArray<Node*> rootingOrder(0, tree->nnodes);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-    //rootingOrder.append(tree->nodes[7]);
-    
+    Node *origroot = tree->root->children[0];
+    int convergenum = 10;
+    int samples = 0;
     
     // iterate over branches improving each likelihood
     for (int i=0; i<maxiter; i++) {
         printf("iter %d\n", i);
-    
-        // iterate through rooting order
-        for (int j=0; j<rootingOrder.size(); j++) {
-            //printf("\nrerooting %d\n", rootingOrder[j]->name);
         
-            Node *oldnode1 = tree->root->children[0];
-            Node *oldnode2 = tree->root->children[1];
-            
-            // reroot tree
-            if (rootingOrder[j] == tree->root ||
-                rootingOrder[j] == oldnode1 ||
-                rootingOrder[j] == oldnode2)
+        Node *newroot = tree->nodes[int(frand() * tree->nnodes)];
+        
+        // remembering old children of root
+        Node *oldnode1 = tree->root->children[0];
+        Node *oldnode2 = tree->root->children[1];
+
+        // reroot tree
+        if (newroot == tree->root ||
+            newroot == oldnode1 ||
+            newroot == oldnode2)
+            continue;
+        tree->reroot(newroot);
+
+
+        // rebuild invaild likelihood values
+        // determine starting node to rebuild
+        Node *ptr;
+        if (oldnode1->parent == oldnode2)
+            ptr = oldnode1;
+        else if (oldnode2->parent == oldnode1)
+            ptr = oldnode2;
+        else
+            assert(0);
+
+        // walk up to root of tree, rebuilding conditional likelihoods
+        for (; ptr->parent; ptr = ptr->parent) {
+            if (ptr->isLeaf())
                 continue;
-            tree->reroot(rootingOrder[j]);
-            //printTree(tree);
-            
-            // rebuild invaild likelihood values
-            Node *ptr;
-            if (oldnode1->parent == oldnode2)
-                ptr = oldnode1;
-            else if (oldnode2->parent == oldnode1)
-                ptr = oldnode2;
-            else
-                assert(0);
-            
-            
-            for (; ptr->parent; ptr = ptr->parent) {
-                if (ptr->isLeaf())
-                    continue;
-                calcLkTable(lktable, seqlen, model, 
-                            ptr->children[0]->name, 
-                            ptr->children[1]->name, 
-                            ptr->name,
-                            ptr->children[0]->dist, 
-                            ptr->children[1]->dist);
-            }
-            
-            // find new MLE branch length for root branch
-            Node *node1 = tree->root->children[0];
-            Node *node2 = tree->root->children[1];
-            float initdist = node1->dist + node2->dist;
-            float mle = mleDistance(lktable[node1->name], 
-                                    lktable[node2->name], seqlen, 
-                                    bgfreq, model, initdist, initdist*1.1);
-            node1->dist = mle / 2.0;
-            node2->dist = mle / 2.0;
+            calcLkTable(lktable, seqlen, model, 
+                        ptr->children[0]->name, 
+                        ptr->children[1]->name, 
+                        ptr->name,
+                        ptr->children[0]->dist, 
+                        ptr->children[1]->dist);
         }
+
+        // get total probability before branch length change
+        float loglBefore = getTotalLikelihood(lktable, tree, 
+                                        seqlen, model, bgfreq);
+        logl = -INFINITY;
+        Node *node1 = tree->root->children[0];
+        Node *node2 = tree->root->children[1];
+
+       
+
+        printf("samples: %d\n", samples);
+
+        // find new MLE branch length for root branch
+        float initdist = node1->dist + node2->dist;
+        float mle = mleDistance(lktable[node1->name], 
+                                lktable[node2->name], seqlen, 
+                                bgfreq, model, initdist, initdist*1.1,
+                                .001, probs3, samples);
+        node1->dist = mle / 2.0;
+        node2->dist = mle / 2.0;
+
+        // get total probability after bracnh change
+        logl = getTotalLikelihood(lktable, tree, 
+                                  seqlen, model, bgfreq);
+
+        if (logl < loglBefore) {
+            // revert
+            node1->dist = initdist / 2.0;
+            node2->dist = initdist / 2.0;
+            logl = loglBefore;
+        }
+
+        printf("lk:%d %f\n", i, logl);
+
+        
+        // determine whether logl has converged
+        if (i > 0 && logl - lastLogl < converge) {
+            printf("diff = %f < %f\n", fabs(logl - lastLogl), converge);
+            convergenum--;
+            if (convergenum < 0)
+                break;
+        } else {
+            printf("diff = %f > %f\n", fabs(logl - lastLogl), converge);
+        }
+        lastLogl = logl;
     }
-    tree->reroot(rootingOrder[0]);
+    
+    // restore original rooting
+    tree->reroot(origroot);
     
     
     // cleanup
@@ -565,7 +692,8 @@ void findMLBranchLengthsHky(Tree *tree, int nseqs, char **seqs,
 
 
 void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs, 
-                          float *dists, float *bgfreq, float ratio, int maxiter)
+                          float *dists, float *bgfreq, float ratio, int maxiter,
+                          bool parsinit)
 {
     int seqlen = strlen(seqs[0]);
     
@@ -575,6 +703,9 @@ void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
     // create tree objects
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
+    
+    if (parsinit)
+        parsimony(&tree, nseqs, seqs);
     
     findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
     tree.getDists(dists);

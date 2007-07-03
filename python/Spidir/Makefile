@@ -15,10 +15,24 @@ PYTHON_MODULE_OBJS = \
 CC = g++
 
 CFLAGS = \
-    -O3 \
     -Wall \
     -I/usr/include/python2.4 \
     -I/util/include/python2.4
+
+# optional CFLAGS
+
+# profiling
+ifdef PROFILE
+	CFLAGS := $(CFLAGS) -pg
+endif
+
+# debugging
+ifdef DEBUG
+	CFLAGS := $(CFLAGS) -g
+else
+	CFLAGS := $(CFLAGS) -O3
+endif
+
 
 all: $(PYTHON_MODULE) spidir test_spidir
 
@@ -46,4 +60,5 @@ install: spidir
 	cp spidir ../../bin/
 
 clean:
-	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) test_spidir
+	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) spidir.o spidir \
+	        test_spidir.o test_spidir

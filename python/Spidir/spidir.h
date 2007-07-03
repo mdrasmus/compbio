@@ -28,7 +28,8 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
                bool buildAncestral=false, char **ancetralSeqs=NULL);
 
 void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs, 
-                       float *dists, float *bgfreq, float ratio, int maxiter);
+                       float *dists, float *bgfreq, float ratio, int maxiter,
+                       bool parsinit=false);
 
 } // extern C
 

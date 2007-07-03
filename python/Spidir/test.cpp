@@ -185,7 +185,7 @@ int test_mledist(int argc, char **argv)
     
     float bgfreq[4] = {.25, .25, .25, .25};
     float ratio = .5;
-    int maxiter = 4;
+    int maxiter = 20;
     
     findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
     tree.writeNewick("after.tree");

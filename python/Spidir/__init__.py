@@ -235,12 +235,16 @@ def setTreeDistances(conf, tree, distmat, genes):
         parsimony_C(conf["aln"], tree)
         tree.data["error"] = sum(node.dist 
                                  for node in tree.nodes.itervalues())
+        if isDebug(DEBUG_MED):
+            util.toc()
         return
     
     if "mlhkydist" in conf:
-        mlhkydist_C(conf["aln"], tree, [.25]*4, .5, 4)
+        mlhkydist_C(conf["aln"], tree, [.25]*4, .5, len(tree.nodes))
         tree.data["error"] = 0.0 #sum(node.dist 
                                #  for node in tree.nodes.itervalues())
+        if isDebug(DEBUG_MED):
+            util.toc()
         return
     
     # perform LSE

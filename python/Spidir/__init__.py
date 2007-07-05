@@ -35,7 +35,7 @@ except:
 # SPIDIR libs
 from Spidir import Search
 from Spidir.Debug import *
-from Spidir import pyspidir
+import pyspidir
 
 
 # events

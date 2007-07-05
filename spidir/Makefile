@@ -36,6 +36,7 @@ endif
 
 all: $(PYTHON_MODULE) spidir test_spidir
 
+
 # stand along program
 spidir: $(PROG_OBJS) spidir.o
 	g++ $(PROG_OBJS) $(CFLAGS) spidir.o -o spidir
@@ -56,8 +57,10 @@ $(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 
-install: spidir
-	cp spidir ../../bin/
+install: spidir test_spidir $(PYTHON_MODULE)
+	cp spidir test_spidir ../bin
+	cp $(PYTHON_MODULE) ../python
+
 
 clean:
 	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) spidir.o spidir \

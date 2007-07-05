@@ -224,6 +224,22 @@ int test_gene2species(int argc, char **argv)
 }
 
 
+int test_reroot(int argc, char **argv)
+{
+    Tree tree;
+    
+    tree.readNewick(argv[1]);
+    
+    char filename[100];
+    
+    for (int i=0; i<tree.nnodes; i++) {
+        tree.reroot(tree.nodes[i]);
+        snprintf(filename, 100, "%d.reroot.tree", i);
+        tree.writeNewick(filename);
+    }
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -232,7 +248,8 @@ int main(int argc, char **argv)
         printf("choose a test:\n"
                "  reconstruct\n"
                "  gene2species\n"
-               "  mledist\n");
+               "  mledist\n"
+               "  reroot\n");
         return 1;
     }
 
@@ -246,6 +263,8 @@ int main(int argc, char **argv)
         
     } else if (testname == "mledist") {
         test_mledist(argc-1, &argv[1]);
+    } else if (testname == "reroot") {
+        test_reroot(argc-1, &argv[1]);
     }
     
     return 0;

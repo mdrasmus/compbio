@@ -583,7 +583,8 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
     
     
-    Node *origroot = tree->root->children[0];
+    Node *origroot1 = tree->root->children[0];
+    Node *origroot2 = tree->root->children[1];
     int convergenum = 10;
     int samples = 0;
     
@@ -659,7 +660,7 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         }
 
         printf("lk:%d %f\n", i, logl);
-
+        
         
         // determine whether logl has converged
         if (i > 0 && logl - lastLogl < converge) {
@@ -674,7 +675,14 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     }
     
     // restore original rooting
-    tree->reroot(origroot);
+    if (origroot1->parent != tree->root) {
+        if (origroot1->parent == origroot2)
+            tree->reroot(origroot1);
+        else if  (origroot2->parent == origroot1)
+            tree->reroot(origroot2);
+        else
+            assert(0);
+    }
     
     
     // cleanup
@@ -707,7 +715,9 @@ void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
     if (parsinit)
         parsimony(&tree, nseqs, seqs);
     
-    findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
+    findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);    
+    
+    
     tree.getDists(dists);
 }
 

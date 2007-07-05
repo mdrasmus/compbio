@@ -232,33 +232,30 @@ def setTreeDistances(conf, tree, distmat, genes):
         util.tic("fit branch lengths")
     
     if "parsimony" in conf:
+        # estimate branch lengths with parsimony
         parsimony_C(conf["aln"], tree)
         tree.data["error"] = sum(node.dist 
                                  for node in tree.nodes.itervalues())
-        if isDebug(DEBUG_MED):
-            util.toc()
-        return
     
-    if "mlhkydist" in conf:
-        mlhkydist_C(conf["aln"], tree, [.25]*4, .5, len(tree.nodes))
+    elif "mlhkydist" in conf:
+        # estimate branch lengths with ML
+        mlhkydist_C(conf["aln"], tree, conf["bgfreq"], conf["tsvratio"], 
+                    len(tree.nodes))
         tree.data["error"] = 0.0 #sum(node.dist 
-                               #  for node in tree.nodes.itervalues())
-        if isDebug(DEBUG_MED):
-            util.toc()
-        return
-    
-    # perform LSE
-    lse = phylo.leastSquareError(tree, distmat, genes)
-    
-    # catch unusual case that may occur in greedy search
-    if sum(x.dist for x in tree.nodes.values()) == 0:
-        for node in tree.nodes.values():
-            node.dist = .01
-    
-    tree.data["error"] = math.sqrt(scipy.dot(lse.resids, lse.resids)) / \
-                                   sum(x.dist for x in tree.nodes.values())
-    
-    setBranchError(conf, tree, lse.resids, lse.paths, lse.edges, lse.topmat)
+                                 #  for node in tree.nodes.itervalues())    
+    else:
+        # perform LSE
+        lse = phylo.leastSquareError(tree, distmat, genes)
+
+        # catch unusual case that may occur in greedy search
+        if sum(x.dist for x in tree.nodes.values()) == 0:
+            for node in tree.nodes.values():
+                node.dist = .01
+
+        tree.data["error"] = math.sqrt(scipy.dot(lse.resids, lse.resids)) / \
+                                       sum(x.dist for x in tree.nodes.values())
+
+        setBranchError(conf, tree, lse.resids, lse.paths, lse.edges, lse.topmat)
         
     if isDebug(DEBUG_MED):
         util.toc()
@@ -1527,7 +1524,11 @@ def parsimony_C(aln, tree):
     
     
     #treelib.drawTreeLens(tree)
-    
+
+
+def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
+    return mlhkydist_C(aln, tree, bgfreq, ratio, maxiter)
+
 
 def mlhkydist_C(aln, tree, bgfreq, ratio, maxiter):
     ptree, nodes, nodelookup = makePtree(tree)

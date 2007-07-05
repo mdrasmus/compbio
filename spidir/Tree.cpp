@@ -145,6 +145,8 @@ void Tree::reroot(Node *newroot, bool onBranch)
         stop1->dist = nextDist;
         stop2->parent = stop1;
         stop2->dist = rootdist;
+    } else {
+        assert(0);
     }
     
     

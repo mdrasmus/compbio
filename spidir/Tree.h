@@ -250,6 +250,9 @@ public:
 };
 
 
+void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+
 //=============================================================================
 // conversion functions
 

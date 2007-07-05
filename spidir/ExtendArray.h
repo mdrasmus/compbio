@@ -134,13 +134,13 @@ public:
     
     //=========================================================================
     // data access
-    void append(const ValueType &val)
+    inline void append(const ValueType &val)
     {
         assert(ensureSize(len + 1));
         data[len++] = val;
     }
     
-    void extend(ValueType *vals, int nvals)
+    inline void extend(ValueType *vals, int nvals)
     {
         assert(ensureSize(len + nvals));
         
@@ -148,10 +148,15 @@ public:
             data[len++] = vals[i];
     }
     
-    ValueType pop()
+    inline ValueType pop()
     {
         assert(len > 0);
         return data[--len];
+    }
+    
+    inline void clear()
+    {
+        len = 0;
     }
     
     inline ValueType &operator[](const int i)
@@ -165,7 +170,7 @@ public:
     }
     
     // easy access to underling data
-    operator ValuePtrType()
+    inline operator ValuePtrType()
     {
         return data;
     }
@@ -194,26 +199,83 @@ template <class ValueType>
 class StackPointer
 {
 public:
-    StackPointer(ValueType *ptr=NULL, bool isArray=false) :
-        m_ptr(ptr),
-        m_isArray(isArray)
+    typedef ValueType* ValuePtrType;
+    typedef ValueType** ValuePtrPtrType;
+
+    StackPointer(ValueType *ptr=NULL) :
+        ptr(ptr)
     {
     }
     
     ~StackPointer()
     {
-        if (m_ptr) {
-            if (m_isArray)
-                delete [] m_ptr;
-            else
-                delete m_ptr;
-        }
+        if (ptr)
+            delete ptr;
     }
     
+    ValueType *detach()
+    {
+        ValueType *ret = ptr;
+        ptr = NULL;
+        return ret;
+    }
+    
+    ValuePtrType &get()
+    { return ptr; }
+    
+    operator ValuePtrType()
+    { return ptr; }
+
+    ValuePtrPtrType operator &()
+    { return &ptr; }
+        
+    
 protected:
-    ValueType *m_ptr;
-    bool m_isArray;
+    ValueType *ptr;
 };
+
+
+// TODO: remove
+template <class ValueType>
+class StackArray
+{
+public:
+    typedef ValueType* ValuePtrType;
+    typedef ValueType** ValuePtrPtrType;
+
+    StackArray(ValueType *ptr=NULL) :
+        ptr(ptr)
+    {
+    }
+    
+    ~StackArray()
+    {
+        if (ptr)
+            delete [] ptr;
+    }
+    
+    ValueType *detach()
+    {
+        ValueType *ret = ptr;
+        ptr = NULL;
+        return ret;
+    }    
+    
+    ValuePtrType &get()
+    { return ptr; }
+    
+    operator ValuePtrType()
+    { return ptr; }
+
+    ValuePtrPtrType operator &()
+    { return &ptr; }
+        
+    
+protected:
+    ValueType *ptr;
+};
+
+
 
 
 

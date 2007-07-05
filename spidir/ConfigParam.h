@@ -100,16 +100,34 @@ public:
         }
     }
     
-    string shortarg;
-    string longarg;
-    string argstr;
-    string help;
     T *value;
     T defaultValue;
     bool hasDefault;
 };
 
 
+class ConfigSwitch : public ConfigParamBase
+{
+public:
+    ConfigSwitch(string shortarg, string longarg, 
+                bool *value, string help) :
+        ConfigParamBase(shortarg, longarg, "", help),
+        value(value)
+    {
+        *value = false;
+    }
+    
+    virtual int parse(int argc, const char **argv)
+    {
+        *value = true;
+        return 0;
+    }
+    
+    bool *value;
+};
+
+
+template <>
 int ConfigParam<int>::parse(int argc, const char **argv)
 {
     if (argc > 0) {
@@ -125,6 +143,7 @@ int ConfigParam<int>::parse(int argc, const char **argv)
 }
 
 
+template <>
 int ConfigParam<float>::parse(int argc, const char **argv)
 {
     if (argc > 0) {

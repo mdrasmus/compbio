@@ -119,7 +119,7 @@ fasta2alignProgs = ["clustalw", "muscle"]
 
 align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              "phyml_dna", "phyml_pep", "mrbayes_dna", "mrbayes_pep",
-             "spidir_pars"]
+             "spidir_pars", "spidir_ml"]
              
 dist2treeProgs = ["bionj", "lse", "wls", "nj"]
 
@@ -388,6 +388,28 @@ def align2tree(conf, prog, alignfile, basename):
         assert usertree != None
         Spidir.parsimony(aln, usertree)
         tree = usertree
+        
+    elif prog in ["spidir_ml"]:
+        import Spidir
+        assert usertree != None
+        
+        if conf["args"] != None:
+            # format is -a "spidir_ml:a b c d r"
+            args = map(float, cong["args"].split())
+            bgfreq = args[:4]
+            ratio = args[4]
+        else:
+            # use JC evolution
+            bgfreq = [.25, .25, .25, .25]
+            ratio = .5
+            
+        #bgfreq = [.258, .267, .266, .209]
+        #ratio = 1.59
+        maxiter = len(usertree.nodes)
+        
+        Spidir.mlhkydist(aln, usertree, bgfreq, ratio, maxiter)
+        tree = usertree
+        
     else:
         raise "unknown phylogeny program '%s'" % prog
     

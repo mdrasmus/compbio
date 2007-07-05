@@ -1045,7 +1045,7 @@ def getGaplessDistMatrix(aln):
 
 
 
-def jukecCantorCorrection(dist):
+def jukesCantorCorrection(dist):
     """Applies the Jukes Cantor correction to distances
        
        Only valid for distances less than .75 sub/site

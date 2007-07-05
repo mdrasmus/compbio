@@ -180,10 +180,50 @@ def drawScale(x, y, length, xscale, fontSize, canvas=None):
     
 
 
+def drawDistRuler(names, dists, scale=500,
+                  padding=10, textsize=12, notchsize=2,
+                  labelpadding=5, distsize=9,
+                  filename=sys.stdout):
+    """Produce a ruler of pairwise distances"""
 
+    nameswidth = textsize * max(map(len, names))
+    
+    out = svg.Svg(util.openStream(filename, "w"))
+    out.beginSvg(scale * max(dists) + 2*padding,
+                 2*padding+nameswidth + 5*distsize)
 
     
+    
+    out.beginTransform(("translate", padding, nameswidth+padding))
 
+    # draw ruler
+    out.line(0, 0, scale*max(dists), 0)
+
+    for name, dist in zip(names, dists):
+        x = scale*dist
+        out.text(name, x + textsize/2.0, - labelpadding, textsize, angle=-90)
+        out.line(x, notchsize, x, - notchsize)
+        out.text("%.3f" % dist, x + textsize/2.0, labelpadding + distsize*3.5,
+                 distsize, angle=-90)
+    
+    out.endTransform()
+    out.endSvg()
+
+
+def getPairwiseDists(tree, mainsp):
+    """get pairwise distances between the main taxon and the rest of the taxa"""
+    lst = []
+
+    for sp in tree.leafNames():
+        lst.append((sp, findDist(tree, mainsp, sp)))
+
+    lst.sort(key=lambda x: x[1])
+    names, dists = zip(* lst)
+    return names, dists
+
+    
+#=============================================================================
+# additional wrapper functions
 
 def drawTreeLens(tree, *args, **kargs):
     labels = {}

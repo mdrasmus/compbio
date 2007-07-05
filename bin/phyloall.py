@@ -395,7 +395,7 @@ def align2tree(conf, prog, alignfile, basename):
         
         if conf["args"] != None:
             # format is -a "spidir_ml:a b c d r"
-            args = map(float, cong["args"].split())
+            args = map(float, conf["args"].split())
             bgfreq = args[:4]
             ratio = args[4]
         else:

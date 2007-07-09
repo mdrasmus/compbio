@@ -645,11 +645,9 @@ float treelk(Tree *tree,
     tree->getDists(dists);
     
     // estimate generate
-    float generate2 = estimateGenerate(tree, stree, 
+    if (generate < 0)
+        generate = estimateGenerate(tree, stree, 
                        recon, events, params);
-    
-    //printf("generate: %f %f\n", generate, generate2);
-    generate = generate2;
     
     bool *freebranches = new bool [tree->nnodes];
     int unfold;

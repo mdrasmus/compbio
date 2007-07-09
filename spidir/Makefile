@@ -1,5 +1,41 @@
-PYTHON_MODULE = pyspidir.so
-PROG_OBJS = \
+#
+# SPIDIR (SPecies Informed DIstance-based Reconstruction) 
+# Matt Rasmussen
+# copyright 2007
+#
+# Makefile
+#
+
+
+CXX = g++
+MEX = mex
+
+CFLAGS = \
+    -Wall \
+    -I/usr/include/python2.4 \
+    -I/util/include/python2.4
+
+
+# matlab options
+MATLAB_DIR = /afs/csail/i386_linux24/matlab/6.5r13sp1
+MATLAB_CFLAGS = \
+    -g \
+    -I$(MATLAB_DIR)/extern/include/cpp \
+
+
+#=============================================================================
+# program files
+SPIDIR_PROG = spidir
+
+SPIDIR_SRC = \
+    branchlen.cpp \
+    common.cpp \
+    likelihood.cpp \
+    parsimony.cpp \
+    search.cpp \
+    Tree.cpp \
+
+SPIDIR_OBJS = \
     branchlen.o \
     common.o \
     likelihood.o \
@@ -7,18 +43,22 @@ PROG_OBJS = \
     search.o \
     Tree.o \
 
+PROG_SRC = spidir.cpp 
+PROG_OBJS = spidir.o $(SPIDIR_OBJS)
+
+# python files
+PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
-    $(PROG_OBJS)
+    $(SPIDIR_OBJS)
+
+# matlab files
+MATLAB_FUNC = matlab_spidir
+MATLAB_SRC = $(SPIDIR_SRC) matlab_spidir.cpp
 
 
-CC = g++
 
-CFLAGS = \
-    -Wall \
-    -I/usr/include/python2.4 \
-    -I/util/include/python2.4
-
+#=============================================================================
 # optional CFLAGS
 
 # profiling
@@ -34,34 +74,41 @@ else
 endif
 
 
-all: $(PYTHON_MODULE) spidir test_spidir
+#=============================================================================
+# targets
 
+all: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 
 # stand along program
-spidir: $(PROG_OBJS) spidir.o
-	g++ $(PROG_OBJS) $(CFLAGS) spidir.o -o spidir
+$(SPIDIR_PROG): $(PROG_OBJS)
+	$(CXX) $(CFLAGS) $(PROG_OBJS) -o $(SPIDIR_PROG)
 
 # testing program
-test_spidir: $(PROG_OBJS) test.o
-	g++ $(PROG_OBJS) $(CFLAGS) test.o -o test_spidir
+test_spidir: $(SPIDIR_OBJS) test.o
+	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o -o test_spidir
 
 # python module
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
-	g++ -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
+	$(CXX) -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
+
+# matlab function
+$(MATLAB_FUNC): $(MATLAB_SRC)
+	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_SRC) -o $(MATLAB_FUNC)
 
 
 
-
-# basic compile rule
+#=============================================================================
+# basic rules
 $(PYTHON_MODULE_OBJS): %.o: %.cpp
-	$(CC) -c $(CFLAGS) -o $@ $<
+	$(CXX) -c $(CFLAGS) -o $@ $<
 
 
-install: spidir test_spidir $(PYTHON_MODULE)
-	cp spidir test_spidir ../bin
+install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
+	cp $(SPIDIR_PROG) test_spidir ../bin
 	cp $(PYTHON_MODULE) ../python
 
 
 clean:
-	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) spidir.o spidir \
+	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
+               $(PROG_OBJS) $(SPIDIR_PROG) \
 	        test_spidir.o test_spidir

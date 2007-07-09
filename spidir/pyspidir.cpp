@@ -230,19 +230,6 @@ pyspidir_treelk(PyObject *self, PyObject *args)
         reconcile(&tree, &stree, gene2species, recon);
         labelEvents(&tree, recon, events);
 
-
-        /*
-        printf("events\n");
-        printIntArray(events, nnodes);
-        printIntArray(events2, nnodes);
-        printf("\n");
-        */
-
-        //printTree(&tree);
-        ///printTree(&stree);
-        //tree2ptree(tree, ptree);
-
-
         // calculate likelihood
         logl = treelk(nnodes, ptree, dists,
                       nsnodes, pstree, 

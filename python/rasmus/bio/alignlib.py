@@ -272,6 +272,7 @@ def markCodonPos(seq, pos=0):
     012
 
     gaps are given codon pos -1
+    Ns are counted as bases
     """
     
     codons = []
@@ -352,7 +353,9 @@ def findFourFold(aln):
         hist = util.histDict(col)
         if "-" in hist:
             del hist["-"]
-        pepcons.append(len(hist) == 1 and "X" not in hist)
+        if "X" in hist:
+            del hist["X"]
+        pepcons.append(len(hist) == 1)
         
 
     ind = []

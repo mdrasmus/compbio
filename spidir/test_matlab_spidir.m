@@ -12,7 +12,12 @@
 %   ptree = [3, 3, 4, 4, -1]
 % such that ptree[node's id] = node's parent's id
 %
-% Also for n leaves, leaves must be numbered 0 to n-1 and root must be 2n-1
+% In addition, the following must be true
+% 1. tree must be binary
+% 2. leaves must be numbered 0 to n-1
+% 3. internal nodes are numbered n to 2n-1
+% 4. root must be numbered 2n-1
+% 5. the parent of root is -1
 %
 
 function test_matlab_spidir()
@@ -42,7 +47,8 @@ function test_matlab_spidir()
     % gene rate (generate)
     % specify a negative number to request SPIDIR to estimate it for you
     generate = 1.0
-
+    
+    % make the call
     logl = matlab_spidir(ptree, dists, pstree, gene2species, ...
                          mu, sigma, alpha, beta, generate)
     

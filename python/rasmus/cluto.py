@@ -232,7 +232,7 @@ if __name__ == "__main__":
     from summon import matrix as summatrix
     
     mat = []
-    nclusters = 3
+    nclusters = 6
     nrows = 100
     ncols = 30
     clustersize = ncols // nclusters
@@ -246,7 +246,7 @@ if __name__ == "__main__":
             if j // clustersize == k:
                 cluster1.append(2)
             else:
-                cluster1.append(0)
+                cluster1.append(-2)
 
         mat.append([])
 
@@ -256,22 +256,41 @@ if __name__ == "__main__":
 
     # randomize matrix
     random.shuffle(mat)
-    
+    cperm = range(ncols)
+    random.shuffle(cperm)
+    mat = submatrix(mat, cols=cperm)
+
+    rlabels = ["row %d" % i for i in range(1, nrows+1)]
+    clabels = ["column %d" % i for i in range(1, ncols+1)]
+
+
     # display shuffled matrix
     #heatmap(mat)
-    viewer1 = summatrix.DenseMatrixViewer(mat)
+    viewer1 = summatrix.DenseMatrixViewer(mat, bgcolor=(1,1,1),
+                                          rlabels=rlabels,
+                                          clabels=clabels,
+                                          showLabels=True,
+                                          showLabelWindows=True)
     viewer1.show()
 
     #########################
     # cluster by vcluster
-    partids = cluster(mat, 2)
-    perm = reorderPartids(partids, mat)
+    rpartids = cluster(mat, 6)
+    rperm = reorderPartids(rpartids, mat)
 
-    # apply permutation to matrix
-    mat2 = mget(mat, perm)
+    tmat = transpose(mat)
+    cpartids = cluster(tmat, 6)
+    cperm = reorderPartids(cpartids, tmat)
+
 
     # display clustered matrix
-    viewer2 = summatrix.DenseMatrixViewer(mat2)
+    viewer2 = summatrix.DenseMatrixViewer(mat, rperm=rperm, rpart=rpartids,
+                                          cperm=cperm, cpart=cpartids,
+                                          bgcolor=(1,1,1),
+                                          rlabels=rlabels,
+                                          clabels=clabels,
+                                          showLabels=True,
+                                          showLabelWindows=True)
     viewer2.show()
 
 if 0:    

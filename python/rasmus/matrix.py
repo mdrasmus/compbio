@@ -188,7 +188,7 @@ def transpose(mat):
     Works better than zip() in that rows are lists not tuples
     """
     
-    assert equal(* map(len, mat)), "rows are not equal length"
+    assert util.equal(* map(len, mat)), "rows are not equal length"
     
     mat2 = []
     

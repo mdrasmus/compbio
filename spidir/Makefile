@@ -55,7 +55,7 @@ PYTHON_MODULE_OBJS = \
 # matlab files
 MATLAB_FUNC = matlab_spidir
 MATLAB_SRC = $(SPIDIR_SRC) matlab_spidir.cpp
-
+MATLAB_OBJ = matlab_spidir.mexglx
 
 
 #=============================================================================
@@ -93,7 +93,7 @@ $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 
 # matlab function
 $(MATLAB_FUNC): $(MATLAB_SRC)
-	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_SRC) -o $(MATLAB_FUNC)
+	$(MEX) -v $(MATLAB_CFLAGS) $(MATLAB_SRC) -o $(MATLAB_FUNC)
 
 
 
@@ -109,6 +109,7 @@ install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 
 
 clean:
-	rm -rf $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
-               $(PROG_OBJS) $(SPIDIR_PROG) \
+	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) \
+                $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
+                $(MATLAB_OBJ) \
 	        test_spidir.o test_spidir

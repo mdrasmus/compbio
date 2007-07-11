@@ -43,8 +43,17 @@ for aln in alns:
         aln = alignlib.subalign(aln, ind)
         
     
-    for gene, seq in aln.iteritems():
-        fullaln[gene2species(gene)] += seq
+    #for gene, seq in aln.iteritems():
+    #    fullaln[gene2species(gene)] += seq
+    
+    for gene in fullaln:
+        if gene not in aln:
+            seq = "N" * aln.alignlen()
+        else:
+            seq = aln[gene2species(gene)]
+        
+        fullaln[gene] += seq
+        
 
 # write full alignment
 fullaln.write()

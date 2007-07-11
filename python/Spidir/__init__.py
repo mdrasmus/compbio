@@ -240,9 +240,7 @@ def setTreeDistances(conf, tree, distmat, genes):
     elif "mlhkydist" in conf:
         # estimate branch lengths with ML
         mlhkydist_C(conf["aln"], tree, conf["bgfreq"], conf["tsvratio"], 
-                    len(tree.nodes))
-        tree.data["error"] = 0.0 #sum(node.dist 
-                                 #  for node in tree.nodes.itervalues())    
+                    len(tree.nodes))  
     else:
         # perform LSE
         lse = phylo.leastSquareError(tree, distmat, genes)
@@ -1535,10 +1533,12 @@ def mlhkydist_C(aln, tree, bgfreq, ratio, maxiter):
     leaves = [x.name for x in nodes if isinstance(x.name, str)]
     seqs = util.mget(aln, leaves)
     
-    dists = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
+    dists, logl = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
     
     for i in xrange(len(dists)):
         nodes[i].dist = dists[i]
+    
+    tree.data["error"] = logl
     
 
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):

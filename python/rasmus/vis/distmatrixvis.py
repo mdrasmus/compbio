@@ -65,11 +65,11 @@ class DistMatrixViewer (matrix.MatrixViewer):
         self.bar.addItem(hud.MenuItem("align gene (a)", self.showAlign))
         self.bar.addItem(hud.MenuItem("clear genes (d)", self.clearSelection))
         self.bar.addItem(hud.MenuItem("show genes (s)", self.showSelection))
-
+        
         # register key bindings
-        self.win.reset_binding(input_key("a"), self.showAlign)
-        self.win.reset_binding(input_key("d"), self.clearSelection)        
-        self.win.reset_binding(input_key("s"), self.showSelection)
+        self.win.set_binding(input_key("a"), self.showAlign)
+        self.win.set_binding(input_key("d"), self.clearSelection)        
+        self.win.set_binding(input_key("s"), self.showSelection)
     
     
     def onClick(self, row, col, i, j, val):

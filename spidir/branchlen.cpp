@@ -20,7 +20,7 @@
 /*=============================================================================
     From: Felsenstein. Inferring Phylogenies. p 202.
 
-    NOTE: HKY is Tamura-Nei where 
+    NOTE: HKY is a special case of Tamura-Nei where 
         alpha_r / alpha_y = rho = pi_r / pi_y 
 
     NOTE: parameters are chosen such that 
@@ -559,7 +559,7 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
 
 // NOTE: assumes binary Tree
 template <class Model>
-void findMLBranchLengths(Tree *tree, int nseqs, char **seqs, 
+float findMLBranchLengths(Tree *tree, int nseqs, char **seqs, 
                          float *bgfreq, Model &model,
                          int maxiter=10)
 {
@@ -688,18 +688,20 @@ void findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     // cleanup
     for (int i=0; i<tree->nnodes; i++)
         delete [] lktable[i];
+    
+    return logl;
 }
 
 
-void findMLBranchLengthsHky(Tree *tree, int nseqs, char **seqs, 
+float findMLBranchLengthsHky(Tree *tree, int nseqs, char **seqs, 
                             float *bgfreq, float ratio, int maxiter)
 {
     HkyModel hky(bgfreq, ratio);
-    findMLBranchLengths(tree, nseqs, seqs, bgfreq, hky, maxiter);
+    return findMLBranchLengths(tree, nseqs, seqs, bgfreq, hky, maxiter);
 }
 
 
-void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs, 
+float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs, 
                           float *dists, float *bgfreq, float ratio, int maxiter,
                           bool parsinit)
 {
@@ -715,10 +717,11 @@ void findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
     if (parsinit)
         parsimony(&tree, nseqs, seqs);
     
-    findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);    
-    
-    
+    float logl = findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, 
+                                        ratio, maxiter);
     tree.getDists(dists);
+    
+    return logl;
 }
 
 

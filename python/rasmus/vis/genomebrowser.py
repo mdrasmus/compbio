@@ -533,17 +533,24 @@ class RegionTrack (Track):
         
 
 class AlignTrack (Track):
-    def __init__(self, aln, collapse=None, cols=None, colorBases=False, **options):
+    def __init__(self, aln, collapse=None, cols=None, colorBases=False, 
+                 seqtype=None,
+                 **options):
         Track.__init__(self, **options)
         self.size = [aln.alignlen(), len(aln)]
         self.multiscale = visual.Multiscale(marginx=.5, marginy=.5)
         self.collapse = collapse
         
+        if seqtype == None:
+            self.seqtype = guessAlign(aln)
+        else:
+            self.seqtype = seqtype
+        
         if colorBases == True:
-            self.colorBases = {"A": color(.7, .5, .5),
-                               "T": color(.7, .7, .5),
-                               "C": color(.5, .7, .5),
-                               "G": color(.5, .5, .7)}
+            if self.seqtype == "dna":
+                self.colorBases = dna_colors
+            elif self.seqtype == "pep":
+                self.colorBases = pep_colors
         else:
             self.colorBases = colorBases
         
@@ -565,11 +572,19 @@ class AlignTrack (Track):
         BASE    = 0
         GAP     = 1
         NOBASE  = 2
-        baseclasses = {'A': BASE, 'C': BASE, 'T': BASE, 'G': BASE,
-                       '-': GAP, 'N': NOBASE, '*': NOBASE, 'X': NOBASE}
         
-        for aa in 'ARNDCEQGHILKMFPSTWYVU':
-            baseclasses[aa] = BASE
+        if self.seqtype == "dna":
+            baseclasses = {'A': BASE, 'C': BASE, 'T': BASE, 'G': BASE,
+                           '-': GAP, 'N': NOBASE, '*': NOBASE, 'X': NOBASE}
+            
+        elif self.seqtype == "pep":
+            baseclasses = {'-': GAP, 'N': NOBASE, '*': NOBASE, 'X': NOBASE}
+            
+            for aa in 'ARNDCEQGHILKMFPSTWYVU':
+                baseclasses[aa] = BASE
+        
+        else:
+            raise Exception("unknown seqtype '%s'" % self.seqtype)
                        
         
         def getRegions(selectedClass):

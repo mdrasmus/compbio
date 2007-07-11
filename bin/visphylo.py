@@ -336,5 +336,6 @@ if len(alignfiles) > 0:
 
 # tie all windows by their y-coordinate
 if len(windows) > 1:
-    e = multiwindow.WindowEnsembl(windows, stacky=True, sameh=True)
-    multiwindow.tie_windows(windows, tiey=True, piny=True, coordsy=coords)    
+    e = multiwindow.WindowEnsemble(windows, stacky=True, sameh=True,
+                                   tiey=True, coordsy=coords)
+

@@ -230,19 +230,6 @@ pyspidir_treelk(PyObject *self, PyObject *args)
         reconcile(&tree, &stree, gene2species, recon);
         labelEvents(&tree, recon, events);
 
-
-        /*
-        printf("events\n");
-        printIntArray(events, nnodes);
-        printIntArray(events2, nnodes);
-        printf("\n");
-        */
-
-        //printTree(&tree);
-        ///printTree(&stree);
-        //tree2ptree(tree, ptree);
-
-
         // calculate likelihood
         logl = treelk(nnodes, ptree, dists,
                       nsnodes, pstree, 
@@ -336,6 +323,7 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
 {
     PyObject *ret = NULL;
     bool error = false;
+    float logl = 0.0;
     
     // check number of args
     if (PyTuple_GET_SIZE(args) < 2) {
@@ -397,12 +385,11 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
     {
         float *dists = new float [nnodes];
         for (int i=0; i<nnodes; i++) dists[i] = 0;
-        //parsimony(nnodes, ptree, nseqs, seqs, dists);
-        findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
+        logl = findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
                                dists, bgfreq, ratio, maxiter,
                                true);
         ret = makeFloatListPy(dists, nnodes);
-        delete [] dists;    
+        delete [] dists;
     }
     
     cleanup:
@@ -410,8 +397,8 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
         if (seqs) freeStringArray(seqs, nseqs);
         if (bgfreq) delete [] bgfreq;
 
-    
-    return ret;
+
+    return Py_BuildValue("Of", ret, logl);
 }
 
 

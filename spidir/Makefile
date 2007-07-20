@@ -45,6 +45,7 @@ SPIDIR_OBJS = \
 
 PROG_SRC = spidir.cpp 
 PROG_OBJS = spidir.o $(SPIDIR_OBJS)
+PROG_LIBS = 
 
 # python files
 PYTHON_MODULE = pyspidir.so
@@ -81,11 +82,11 @@ all: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 
 # stand along program
 $(SPIDIR_PROG): $(PROG_OBJS)
-	$(CXX) $(CFLAGS) $(PROG_OBJS) -o $(SPIDIR_PROG)
+	$(CXX) $(CFLAGS) $(PROG_OBJS) $(PROG_LIBS) -o $(SPIDIR_PROG)
 
 # testing program
 test_spidir: $(SPIDIR_OBJS) test.o
-	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o -o test_spidir
+	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o $(PROG_LIBS) -o test_spidir
 
 # python module
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)

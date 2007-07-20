@@ -24,23 +24,25 @@ function test_matlab_spidir()
     nnodes = 4
     nsnodes = 4
 
-    % gene parent tree (ptree)
+    % gene parent tree (ptree) length=2n-1
     ptree = [3, 3, 4, 4, -1]
     
-    % gene branch lengths (dists)
+    % gene branch lengths (dists) length=2n-1
     dists = [1, 1, .5, 2, 0]
     
-    % species parent tree (pstree)
+    % species parent tree (pstree)  length=2m-1
     pstree = [3, 3, 4, 4, -1]
     
-    % map gene leaves to species leaves (gene2species)
+    % map gene leaves to species leaves (gene2species) length=2n-1
+    % gene2species[gene node's id] = species node's id
     gene2species = [0, 1, 2, -1, -1]
     
     % mean and sdev of relative branch length distributions (mu, sigma)
+    % length=2m-1
     mu = [.9, .8, .3, 1.8, 0]
     sigma = [.2, .2, .2, .2, 0]
     
-    % gene rate distribution
+    % gene rate distribution (mean ~ 1.2)
     alpha = 9.50454
     beta  = 5.48942
     

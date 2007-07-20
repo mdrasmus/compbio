@@ -565,7 +565,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
 {
     int seqlen = strlen(seqs[0]);
     float lastLogl = 0.0, logl = 0.0;
-    float converge = log(2);
+    float converge = logf(2.0);
     
     
     // allocate conditional likelihood dynamic programming table

@@ -7,7 +7,9 @@
 #include "Matrix.h"
 #include "likelihood.h"
 #include "parsimony.h"
+#include "search.h"
 
+NniProposer nniProsposer;
 
 
 /*
@@ -113,11 +115,58 @@ void proposeRandomNni(Tree *tree, Node **node1, Node **node2, int *change)
 }
 
 
+NniProposer::NniProposer() :
+    node1(NULL),
+    node2(NULL),
+    node3(NULL),
+    node4(NULL)
+{}
+    
+    
+
+void NniProposer::propose(Tree *tree)
+{
+    // propose new tree
+    proposeRandomNni(tree, &node1, &node2, &change1);
+    proposeNni(tree, node1, node2, change1);
+
+    if (frand() < .5) {
+        proposeRandomNni(tree, &node3, &node4, &change2);        
+        proposeNni(tree, node3, node4, change2);
+    }
+
+    // TODO: need random reroot or recon root.
+    oldroot = tree->root->children[0];
+    //int choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
+    //tree->reroot(tree->nodes[choice]);
+    int choice1 = int(frand() * 2);
+    int choice2 = int(frand() * 2);
+    if (tree->root->children[choice1]->nchildren == 2)
+        tree->reroot(tree->root->children[choice1]->children[choice2]);
+    else
+        tree->reroot(tree->root->children[!choice1]->children[choice2]);
+
+    assert(tree->assertTree());
+}
+
+void NniProposer::revert(Tree *tree)
+{
+    // reject, undo topology change
+    tree->reroot(oldroot);
+    //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
+    //       node2->name, node2->nchildren);
+    if (node3)
+        proposeNni(tree, node3, node3->parent, change2);
+    proposeNni(tree, node1, node1->parent, change1);    
+}
+
+
 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 int nseqs, int seqlen, char **seqs,
-                int niter=500)
+                int niter, 
+                TopologyProposer *proposer)
 {
     Tree *toptree = NULL;
     float toplogl = -1e10, logl=-1e10;
@@ -167,13 +216,13 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     for (int i=0; i<niter; i++) {
         printf("iter %d\n", i);
         Node *node1, *node2, *node3=NULL, *node4=NULL;
-        int change1, change2;
+        int change1=0, change2=0;
     
         // propose new tree
         proposeRandomNni(tree, &node1, &node2, &change1);
         proposeNni(tree, node1, node2, change1);
         
-        if (frand() < .2) {
+        if (frand() < .5) {
             proposeRandomNni(tree, &node3, &node4, &change2);        
             proposeNni(tree, node3, node4, change2);
         }
@@ -192,6 +241,9 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         assert(tree->assertTree());
         
         parsimony(tree, nseqs, seqs);
+        
+        //findMLBranchLengthsHky(tree, nseqs, seqs, 
+        //                       bgfreq, ratio, tree->nnodes);
         
         // calc new likelihood
         reconcile(tree, stree, gene2species, recon);
@@ -221,7 +273,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
             }
         } else {
             printf("reject\n");
-            speed = (speed + 1) * 1.3;
+            //speed = (speed + 1) * 1.3;
             
             // reject, undo topology change
             tree->reroot(oldroot);

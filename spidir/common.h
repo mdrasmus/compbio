@@ -26,6 +26,9 @@ using namespace std;
 
 #define PI 3.1415926
 #define MAX_FLOAT 1e10
+#ifndef INFINITY
+#   define INFINITY 1e1000
+#endif
 
 // indexing a matrix stored as a single array
 #define matind(m, i, j) ((m)*(i) + (j))

@@ -534,7 +534,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         }
         
         // choose number of samples based on number of nodes to integrate over
-        nsamples = int(500*log(subnodes.size())) + 500;
+        nsamples = int(500*logf(subnodes.size())) + 500;
         if (nsamples > 2000) nsamples = 2000;
         //nsamples = int(100*log(nodesi)) + 50;
         //if (nsamples > 600) nsamples = 600;

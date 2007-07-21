@@ -254,6 +254,12 @@ void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 
 //=============================================================================
+// visualization
+
+void displayTree(Tree *tree, FILE *outfile=stdout, 
+                 float xscale=20.0, int yscale=2);
+
+//=============================================================================
 // conversion functions
 
 // creates a forward tree from a parent tree

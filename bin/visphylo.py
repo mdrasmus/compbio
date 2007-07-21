@@ -14,7 +14,7 @@ import summon
 
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip
-from rasmus.vis import distmatrixvis
+from rasmus.vis import distmatrixvis, alignvis
 from rasmus.vis.genomebrowser import *
 
 
@@ -179,7 +179,7 @@ if len(treefiles) > 0:
                               #xscale=conf["usedist"]
     vistree.show()
     vistree.win.set_size(340, 500)
-    vistree.win.set_position(0, 0)
+    #vistree.win.set_position(0, 0)
     
     leaves = tree.leafNames()
     
@@ -305,10 +305,9 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
     
     
     # create matrix vis
-    visdist = distmatrixvis.DistMatrixViewer(mats[0], seqs=seqs)
+    visdist = distmatrixvis.DistMatrixViewer(mats[0], seqs=seqs, bgcolor=(1,1,1))
     visdist.show()
     visdist.win.set_name(matnames[0])
-    visdist.win.set_bgcolor(1, 1, 1)    
     #visdist.win.set_size(300, 500)
     #visdist.win.set_position(0, 0)
     
@@ -322,15 +321,22 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
 
 # show alignment
 if len(alignfiles) > 0:
+    visalign = alignvis.AlignViewer(aln, size=[580, 500], colorBases=colors,
+                                    view=view, title=alignfiles[0])
+    visalign.show()
+    #visalign.vis.win.set_position(0, 0)
+
+    """
     visalign = GenomeStackBrowser(view=view)
     visalign.addTrack(RulerTrack(bottom=-height))
     visalign.addTrack(AlignTrack(aln, colorBases=colors))
     visalign.show()
     visalign.win.set_name(alignfiles[0])
     visalign.win.set_size(580, 500)
-    visalign.win.set_position(0, 0)    
+    visalign.win.set_position(0, 0)
+    """  
 
-    windows.append(visalign.win)
+    windows.append(visalign.vis.win)
     coords.append(-1.5)
 
 

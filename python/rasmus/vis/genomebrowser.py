@@ -534,12 +534,15 @@ class RegionTrack (Track):
 
 class AlignTrack (Track):
     def __init__(self, aln, collapse=None, cols=None, colorBases=False, 
-                 seqtype=None,
+                 seqtype=None, showColorBases=True, showBases=True,
                  **options):
         Track.__init__(self, **options)
         self.size = [aln.alignlen(), len(aln)]
         self.multiscale = visual.Multiscale(marginx=.5, marginy=.5)
         self.collapse = collapse
+        
+        self.showColorBases = showColorBases
+        self.showBases = showBases
         
         if seqtype == None:
             self.seqtype = guessAlign(aln)
@@ -683,7 +686,7 @@ class AlignTrack (Track):
                     seq = seq.replace("-", " ")
                     
                     # color bases
-                    if colorBases != False:
+                    if self.showColorBases and colorBases != False:
                         for j in xrange(len(seq)):
                             base = seq[j].upper()
                             if base in colorBases:
@@ -696,7 +699,8 @@ class AlignTrack (Track):
                     end2 = start + len(seq)
                     
                     # draw text
-                    if self.multiscale.atleast(mintextSize, 2, 
+                    if self.showBases and \
+                       self.multiscale.atleast(mintextSize, 2, 
                                                view=view, size=size):
                         vis.append(text_scale(seq, 
                                               start, -i+1, 
@@ -751,6 +755,27 @@ class TrackOverlay (Track):
     def update(self):
         for track in self.tracks:
             track.update()
+
+
+
+def LabelsTrack (Track):
+    def __init__(self, labels, color=color(0,0,0), **options):
+        Track.__init__(self, **options)
+        self.labels = labels
+        self.color = color
+        self.size = [0, len(labels)]
+    
+        
+    def draw(self):
+        # build labels
+        labels = []
+        for i, key in enumerate(self.aln):
+            labels.append(text_clip(key, -1000 * 10, -i, 0, -i-1,
+                                    4, 12, "middle", "right"))
+                
+        return group(translate(self.pos[0], self.pos[1] + self.size[1],
+                     self.color,
+                     group(*labels)))
 
 
 

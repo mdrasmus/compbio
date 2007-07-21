@@ -121,7 +121,6 @@ int test_reconstruct(int argc, char **argv)
     
     g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
     
-    
     // search
     Tree *toptree = searchMCMC(NULL, &stree,
                                params, gene2species,
@@ -224,6 +223,8 @@ int test_gene2species(int argc, char **argv)
 }
 
 
+
+
 int test_reroot(int argc, char **argv)
 {
     Tree tree;
@@ -238,7 +239,6 @@ int test_reroot(int argc, char **argv)
         tree.writeNewick(filename);
     }
 }
-
 
 
 int main(int argc, char **argv)

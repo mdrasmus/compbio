@@ -154,6 +154,7 @@ class Percent (float):
 
 
 def exceptDefault(func, val, exc=Exception):
+    """Specify a default value for when an exception occurs"""
     try:
         return func()
     except exc:
@@ -376,13 +377,11 @@ def flatten(lst, depth=INF):
     
     flat = []
     
-    for i in lst:
-        if (isinstance(i, list) or \
-            isinstance(i, tuple)) \
-           and depth > 0:
-            flat.extend(flatten(i, depth-1))
+    for elm in lst:
+        if hasattr(elm, "__iter__") and depth > 0:
+            flat.extend(flatten(elm, depth-1))
         else:
-            flat.append(i)
+            flat.append(elm)
     
     return flat
 
@@ -1174,6 +1173,44 @@ def printwrap(text, width=80, prefix="", out=sys.stdout):
         pos += width
 
 
+
+def int2pretty(num):
+    """Returns a pretty-printed version of an int"""
+    
+    string = str(num)
+    parts = []
+    l = len(string)
+    for i in xrange(0, l, 3):
+        t = l - i
+        s = t - 3
+        if s < 0: s = 0
+        parts.append(string[s:t])
+    parts.reverse()
+    return ",".join(parts)
+
+
+def pretty2int(string):
+    """Parses a pretty-printed version of an int into an int"""
+    return int(string.replace(",", ""))
+
+
+def str2bool(val):
+    """Correctly converts the strings "True" and "False" to the 
+       booleans True and False
+    """
+    
+    if val == "True":
+        return True
+    elif val == "False":
+        return False
+    else:
+        raise Exception("unknown string for bool '%s'" % val)
+
+
+#=============================================================================
+# Dictionary printing
+#
+
 def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
               num=None, compare=lambda a,b: cmp(a[0],b[0]),
               spacing=4, out=sys.stdout,
@@ -1212,41 +1249,6 @@ def printHistDict(array, keyfunc=lambda x: x, valfunc=lambda x: x,
     printDict(hist, keyfunc=keyfunc, valfunc=valfunc, 
               num=num, compare=compare, spacing=spacing, out=out)
 
-
-
-
-
-def int2pretty(num):
-    """Returns a pretty-printed version of an int"""
-    
-    string = str(num)
-    parts = []
-    l = len(string)
-    for i in xrange(0, l, 3):
-        t = l - i
-        s = t - 3
-        if s < 0: s = 0
-        parts.append(string[s:t])
-    parts.reverse()
-    return ",".join(parts)
-
-
-def pretty2int(string):
-    """Parses a pretty-printed version of an int into an int"""
-    return int(string.replace(",", ""))
-
-
-def str2bool(val):
-    """Correctly converts the strings "True" and "False" to the 
-       booleans True and False
-    """
-    
-    if val == "True":
-        return True
-    elif val == "False":
-        return False
-    else:
-        raise Exception("unknown string for bool '%s'" % val)
 
 
 

@@ -99,6 +99,10 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     }
     
     
+    // debug output file
+    FILE *out = fopen("debug.txt", "w");
+    
+    
     // return value
     float logl = 0;
     
@@ -162,11 +166,19 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         // make tree object
         Tree tree(nnodes);
         ptree2tree(nnodes, ptree, &tree);
-        tree.setDists(dists);
+        fprintf(out, "gene tree\n");        
+        tree.assertTree();
+        tree.setDists(dists);        
+        tree.writeNewick(out);
+
 
         SpeciesTree stree(nsnodes);
         ptree2tree(nsnodes, pstree, &stree);
+        fprintf(out, "species tree\n");
+        stree.assertTree();
         stree.setDepths();
+        stree.writeNewick(out);
+
 
         // reconcile gene tree to species tree
         ExtendArray<int> recon(nnodes);
@@ -182,6 +194,8 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                       mu, sigma, generate, disterror,
                       predupprob, dupprob, errorprob, alpha, beta);
     }
+    
+    fclose(out);
     
     /* Create return value */
     plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);

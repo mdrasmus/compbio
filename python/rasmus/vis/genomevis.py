@@ -3,17 +3,20 @@
 import copy
 
 # rasmus libs
-from rasmus import fff
+
 from rasmus import regionlib
 from rasmus import stats
 from rasmus import util
-from rasmus.genomeutil import *
 
+# rasmus bio libs
+from rasmus.bio import fff
+from rasmus.bio.genomeutil import *
 
 # graphics libs
 from summon.core import *
 from summon import shapes
-
+from summon.simple import *
+import summon
 
 # globals
 defaultVis = None
@@ -37,23 +40,6 @@ l     toggle gene labels
 """
 
 
-def toggle_controls():
-    if defaultVis != None:
-        defaultVis.conf['use-controls'] = not defaultVis.conf['use-controls']
-        defaultVis.showControls(defaultVis.conf['use-controls'])
-
-def toggle_labels():
-    if defaultVis != None:
-        i = geneLabelTypes.index(defaultVis.conf['show-gene-labels'])
-        i = (i + 1) % len(geneLabelTypes)
-        defaultVis.conf['show-gene-labels'] = geneLabelTypes[i]
-        defaultVis.redraw()
-
-
-set_binding(input_key("c"), toggle_controls)
-set_binding(input_key("l"), toggle_labels)
-
-
 
 
 
@@ -68,7 +54,7 @@ def initConf(conf = None, size = 1000):
     if conf == None:
         conf = {}
     
-    bgcolor = get_bgcolor()
+    bgcolor = (1, 1, 1, 1)
     
     setConfScale(conf, size)
     conf['color-genome-div'] = invcolor(bgcolor, .5)
@@ -93,7 +79,7 @@ def setLightColors(conf = None):
     if conf == None:
         conf = {}
         
-    bgcolor = get_bgcolor()
+    bgcolor = (1, 1, 1, 1)
     
     conf['color-genome-div'] = invcolor(bgcolor, .5)
     conf['color-gene-pos'] =  color(1, .9, .5, .95)
@@ -174,7 +160,7 @@ def drawChromLegend(conf):
         i += 1
     vis.append(color(0,0,0))
     vis.append(text_scale("chromosome colors", 1, 1, i+1, 2, "center"))
-    return list2group(vis)
+    return group(*vis)
 
 
 
@@ -200,8 +186,13 @@ class Frag:
     
 
 class SyntenyVis:    
-    def __init__(self, conf, matching, rootid=get_root_id()):
+    def __init__(self, conf, matching, rootid=get_root_id(),
+                       winsize=(800, 400)):
         self.conf = None
+        self.win = None
+        self.winsize = winsize   
+        self.rootid = rootid
+        
         self.matching = None
         self.refGenome     = None
         self.genes         = {}
@@ -214,6 +205,8 @@ class SyntenyVis:
         self.labelids      = []
         self.order         = {}
         self.groupid       = 0
+        self.visid = None
+
         
         self.conf = conf
         self.matching = matching
@@ -221,20 +214,32 @@ class SyntenyVis:
         self.regions = util.Dict(default=[])
         self.findex = fff.FeatureIndex()
         
-        self.rootid = rootid
-        self.visid = insert_group(self.rootid, group())
+    def show(self):
+        if self.win == None:
+            self.win = summon.get_summon_window()
+            
+        if not self.win.is_open():
+            self.win = summon.Window()
+            
+        if self.visid == None:
+            self.win.set_size(* self.winsize)
+            self.win.set_bgcolor(1,1,1)
+            self.win.set_binding(input_key("c"), self.toggle_controls)
+            self.win.set_binding(input_key("l"), self.toggle_labels)
+            self.visid = self.win.insert_group(self.rootid, group())
         
         
     def clearDrawing(self):
-        remove_group(self.visid)
+        self.win.remove_group(self.visid)
         self.clearMarks()
-        self.visid = insert_group(self.rootid, group())
+        self.visid = self.win.insert_group(self.rootid, group())
         
     
     
     def draw(self, refGenomeName, refChromName, start, end, direction=1):
+        self.show()
         self.clearDrawing()
-        insert_group(self.visid, 
+        self.win.insert_group(self.visid, 
             self.drawChromosome(refGenomeName, 
                                 refChromName, 
                                 start, end, direction=direction))
@@ -242,6 +247,7 @@ class SyntenyVis:
     
     
     def drawAll(self, refGenomeName):
+        self.show()
         self.clearDrawing()
         
         y = 0
@@ -250,7 +256,7 @@ class SyntenyVis:
         
         for chrom in chroms:
             util.tic("drawing chrom %s" % chrom.name)
-            insert_group(self.visid, group(translate(0, y, 
+            self.win.insert_group(self.visid, group(translate(0, y, 
                 self.drawChromosome(refGenomeName, chrom.name, 0, chrom.size))))
             self.showControls(self.conf["use-controls"])
             util.toc()
@@ -496,7 +502,7 @@ class SyntenyVis:
         
         util.toc()
 
-        g = list2group(vis)
+        g = group(*vis)
         self.groupid = get_group_id(g)
         return g
 
@@ -712,7 +718,7 @@ class SyntenyVis:
         
     def redraw(self):
         if self.groupid != 0:
-            replace_group(self.groupid, self.drawPlaced())
+            self.win.replace_group(self.groupid, self.drawPlaced())
         else:
             self.groupid = add_group(self.drawPlaced())
         self.showControls()
@@ -727,7 +733,7 @@ class SyntenyVis:
         if name in self.genes:
             gene = self.genes[name]
             if gene in self.placedGenes:
-                apply(set_visible, self.getGeneCoords(gene))
+                self.win.set_visible(* self.getGeneCoords(gene))
             else:
                 print "gene '%s' is not shown" % name
         else:
@@ -748,17 +754,17 @@ class SyntenyVis:
             return
         coords = self.getGeneCoords(gene)
         
-        gid = add_group(self.drawMarking(shape, col, coords[1], coords[0], coords[2]))
+        gid = self.win.add_group(self.drawMarking(shape, col, coords[1], coords[0], coords[2]))
         self.markids.append(gid)
     
     
     def showMarks(self, visible):
         for gid in self.markids:
-            show_group(gid, visible)
+            self.win.show_group(gid, visible)
     
     def clearMarks(self):
         for gid in self.markids:
-            remove_group(gid)
+            self.win.remove_group(gid)
         self.markids = []
     
     
@@ -766,7 +772,7 @@ class SyntenyVis:
         if visible == None:
             visible = self.conf['use-controls']
         for gid in self.controlids:
-            show_group(gid, visible)
+            self.win.show_group(gid, visible)
     
     
     #
@@ -997,6 +1003,18 @@ class SyntenyVis:
         return None, None, None
     
     
+
+    def toggle_controls(self):
+        self.conf['use-controls'] = not self.conf['use-controls']
+        self.showControls(self.conf['use-controls'])
+
+    def toggle_labels(self):
+        i = geneLabelTypes.index(self.conf['show-gene-labels'])
+        i = (i + 1) % len(geneLabelTypes)
+        self.conf['show-gene-labels'] = geneLabelTypes[i]
+        self.redraw()
+
+
 
 
     """    

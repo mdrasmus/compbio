@@ -34,15 +34,15 @@ public:
         delete [] m_data;
     }
     
-    void SetAll(ValueType val)
+    void setAll(ValueType val)
     {
         for (int i=0; i<m_nrows; i++)
             for (int j=0; j<m_ncols; j++)
                 m_data[i][j] = val;
     }
     
-    inline int NumRows() { return m_nrows; }
-    inline int NumCols() { return m_ncols; }
+    inline int numRows() { return m_nrows; }
+    inline int numCols() { return m_ncols; }
     
     inline ValueType* operator[](const int i)
     {

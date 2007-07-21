@@ -398,7 +398,7 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
         if (bgfreq) delete [] bgfreq;
 
 
-    return Py_BuildValue("Of", ret, logl);
+    return Py_BuildValue("Nf", ret, logl);
 }
 
 

@@ -369,6 +369,118 @@ bool Tree::writeNewick(const char *filename)
 }
 
 
+//=============================================================================
+// Visualization
+
+
+void drawLine(Matrix<char> &matrix, char chr, int x1, int y1, int x2, int y2)
+{
+    float stepx, stepy;
+    int steps;
+    
+    steps = max(abs(x2-x1), abs(y2-y1));
+    
+    stepx = float(x2 - x1) / steps;
+    stepy = float(y2 - y1) / steps;
+    
+    float x = x1;
+    float y = y1;
+    for (int i=0; i<steps+1; i++) {
+        matrix[int(y)][int(x)] = chr;
+        x += stepx;
+        y += stepy;
+    }
+}
+
+
+
+// TODO: finish display
+void displayNode(Matrix<char> &matrix, Node *node, int *xpt, int* ypt)
+{
+    //drawLine(matrix, '-', x, y, x2, y);
+    int x = xpt[node->name];
+    int y = ypt[node->name];
+    
+
+    
+    for (int i=0; i<node->nchildren; i++) {
+        displayNode(matrix, node->children[i], xpt, ypt);
+    }
+    
+    //if (x >= 0 && y >= 0 && x < matrix.numCols() && y < matrix.numRows()) {
+        // horizontal line
+        if (node->parent) {
+            drawLine(matrix, '-', x, y, 
+                     xpt[node->parent->name], y);
+        }
+        
+        // vertical line
+        if (!node->isLeaf()) {
+            int l = node->nchildren - 1;
+            drawLine(matrix, '|', x,
+                                  ypt[node->children[0]->name],
+                                  x,
+                                  ypt[node->children[l]->name]);
+            matrix[ypt[node->children[0]->name]][x] = '/';
+            matrix[ypt[node->children[l]->name]][x] = '\\';
+
+            matrix[y][x] = '+';                    
+        }
+    //}
+}
+
+
+int treeLayout(Node *node, ExtendArray<int> &xpt, ExtendArray<int> &ypt,
+               float xscale, int yscale, int y=0)
+{
+    if (node->parent == NULL) {
+        xpt[node->name] = int(xscale * node->dist);
+        ypt[node->name] = 0;
+    } else {
+        xpt[node->name] = xpt[node->parent->name] + int(xscale * node->dist + 1);
+        ypt[node->name] = y;
+    }
+    
+    if (node->isLeaf()) {
+        y += yscale;
+    } else {
+        for (int i=0; i<node->nchildren; i++) {
+            y = treeLayout(node->children[i], xpt, ypt, xscale, yscale, y);
+        }
+        int l = node->children[node->nchildren-1]->name;
+        ypt[node->name] = (ypt[l] + ypt[node->children[0]->name]) / 2;
+    }
+    
+    return y;
+}
+
+
+// TODO: finish display
+void displayTree(Tree *tree, FILE *outfile, float xscale, int yscale)
+{
+    ExtendArray<int> xpt(tree->nnodes);
+    ExtendArray<int> ypt(tree->nnodes);
+    treeLayout(tree->root, xpt, ypt, xscale, yscale);
+
+    int width = 0;    
+    for (int i=0; i<tree->nnodes; i++) {
+        if (xpt[i] > width) 
+            width = xpt[i];
+    }
+    
+    Matrix<char> matrix(tree->nnodes+1, width+1);
+    matrix.setAll(' ');
+    
+    displayNode(matrix, tree->root, xpt, ypt);
+    
+    // write out matrix
+    for (int i=0; i<matrix.numRows(); i++) {
+        for (int j=0; j<matrix.numCols(); j++)
+            fprintf(outfile, "%c", matrix[i][j]);
+        fprintf(outfile, "\n");
+    }
+}
+
 
 //=============================================================================
 // assert that the tree datastructure is self-consistent

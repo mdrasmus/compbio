@@ -17,6 +17,7 @@
 #include <math.h>
 #include <assert.h>
 #include <string>
+#include <vector>
 
 #include "ExtendArray.h"
 
@@ -26,6 +27,9 @@ using namespace std;
 
 #define PI 3.1415926
 #define MAX_FLOAT 1e10
+#ifndef INFINITY
+#   define INFINITY 1e1000
+#endif
 
 // indexing a matrix stored as a single array
 #define matind(m, i, j) ((m)*(i) + (j))
@@ -287,7 +291,9 @@ float gammalog(float x, float a, float b);
 
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
+bool inChars(char c, const char *chars);
 bool chomp(char *str);
+vector<string> split(const char *str, const char *delim, bool multiDelim = true);
 void printError(const char *fmt, ...);
 char readChar(FILE *stream, int &depth);
 char readUntil(FILE *stream, string &token, char *stops, int &depth);

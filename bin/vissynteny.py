@@ -10,7 +10,7 @@ from reportlab import svglib
 from rasmus import util, env
 
 # rasmus bio libs
-from rasmus.bio genomeutil, genomeio, clustalw, muscle, ensembl, fasta
+from rasmus.bio import genomeutil, genomeio, clustalw, muscle, ensembl, fasta
 from rasmus.bio.genomeutil import *
 
 # for easy user iteraction
@@ -64,7 +64,7 @@ options = [
 
 
 # check args
-param = util.parseOptions(sys.argv[1:], options, quit=True, resthelp="<scripts> ...")
+param = util.parseOptions(sys.argv, options, quit=True, resthelp="<scripts> ...")
 
 
 # global variables
@@ -81,7 +81,7 @@ gene2species = None
 vis = None
 conf = {}
 seqs = FastaDict()
-
+winsize = (800, 400)
 
 
 
@@ -90,8 +90,8 @@ seqs = FastaDict()
 #
 
 class SyntenyVis (genomevis.SyntenyVis):
-    def __init__(self, conf, matching):
-        genomevis.SyntenyVis.__init__(self, conf, matching)
+    def __init__(self, conf, matching, **options):
+        genomevis.SyntenyVis.__init__(self, conf, matching, **options)
         self.clickMode = "gene"
     
     def geneClick(self, gene):
@@ -314,7 +314,7 @@ def readData(genomes, compfile, syntenyfile, smapfile):
     global gene2species
     global conf
     global vis
-    
+    global winsize
     
     util.tic("read")
     
@@ -342,7 +342,7 @@ def readData(genomes, compfile, syntenyfile, smapfile):
     
     # setup visualization
     conf.update(genomevis.initConf({}, genomevis.calcGeneHeight(m)))
-    vis = SyntenyVis(conf, m)
+    vis = SyntenyVis(conf, m, winsize=winsize)
 
 
 
@@ -364,7 +364,7 @@ def main(param):
     global conf
     global context
     global seqs
-    
+    global winsize    
 
     # init
     print genomevis.BINDINGS_HELP
@@ -381,7 +381,6 @@ e     print selgene array
 w     print clustalw of selgene array
 
     """
-    set_bgcolor(1,1,1)
 
     env.addPaths(param["paths"])
     env.addEnvPaths("DATAPATH")
@@ -391,6 +390,12 @@ w     print clustalw of selgene array
        "genomes" in param and \
        "orthcomp" in param and \
        "synteny" in param:
+        
+
+        if "winsize" in param:
+            winsize = map(int, param["winsize"][-1].split("x"))
+            #set_window_size(* winsize)
+        
         
         # read data
         readData(param["genomes"][-1].split(","), 
@@ -413,10 +418,6 @@ w     print clustalw of selgene array
 
         if "context" in param:
             context = float(param["context"][-1])
-
-        if "winsize" in param:
-            winsize = map(int, param["winsize"][-1].split("x"))
-            set_window_size(* winsize)
 
 
 

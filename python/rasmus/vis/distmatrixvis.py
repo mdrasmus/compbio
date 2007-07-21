@@ -65,6 +65,7 @@ class DistMatrixViewer (matrix.MatrixViewer):
         self.bar.addItem(hud.MenuItem("align gene (a)", self.showAlign))
         self.bar.addItem(hud.MenuItem("clear genes (d)", self.clearSelection))
         self.bar.addItem(hud.MenuItem("show genes (s)", self.showSelection))
+        self.bar.addItem(hud.MenuItem("toggle labels (l)", self.toggleLabelWindows))
         
         # register key bindings
         self.win.set_binding(input_key("a"), self.showAlign)

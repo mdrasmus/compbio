@@ -240,7 +240,7 @@ def setTreeDistances(conf, tree, distmat, genes):
     elif "mlhkydist" in conf:
         # estimate branch lengths with ML
         mlhkydist_C(conf["aln"], tree, conf["bgfreq"], conf["tsvratio"], 
-                    len(tree.nodes))  
+                    3*len(tree.nodes))  
     else:
         # perform LSE
         lse = phylo.leastSquareError(tree, distmat, genes)

@@ -8,9 +8,15 @@
 #include "likelihood.h"
 #include "parsimony.h"
 #include "search.h"
+#include "branchlen.h"
 
-NniProposer nniProsposer;
 
+// globals
+NniProposer nniProposer;
+
+
+//=============================================================================
+// Nearest Neighbor Interchange Topology Proposal
 
 /*
 
@@ -123,7 +129,6 @@ NniProposer::NniProposer() :
 {}
     
     
-
 void NniProposer::propose(Tree *tree)
 {
     // propose new tree
@@ -161,12 +166,52 @@ void NniProposer::revert(Tree *tree)
 }
 
 
+//=============================================================================
+// Fitting branch lengths
+
+ParsimonyFitter::ParsimonyFitter(int nseqs, int seqlen, char **seqs) :
+    nseqs(nseqs),
+    seqlen(seqlen),
+    seqs(seqs)
+{}
+
+
+float ParsimonyFitter::findLengths(Tree *tree)
+{
+    parsimony(tree, nseqs, seqs);
+    return 0.0;
+}
+
+
+
+HkyFitter::HkyFitter(int nseqs, int seqlen, char **seqs, 
+                     float *bgfreq, float tsvratio, int maxiter) :
+    nseqs(nseqs),
+    seqlen(seqlen),
+    seqs(seqs),
+    bgfreq(bgfreq),
+    tsvratio(tsvratio),
+    maxiter(maxiter),
+    logl(0.0)
+{
+}
+
+float HkyFitter::findLengths(Tree *tree)
+{ 
+    logl = findMLBranchLengthsHky(tree, nseqs, seqs, bgfreq, tsvratio, maxiter);
+    return logl;
+}
+
+
+//=============================================================================
+// MCMC search
 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 int nseqs, int seqlen, char **seqs,
                 int niter, 
-                TopologyProposer *proposer)
+                TopologyProposer *proposer,
+                BranchLengthFitter *fitter)
 {
     Tree *toptree = NULL;
     float toplogl = -1e10, logl=-1e10;
@@ -176,11 +221,19 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     float predupprob=.001, dupprob=1.0, errorlogl=0;
     
     
-    // init with NJ    
+    // determine branch length fitter
+    ParsimonyFitter parsFitter(nseqs, seqlen, seqs);
+    if (!fitter) {
+        fitter = &parsFitter;
+    }
+    
+    
+    // determine initial tree
     if (initTree != NULL) {
-        // need to do a copy
+        // use specified initial tree
         tree = initTree;
     } else {
+        // initialized tree with NJ
         ExtendArray<int> ptree(nnodes);
         ExtendArray<float> dists(nnodes);
         Matrix<float> distmat(nseqs, nseqs);
@@ -192,8 +245,8 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         
         // reconroot        
         // tree = phylo.reconRoot(tree, stree, gene2species)
-        
         parsimony(tree, nseqs, seqs);
+        fitter->findLengths(tree);
     }
     
     
@@ -215,32 +268,10 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     // MCMC loop
     for (int i=0; i<niter; i++) {
         printf("iter %d\n", i);
-        Node *node1, *node2, *node3=NULL, *node4=NULL;
-        int change1=0, change2=0;
     
         // propose new tree
-        proposeRandomNni(tree, &node1, &node2, &change1);
-        proposeNni(tree, node1, node2, change1);
-        
-        if (frand() < .5) {
-            proposeRandomNni(tree, &node3, &node4, &change2);        
-            proposeNni(tree, node3, node4, change2);
-        }
-        
-        // TODO: need random reroot or recon root.
-        Node *oldroot = tree->root->children[0];
-        //int choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
-        //tree->reroot(tree->nodes[choice]);
-        int choice1 = int(frand() * 2);
-        int choice2 = int(frand() * 2);
-        if (tree->root->children[choice1]->nchildren == 2)
-            tree->reroot(tree->root->children[choice1]->children[choice2]);
-        else
-            tree->reroot(tree->root->children[!choice1]->children[choice2]);
-        
-        assert(tree->assertTree());
-        
-        parsimony(tree, nseqs, seqs);
+        proposer->propose(tree);
+        fitter->findLengths(tree);
         
         //findMLBranchLengthsHky(tree, nseqs, seqs, 
         //                       bgfreq, ratio, tree->nnodes);
@@ -248,14 +279,13 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         // calc new likelihood
         reconcile(tree, stree, gene2species, recon);
         labelEvents(tree, recon, events);
-        
         float nextlogl = treelk(tree, stree,
                                 recon, events, params,
                                 -1, 0,
                                 predupprob, dupprob, errorlogl);
         
+        
         // acceptance rule
-        //printf("%f %f\n", nextlogl - logl, log(rand() / float(RAND_MAX)));
         if (nextlogl > logl ||
             nextlogl - logl + speed > log(rand() / float(RAND_MAX)))
         {
@@ -276,12 +306,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
             //speed = (speed + 1) * 1.3;
             
             // reject, undo topology change
-            tree->reroot(oldroot);
-            //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
-            //       node2->name, node2->nchildren);
-            if (node3)
-                proposeNni(tree, node3, node3->parent, change2);
-            proposeNni(tree, node1, node1->parent, change1);
+            proposer->revert(tree);
         }
     }
     

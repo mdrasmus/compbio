@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 
-
 #include "spidir.h"
 #include "common.h"
 #include "Tree.h"
@@ -532,6 +531,16 @@ void printFloatArray(float *array, int size)
 }
 
 
+bool inChars(char c, const char *chars)
+{
+   if (!chars)
+      return false;
+   for (;*chars; chars++)
+      if (c == *chars) return true;
+   return false;
+}
+
+
 bool chomp(char *str)
 {
    int len = strlen(str);
@@ -541,6 +550,33 @@ bool chomp(char *str)
    } else
       return false;
 }
+
+
+vector<string> split(const char *str, const char *delim, bool multiDelim)
+{
+    vector<string> tokens;   
+    int i=0, j=0;
+   
+    while (str[i]) {
+        // walk to end of next token
+        for (; str[j] && !inChars(str[j], delim); j++);
+        printf("> %d %d\n", i, j);
+
+        if (i == j)
+            break;
+
+        // save token
+        tokens.push_back(string(&str[i], j-i));
+        
+        if (!str[j])
+            break;
+        j++;
+        i = j;
+    }
+    
+    return tokens;
+}
+
 
 void printError(const char *fmt, ...)
 {

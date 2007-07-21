@@ -14,7 +14,7 @@
 #include "common.h"
 #include "Matrix.h"
 #include "Tree.h"
-
+#include "branchlen.h"
 
 
 /*=============================================================================
@@ -68,7 +68,7 @@ public:
         // set background base frequencies
         for (int i=0; i<4; i++)
             pi[i] = bgfreq[i];
-        
+
         pi_r = pi[DNA_A] + pi[DNA_G];
         pi_y = pi[DNA_C] + pi[DNA_T];
         rho = pi_r / pi_y;
@@ -79,9 +79,9 @@ public:
         a_y = (pi_r*pi_y*ratio - pi[DNA_A]*pi[DNA_G] - pi[DNA_C]*pi[DNA_T]) / 
           (2.0*(1+ratio)*(pi_y*pi[DNA_A]*pi[DNA_G]*rho + pi_r*pi[DNA_C]*pi[DNA_T]));
         a_r = rho * a_y;
-        
+
     }
-    
+
 
     // transition probability P(i | j, t)
     inline float operator()(int i, int j, float t)
@@ -106,12 +106,13 @@ public:
         // return transition probability
         float ait = expf(-a_i*t);
         float ebt = expf(-b*t);
-        
+
         float prob = ait*ebt * delta_ij + 
                      ebt * (1 - ait) * (pi[j]*e_ij/pi_ry) + 
                      (1 - ebt) * pi[j];
         return prob;        
     }
+
     
     // parameters
     float ratio;
@@ -123,6 +124,8 @@ public:
     float a_y;
     float a_r;
 };
+
+
 
 
 template <class Model>
@@ -446,7 +449,7 @@ float mleDistance(float *probs1, float *probs2, int seqlen,
 // conditional likelihood recurrence
 template <class Model>
 inline void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
-                 int a, int b, int c, float adist, float bdist)
+                        int a, int b, int c, float adist, float bdist)
 {
     static Matrix<float> atransmat(4, 4);
     static Matrix<float> btransmat(4, 4);
@@ -582,7 +585,6 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     // initialize the condition likelihood table
     initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
     
-    
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
     int convergenum = 10;
@@ -630,13 +632,12 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
 
         // get total probability before branch length change
         float loglBefore = getTotalLikelihood(lktable, tree, 
-                                        seqlen, model, bgfreq);
+                                              seqlen, model, bgfreq);
         logl = -INFINITY;
         Node *node1 = tree->root->children[0];
         Node *node2 = tree->root->children[1];
 
-       
-
+        printf("before: %f\n", loglBefore);
         printf("samples: %d\n", samples);
 
         // find new MLE branch length for root branch
@@ -660,7 +661,6 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         }
 
         printf("lk:%d %f\n", i, logl);
-        
         
         // determine whether logl has converged
         if (i > 0 && logl - lastLogl < converge) {

@@ -113,4 +113,4 @@ clean:
 	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) \
                 $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
                 $(MATLAB_OBJ) \
-	        test_spidir.o test_spidir
+	        test.o test_spidir

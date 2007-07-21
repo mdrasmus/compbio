@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "spidir.h"
+
 #include "common.h"
 #include "Tree.h"
 
@@ -63,6 +63,8 @@ int dnatype[] = {
 };    
 
 
+//=============================================================================
+// Distance Matix
 
 // calculate the pairwise distances between sequences
 // NOTE: simple version implemented first
@@ -95,79 +97,6 @@ void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
 
 
 
-Sequences *readFasta(const char *filename)
-{
-    FILE *infile = NULL;
-    
-    if ((infile = fopen(filename, "r")) == NULL) {
-        fprintf(stderr, "cannot read file '%s'\n", filename);
-        return NULL;
-    }
-    
-    BufferedReader reader(infile);
-    char *line;
-    
-    Sequences *seqs = new Sequences();
-    string key;
-    ExtendArray<char> seq(0, 10000);
-
-    
-    while ((line = reader.readLine())) {
-        chomp(line);
-        
-        if (line[0] == '>') {
-            if (seq.size() > 0) {  
-                // add new sequence
-                seq.append('\0');
-                seqs->append(key, seq.detach());
-            }
-        
-            // new key found
-            key = string(&line[1]);
-        } else {
-            seq.extend(line, strlen(line));
-        }
-        
-    }
-    
-    // add last sequence
-    if (seq.size() > 0) {
-        seq.append('\0');
-        seqs->append(key, seq.detach());
-    }
-    
-    return seqs;
-}
-
-
-Sequences *readAlignFasta(const char *filename)
-{
-    Sequences *seq = readFasta(filename);
-    if (!seq)
-        return NULL;
-    seq->setAlignLength();
-    return seq;
-}
-
-
-bool writeFasta(const char *filename, Sequences *seqs)
-{
-    FILE *stream = NULL;
-    
-    if ((stream = fopen(filename, "w")) == NULL) {
-        fprintf(stderr, "cannot open '%s'\n", filename);
-        return false;
-    }
-
-    for (int i=0; i<seqs->nseqs; i++) {
-        fprintf(stream, ">%s\n", seqs->names[i].c_str());
-        fprintf(stream, "%s\n", seqs->seqs[i]);
-    }
-    
-    fclose(stream);
-    return true;
-}
-
 
 bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
                      string *names)
@@ -195,6 +124,9 @@ bool writeDistMatrix(const char *filename, int ngenes, float **dists,
     return true;
 }
 
+
+//=============================================================================
+// Spidir Parameters
 
 SpidirParams *readSpidirParams(const char* filename)
 {
@@ -234,30 +166,6 @@ SpidirParams *readSpidirParams(const char* filename)
     fclose(infile);    
     
     return new SpidirParams(names.size(), names, mu, sigma, alpha, beta);
-}
-
-
-// Invert a permutation
-void invertPerm(int *perm, int *inv, int size)
-{
-    for (int i=0; i<size; i++)
-        inv[perm[i]] = i;
-}
-
-
-template <class T>
-void permute(T* array, int *perm, int size)
-{
-    ExtendArray<T> tmp(0, size);
-    tmp.extend(array, size);
-    
-    // transfer permutation to temp array
-    for (int i=0; i<size; i++)
-        tmp[i] = array[perm[i]];
-    
-    // copy permutation back to original array
-    for (int i=0; i<size; i++)
-        array[i] = tmp[i];
 }
 
 
@@ -324,147 +232,7 @@ bool SpidirParams::order(SpeciesTree *stree)
 }
 
 
-// ensures that all characters in the alignment are sensible
-// TODO: do not change alignment (keep Ns)
-bool checkSequences(int nseqs, int seqlen, char **seqs)
-{
-    // check seqs
-    // CHANGE N's to gaps
-    for (int i=0; i<nseqs; i++) {
-        for (int j=0; j<seqlen; j++) {
-            if (seqs[i][j] == 'N' || seqs[i][j] == 'n')
-                // treat Ns as gaps
-                seqs[i][j] = '-';
-            if (seqs[i][j] != '-' &&
-                dna2int[(int) (unsigned char) seqs[i][j]] == -1)
-            {
-                // a unknown character is in the alignment
-                return false;
-            }
-        }
-    }
-    
-    return true;
-}
 
-
-//=============================================================================
-// Gene2species
-
-const string Gene2species::NULL_SPECIES;
-
-bool Gene2species::read(const char *filename)
-{
-    BufferedReader reader;
-    if (!reader.open(filename, "r"))
-        return false;
-
-    char *line;
-    string expr, species;
-    char *ptr;
-    while ((line = reader.readLine())) {
-        //chomp(line);
-
-        expr = strtok_r(line, "\t", &ptr);
-        species = strtok_r(NULL, "\n", &ptr);
-
-        if (expr[0] == '*') {
-            // suffix
-            m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
-                                            expr.substr(1, expr.size()-1), 
-                                            species));
-        } else if (expr[expr.size() - 1] == '*') {
-            // prefix
-            m_rules.append(Gene2speciesRule(Gene2speciesRule::PREFIX,
-                                            expr.substr(0, expr.size()-1), 
-                                            species));
-        } else {
-            // exact match
-            assert(0);
-        }
-    }
-
-    return false;
-}
-
-string Gene2species::getSpecies(string gene)
-{
-    for (int i=0; i<m_rules.size(); i++) {
-        switch (m_rules[i].rule) {
-            case Gene2speciesRule::PREFIX:
-                if (gene.find(m_rules[i].expr, 0) == 0)
-                    return m_rules[i].species;
-                break;
-
-            case Gene2speciesRule::SUFFIX:
-                if (gene.rfind(m_rules[i].expr, gene.size()-1) == 
-                    gene.size() - m_rules[i].expr.size())
-                    return m_rules[i].species;
-                break;                
-
-            case Gene2speciesRule::EXACT:
-                break;
-        }
-    }
-
-    return NULL_SPECIES;
-}
-
-bool Gene2species::getMap(string *genes, int ngenes, 
-                          string *species, int nspecies, int *map)
-{
-    for (int i=0; i<ngenes; i++) {
-        string sp = getSpecies(genes[i]);
-
-        if (sp.size() == 0) {
-            map[i] = -1;
-        } else {
-            map[i] = -1;
-            for (int j=0; j<nspecies; j++) {
-                if (sp == species[j])
-                    map[i] = j;
-            }
-        }
-    }
-
-    return true;
-}
-
-
-
-
-
-/*
-
-def makeGene2species(maps):
-    # find exact matches and expressions
-    exacts = {}
-    exps = []
-    for mapping in maps:
-        if "*" not in mapping[0]:
-            exacts[mapping[0]] = mapping[1]
-        else:
-            exps.append(mapping)
-    
-    # create mapping function
-    def gene2species(gene):
-        # eval expressions first in order of appearance
-        for exp, species in exps:
-            if exp[-1] == "*":
-                if gene.startswith(exp[:-1]):
-                    return species
-            elif exp[0] == "*":
-                if gene.endswith(exp[1:]):
-                    return species
-        
-        if gene in exacts:
-            return exacts[gene]
-        
-        raise Exception("Cannot map gene '%s' to any species" % gene)
-    return gene2species
-
-
-*/
 
 
 //=============================================================================
@@ -510,6 +278,14 @@ float gammalog(float x, float a, float b)
         return 0.0;
     else
         return -x * b + (a - 1.0) * log(x) + a * log(b) - gammln(a);
+}
+
+
+// Invert a permutation
+void invertPerm(int *perm, int *inv, int size)
+{
+    for (int i=0; i<size; i++)
+        inv[perm[i]] = i;
 }
 
 
@@ -635,10 +411,3 @@ string trim(const char *word)
     return string(buf);
 }
 
-
-float readDist(FILE *infile, int &depth)
-{
-    float dist = 0;
-    fscanf(infile, "%f", &dist);
-    return dist;
-}

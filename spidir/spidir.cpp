@@ -17,6 +17,7 @@
 #include "Matrix.h"
 #include "Tree.h"
 #include "ConfigParam.h"
+#include "Sequences.h"
 
 
 using namespace std;
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
     Gene2species g;
     g.read(smapfile.c_str());
     
-
+    
     // read sequences
     Sequences *aln;
     

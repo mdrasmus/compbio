@@ -9,7 +9,7 @@
 #include <string.h>
 
 
-#include "spidir.h"
+#include "parsimony.h"
 #include "common.h"
 #include "Tree.h"
 
@@ -237,7 +237,7 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
     int seqlen = strlen(seqs[0]);
     
     // check seqs
-    assert(checkSequences(nseqs, seqlen, seqs));
+    //assert(checkSequences(nseqs, seqlen, seqs));
     
     // create tree objects
     Tree tree(nnodes);

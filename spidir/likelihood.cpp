@@ -7,7 +7,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include "spidir.h"
 #include "common.h"
 #include "Tree.h"
 #include "ExtendArray.h"

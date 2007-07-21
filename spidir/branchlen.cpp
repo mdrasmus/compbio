@@ -9,7 +9,6 @@
 =============================================================================*/
 
 #include <math.h>
-#include "spidir.h"
 #include "parsimony.h"
 #include "common.h"
 #include "Matrix.h"
@@ -706,10 +705,7 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
                           bool parsinit)
 {
     int seqlen = strlen(seqs[0]);
-    
-    // check seqs
-    assert(checkSequences(nseqs, seqlen, seqs));
-    
+        
     // create tree objects
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);

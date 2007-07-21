@@ -18,6 +18,7 @@
 #include "Matrix.h"
 #include "Tree.h"
 #include "ConfigParam.h"
+#include "Sequences.h"
 
 
 using namespace std;

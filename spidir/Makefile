@@ -42,10 +42,14 @@ SPIDIR_OBJS = \
     parsimony.o \
     search.o \
     Tree.o \
+    Sequences.o 
 
 PROG_SRC = spidir.cpp 
 PROG_OBJS = spidir.o $(SPIDIR_OBJS)
 PROG_LIBS = 
+
+LIBSPIDIR = lib/libspidir.a
+LIBSPIDIR_OBJS = $(SPIDIR_OBJS)
 
 # python files
 PYTHON_MODULE = pyspidir.so
@@ -78,11 +82,16 @@ endif
 #=============================================================================
 # targets
 
-all: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
+all: $(SPIDIR_PROG) $(LIBSPIDIR) $(PYTHON_MODULE) test_spidir
 
-# stand along program
+# stand-alone program
 $(SPIDIR_PROG): $(PROG_OBJS)
 	$(CXX) $(CFLAGS) $(PROG_OBJS) $(PROG_LIBS) -o $(SPIDIR_PROG)
+
+# C-library
+$(LIBSPIDIR): $(LIBSPIDIR_OBJS)
+	mkdir -p lib
+	$(AR) -r $(LIBSPIDIR) $(LIBSPIDIR_OBJS)
 
 # testing program
 test_spidir: $(SPIDIR_OBJS) test.o
@@ -100,6 +109,7 @@ $(MATLAB_FUNC): $(MATLAB_SRC)
 
 #=============================================================================
 # basic rules
+
 $(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
@@ -110,7 +120,7 @@ install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 
 
 clean:
-	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) \
+	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
                 $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
                 $(MATLAB_OBJ) \
 	        test.o test_spidir

@@ -250,8 +250,55 @@ public:
 };
 
 
+
+
+class Gene2speciesRule
+{
+public:
+    Gene2speciesRule(int rule=PREFIX, string expr="", string species="") :
+        rule(rule),
+        expr(expr),
+        species(species)
+    {
+    }
+    
+    enum {
+        PREFIX,
+        SUFFIX,
+        EXACT
+    };
+    
+    int rule;
+    string expr;
+    string species;
+};
+
+
+class Gene2species
+{
+public:
+    Gene2species() :
+        m_rules(0, 20)
+    {}
+    
+    const static string NULL_SPECIES;
+    
+    bool read(const char *filename);
+    string getSpecies(string gene);
+    bool getMap(string *genes, int ngenes, string *species, int nspecies, 
+                int *map);
+    
+protected:
+    ExtendArray<Gene2speciesRule> m_rules;
+    
+};
+
+
+
 void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+float readDist(FILE *infile, int &depth);
+
 
 //=============================================================================
 // visualization

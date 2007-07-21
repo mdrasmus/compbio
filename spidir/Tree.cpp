@@ -253,6 +253,15 @@ Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
 }
 
 
+float readDist(FILE *infile, int &depth)
+{
+    float dist = 0;
+    fscanf(infile, "%f", &dist);
+    return dist;
+}
+
+
+
 int nodeNameCmp(const void *_a, const void *_b)
 {
     Node *a = *((Node**) _a);
@@ -552,7 +561,7 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
     // join loop
     while (nleaves > 2) {
         // search for closest genes
-        float low = MAX_FLOAT;
+        float low = INFINITY;
         int lowi = -1, lowj = -1;
         
         for (int i=0; i<nleaves; i++) {
@@ -814,6 +823,126 @@ void labelEvents(Tree *tree, int *recon, int *events)
             events[i] = EVENT_SPEC;
     }
 }
+
+
+
+//=============================================================================
+// Gene2species
+
+const string Gene2species::NULL_SPECIES;
+
+bool Gene2species::read(const char *filename)
+{
+    BufferedReader reader;
+    if (!reader.open(filename, "r"))
+        return false;
+
+    char *line;
+    string expr, species;
+    char *ptr;
+    while ((line = reader.readLine())) {
+        //chomp(line);
+
+        expr = strtok_r(line, "\t", &ptr);
+        species = strtok_r(NULL, "\n", &ptr);
+
+        if (expr[0] == '*') {
+            // suffix
+            m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
+                                            expr.substr(1, expr.size()-1), 
+                                            species));
+        } else if (expr[expr.size() - 1] == '*') {
+            // prefix
+            m_rules.append(Gene2speciesRule(Gene2speciesRule::PREFIX,
+                                            expr.substr(0, expr.size()-1), 
+                                            species));
+        } else {
+            // exact match
+            assert(0);
+        }
+    }
+
+    return false;
+}
+
+string Gene2species::getSpecies(string gene)
+{
+    for (int i=0; i<m_rules.size(); i++) {
+        switch (m_rules[i].rule) {
+            case Gene2speciesRule::PREFIX:
+                if (gene.find(m_rules[i].expr, 0) == 0)
+                    return m_rules[i].species;
+                break;
+
+            case Gene2speciesRule::SUFFIX:
+                if (gene.rfind(m_rules[i].expr, gene.size()-1) == 
+                    gene.size() - m_rules[i].expr.size())
+                    return m_rules[i].species;
+                break;                
+
+            case Gene2speciesRule::EXACT:
+                break;
+        }
+    }
+
+    return NULL_SPECIES;
+}
+
+bool Gene2species::getMap(string *genes, int ngenes, 
+                          string *species, int nspecies, int *map)
+{
+    for (int i=0; i<ngenes; i++) {
+        string sp = getSpecies(genes[i]);
+
+        if (sp.size() == 0) {
+            map[i] = -1;
+        } else {
+            map[i] = -1;
+            for (int j=0; j<nspecies; j++) {
+                if (sp == species[j])
+                    map[i] = j;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+
+
+/*
+
+def makeGene2species(maps):
+    # find exact matches and expressions
+    exacts = {}
+    exps = []
+    for mapping in maps:
+        if "*" not in mapping[0]:
+            exacts[mapping[0]] = mapping[1]
+        else:
+            exps.append(mapping)
+    
+    # create mapping function
+    def gene2species(gene):
+        # eval expressions first in order of appearance
+        for exp, species in exps:
+            if exp[-1] == "*":
+                if gene.startswith(exp[:-1]):
+                    return species
+            elif exp[0] == "*":
+                if gene.endswith(exp[1:]):
+                    return species
+        
+        if gene in exacts:
+            return exacts[gene]
+        
+        raise Exception("Cannot map gene '%s' to any species" % gene)
+    return gene2species
+
+
+*/
 
 
 

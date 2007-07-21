@@ -2,7 +2,7 @@
 #include <mex.h>
 
 // spidir includes
-#include "spidir.h"
+#include "likelihood.h"
 #include "common.h"
 #include "Tree.h"
 #include "ExtendArray.h"

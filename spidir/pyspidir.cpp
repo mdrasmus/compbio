@@ -1,10 +1,13 @@
 #include <Python.h>
 #include <string.h>
 
-#include "spidir.h"
 #include "common.h"
-#include "Tree.h"
 #include "ExtendArray.h"
+#include "branchlen.h"
+#include "likelihood.h"
+#include "parsimony.h"
+#include "Tree.h"
+
 
 
 //=============================================================================

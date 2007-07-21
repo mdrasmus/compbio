@@ -1,6 +1,6 @@
 
 #include "Sequences.h"
-
+#include "spidir.h"
 
 Sequences *readFasta(const char *filename)
 {

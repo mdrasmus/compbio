@@ -1,204 +1,220 @@
-/*=============================================================================
 
-    Test SPIDIR functions
-
-=============================================================================*/
-
-#include <libgen.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string>
-#include <vector>
-
-
-#include "common.h"
-#include "parsimony.h"
-#include "search.h"
-#include "Matrix.h"
+#include "spidir.h"
 #include "Tree.h"
-#include "ConfigParam.h"
-#include "Sequences.h"
-
-
-using namespace std;
 
 
 
-int main(int argc, char **argv)
+
+int dna2int [256] = 
 {
-    
-    // parameters
-    string alignfile;    
-    string smapfile;
-    string streefile;
-    string paramsfile;
-    int niter = 0;
-    string lenfitter;
-    float tsvratio;
-    string bgfreqstr;
-    bool help = false;
-    
-    
-    // parse arguments
-    ConfigParser config;
-    config.add(new ConfigParam<string>(
-        "-a", "--align", "<alignment fasta>", &alignfile, 
-        "sequence alignment in fasta format"));
-    config.add(new ConfigParam<string>(
-        "-S", "--smap", "<species map>", &smapfile, 
-        "gene to species map"));
-    config.add(new ConfigParam<string>(
-        "-s", "--stree", "<species tree>", &streefile, 
-        "species tree file in newick format"));
-    config.add(new ConfigParam<string>(
-        "-p", "--param", "<spidir params file>", &paramsfile, 
-        "SPIDIR branch length parameters file"));
-    
-    
-    config.add(new ConfigParamComment("Miscellaneous"));
-    config.add(new ConfigParam<int>(
-        "-i", "--niter", "<# iterations>", &niter, 100, 
-        "number of iterations"));
-    config.add(new ConfigParam<string>(
-        "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
-        "algorithm for determining branch lengths"));
-    config.add(new ConfigParam<float>(
-        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
-        "used for HKY model"));
-    config.add(new ConfigParam<string>(
-        "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
-        &bgfreqstr, ".25,.25,.25,.25",
-        "background frequencies"));
-    config.add(new ConfigSwitch(
-        "-h", "--help", &help, "display help information"));
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 9
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 19
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 29
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 39
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 49
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 59
+    -1, -1, -1, -1, -1,  0, -1,  1, -1, -1,   // 69
+    -1,  2, -1, -1, -1, -1, -1, -1, -1, -1,   // 79
+    -1, -1, -1, -1,  3, -1, -1, -1, -1, -1,   // 89
+    -1, -1, -1, -1, -1, -1, -1,  0, -1,  1,   // 99
+    -1, -1, -1,  2, -1, -1, -1, -1, -1, -1,   // 109
+    -1, -1, -1, -1, -1, -1,  3, -1, -1, -1,   // 119
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 129
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 139
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 149
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 159
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 169
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 179
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 189
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 199
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 209
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 219
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 229
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 239
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,   // 249
+    -1, -1, -1, -1, -1, -1                    // 255
+};
 
-    
-    
-    if (!config.parse(argc, (const char**) argv)) {
-        if (argc < 2)
-            config.printHelp();
-        return 1;
-    }
-    
-    if (help) {
-        config.printHelp();
-        return 0;
-    }
+char *int2dna = "ACGT";
 
-    
-    //============================================================
-    // read species tree
-    SpeciesTree stree;
-    stree.readNewick(streefile.c_str());
-    stree.setDepths();
-    
-    // read gene2species map
-    Gene2species g;
-    g.read(smapfile.c_str());
-    
-    
-    // read sequences
-    Sequences *aln;
-    
-    if ((aln = readAlignFasta(alignfile.c_str())) == NULL ||
-        !checkSequences(aln->nseqs, aln->seqlen, aln->seqs)) {
-        printError("bad alignment file");
-        return 1;
-    }
+int dnatype[] = { 
+    DNA_PURINE,     // A
+    DNA_PRYMIDINE,  // C
+    DNA_PURINE,     // G
+    DNA_PRYMIDINE   // T
+};    
 
-    // read SPIDIR parameters
-    SpidirParams *params;
-    if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
-    {
-        printError("bad parameters file");
-        return 1;
-    }
-    
-    if (!params->order(&stree)) {
-        printError("parameters do not correspond to the given species tree");
-        return 1;
-    }
-    
-    // determine background base frequency
-    float bgfreq[4];
-    vector<string> tokens = split(bgfreqstr.c_str(), ",");
-    if (tokens.size() != 4) {
-        printError("bgfreq requires four base frequencies e.g .25,.25,.25,.25");
-        return 1;
-    }
-    for (unsigned int i=0; i<tokens.size(); i++)
-        bgfreq[i] = atof(tokens[i].c_str());
-    
-    
-    int nnodes = aln->nseqs * 2 - 1;
 
-    // produce mapping array
-    ExtendArray<string> genes(0, nnodes);
-    ExtendArray<string> species(stree.nnodes);
-    ExtendArray<int> gene2species(nnodes);
-    genes.extend(aln->names, aln->nseqs);
-    for (int i=aln->nseqs; i<nnodes; i++)
-        genes.append("");
-    stree.getLeafNames(species);   
+//=============================================================================
+// Distance Matix
+
+// calculate the pairwise distances between sequences
+// NOTE: simple version implemented first
+void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
+{
+    for (int i=0; i<nseqs; i++) {
+        distmat[i][i] = 0.0;
     
-    g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
-    
-    
-    // determine branch length algorithm
-    BranchLengthFitter *fitter = NULL;
-    if (lenfitter == "parsimony") {
-        fitter = new ParsimonyFitter(aln->nseqs, aln->seqlen, aln->seqs);
+        for (int j=i+1; j<nseqs; j++) {
+            float changes = 0.0;
+            int len = 0;
+            
+            for (int k=0; k<seqlen; k++) {
+                if (seqs[i][k] != '-' && seqs[j][k] != '-') {
+                    len++;                
+                    if (seqs[i][k] != seqs[j][k]) {
+                        changes += 1;
+                    }
+                }
+            }
+            
+            assert(len > 0);
+            
+            distmat[i][j] = changes / len;
+            distmat[j][i] = changes / len;
+        }
     }
-    else if (lenfitter == "hky") {
-        int maxiter = 2*nnodes;
-        fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
-                               bgfreq, tsvratio, maxiter);
-    } else {
-        printError("unknown branch length fitting algorithm: '%s'", 
-                   lenfitter.c_str());
-        return 1;
+}
+
+
+
+
+
+bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
+                     string *names)
+{
+    FILE *stream = NULL;
+    
+    if ((stream = fopen(filename, "w")) == NULL) {
+        fprintf(stderr, "cannot open '%s'\n", filename);
+        return false;
     }
+    
+    // print number of genes
+    fprintf(stream, "%d\n", ngenes);
+    
+    for (int i=0; i<ngenes; i++) {
+        fprintf(stream, "%s ", names[i].c_str());
         
-    
-    // search
-    Tree *toptree = searchMCMC(NULL, &stree,
-                               params, gene2species,
-                               aln->nseqs, aln->seqlen, aln->seqs,
-                               niter, &nniProposer,
-                               fitter);
-    
-    toptree->setLeafNames(genes);
-    toptree->writeNewick();
-    
-    delete toptree;
-}
-
-
-int test_gene2species(int argc, char **argv)
-{
-    Gene2species g;
-    Tree tree, stree;
-    
-    tree.readNewick(argv[1]);
-    stree.readNewick(argv[2]);
-    g.read(argv[3]);
-    
-    ExtendArray<string> genes(tree.nnodes);
-    tree.getLeafNames(genes);
-
-    ExtendArray<string> species(stree.nnodes);
-    stree.getLeafNames(species);
-
-    
-    for (int i=0; i<tree.nnodes; i++) {
-        printf("'%s' -> '%s'\n", genes[i].c_str(), 
-               g.getSpecies(genes[i]).c_str());
+        for (int j=0; j<ngenes; j++) {
+            fprintf(stream, "%f ", dists[i][j]);
+        }
+        fprintf(stream, "\n");
     }
     
-    ExtendArray<int> map(tree.nnodes);
-    g.getMap(genes, tree.nnodes, species, stree.nnodes, map);
-    
-    printIntArray(map, tree.nnodes);
-    
-    return 0;
+    fclose(stream);
+    return true;
 }
+
+
+
+
+
+//=============================================================================
+// Spidir Parameters
+
+SpidirParams *readSpidirParams(const char* filename)
+{
+    FILE *infile = NULL;
+    
+    if ((infile = fopen(filename, "r")) == NULL) {
+        fprintf(stderr, "cannot read file '%s'\n", filename);
+        return NULL;
+    }
+    
+    const int MAX_NAME = 51;
+    float param1, param2;
+    float alpha = -1, beta = -1;
+    ExtendArray<float> mu(0, 40);
+    ExtendArray<float> sigma(0, 40);
+    ExtendArray<string> names(0, 40);
+    
+    char name[MAX_NAME];
+    
+    while (!feof(infile)) {
+        int ntokens = fscanf(infile, "%50s\t%f\t%f", name, &param1, &param2);
+        if (ntokens <= 0)
+            break;
+        if (ntokens != 3) {
+            return NULL;
+        }
+        
+        if (!strcmp(name, "baserate")) {
+            alpha = param1;
+            beta = param2;
+        } else {
+            names.append(name);
+            mu.append(param1);
+            sigma.append(param2);
+        }
+    }
+    fclose(infile);    
+    
+    return new SpidirParams(names.size(), names, mu, sigma, alpha, beta);
+}
+
+
+// get the preorder traversal of the species tree
+void paramsOrder_helper(Node *node, ExtendArray<Node*> *nodeorder)
+{
+    nodeorder->append(node);
+    for (int i=0; i<node->nchildren; i++) {
+        paramsOrder_helper(node->children[i], nodeorder);
+    }
+}
+
+
+// UNDER CONSTRUCTION
+bool SpidirParams::order(SpeciesTree *stree)
+{
+    if (stree->nnodes != nsnodes) {
+        printf("%d %d\n", stree->nnodes, nsnodes);
+        return false;
+    }
+    
+    ExtendArray<Node*> nodeorder(0, stree->nnodes);
+    paramsOrder_helper(stree->root, &nodeorder);
+    ExtendArray<int> perm(0, stree->nnodes);
+    ExtendArray<int> invperm(0, stree->nnodes);
+    
+    // make interior node names
+    ExtendArray<int> inodes(0, stree->nnodes);
+    
+    int inodename = 1;
+    for (int i=0; i<stree->nnodes; i++) {
+        if (nodeorder[i]->isLeaf()) {
+            inodes.append(-1);
+        } else {
+            inodes.append(inodename++);
+        }
+    }
+    
+    
+    // loop through preordered nodes to construct permutation
+    for (int j=0; j<nsnodes; j++) {
+        for (int i=0; i<stree->nnodes; i++) {
+            if (nodeorder[i]->isLeaf()) {
+                if (names[j] == nodeorder[i]->leafname) {
+                    invperm.append(i);
+                    break;
+                }
+            } else {
+                if (atoi(names[j].c_str()) == inodes[i]) {
+                    invperm.append(i);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // apply permutation
+    invertPerm(invperm, perm, nsnodes);
+    permute(names, perm, nsnodes);
+    permute(mu, perm, nsnodes);
+    permute(sigma, perm, nsnodes);
+    
+    return true;
+}
+
+
+

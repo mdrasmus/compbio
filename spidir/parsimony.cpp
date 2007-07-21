@@ -8,9 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 
-
-#include "parsimony.h"
 #include "common.h"
+#include "spidir.h"
+#include "parsimony.h"
 #include "Tree.h"
 
 

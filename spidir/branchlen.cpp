@@ -14,6 +14,7 @@
 #include "Matrix.h"
 #include "Tree.h"
 #include "branchlen.h"
+#include "spidir.h"
 
 
 /*=============================================================================

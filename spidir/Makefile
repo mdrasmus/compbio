@@ -24,10 +24,13 @@ MATLAB_CFLAGS = \
 
 
 #=============================================================================
+# target names
+
 # program files
 SPIDIR_PROG = spidir
 
 SPIDIR_SRC = \
+    spidir.cpp \
     branchlen.cpp \
     common.cpp \
     likelihood.cpp \
@@ -36,6 +39,7 @@ SPIDIR_SRC = \
     Tree.cpp \
 
 SPIDIR_OBJS = \
+    spidir.o \
     branchlen.o \
     common.o \
     likelihood.o \
@@ -44,18 +48,22 @@ SPIDIR_OBJS = \
     Tree.o \
     Sequences.o 
 
-PROG_SRC = spidir.cpp 
-PROG_OBJS = spidir.o $(SPIDIR_OBJS)
+PROG_SRC = spidir_main.cpp 
+PROG_OBJS = spidir_main.o $(SPIDIR_OBJS)
 PROG_LIBS = 
 
+
+# C-library files
 LIBSPIDIR = lib/libspidir.a
 LIBSPIDIR_OBJS = $(SPIDIR_OBJS)
+
 
 # python files
 PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
     $(SPIDIR_OBJS)
+
 
 # matlab files
 MATLAB_FUNC = matlab_spidir

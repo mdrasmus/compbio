@@ -1,6 +1,8 @@
 #ifndef SPIDIR_SEARCH_H
 #define SPIDIR_SEARCH_H
 
+#include "spidir.h"
+
 
 
 class TopologyProposer

@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include "common.h"
+#include "likelihood.h"
 #include "Tree.h"
 #include "ExtendArray.h"
 

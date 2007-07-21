@@ -2,6 +2,7 @@
 #define SPIDIR_LIKELIHOOD_H
 
 #include "Tree.h"
+#include "spidir.h"
 
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 

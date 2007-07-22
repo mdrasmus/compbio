@@ -4,6 +4,8 @@
 #include "Tree.h"
 #include "spidir.h"
 
+namespace spidir {
+
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
              int *recon, int *events,
@@ -17,6 +19,6 @@ float treelk(Tree *tree,
              float generate, float disterror,
              float predupprob, float dupprob, float errorlogl);
 
-
+} // namespace spidir
 
 #endif // SPIDIR_LIKELIHOOD_H

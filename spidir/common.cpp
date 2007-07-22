@@ -8,6 +8,7 @@
 
 =============================================================================*/
 
+// c++ headers
 #include <assert.h>
 #include <math.h>
 #include <stdarg.h>
@@ -15,9 +16,10 @@
 #include <stdio.h>
 #include <string.h>
 
-
+// spidir headers
 #include "common.h"
 
+namespace spidir {
 
 
 //=============================================================================
@@ -196,3 +198,5 @@ string trim(const char *word)
     return string(buf);
 }
 
+
+} // namespace spidir

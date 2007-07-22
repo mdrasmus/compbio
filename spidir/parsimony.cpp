@@ -1,18 +1,20 @@
 //=============================================================================
 // Parsimony algorithm
 
-
+// c++ headers
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
+// spidir headers
 #include "common.h"
 #include "spidir.h"
 #include "parsimony.h"
 #include "Tree.h"
 
+namespace spidir {
 
 
 #define MAX_COST 1000000000
@@ -246,3 +248,6 @@ void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
     parsimony(&tree, nseqs, seqs, buildAncestral, ancetralSeqs);
     tree.getDists(dists);
 }
+
+
+} // namespace spidir

@@ -10,6 +10,8 @@
 
 using namespace std;
 
+namespace spidir {
+
 enum {
     OPTION_ARG,
     OPTION_COMMENT
@@ -255,5 +257,7 @@ public:
     vector<string> rest;
 };
 
+
+} // namespace spidir
 
 #endif // SPIDIR_CONFIG_PARAM_H

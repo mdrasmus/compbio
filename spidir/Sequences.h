@@ -8,6 +8,8 @@
 
 using namespace std;
 
+namespace spidir {
+
 class Sequences
 {
 public:
@@ -47,5 +49,6 @@ Sequences *readAlignFasta(const char *filename);
 bool writeFasta(const char *filename, Sequences *seqs);
 bool checkSequences(int nseqs, int seqlen, char **seqs);
 
+} // namespace spidir
 
 #endif

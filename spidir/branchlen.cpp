@@ -8,7 +8,10 @@
 
 =============================================================================*/
 
+// c++ headers
 #include <math.h>
+
+// spidir headers
 #include "parsimony.h"
 #include "common.h"
 #include "Matrix.h"
@@ -16,6 +19,8 @@
 #include "branchlen.h"
 #include "spidir.h"
 
+
+namespace spidir {
 
 /*=============================================================================
     From: Felsenstein. Inferring Phylogenies. p 202.
@@ -722,3 +727,4 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
 }
 
 
+} // namespace spidir

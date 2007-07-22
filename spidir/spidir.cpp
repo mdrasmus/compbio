@@ -2,7 +2,7 @@
 #include "spidir.h"
 #include "Tree.h"
 
-
+namespace spidir {
 
 
 int dna2int [256] = 
@@ -217,4 +217,4 @@ bool SpidirParams::order(SpeciesTree *stree)
 }
 
 
-
+} // namespace spidir

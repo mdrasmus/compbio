@@ -4,6 +4,7 @@
 #include "spidir.h"
 
 
+namespace spidir {
 
 class TopologyProposer
 {
@@ -82,5 +83,8 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 TopologyProposer *proposer=&nniProposer,
                 BranchLengthFitter *fitter=NULL
                 );
+
+
+} // namespace spidir
 
 #endif // SPIDIR_SEARCH_H

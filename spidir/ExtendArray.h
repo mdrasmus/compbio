@@ -5,6 +5,8 @@
 #include <algorithm>
 
 
+namespace spidir {
+
 
 /*=============================================================================
     equivalent of realloc for C++
@@ -40,6 +42,7 @@ class ExtendArray
 {
 public:
     typedef ValueType* ValuePtrType;
+    typedef ValuePtrType* ValuePtrPtrType;
 
     ExtendArray(int _len=0, int size=0, ValueType *_data=NULL, 
                 int _minsize=40) :
@@ -175,7 +178,6 @@ public:
         return data;
     }
     
-    
     inline int size()
     {
         return len;
@@ -235,7 +237,6 @@ protected:
 };
 
 
-// TODO: remove
 template <class ValueType>
 class StackArray
 {
@@ -277,6 +278,6 @@ protected:
 
 
 
-
+} // namespace spidir
 
 #endif // SPIDIR_EXTEND_ARRAY_H

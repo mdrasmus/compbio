@@ -1,14 +1,16 @@
 //=============================================================================
 // SPIDIR Tree datastructure
 
+// c++ headers
 #include <assert.h>
 #include <stdio.h>
 
-
+// spidir headers
 #include "Tree.h"
 #include "Matrix.h"
 
 
+namespace spidir {
 
 
 // return a copy of the tree
@@ -1075,3 +1077,6 @@ void printTree(Tree *tree, Node *node, int depth)
         }
     }
 }
+
+
+} // namespace spidir

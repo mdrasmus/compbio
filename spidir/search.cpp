@@ -2,6 +2,7 @@
 //  SPIDIR - tree search
 
 
+
 #include "common.h"
 #include "Tree.h"
 #include "Matrix.h"
@@ -9,6 +10,9 @@
 #include "parsimony.h"
 #include "search.h"
 #include "branchlen.h"
+
+
+namespace spidir {
 
 
 // globals
@@ -313,3 +317,6 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     
     return toptree;
 }
+
+
+} // namespace spidir

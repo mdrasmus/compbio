@@ -4,13 +4,14 @@
 
 =============================================================================*/
 
+// c++ headers
 #include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
 #include <vector>
 
-
+// spidir headers
 #include "common.h"
 #include "parsimony.h"
 #include "search.h"
@@ -22,7 +23,7 @@
 
 
 using namespace std;
-
+using namespace spidir;
 
 
 int main(int argc, char **argv)

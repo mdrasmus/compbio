@@ -5,6 +5,7 @@
 
 using namespace std;
 
+namespace spidir {
 
 
 // convert dna characters into standard numbers
@@ -91,6 +92,6 @@ public:
 SpidirParams *readSpidirParams(const char* filename);
 
 
-
+} // namespace spidir
 
 #endif

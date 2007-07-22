@@ -12,6 +12,8 @@
 using namespace std;
 
 
+namespace spidir {
+
 // events
 enum {
     EVENT_GENE = 0,
@@ -328,5 +330,7 @@ void labelEvents(Tree *tree, int *recon, int *events);
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
 
+
+} // namespace spidir
 
 #endif // SPDIR_TREE_H

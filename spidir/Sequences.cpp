@@ -1,6 +1,10 @@
 
-#include "Sequences.h"
+// spidir headers
 #include "spidir.h"
+#include "Sequences.h"
+
+namespace spidir {
+
 
 Sequences *readFasta(const char *filename)
 {
@@ -100,3 +104,6 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
     return true;
 }
 
+
+
+} // namespace spidir

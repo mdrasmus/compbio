@@ -11,7 +11,7 @@
 
 =============================================================================*/
 
-
+// headers c++ 
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -19,10 +19,12 @@
 #include <string>
 #include <vector>
 
+// spidir headers
 #include "ExtendArray.h"
 
 using namespace std;
 
+namespace spidir {
 
 // constants
 #define PI 3.1415926
@@ -159,5 +161,6 @@ char readUntil(FILE *stream, string &token, char *stops, int &depth);
 string trim(const char *word);
 
 
+} // namespace spidir
 
 #endif // SPIDIR_COMMON_H

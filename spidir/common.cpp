@@ -22,7 +22,10 @@
 namespace spidir {
 
 
+// stream for logging
 static FILE *g_logstream = stderr;
+
+
 
 //=============================================================================
 // Math
@@ -142,6 +145,17 @@ vector<string> split(const char *str, const char *delim, bool multiDelim)
 }
 
 
+string trim(const char *word)
+{
+    char buf[101];
+    sscanf(word, "%100s", buf);
+    return string(buf);
+}
+
+
+//=============================================================================
+// Errors and Logging
+
 void printError(const char *fmt, ...)
 {
    va_list ap;   
@@ -179,13 +193,6 @@ void closeLogFile()
 
 
 
-
-string trim(const char *word)
-{
-    char buf[101];
-    sscanf(word, "%100s", buf);
-    return string(buf);
-}
 
 
 } // namespace spidir

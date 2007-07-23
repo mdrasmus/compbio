@@ -22,6 +22,8 @@
 namespace spidir {
 
 
+static FILE *g_logstream = stderr;
+
 //=============================================================================
 // Math
 
@@ -123,8 +125,7 @@ vector<string> split(const char *str, const char *delim, bool multiDelim)
     while (str[i]) {
         // walk to end of next token
         for (; str[j] && !inChars(str[j], delim); j++);
-        printf("> %d %d\n", i, j);
-
+        
         if (i == j)
             break;
 
@@ -154,41 +155,29 @@ void printError(const char *fmt, ...)
 }
 
 
-char readChar(FILE *stream, int &depth)
+void printLog(const char *fmt, ...)
 {
-    char chr;
-    do {
-        if (fread(&chr, sizeof(char), 1, stream) != 1) {
-            // indicate EOF
-            return '\0';
-        }
-    } while (chr == ' ' || chr == '\n');
-    
-    // keep track of paren depth
-    if (chr == '(') depth++;
-    if (chr == ')') depth--;
-    
-    return chr;
+   va_list ap;   
+   va_start(ap, fmt);
+   vfprintf(g_logstream, fmt, ap);
+   va_end(ap);
 }
 
 
-char readUntil(FILE *stream, string &token, char *stops, int &depth)
+bool openLogFile(const char *filename)
 {
-    char chr;
-    token = "";
-    while (true) {
-        chr = readChar(stream, depth);
-        if (!chr)
-            return chr;
-        
-        // compare char to stop characters
-        for (char *i=stops; *i; i++) {
-            if (chr == *i)
-                return chr;
-        }
-        token += chr;
-    }
+    g_logstream = fopen(filename, "w");
+    
+    return (g_logstream != NULL);
 }
+
+
+void closeLogFile()
+{
+    fclose(g_logstream);
+}
+
+
 
 
 string trim(const char *word)

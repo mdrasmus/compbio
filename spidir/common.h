@@ -148,6 +148,10 @@ protected:
 };
 
 
+// logging
+void printLog(const char *fmt, ...);
+bool openLogFile(const char *filename);
+void closeLogFile();
 
 
 void printIntArray(int *array, int size);
@@ -156,8 +160,6 @@ bool inChars(char c, const char *chars);
 bool chomp(char *str);
 vector<string> split(const char *str, const char *delim, bool multiDelim = true);
 void printError(const char *fmt, ...);
-char readChar(FILE *stream, int &depth);
-char readUntil(FILE *stream, string &token, char *stops, int &depth);
 string trim(const char *word);
 
 

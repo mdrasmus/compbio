@@ -14,10 +14,10 @@
 // spidir headers
 #include "branchlen.h"
 #include "common.h"
+#include "phylogeny.h"
 #include "parsimony.h"
 #include "search.h"
 #include "Matrix.h"
-#include "Tree.h"
 #include "ConfigParam.h"
 #include "Sequences.h"
 

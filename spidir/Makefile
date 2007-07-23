@@ -35,6 +35,7 @@ SPIDIR_SRC = \
     common.cpp \
     likelihood.cpp \
     parsimony.cpp \
+    phylogeny.cpp \
     search.cpp \
     Tree.cpp \
 
@@ -44,6 +45,7 @@ SPIDIR_OBJS = \
     common.o \
     likelihood.o \
     parsimony.o \
+    phylogeny.o \
     search.o \
     Tree.o \
     Sequences.o 

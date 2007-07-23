@@ -13,10 +13,10 @@
 
 // spidir headers
 #include "common.h"
+#include "phylogeny.h"
 #include "parsimony.h"
 #include "search.h"
 #include "Matrix.h"
-#include "Tree.h"
 #include "ConfigParam.h"
 #include "Sequences.h"
 #include "spidir.h"
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     string smapfile;
     string streefile;
     string paramsfile;
+    string outprefix;
     int niter = 0;
     string lenfitter;
     float tsvratio;
@@ -55,6 +56,9 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<string>(
         "-p", "--param", "<spidir params file>", &paramsfile, 
         "SPIDIR branch length parameters file"));
+    config.add(new ConfigParam<string>(
+        "-o", "--output", "<output filename prefix>", &outprefix, "spidir",
+        "prefix for all output filenames"));
     
     
     config.add(new ConfigParamComment("Miscellaneous"));
@@ -86,7 +90,14 @@ int main(int argc, char **argv)
         config.printHelp();
         return 0;
     }
-
+    
+    
+    //============================================================
+    // output filenames
+    string outtreeFilename = outprefix  + ".tree";
+    string logFilename = outprefix + ".log";
+    
+    openLogFile(logFilename.c_str());
     
     //============================================================
     // read species tree
@@ -170,9 +181,11 @@ int main(int argc, char **argv)
                                fitter);
     
     toptree->setLeafNames(genes);
-    toptree->writeNewick();
+    toptree->writeNewick(outtreeFilename.c_str());
     
     delete toptree;
+    
+    closeLogFile();
 }
 
 

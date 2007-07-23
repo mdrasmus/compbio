@@ -4,8 +4,8 @@
 
 
 #include "common.h"
-#include "Tree.h"
 #include "Matrix.h"
+#include "phylogeny.h"
 #include "likelihood.h"
 #include "parsimony.h"
 #include "search.h"
@@ -271,7 +271,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     
     // MCMC loop
     for (int i=0; i<niter; i++) {
-        printf("iter %d\n", i);
+        printLog("search: iter %d\n", i);
     
         // propose new tree
         proposer->propose(tree);
@@ -293,7 +293,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         if (nextlogl > logl ||
             nextlogl - logl + speed > log(rand() / float(RAND_MAX)))
         {
-            printf("accept %f  %f\n", nextlogl, logl);
+            printLog("search: accept %f  %f\n", nextlogl, logl);
             // accept
             logl = nextlogl;
             speed /= 2.0;
@@ -306,7 +306,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 toplogl = logl;
             }
         } else {
-            printf("reject\n");
+            printLog("search: reject\n");
             //speed = (speed + 1) * 1.3;
             
             // reject, undo topology change

@@ -9,8 +9,9 @@
 #include "ExtendArray.h"
 #include "branchlen.h"
 #include "likelihood.h"
+#include "phylogeny.h"
 #include "parsimony.h"
-#include "Tree.h"
+
 
 using namespace spidir;
 

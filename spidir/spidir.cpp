@@ -1,6 +1,6 @@
 
 #include "spidir.h"
-#include "Tree.h"
+#include "phylogeny.h"
 
 namespace spidir {
 

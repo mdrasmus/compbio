@@ -1,10 +1,19 @@
+// python headers
 #include <Python.h>
+
+// c++ headers
 #include <string.h>
 
-#include "spidir.h"
+// spidir headers
 #include "common.h"
-#include "Tree.h"
 #include "ExtendArray.h"
+#include "branchlen.h"
+#include "likelihood.h"
+#include "phylogeny.h"
+#include "parsimony.h"
+
+
+using namespace spidir;
 
 
 //=============================================================================
@@ -134,32 +143,22 @@ pyspidir_treelk(PyObject *self, PyObject *args)
         return NULL;
     }
     
-    bool error = false;
-    
-    // return value
-    float logl = 0;
     
     // gene tree
     int nnodes;
     StackArray<int> ptree;
     StackArray<float> dists;
-    //int *ptree = NULL;
-    //float *dists = NULL;
     
     // species tree
     int nsnodes;
     StackArray<int> pstree;
-    //int *pstree = NULL;
     
     // reconciliation
     StackArray<int> gene2species;
-    //int *gene2species = NULL;
     
     // params
     StackArray<float> mu;
     StackArray<float> sigma;
-    //float *mu = NULL;
-    //float *sigma = NULL;
     float alpha = PyFloat_AS_DOUBLE(pyalpha);
     float beta = PyFloat_AS_DOUBLE(pybeta);    
     float generate = PyFloat_AS_DOUBLE(pygenerate);
@@ -213,37 +212,28 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     printFloatArray(sigma, nnodes);
     */
     
-    {
-        // make tree object
-        Tree tree(nnodes);
-        ptree2tree(nnodes, ptree, &tree);
-        tree.setDists(dists);
+    // make tree object
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    tree.setDists(dists);
 
-        SpeciesTree stree(nsnodes);
-        ptree2tree(nsnodes, pstree, &stree);
-        stree.setDepths();
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();
 
-        // reconcile gene tree to species tree
-        ExtendArray<int> recon(nnodes);
-        ExtendArray<int> events(nnodes);
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(nnodes);
+    ExtendArray<int> events(nnodes);
 
-        reconcile(&tree, &stree, gene2species, recon);
-        labelEvents(&tree, recon, events);
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
 
-        // calculate likelihood
-        logl = treelk(nnodes, ptree, dists,
-                      nsnodes, pstree, 
-                      recon, events,
-                      mu, sigma, generate, disterror,
-                      predupprob, dupprob, errorprob, alpha, beta);
-    }
-    
-    //if (ptree) delete [] ptree;
-    //if (dists) delete [] dists;
-    //if (pstree) delete [] pstree;
-    //if (gene2species) delete [] gene2species;
-    //if (mu) delete [] mu;
-    //if (sigma) delete [] sigma;
+    // calculate likelihood
+    float logl = treelk(nnodes, ptree, dists,
+                  nsnodes, pstree, 
+                  recon, events,
+                  mu, sigma, generate, disterror,
+                  predupprob, dupprob, errorprob, alpha, beta);
     
     return Py_BuildValue("f", logl);
 }
@@ -252,9 +242,6 @@ pyspidir_treelk(PyObject *self, PyObject *args)
 static PyObject *
 pyspidir_parsimony(PyObject *self, PyObject *args)
 {
-    PyObject *ret = NULL;
-    bool error = false;
-    
     // check number of args
     if (PyTuple_GET_SIZE(args) < 2) {
         printf("wrong number of args\n");
@@ -278,41 +265,41 @@ pyspidir_parsimony(PyObject *self, PyObject *args)
     
     // gene tree
     int nnodes;
-    int *ptree = NULL;
-    char **seqs = NULL;
+    StackArray<int> ptree;
+    char** seqs;
+    //int *ptree = NULL;
+    //char **seqs = NULL;
     int nseqs;
     
     // convert data
     if (!makeIntArray(pyptree, &ptree, &nnodes)) {
         printf("bad ptree\n");
-        error = true;
-        goto cleanup;
+        //error = true;
+        //goto cleanup;
+        return NULL;
     }
 
     if (!makeStringArray(pyseqs, &seqs, &nseqs)) {
         printf("bad seqs\n");
-        error = true;
-        goto cleanup;
+        freeStringArray(seqs, nseqs);
+        return NULL;
+        //error = true;
+        //goto cleanup;
     }
     
     
     // call C code
-    {
-        //for (int i=0; i<nseqs; i++)
-        //    printf("%s\n", seqs[i]);
+    //for (int i=0; i<nseqs; i++)
+    //    printf("%s\n", seqs[i]);
 
-    
-        float *dists = new float [nnodes];
-        for (int i=0; i<nnodes; i++) dists[i] = 0;
-        parsimony(nnodes, ptree, nseqs, seqs, dists);
-        ret = makeFloatListPy(dists, nnodes);
-        delete [] dists;    
-    }
-    
-    cleanup:
-        if (ptree) delete [] ptree;
-        if (seqs) freeStringArray(seqs, nseqs);
 
+    ExtendArray<float> dists(nnodes); // = new float [nnodes];
+    for (int i=0; i<nnodes; i++)
+        dists[i] = 0;
+    parsimony(nnodes, ptree, nseqs, seqs, dists);
+    PyObject *ret = makeFloatListPy(dists, nnodes);
+    
+    freeStringArray(seqs, nseqs);
     
     return ret;
 }
@@ -321,10 +308,6 @@ pyspidir_parsimony(PyObject *self, PyObject *args)
 static PyObject *
 pyspidir_mlhkydist(PyObject *self, PyObject *args)
 {
-    PyObject *ret = NULL;
-    bool error = false;
-    float logl = 0.0;
-    
     // check number of args
     if (PyTuple_GET_SIZE(args) < 2) {
         printf("wrong number of args\n");
@@ -353,9 +336,9 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
     
     // gene tree
     int nnodes;
-    int *ptree = NULL;
+    StackArray<int> ptree; // *ptree = NULL;
     char **seqs = NULL;
-    float *bgfreq = NULL;
+    StackArray<float> bgfreq; // = NULL;
     int nseqs;
     int nbases;
     float ratio = PyFloat_AS_DOUBLE(pyratio);
@@ -364,40 +347,32 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
     // convert data
     if (!makeIntArray(pyptree, &ptree, &nnodes)) {
         printf("bad ptree\n");
-        error = true;
-        goto cleanup;
+        return NULL;
     }
 
     if (!makeStringArray(pyseqs, &seqs, &nseqs)) {
         printf("bad seqs\n");
-        error = true;
-        goto cleanup;
+        freeStringArray(seqs, nseqs);
+        return NULL;
     }
     
     if (!makeFloatArray(pybgfreq, &bgfreq, &nbases)) {
         printf("bad bgfreq\n");
-        error = true;
-        goto cleanup;
+        return NULL;
     }
     
     
-    // call C code
-    {
-        float *dists = new float [nnodes];
-        for (int i=0; i<nnodes; i++) dists[i] = 0;
-        logl = findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
-                               dists, bgfreq, ratio, maxiter,
-                               true);
-        ret = makeFloatListPy(dists, nnodes);
-        delete [] dists;
-    }
+    // call C code    
+    ExtendArray<float> dists(nnodes); // = new float [nnodes];
+    for (int i=0; i<nnodes; i++) 
+        dists[i] = 0;
+    float logl = findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
+                           dists, bgfreq, ratio, maxiter,
+                           true);
+    PyObject *ret = makeFloatListPy(dists, nnodes);
     
-    cleanup:
-        if (ptree) delete [] ptree;
-        if (seqs) freeStringArray(seqs, nseqs);
-        if (bgfreq) delete [] bgfreq;
-
-
+    freeStringArray(seqs, nseqs);
+    
     return Py_BuildValue("Nf", ret, logl);
 }
 

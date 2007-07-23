@@ -8,14 +8,19 @@
 
 =============================================================================*/
 
+// c++ headers
 #include <math.h>
-#include "spidir.h"
+
+// spidir headers
 #include "parsimony.h"
 #include "common.h"
 #include "Matrix.h"
 #include "Tree.h"
 #include "branchlen.h"
+#include "spidir.h"
 
+
+namespace spidir {
 
 /*=============================================================================
     From: Felsenstein. Inferring Phylogenies. p 202.
@@ -188,7 +193,7 @@ float secantRoot(Func &f, float x0, float x1, int maxiter,
 // x0 and x1 are initial estimates of the root
 template <class Func>
 float bisectRoot(Func &f, float x0, float x1, int maxiter, 
-                 float minx=.0001, float esp=.02)
+                 float minx=.0001, float maxx=10.0, float esp=.02)
 {
     // we expect f(x0) > 0 and f(x1) < 0
     
@@ -208,6 +213,8 @@ float bisectRoot(Func &f, float x0, float x1, int maxiter,
         //printf("x1=%f f1=%f\n", x1, f1);
         x1 *= 2.0;
         f1 = f(x1);
+        if (x1 > maxx)
+            return x1;
     }
     
     for (int i=0; i<maxiter; i++) {
@@ -592,7 +599,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     
     // iterate over branches improving each likelihood
     for (int i=0; i<maxiter; i++) {
-        printf("iter %d\n", i);
+        printLog("hky: iter %d\n", i);
         
         Node *newroot = tree->nodes[int(frand() * tree->nnodes)];
         
@@ -600,7 +607,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         Node *oldnode1 = tree->root->children[0];
         Node *oldnode2 = tree->root->children[1];
 
-        // reroot tree
+        // reroot tree, skip if choosen node does not change root
         if (newroot == tree->root ||
             newroot == oldnode1 ||
             newroot == oldnode2)
@@ -620,14 +627,13 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
 
         // walk up to root of tree, rebuilding conditional likelihoods
         for (; ptr->parent; ptr = ptr->parent) {
-            if (ptr->isLeaf())
-                continue;
-            calcLkTable(lktable, seqlen, model, 
-                        ptr->children[0]->name, 
-                        ptr->children[1]->name, 
-                        ptr->name,
-                        ptr->children[0]->dist, 
-                        ptr->children[1]->dist);
+            if (!ptr->isLeaf())
+                calcLkTable(lktable, seqlen, model, 
+                            ptr->children[0]->name, 
+                            ptr->children[1]->name, 
+                            ptr->name,
+                            ptr->children[0]->dist, 
+                            ptr->children[1]->dist);
         }
 
         // get total probability before branch length change
@@ -636,9 +642,6 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         logl = -INFINITY;
         Node *node1 = tree->root->children[0];
         Node *node2 = tree->root->children[1];
-
-        printf("before: %f\n", loglBefore);
-        printf("samples: %d\n", samples);
 
         // find new MLE branch length for root branch
         float initdist = node1->dist + node2->dist;
@@ -660,16 +663,16 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
             logl = loglBefore;
         }
 
-        printf("lk:%d %f\n", i, logl);
+        printLog("hky: lk=%f\n", logl);
         
         // determine whether logl has converged
         if (i > 0 && logl - lastLogl < converge) {
-            printf("diff = %f < %f\n", fabs(logl - lastLogl), converge);
+            printLog("hky: diff = %f < %f\n", fabs(logl - lastLogl), converge);
             convergenum--;
             if (convergenum < 0)
-                break;
+                i = maxiter;
         } else {
-            printf("diff = %f > %f\n", fabs(logl - lastLogl), converge);
+            printLog("hky: diff = %f > %f\n", fabs(logl - lastLogl), converge);
         }
         lastLogl = logl;
     }
@@ -706,10 +709,7 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
                           bool parsinit)
 {
     int seqlen = strlen(seqs[0]);
-    
-    // check seqs
-    assert(checkSequences(nseqs, seqlen, seqs));
-    
+        
     // create tree objects
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
@@ -725,3 +725,4 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
 }
 
 
+} // namespace spidir

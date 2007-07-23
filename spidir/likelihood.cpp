@@ -2,15 +2,21 @@
 //  SPIDIR - Likelihood calculation
 
 
+// c++ headers
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
 
-#include "spidir.h"
+// spidir headers
 #include "common.h"
-#include "Tree.h"
+#include "likelihood.h"
+#include "phylogeny.h"
 #include "ExtendArray.h"
+
+
+namespace spidir {
+
 
 
 // fractional branches
@@ -724,3 +730,6 @@ float treelk(int nnodes, int *ptree, float *dists,
                   generate, disterror,
                   predupprob, dupprob, errorlogl);
 }
+
+
+} // namespace spidir

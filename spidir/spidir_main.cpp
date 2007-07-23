@@ -12,7 +12,6 @@
 #include <vector>
 
 // spidir headers
-#include "branchlen.h"
 #include "common.h"
 #include "phylogeny.h"
 #include "parsimony.h"
@@ -20,22 +19,26 @@
 #include "Matrix.h"
 #include "ConfigParam.h"
 #include "Sequences.h"
+#include "spidir.h"
 
 
 using namespace std;
 using namespace spidir;
 
 
-
-
-int test_reconstruct(int argc, char **argv)
-{    
+int main(int argc, char **argv)
+{
+    
     // parameters
     string alignfile;    
     string smapfile;
     string streefile;
     string paramsfile;
+    string outprefix;
     int niter = 0;
+    string lenfitter;
+    float tsvratio;
+    string bgfreqstr;
     bool help = false;
     
     
@@ -53,12 +56,25 @@ int test_reconstruct(int argc, char **argv)
     config.add(new ConfigParam<string>(
         "-p", "--param", "<spidir params file>", &paramsfile, 
         "SPIDIR branch length parameters file"));
+    config.add(new ConfigParam<string>(
+        "-o", "--output", "<output filename prefix>", &outprefix, "spidir",
+        "prefix for all output filenames"));
     
     
-    config.add(new ConfigParamComment("Miscellaneous options"));
+    config.add(new ConfigParamComment("Miscellaneous"));
     config.add(new ConfigParam<int>(
         "-i", "--niter", "<# iterations>", &niter, 100, 
         "number of iterations"));
+    config.add(new ConfigParam<string>(
+        "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
+        "algorithm for determining branch lengths"));
+    config.add(new ConfigParam<float>(
+        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
+        "used for HKY model"));
+    config.add(new ConfigParam<string>(
+        "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
+        &bgfreqstr, ".25,.25,.25,.25",
+        "background frequencies"));
     config.add(new ConfigSwitch(
         "-h", "--help", &help, "display help information"));
 
@@ -74,7 +90,14 @@ int test_reconstruct(int argc, char **argv)
         config.printHelp();
         return 0;
     }
-
+    
+    
+    //============================================================
+    // output filenames
+    string outtreeFilename = outprefix  + ".tree";
+    string logFilename = outprefix + ".log";
+    
+    openLogFile(logFilename.c_str());
     
     //============================================================
     // read species tree
@@ -86,7 +109,7 @@ int test_reconstruct(int argc, char **argv)
     Gene2species g;
     g.read(smapfile.c_str());
     
-
+    
     // read sequences
     Sequences *aln;
     
@@ -109,6 +132,16 @@ int test_reconstruct(int argc, char **argv)
         return 1;
     }
     
+    // determine background base frequency
+    float bgfreq[4];
+    vector<string> tokens = split(bgfreqstr.c_str(), ",");
+    if (tokens.size() != 4) {
+        printError("bgfreq requires four base frequencies e.g .25,.25,.25,.25");
+        return 1;
+    }
+    for (unsigned int i=0; i<tokens.size(); i++)
+        bgfreq[i] = atof(tokens[i].c_str());
+    
     
     int nnodes = aln->nseqs * 2 - 1;
 
@@ -123,75 +156,36 @@ int test_reconstruct(int argc, char **argv)
     
     g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
     
+    
+    // determine branch length algorithm
+    BranchLengthFitter *fitter = NULL;
+    if (lenfitter == "parsimony") {
+        fitter = new ParsimonyFitter(aln->nseqs, aln->seqlen, aln->seqs);
+    }
+    else if (lenfitter == "hky") {
+        int maxiter = 2*nnodes;
+        fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
+                               bgfreq, tsvratio, maxiter);
+    } else {
+        printError("unknown branch length fitting algorithm: '%s'", 
+                   lenfitter.c_str());
+        return 1;
+    }
+        
+    
     // search
     Tree *toptree = searchMCMC(NULL, &stree,
                                params, gene2species,
                                aln->nseqs, aln->seqlen, aln->seqs,
-                               niter);
+                               niter, &nniProposer,
+                               fitter);
     
     toptree->setLeafNames(genes);
-    toptree->writeNewick();
+    toptree->writeNewick(outtreeFilename.c_str());
     
     delete toptree;
     
-    return 0;
-}
-
-
-int test_mledist(int argc, char **argv)
-{
-    // parameters
-    string alignfile;
-    
-    // parse arguments
-    ConfigParser config;
-    config.add(new ConfigParam<string>(
-        "-a", "--align", "<alignment fasta>", &alignfile, 
-        "sequence alignment in fasta format"));
-    
-    
-    if (!config.parse(argc, (const char**) argv)) {
-        if (argc < 2)
-            config.printHelp();
-        return 1;
-    }
-    
-    
-    // read sequences
-    Sequences *aln;
-    
-    if ((aln = readAlignFasta(alignfile.c_str())) == NULL ||
-        !checkSequences(aln->nseqs, aln->seqlen, aln->seqs)) {
-        printError("bad alignment file");
-        return 1;
-    }
-    
-    int nnodes = aln->nseqs * 2 - 1;
-    int nseqs = aln->nseqs;
-    int seqlen = aln->seqlen;
-    char **seqs = aln->seqs;
-    
-    ExtendArray<int> ptree(nnodes);
-    ExtendArray<float> dists(nnodes);
-    Matrix<float> distmat(nseqs, nseqs);
-
-    calcDistMatrix(nseqs, seqlen, seqs, distmat.getMatrix());
-    neighborjoin(nseqs, distmat.getMatrix(), ptree, dists);
-    Tree tree(nnodes);
-    ptree2tree(nnodes, ptree, &tree);
-    tree.setLeafNames(aln->names);
-    
-    parsimony(&tree, nseqs, seqs);
-    tree.writeNewick("before.tree");
-    
-    float bgfreq[4] = {.25, .25, .25, .25};
-    float ratio = .5;
-    int maxiter = 20;
-    
-    findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
-    tree.writeNewick("after.tree");
-    
-    return 0;
+    closeLogFile();
 }
 
 
@@ -220,54 +214,6 @@ int test_gene2species(int argc, char **argv)
     g.getMap(genes, tree.nnodes, species, stree.nnodes, map);
     
     printIntArray(map, tree.nnodes);
-    
-    return 0;
-}
-
-
-
-
-int test_reroot(int argc, char **argv)
-{
-    Tree tree;
-    
-    tree.readNewick(argv[1]);
-    
-    char filename[100];
-    
-    for (int i=0; i<tree.nnodes; i++) {
-        tree.reroot(tree.nodes[i]);
-        snprintf(filename, 100, "%d.reroot.tree", i);
-        tree.writeNewick(filename);
-    }
-}
-
-
-int main(int argc, char **argv)
-{
-
-    if (argc < 2) {
-        printf("choose a test:\n"
-               "  reconstruct\n"
-               "  gene2species\n"
-               "  mledist\n"
-               "  reroot\n");
-        return 1;
-    }
-
-    string testname = argv[1];
-    
-    if (testname == "reconstruct") {
-        test_reconstruct(argc-1, &argv[1]);
-        
-    } else if (testname == "gene2species") {
-        test_gene2species(argc-1, &argv[1]);
-        
-    } else if (testname == "mledist") {
-        test_mledist(argc-1, &argv[1]);
-    } else if (testname == "reroot") {
-        test_reroot(argc-1, &argv[1]);
-    }
     
     return 0;
 }

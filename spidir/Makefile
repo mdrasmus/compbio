@@ -24,34 +24,48 @@ MATLAB_CFLAGS = \
 
 
 #=============================================================================
+# target names
+
 # program files
 SPIDIR_PROG = spidir
 
 SPIDIR_SRC = \
+    spidir.cpp \
     branchlen.cpp \
     common.cpp \
     likelihood.cpp \
     parsimony.cpp \
+    phylogeny.cpp \
     search.cpp \
     Tree.cpp \
 
 SPIDIR_OBJS = \
+    spidir.o \
     branchlen.o \
     common.o \
     likelihood.o \
     parsimony.o \
+    phylogeny.o \
     search.o \
     Tree.o \
+    Sequences.o 
 
-PROG_SRC = spidir.cpp 
-PROG_OBJS = spidir.o $(SPIDIR_OBJS)
+PROG_SRC = spidir_main.cpp 
+PROG_OBJS = spidir_main.o $(SPIDIR_OBJS)
 PROG_LIBS = 
+
+
+# C-library files
+LIBSPIDIR = lib/libspidir.a
+LIBSPIDIR_OBJS = $(SPIDIR_OBJS)
+
 
 # python files
 PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
     $(SPIDIR_OBJS)
+
 
 # matlab files
 MATLAB_FUNC = matlab_spidir
@@ -78,11 +92,16 @@ endif
 #=============================================================================
 # targets
 
-all: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
+all: $(SPIDIR_PROG) $(LIBSPIDIR) $(PYTHON_MODULE) test_spidir
 
-# stand along program
+# stand-alone program
 $(SPIDIR_PROG): $(PROG_OBJS)
 	$(CXX) $(CFLAGS) $(PROG_OBJS) $(PROG_LIBS) -o $(SPIDIR_PROG)
+
+# C-library
+$(LIBSPIDIR): $(LIBSPIDIR_OBJS)
+	mkdir -p lib
+	$(AR) -r $(LIBSPIDIR) $(LIBSPIDIR_OBJS)
 
 # testing program
 test_spidir: $(SPIDIR_OBJS) test.o
@@ -100,6 +119,7 @@ $(MATLAB_FUNC): $(MATLAB_SRC)
 
 #=============================================================================
 # basic rules
+
 $(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
@@ -110,7 +130,7 @@ install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 
 
 clean:
-	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) \
+	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
                 $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
                 $(MATLAB_OBJ) \
 	        test.o test_spidir

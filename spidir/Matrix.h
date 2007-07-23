@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-
+namespace spidir {
 
 template <class ValueType>
 class Matrix
@@ -67,3 +67,4 @@ private:
 
 
 
+} // namespace spidir

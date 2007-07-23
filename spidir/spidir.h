@@ -1,37 +1,97 @@
 #ifndef SPIDIR_H
 #define SPIDIR_H
 
-/*=============================================================================
+#include <string>
 
-    SPIDIR - SPecies Informed DIstance-base Reconstruction
-    Matt Rasmussen
-    Copyright 2007
+using namespace std;
+
+namespace spidir {
+
+
+// convert dna characters into standard numbers
+extern int dna2int[256];
+
+// convert standard numbers to dna characters
+extern char *int2dna;
+
+// base numbers
+enum {
+    DNA_A = 0,
+    DNA_C = 1,
+    DNA_G = 2,
+    DNA_T = 3,
+    DNA_PURINE,
+    DNA_PRYMIDINE
+};
+
+
+// get the base type of a nucleotide
+extern int dnatype[];
+
+
+
+//=============================================================================
+// Distance Matrices
+
+void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat);
+bool writeDistMatrix(const char *filename, int ngenes, float **dists, 
+                     string *names);
+
+
+
+
+
+//=============================================================================
+// SPIDIR parameters
+
+
+// forward declaration
+class SpeciesTree;
+
+// spidir parameters
+class SpidirParams
+{
+public:
+    SpidirParams(int size, string *_names, 
+                 float *_mu, float *_sigma, float _alpha, float _beta) :
+        nsnodes(size),
+        alpha(_alpha),
+        beta(_beta)
+    {
+        names = new string [nsnodes];
+        mu = new float [nsnodes];
+        sigma = new float [nsnodes];
+        
+        for (int i=0; i<nsnodes; i++) {
+            if (_names)
+                names[i] = _names[i];
+            mu[i] = _mu[i];
+            sigma[i] = _sigma[i];
+        }
+    }
     
-    Public interface to spidir C++ library.
+    ~SpidirParams()
+    {
+        delete [] names;
+        delete [] mu;
+        delete [] sigma;
+    }
     
-=============================================================================*/
+    // sorts the parameters to match newnames
+    bool order(SpeciesTree *tree);    
 
-#include <stdlib.h>
-
-// make functions linkable with C
-extern "C" {
-
-
-float treelk(int nnodes, int *ptree, float *dists,
-             int nsnodes, int *pstree, 
-             int *recon, int *events,
-             float *mu, float *sigma, float generate, float disterror,
-             float predupprob=1.0, float dupprob=1.0, float errorlogl=0,
-             float alpha=0, float beta=0);
-
-void parsimony(int nnodes, int *ptree, int nseqs, char **seqs, float *dists,
-               bool buildAncestral=false, char **ancetralSeqs=NULL);
-
-float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs, 
-                             float *dists, float *bgfreq, float ratio, 
-                             int maxiter, bool parsinit=false);
-
-} // extern C
+    int nsnodes;
+    string *names;
+    float *mu;
+    float *sigma;
+    float alpha;
+    float beta;
+};
 
 
-#endif // SPIDIR_H
+SpidirParams *readSpidirParams(const char* filename);
+
+
+} // namespace spidir
+
+#endif

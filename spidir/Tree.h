@@ -12,12 +12,7 @@
 using namespace std;
 
 
-// events
-enum {
-    EVENT_GENE = 0,
-    EVENT_SPEC = 1,
-    EVENT_DUP = 2
-};
+namespace spidir {
 
 
 
@@ -161,37 +156,6 @@ public:
 };
 
 
-class SpeciesTree : public Tree
-{
-public:
-    SpeciesTree(int nnodes=0) :
-        Tree(nnodes),
-        depths(NULL)
-    {
-    }
-    
-    virtual ~SpeciesTree()
-    {
-        delete [] depths;
-    }
-    
-    
-    void setDepths(Node *node=NULL, int depth=0)
-    {
-        if (node == NULL)
-            node = root;
-        
-        if (depths == NULL)
-            depths = new int [nnodes];
-        
-        depths[node->name] = depth;
-        
-        for (int i=0; i<node->nchildren; i++)
-            setDepths(node->children[i], depth+1);
-    }
-    
-    int *depths;
-};
 
 
 
@@ -250,8 +214,15 @@ public:
 };
 
 
+
+
+
 void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+float readDist(FILE *infile, int &depth);
+char readChar(FILE *stream, int &depth);
+char readUntil(FILE *stream, string &token, char *stops, int &depth);
+
 
 //=============================================================================
 // visualization
@@ -269,17 +240,13 @@ void freeFtree(int nnodes, int **ftree);
 void ptree2tree(int nnodes, int *ptree, Tree *tree);
 void tree2ptree(Tree *tree, int *ptree);
 
-//=============================================================================
-// reconciliation functions
-void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches);
-void reconcile(Tree *tree, SpeciesTree *stree,
-               int *gene2species, int *recon);
-void labelEvents(Tree *tree, int *recon, int *events);
 
 //=============================================================================
 // Input/output
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
 
+
+} // namespace spidir
 
 #endif // SPDIR_TREE_H

@@ -1,11 +1,20 @@
-// matlab includes
+/*=============================================================================
+    SPIDIR - Matlab interface
+
+=============================================================================*/
+
+
+
+// matlab headers
 #include <mex.h>
 
-// spidir includes
-#include "spidir.h"
+// spidir headers
+#include "likelihood.h"
 #include "common.h"
 #include "Tree.h"
 #include "ExtendArray.h"
+
+using namespace spidir;
 
 
 //=============================================================================

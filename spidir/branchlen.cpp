@@ -20,6 +20,8 @@
 #include "spidir.h"
 
 
+
+
 namespace spidir {
 
 /*=============================================================================
@@ -421,12 +423,10 @@ float mleDistance(float *probs1, float *probs2, int seqlen,
                   float t0=.001, float t1=1, float step=.0001,
                   float *probs3=NULL, int samples=500)
 {
-    const int maxiter = 20;
-    
     DistLikelihoodFunc<Model> df(probs1, probs2, seqlen, bgfreq, &model, step,
                                  samples, probs3);
     
-    //return secantRoot(df, t0, t1, maxiter);
+    const int maxiter = 20;    
     return bisectRoot(df, t0, t1, maxiter);
 }
 
@@ -574,7 +574,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
                          int maxiter=10)
 {
     int seqlen = strlen(seqs[0]);
-    float lastLogl = 0.0, logl = 0.0;
+    float lastLogl = -INFINITY, logl = -INFINITY;
     float converge = logf(2.0);
     
     
@@ -595,7 +595,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
     int convergenum = 10;
-    int samples = 0;
+    const int samples = 0; // fixed for now
     
     // iterate over branches improving each likelihood
     for (int i=0; i<maxiter; i++) {
@@ -647,7 +647,9 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         float initdist = node1->dist + node2->dist;
         float mle = mleDistance(lktable[node1->name], 
                                 lktable[node2->name], seqlen, 
-                                bgfreq, model, initdist, initdist*1.1,
+                                bgfreq, model, 
+                                max(initdist, (float)0.0), 
+                                max(initdist*1.1, 0.001),
                                 .001, probs3, samples);
         node1->dist = mle / 2.0;
         node2->dist = mle / 2.0;
@@ -666,13 +668,14 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         printLog("hky: lk=%f\n", logl);
         
         // determine whether logl has converged
-        if (i > 0 && logl - lastLogl < converge) {
-            printLog("hky: diff = %f < %f\n", fabs(logl - lastLogl), converge);
+        float diff = fabs(logl - lastLogl);
+        if (i > 0 && diff < converge) {
+            printLog("hky: diff = %f < %f\n", diff, converge);
             convergenum--;
             if (convergenum < 0)
                 i = maxiter;
         } else {
-            printLog("hky: diff = %f > %f\n", fabs(logl - lastLogl), converge);
+            printLog("hky: diff = %f > %f\n", diff, converge);
         }
         lastLogl = logl;
     }

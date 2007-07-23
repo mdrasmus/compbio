@@ -32,17 +32,20 @@ namespace spidir {
 #   define INFINITY 1e1000
 #endif
 
-// indexing a matrix stored as a single array
-#define matind(m, i, j) ((m)*(i) + (j))
 
 
 //=============================================================================
 // Math
 
+// indexing a matrix stored as a single array
+#define matind(m, i, j) ((m)*(i) + (j))
+
+
 // computes the log(normalPdf(x | u, s^2))
 float normallog(float x, float u, float s);
 double gammln(double xx);
 float gammalog(float x, float a, float b);
+
 void invertPerm(int *perm, int *inv, int size);
 
 template <class T>
@@ -62,9 +65,7 @@ void permute(T* array, int *perm, int size)
 
 
 inline float frand()
-{
-    return rand() / float(RAND_MAX);
-}
+{ return rand() / float(RAND_MAX); }
 
 
 template <class T>
@@ -75,6 +76,7 @@ int findval(T *array, int size, const T &val)
             return i;
     return -1;
 }
+
 
 
 
@@ -148,19 +150,23 @@ protected:
 };
 
 
+bool inChars(char c, const char *chars);
+bool chomp(char *str);
+vector<string> split(const char *str, const char *delim, bool multiDelim = true);
+string trim(const char *word);
+
+
 // logging
 void printLog(const char *fmt, ...);
 bool openLogFile(const char *filename);
 void closeLogFile();
 
+void printError(const char *fmt, ...);
+
 
 void printIntArray(int *array, int size);
 void printFloatArray(float *array, int size);
-bool inChars(char c, const char *chars);
-bool chomp(char *str);
-vector<string> split(const char *str, const char *delim, bool multiDelim = true);
-void printError(const char *fmt, ...);
-string trim(const char *word);
+
 
 
 } // namespace spidir

@@ -212,7 +212,7 @@ float HkyFitter::findLengths(Tree *tree)
 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
-                int nseqs, int seqlen, char **seqs,
+                string *genes, int nseqs, int seqlen, char **seqs,
                 int niter, 
                 TopologyProposer *proposer,
                 BranchLengthFitter *fitter)
@@ -246,6 +246,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         neighborjoin(nseqs, distmat.getMatrix(), ptree, dists);
         tree = new Tree(nnodes);
         ptree2tree(nnodes, ptree, tree);
+        tree->setLeafNames(genes);
         
         // reconroot        
         // tree = phylo.reconRoot(tree, stree, gene2species)
@@ -288,7 +289,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                                 -1, 0,
                                 predupprob, dupprob, errorlogl);
         
-        
+        displayTree(toptree, getLogFile());
         // acceptance rule
         if (nextlogl > logl ||
             nextlogl - logl + speed > log(frand()))
@@ -300,13 +301,15 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
 
             // keep track of toptree            
             if (logl > toplogl) {
+                displayTree(toptree, getLogFile());
+            
                 delete toptree;
                 speed = 0.0;
                 toptree = tree->copy();
                 toplogl = logl;
             }
         } else {
-            printLog("search: reject\n");
+            printLog("search: reject %f < %f\n", nextlogl, toplogl);
             //speed = (speed + 1) * 1.3;
             
             // reject, undo topology change

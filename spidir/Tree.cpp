@@ -23,6 +23,7 @@ Tree *Tree::copy()
         nodes2[i]->setChildren(nodes[i]->nchildren);
         nodes2[i]->name = i;
         nodes2[i]->dist = nodes[i]->dist;
+        nodes2[i]->leafname = nodes[i]->leafname;
     }
     
     for (int i=0; i<nnodes; i++) {

@@ -163,6 +163,7 @@ string trim(const char *word);
 void printLog(const char *fmt, ...);
 bool openLogFile(const char *filename);
 void closeLogFile();
+FILE *getLogFile();
 
 void printError(const char *fmt, ...);
 

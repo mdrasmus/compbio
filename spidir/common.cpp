@@ -191,7 +191,10 @@ void closeLogFile()
     fclose(g_logstream);
 }
 
-
+FILE *getLogFile()
+{
+    return g_logstream;
+}
 
 
 

@@ -159,6 +159,43 @@ public:
 
 
 
+void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
+
+
+//=============================================================================
+// visualization
+
+void displayTree(Tree *tree, FILE *outfile=stdout, 
+                 float xscale=20.0, int yscale=2);
+
+//=============================================================================
+// conversion functions
+
+// creates a forward tree from a parent tree
+void makeFtree(int nnodes, int *ptree, int ***ftree);
+void freeFtree(int nnodes, int **ftree);
+// create a tree object from a parent tree array
+void ptree2tree(int nnodes, int *ptree, Tree *tree);
+void tree2ptree(Tree *tree, int *ptree);
+
+
+//=============================================================================
+// Input/output
+void printFtree(int nnodes, int **ftree);
+void printTree(Tree *tree, Node *node=NULL, int depth=0);
+float readDist(FILE *infile, int &depth);
+char readChar(FILE *stream, int &depth);
+char readUntil(FILE *stream, string &token, char *stops, int &depth);
+
+
+} // namespace spidir
+
+
+
+/*
+DEPRECATED: Not needed anymore
+
 // right now works for pre-order traversal
 class TreeWalker
 {
@@ -213,40 +250,10 @@ public:
     int stacki;
 };
 
+*/
 
 
 
-
-void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
-void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
-float readDist(FILE *infile, int &depth);
-char readChar(FILE *stream, int &depth);
-char readUntil(FILE *stream, string &token, char *stops, int &depth);
-
-
-//=============================================================================
-// visualization
-
-void displayTree(Tree *tree, FILE *outfile=stdout, 
-                 float xscale=20.0, int yscale=2);
-
-//=============================================================================
-// conversion functions
-
-// creates a forward tree from a parent tree
-void makeFtree(int nnodes, int *ptree, int ***ftree);
-void freeFtree(int nnodes, int **ftree);
-// create a tree object from a parent tree array
-void ptree2tree(int nnodes, int *ptree, Tree *tree);
-void tree2ptree(Tree *tree, int *ptree);
-
-
-//=============================================================================
-// Input/output
-void printFtree(int nnodes, int **ftree);
-void printTree(Tree *tree, Node *node=NULL, int depth=0);
-
-
-} // namespace spidir
 
 #endif // SPDIR_TREE_H
+

@@ -64,8 +64,11 @@ void permute(T* array, int *perm, int size)
 }
 
 
-inline float frand()
-{ return rand() / float(RAND_MAX); }
+inline float frand(float max=1.0)
+{ return rand() / float(RAND_MAX) * max; }
+
+inline int irand(int max)
+{ return int(rand() / float(RAND_MAX) * max); }
 
 
 template <class T>

@@ -479,13 +479,22 @@ void drawLine(Matrix<char> &matrix, char chr, int x1, int y1, int x2, int y2)
 }
 
 
+void drawText(Matrix<char> &matrix, const char *text, int x, int y)
+{
+    int len = strlen(text);
+    
+    for (int i=0; i<len; i++) {
+        matrix[y][x+i] = text[i];
+    }
+}
+
 
 // TODO: finish display
 void displayNode(Matrix<char> &matrix, Node *node, int *xpt, int* ypt)
 {
     int x = xpt[node->name];
     int y = ypt[node->name];
-    
+    const int leadSpacing = 2;
 
     
     for (int i=0; i<node->nchildren; i++) {
@@ -509,6 +518,8 @@ void displayNode(Matrix<char> &matrix, Node *node, int *xpt, int* ypt)
         matrix[ypt[node->children[l]->name]][x] = '\\';
 
         matrix[y][x] = '+';                    
+    } else {
+        drawText(matrix, node->leafname.c_str(), x + leadSpacing, y);
     }
 }
 
@@ -541,14 +552,21 @@ int treeLayout(Node *node, ExtendArray<int> &xpt, ExtendArray<int> &ypt,
 // TODO: add names
 void displayTree(Tree *tree, FILE *outfile, float xscale, int yscale)
 {
+    const int labelSpacing = 2;
+
     ExtendArray<int> xpt(tree->nnodes);
     ExtendArray<int> ypt(tree->nnodes);
     treeLayout(tree->root, xpt, ypt, xscale, yscale);
 
     int width = 0;    
     for (int i=0; i<tree->nnodes; i++) {
-        if (xpt[i] > width) 
-            width = xpt[i];
+        int extra = 0;
+        
+        if (tree->nodes[i]->isLeaf())
+            extra = labelSpacing + tree->nodes[i]->leafname.size();
+    
+        if (xpt[i] + extra > width) 
+            width = xpt[i] + extra;
     }
     
     Matrix<char> matrix(tree->nnodes+1, width+1);

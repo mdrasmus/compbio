@@ -115,13 +115,13 @@ void proposeRandomNni(Tree *tree, Node **node1, Node **node2, int *change)
     // find edges for NNI
     int choice = tree->root->name;
     do {
-        choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
+        choice = irand(tree->nnodes); // * tree->nnodes);
     } while (tree->nodes[choice]->isLeaf() || 
              tree->nodes[choice]->parent == NULL);
     
     *node1 = tree->nodes[choice];
     *node2 = tree->nodes[choice]->parent;
-    *change = int(rand() / float(RAND_MAX) * 2);
+    *change = irand(2); //int(frand() * 2);
 }
 
 
@@ -148,8 +148,8 @@ void NniProposer::propose(Tree *tree)
     oldroot = tree->root->children[0];
     //int choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
     //tree->reroot(tree->nodes[choice]);
-    int choice1 = int(frand() * 2);
-    int choice2 = int(frand() * 2);
+    int choice1 = irand(2); // * 2);
+    int choice2 = irand(2); // * 2);
     if (tree->root->children[choice1]->nchildren == 2)
         tree->reroot(tree->root->children[choice1]->children[choice2]);
     else
@@ -291,7 +291,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         
         // acceptance rule
         if (nextlogl > logl ||
-            nextlogl - logl + speed > log(rand() / float(RAND_MAX)))
+            nextlogl - logl + speed > log(frand()))
         {
             printLog("search: accept %f  %f\n", nextlogl, logl);
             // accept

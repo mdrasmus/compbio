@@ -182,14 +182,14 @@ int test_mledist(int argc, char **argv)
     tree.setLeafNames(aln->names);
     
     parsimony(&tree, nseqs, seqs);
-    tree.writeNewick("before.tree");
+    displayTree(&tree, stdout, 100);
     
     float bgfreq[4] = {.25, .25, .25, .25};
     float ratio = .5;
     int maxiter = 20;
     
     findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
-    tree.writeNewick("after.tree");
+    displayTree(&tree, stdout, 100);
     
     return 0;
 }

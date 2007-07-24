@@ -174,7 +174,9 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
         // iterate just over the leaves
         
         for (int j=0; j<nseqs; j++) {
-            if (seqs[j][i] == '-') {
+            int base = dna2int[(int) (unsigned char) seqs[j][i]];
+            
+            if (base == -1) {
                 // gap
                 for (int k=0; k<4; k++) {             
                     table[matind(4, j, k)].cost = 0;
@@ -185,7 +187,7 @@ void parsimony(Tree *tree, int nseqs, char **seqs,
                     table[matind(4, j, k)].cost = MAX_COST;
                     table[matind(4, j, k)].gap = false;
                 }
-                table[matind(4, j, dna2int[(int) (unsigned char) seqs[j][i]])].cost = 0;
+                table[matind(4, j, base)].cost = 0;
             }
         }
         

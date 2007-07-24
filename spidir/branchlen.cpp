@@ -595,19 +595,34 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
-    int convergenum = 10;
+    int convergenum = tree->nnodes;
     const int samples = 0; // fixed for now
     
+    
+    // determine rooting order
+    ExtendArray<Node*> rootingOrder(0, 3*tree->nnodes);
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
+    //getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
+    //getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
+
+    for (int i=rootingOrder.size(); i<maxiter; i++) {
+        rootingOrder.append(tree->nodes[irand(tree->nnodes)]);
+    }
+    
+    
     // iterate over branches improving each likelihood
-    for (int i=0; i<maxiter; i++) {
+    for (int i=0; i<rootingOrder.size(); i++) {
         printLog("hky: iter %d\n", i);
         
-        Node *newroot = tree->nodes[irand(tree->nnodes)];
+        Node *newroot = rootingOrder[i];
         
         // remembering old children of root
         Node *oldnode1 = tree->root->children[0];
         Node *oldnode2 = tree->root->children[1];
-
+        
         // reroot tree, skip if choosen node does not change root
         if (newroot == tree->root ||
             newroot == oldnode1 ||

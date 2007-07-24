@@ -407,9 +407,10 @@ void setRandomMidpoints(int root, int *ptree,
     
     for (int i=0; i<nsubnodes; i++) {
         int node = subnodes[i];
-        float lastpoint;
         
         if (events[node] == EVENT_DUP && ptree[node] != -1) {
+            float lastpoint;
+            
             if (recon[node] == recon[ptree[node]])
                 // if im the same species branch as my parent 
                 // then he is my last midpoint
@@ -421,8 +422,7 @@ void setRandomMidpoints(int root, int *ptree,
             // pick a midpoint uniformly after the last one
             float remain = 1.0 - lastpoint;
             reconparams->midpoints[node] = lastpoint + esp * remain +
-                                           (1.0-2*esp) * remain *
-                                           (rand() / float(RAND_MAX));
+                                           (1.0-2*esp) * remain * frand();
         } else {
             // genes or speciations reconcile exactly to the end of the branch
             // gene tree roots also reconcile exactly to the end of the branch
@@ -448,8 +448,13 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
         totmean += (k[node] - k[ptree[node]]) * bparam.mu;
         totvar  += (k[node] - k[ptree[node]]) * bparam.sigma * bparam.sigma;
     } else if (startfrac == FRAC_PARENT) {
-        totmean += (1.0 - k[ptree[node]]) * bparam.mu;
-        totvar  += (1.0 - k[ptree[node]]) * bparam.sigma * bparam.sigma;
+        float kp = 0;
+        
+        if (!reconparams->freebranches[node])
+            kp = k[ptree[node]];
+    
+        totmean += (1.0 - kp) * bparam.mu;
+        totvar  += (1.0 - kp) * bparam.sigma * bparam.sigma;
     }
     // startfrac == FRAC_NONE, do nothing
     
@@ -485,12 +490,16 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
             dist = totmean;
     }
     
-    return normallog(dist, totmean, sqrt(totvar));
+    float logl = normallog(dist, totmean, sqrt(totvar));
+    assert(!isnan(logl));
+    return logl;
 }
 
 
 void getSubtree(int **ftree, int node, int *events, ExtendArray<int> *subnodes)
 {
+    subnodes->append(node);
+
     // recurse
     if (events[node] == EVENT_DUP) {
         if (ftree[node][0] != -1)
@@ -498,8 +507,6 @@ void getSubtree(int **ftree, int node, int *events, ExtendArray<int> *subnodes)
         if (ftree[node][1] != -1)
             getSubtree(ftree, ftree[node][1], events, subnodes);
     }
-    
-    subnodes->append(node);
 }
 
 
@@ -529,7 +536,6 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         // multiple branches, integrate
         
         // set reconparams by traversing subtree
-        //TreeWalker walk = TreeWalker(nnodes, ftree, root);
         ExtendArray<int> subnodes(0, nnodes);
         getSubtree(ftree, root, events, &subnodes);
         
@@ -552,7 +558,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             double sampleLogl = 0.0;
             
             // propose a setting of midpoints
-            reconparams->midpoints[root] = 1.0;
+            reconparams->midpoints[root] = 1.0; // TODO: need to understand why this is here
             setRandomMidpoints(root, ptree, subnodes, subnodes.size(),
                                recon, events, reconparams);
             
@@ -571,7 +577,8 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         
         logl = log(prob  / nsamples);
     }
-    
+
+    assert(!isnan(logl));
     return logl;
 }
 
@@ -583,7 +590,7 @@ void determineFreeBranches(Tree *tree, SpeciesTree *stree,
     /*
       find free branches
 
-      A branch is an (partially) free branch if (1) its parent node reconciles to
+      A branch is a (partially) free branch if (1) its parent node reconciles to
       the species tree root, (2) it parent node is a duplication, (3) and the
       node it self reconciles not to the species tree root.
 

@@ -165,7 +165,7 @@ int main(int argc, char **argv)
         fitter = new ParsimonyFitter(aln->nseqs, aln->seqlen, aln->seqs);
     }
     else if (lenfitter == "hky") {
-        int maxiter = 2*nnodes;
+        int maxiter = 3*nnodes;
         fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                bgfreq, tsvratio, maxiter);
     } else {
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
     // search
     Tree *toptree = searchMCMC(NULL, &stree,
                                params, gene2species,
-                               aln->nseqs, aln->seqlen, aln->seqs,
+                               genes, aln->nseqs, aln->seqlen, aln->seqs,
                                niter, &nniProposer,
                                fitter);
     

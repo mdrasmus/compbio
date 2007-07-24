@@ -126,7 +126,7 @@ int test_reconstruct(int argc, char **argv)
     // search
     Tree *toptree = searchMCMC(NULL, &stree,
                                params, gene2species,
-                               aln->nseqs, aln->seqlen, aln->seqs,
+                               genes, aln->nseqs, aln->seqlen, aln->seqs,
                                niter);
     
     toptree->setLeafNames(genes);

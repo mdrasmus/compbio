@@ -78,7 +78,7 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0);
 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
-                int nseqs, int seqlen, char **seqs,
+                string *genes, int nseqs, int seqlen, char **seqs,
                 int niter=500, 
                 TopologyProposer *proposer=&nniProposer,
                 BranchLengthFitter *fitter=NULL

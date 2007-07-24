@@ -365,7 +365,7 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
     // call C code    
     ExtendArray<float> dists(nnodes); // = new float [nnodes];
     for (int i=0; i<nnodes; i++) 
-        dists[i] = 0;
+        dists[i] = 0.0;
     float logl = findMLBranchLengthsHky(nnodes, ptree, nseqs, seqs, 
                            dists, bgfreq, ratio, maxiter,
                            true);

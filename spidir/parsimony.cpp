@@ -71,7 +71,7 @@ void parsimony_helper(Tree *tree, int nseqs, char **seqs,
                 // find min_b leftcost(b)
                 if (leftcost < minleftcost ||
                     (leftcost == minleftcost &&
-                     (rand() / float(RAND_MAX)) < (1/leftmatch)))
+                     frand() < (1.0/leftmatch)))
                 {
                     minleftcost = leftcost;
                     minleft = b;
@@ -85,7 +85,7 @@ void parsimony_helper(Tree *tree, int nseqs, char **seqs,
                 // find min_b rightcost(b)
                 if (rightcost < minrightcost ||
                     (rightcost == minrightcost && 
-                           (rand() / float(RAND_MAX)) < (1/rightmatch)))
+                     frand() < (1.0/rightmatch)))
                 {
                     minrightcost = rightcost;
                     minright = b;

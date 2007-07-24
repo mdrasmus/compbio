@@ -28,6 +28,8 @@ using namespace spidir;
 
 int main(int argc, char **argv)
 {
+    // seed random number generator
+    srand(time(NULL));
     
     // parameters
     string alignfile;    

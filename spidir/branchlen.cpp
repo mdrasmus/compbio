@@ -211,6 +211,7 @@ float bisectRoot(Func &f, float x0, float x1, int maxiter,
     
     // move x1 right until f(x1) < 0
     float f1 = f(x1);
+    assert(x1 >= 0.0);
     while (f1 > 0) {
         //printf("x1=%f f1=%f\n", x1, f1);
         x1 *= 2.0;
@@ -272,7 +273,7 @@ public:
         } else {
             // choose a random sample of bases for estimating branch length
             for (int i=0; i<sample; i++) 
-                bases[i] = int(frand() * seqlen);
+                bases[i] = irand(seqlen);
         }
         
         
@@ -601,7 +602,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     for (int i=0; i<maxiter; i++) {
         printLog("hky: iter %d\n", i);
         
-        Node *newroot = tree->nodes[int(frand() * tree->nnodes)];
+        Node *newroot = tree->nodes[irand(tree->nnodes)];
         
         // remembering old children of root
         Node *oldnode1 = tree->root->children[0];
@@ -680,13 +681,19 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         lastLogl = logl;
     }
     
+    printf("here!\n");
+    
     // restore original rooting
-    if (origroot1->parent != tree->root) {
-        if (origroot1->parent == origroot2)
+    if (origroot1->parent != tree->root ||
+        origroot2->parent != tree->root)
+    {
+        if (origroot1->parent == origroot2) {
             tree->reroot(origroot1);
-        else if  (origroot2->parent == origroot1)
+            printLog("hky: old root = %d\n", origroot1->name);
+        } else if  (origroot2->parent == origroot1) {
             tree->reroot(origroot2);
-        else
+            printLog("hky: old root = %d\n", origroot2->name);
+        } else
             assert(0);
     }
     

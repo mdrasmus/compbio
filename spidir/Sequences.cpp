@@ -95,7 +95,7 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
             if (seqs[i][j] != '-' &&
                 dna2int[(int) (unsigned char) seqs[i][j]] == -1)
             {
-                // a unknown character is in the alignment
+                // an unknown character is in the alignment
                 return false;
             }
         }

@@ -13,5 +13,5 @@ os.system("cd ~/projects/rasmus && git pull")
 
 
 if "spidir" in sys.argv:
-    os.system("cd ~/projects/rasmus/spidir && make clean && make install")
+    os.system("cd ~/projects/rasmus/spidir && make clean && make install DEBUG=1")
 

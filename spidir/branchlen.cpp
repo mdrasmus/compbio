@@ -681,7 +681,6 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         lastLogl = logl;
     }
     
-    printf("here!\n");
     
     // restore original rooting
     if (origroot1->parent != tree->root ||
@@ -689,10 +688,10 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     {
         if (origroot1->parent == origroot2) {
             tree->reroot(origroot1);
-            printLog("hky: old root = %d\n", origroot1->name);
+            //printLog("hky: old root = %d\n", origroot1->name);
         } else if  (origroot2->parent == origroot1) {
             tree->reroot(origroot2);
-            printLog("hky: old root = %d\n", origroot2->name);
+            //printLog("hky: old root = %d\n", origroot2->name);
         } else
             assert(0);
     }

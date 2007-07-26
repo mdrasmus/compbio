@@ -1,4 +1,4 @@
-#!/usr/bin/env summon
+#!/usr/bin/python -i
 
 # python libs
 import os, sys
@@ -19,7 +19,7 @@ from rasmus.common import *
 
 # graphics libs
 from summon.core import *
-from rasmus.vis import syntenyvis as genomevis
+from rasmus.vis import syntenyvis
 from summon.colors import *
 
 from summon import svg
@@ -71,17 +71,14 @@ param = util.parseOptions(sys.argv, options, quit=True, resthelp="<scripts> ..."
 markColor = color(0,0,1)
 context = 1e6
 selgene = None
-selgenes = []
+selgenes = None
 
 genes = {}
-lookup = {}
 comps = []
 m = None
-gene2species = None
 vis = None
 conf = {}
-seqs = FastaDict()
-winsize = (800, 400)
+
 
 
 
@@ -89,12 +86,35 @@ winsize = (800, 400)
 # Classes and functions
 #
 
-class SyntenyVis (genomevis.SyntenyVis):
-    def __init__(self, conf, matching, **options):
-        genomevis.SyntenyVis.__init__(self, conf, matching, **options)
+class SyntenyVis (syntenyvis.SyntenyVis):
+    def __init__(self, conf, matching, comps=[], **options):
+        syntenyvis.SyntenyVis.__init__(self, conf, matching, **options)
         self.clickMode = "gene"
+        self.selgenes = []
+        self.seqs = FastaDict()
+        
+        self.comps = comps
+        self.lookup = {}
+        
+        for i, comp in enumerate(comps):
+            for gene in comp:
+                self.lookup[gene] = i
+            
+    
+    def show(self):
+        syntenyvis.SyntenyVis.show(self)
+        
+        self.win.set_binding(input_key("g"), self.press("gene"))
+        self.win.set_binding(input_key("v"), self.press("view"))
+        self.win.set_binding(input_key("s"), self.press("sequence"))
+        self.win.set_binding(input_key("a"), self.press("align"))
+        self.win.set_binding(input_key("d"), self.clear_selgenes)
+        self.win.set_binding(input_key("w"), self.align_selgenes)
+        self.win.set_binding(input_key("e"), self.print_selgenes)
+
     
     def geneClick(self, gene):
+        global selgene
         selgene = gene
         selgenes.append(gene)
         
@@ -103,9 +123,9 @@ class SyntenyVis (genomevis.SyntenyVis):
         elif self.clickMode == "view":
             drawGene(gene.name, context)
         elif self.clickMode == "sequence":
-            if gene.name in seqs:
+            if gene.name in self.seqs:
                 print
-                print "%s\n%s" % (gene.name, seqs[gene.name])
+                print "%s\n%s" % (gene.name, self.seqs[gene.name])
                 print
             else:
                 print "%s has no sequence" % gene.name
@@ -115,18 +135,51 @@ class SyntenyVis (genomevis.SyntenyVis):
                 print "gene %s has no matches" % gene.name
                 return    
             
-            comp = filter(lambda x: x in genes, comps[lookup[gene.name]])
-            seqs2 = util.subdict(seqs, comp)
+            comp = filter(lambda x: x in self.genes, 
+                          self.comps[self.lookup[gene.name]])
+            seqs2 = util.subdict(self.seqs, self.comp)
             aln = muscle.muscle(seqs2)
             
             keys = aln.keys()
             
             for key in keys:
-                if "y" not in dir(genes[key]):
-                    genes[key].y = -1e1000
+                if not hasattr(self.genes[key], "y"):
+                    self.genes[key].y = -1e1000
             
-            keys.sort(lambda a,b: cmp(genes[b].y, genes[a].y))
+            keys.sort(lambda a,b: cmp(self.genes[b].y, self.genes[a].y))
             alignlib.printAlign(aln, order=keys)
+
+
+    # add key bindings
+    def press(self, mode):
+        def func():
+            print "mode is '%s'" % mode
+            self.clickMode = mode
+        return func
+
+    def clear_selgenes(self):
+        self.selgenes[:] = []
+        print "selgenes cleared"
+
+    def align_selgenes(self):
+        self.align(* self.selgenes)
+
+    def print_selgenes(self):
+        print self.selgenes
+
+
+    def align(self, * names):
+        if len(names) == 0:
+            print "nothing to align"
+
+        # get names from genes if they are not strings
+        if type(names[0]) != str:
+            names = [i.name for i in names]
+        
+        seqs2 = util.subdict(self.seqs, names)
+        aln = muscle.muscle(seqs2)
+        muscle.printAlign(aln)
+
 
 
 def draw(genome, chrom, start, end):
@@ -144,17 +197,6 @@ def drawAll(genome):
     vis.drawAll(genome)
 
 
-def align(* names):
-    if len(names) == 0:
-        print "nothing to align"
-    
-    # get names from genes if they are not strings
-    if type(names[0]) != str:
-        names = [i.name for i in names]
-    
-    seqs2 = util.subdict(seqs, names)
-    aln = muscle.muscle(seqs2)
-    muscle.printAlign(aln)
 
 def mark(shape="box", col=blue):
     names = []
@@ -180,7 +222,7 @@ printscreen = lambda *args, **kargs: svg.printScreen(vis.win, *args, **kargs)
 
 
 def readFasta(filename):
-    seqs.update(fasta.readFasta(env.findFile(f)))
+    vis.seqs.update(fasta.readFasta(env.findFile(f)))
 
 def readAllSeqs():
     util.tic("read sequences")
@@ -189,7 +231,7 @@ def readAllSeqs():
         try:
             seqfile = env.findFile("%s.fasta" % genome)
             util.tic("reading '%s'" % seqfile)
-            seqs.read(seqfile)
+            vis.seqs.read(seqfile)
             util.toc()
         except: 
             util.log("cannot read fasta '%s.fasta'" % genome)
@@ -288,33 +330,15 @@ def viswindows(refGenome, windowSize, windowStep, outdir):
     indexfile.close()
     
 
-# add key bindings
-def press(mode):
-    def func():
-        print "mode is '%s'" % mode
-        vis.clickMode = mode
-    return func
-
-def clear_selgenes():
-    selgenes[:] = []
-    print "selgenes cleared"
-
-def align_selgenes():
-    align(* selgenes)
-    
-def print_selgenes():
-    print selgenes
 
 
-def readData(genomes, compfile, syntenyfile, smapfile):
+def readData(genomes, compfile, syntenyfile, smapfile,
+             winsize=(800, 400)):
     global genes
-    global lookup
-    global comps
     global m
-    global gene2species
     global conf
     global vis
-    global winsize
+    global selgenes
     
     util.tic("read")
     
@@ -326,7 +350,6 @@ def readData(genomes, compfile, syntenyfile, smapfile):
 
     # read orthologs
     util.tic("read ortholog components")
-    lookup = {}
     comps = util.readDelim(env.findFile(compfile))
     comps = map(lambda comp: filter(lambda gene: gene in genes, comp), comps)
     comps = filter(lambda comp: len(comp) > 0, comps)
@@ -341,18 +364,11 @@ def readData(genomes, compfile, syntenyfile, smapfile):
     util.toc()
     
     # setup visualization
-    conf.update(genomevis.initConf({}, genomevis.calcGeneHeight(m)))
-    vis = SyntenyVis(conf, m, winsize=winsize)
+    conf.update(syntenyvis.initConf({}, syntenyvis.calcGeneHeight(m)))
+    vis = SyntenyVis(conf, m, winsize=winsize, comps=comps)
+    selgenes = vis.selgenes  
 
 
-
-vis.win.set_binding(input_key("g"), press("gene"))
-vis.win.set_binding(input_key("v"), press("view"))
-vis.win.set_binding(input_key("s"), press("sequence"))
-vis.win.set_binding(input_key("a"), press("align"))
-vis.win.set_binding(input_key("d"), clear_selgenes)
-vis.win.set_binding(input_key("w"), align_selgenes)
-vis.win.set_binding(input_key("e"), print_selgenes)
 
 
 
@@ -363,11 +379,9 @@ vis.win.set_binding(input_key("e"), print_selgenes)
 def main(param):
     global conf
     global context
-    global seqs
-    global winsize    
 
     # init
-    print genomevis.BINDINGS_HELP
+    print syntenyvis.BINDINGS_HELP
     print """
 Modes
 g     display gene info mode
@@ -401,10 +415,10 @@ w     print alignment of selgene array
         readData(param["genomes"][-1].split(","), 
                  param["orthcomp"][-1],
                  param["synteny"][-1],
-                 param["smap"][-1])
+                 param["smap"][-1],
+                 winsize=winsize)
 
-        seqs = fasta.FastaDict()
-        globals()["seqs"] = seqs
+        vis.seqs = fasta.FastaDict()
         if "sequence" in param:
             readAllSeqs()
         
@@ -425,8 +439,8 @@ w     print alignment of selgene array
         if "gene" in param:
             drawGene(param["gene"][-1], context)
             gene = genes[param["gene"][-1]]
-            home()
-            coords = get_visible()
+            vis.win.home()
+            coords = vis.win.get_visible()
             top = 2 * vis.conf["gene-size"] 
             bottom = -len(m.genomes) * vis.conf["max-genome-sep"]
             vis.win.set_visible(gene.start - context, top, gene.end + context, bottom)

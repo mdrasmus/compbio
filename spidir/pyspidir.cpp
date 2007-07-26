@@ -7,7 +7,7 @@
 // spidir headers
 #include "common.h"
 #include "ExtendArray.h"
-#include "branchlen.h"
+#include "mldist.h"
 #include "likelihood.h"
 #include "phylogeny.h"
 #include "parsimony.h"

@@ -29,23 +29,35 @@ class AlignViewer (object):
         
         self.vis = gb.GenomeStackBrowser(**options)
         self.vis.addTrack(gb.RulerTrack(bottom=-len(aln)))
-        self.vis.addTrack(gb.AlignTrack(aln, colorBases=colorBases,
+        self.alntrack = gb.AlignTrack(aln, colorBases=colorBases,
                                         showColorBases=showColorBases,
-                                        showBases=showBases))
+                                        showBases=showBases)
+        self.vis.addTrack(self.alntrack)
+        
+        
     
     def show(self):
         self.vis.show()
-        self.vis.win.set_name(self.title)
-        self.vis.win.set_size(* self.size)
+        self.win = self.vis.win # for convenience
         
-        #self.set_binding(input_key("c"), self.toggleColorBases)
+        self.win.set_name(self.title)
+        self.win.set_size(* self.size)
         
+        #self.set_binding(
+        
+        # build sidebar menu
+        self.bar = hud.SideBar(self.win, width=150)
+        self.bar.addItem(hud.MenuItem("toggle color (c)", self.toggleColorBases))
+        
+        # register key bindings
+        self.win.set_binding(input_key("c"), self.toggleColorBases)
+    
     
     def enableColorBases(self, enabled=True):
-        self.showColorBases = self.vis.showColorBases = enabled
+        self.alntrack.showColorBases = enabled
         self.vis.update()
     
     
     def toggleColorBases(self):
-        self.enableColorBases(not self.showColorBases)
+        self.enableColorBases(not self.alntrack.showColorBases)
     

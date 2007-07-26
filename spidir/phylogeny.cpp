@@ -334,7 +334,7 @@ bool Gene2species::read(const char *filename)
                                             species));
         } else {
             // exact match
-            assert(0);
+            //assert(0);
         }
     }
 

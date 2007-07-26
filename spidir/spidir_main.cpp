@@ -22,8 +22,17 @@
 #include "spidir.h"
 
 
+#define VERSION_INFO  "\
+   ___    SPIDIR v0.8 (beta) July 2007 \n\
+  /0 0\\   SPecies Informed DIstanced-base Reconstruction \n\
+  \\___/   Matt Rasmussen \n\
+ /// \\\\\\  CSAIL, MIT \n\
+"
+
+
 using namespace std;
 using namespace spidir;
+
 
 
 int main(int argc, char **argv)
@@ -42,6 +51,7 @@ int main(int argc, char **argv)
     float tsvratio;
     string bgfreqstr;
     bool help = false;
+    bool version = false;
     
     
     // parse arguments
@@ -78,6 +88,8 @@ int main(int argc, char **argv)
         &bgfreqstr, ".25,.25,.25,.25",
         "background frequencies"));
     config.add(new ConfigSwitch(
+        "-v", "--version", &version, "display version information"));
+    config.add(new ConfigSwitch(
         "-h", "--help", &help, "display help information"));
 
     
@@ -88,8 +100,15 @@ int main(int argc, char **argv)
         return 1;
     }
     
+    // display help
     if (help) {
         config.printHelp();
+        return 0;
+    }
+    
+    // display version info
+    if (version) {
+        printf(VERSION_INFO);
         return 0;
     }
     

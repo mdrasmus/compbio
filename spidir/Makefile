@@ -31,7 +31,7 @@ SPIDIR_PROG = spidir
 
 SPIDIR_SRC = \
     spidir.cpp \
-    branchlen.cpp \
+    mldist.cpp \
     common.cpp \
     likelihood.cpp \
     parsimony.cpp \
@@ -41,7 +41,7 @@ SPIDIR_SRC = \
 
 SPIDIR_OBJS = \
     spidir.o \
-    branchlen.o \
+    mldist.o \
     common.o \
     likelihood.o \
     parsimony.o \

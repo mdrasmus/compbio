@@ -1,4 +1,4 @@
-#!/usr/bin/env summon
+#!/usr/bin/python -i
 
 # python libs
 import os, sys
@@ -19,7 +19,7 @@ from rasmus.common import *
 
 # graphics libs
 from summon.core import *
-from rasmus.vis import syntenyvis as genomevis
+from rasmus.vis import syntenyvis
 from summon.colors import *
 
 from summon import svg
@@ -89,10 +89,22 @@ winsize = (800, 400)
 # Classes and functions
 #
 
-class SyntenyVis (genomevis.SyntenyVis):
+class SyntenyVis (syntenyvis.SyntenyVis):
     def __init__(self, conf, matching, **options):
-        genomevis.SyntenyVis.__init__(self, conf, matching, **options)
+        syntenyvis.SyntenyVis.__init__(self, conf, matching, **options)
         self.clickMode = "gene"
+    
+    def show(self):
+        syntenyvis.SyntenyVis.show(self)
+        
+        self.win.set_binding(input_key("g"), press("gene"))
+        self.win.set_binding(input_key("v"), press("view"))
+        self.win.set_binding(input_key("s"), press("sequence"))
+        self.win.set_binding(input_key("a"), press("align"))
+        self.win.set_binding(input_key("d"), clear_selgenes)
+        self.win.set_binding(input_key("w"), align_selgenes)
+        self.win.set_binding(input_key("e"), print_selgenes)
+
     
     def geneClick(self, gene):
         selgene = gene
@@ -341,18 +353,10 @@ def readData(genomes, compfile, syntenyfile, smapfile):
     util.toc()
     
     # setup visualization
-    conf.update(genomevis.initConf({}, genomevis.calcGeneHeight(m)))
+    conf.update(syntenyvis.initConf({}, syntenyvis.calcGeneHeight(m)))
     vis = SyntenyVis(conf, m, winsize=winsize)
 
 
-
-vis.win.set_binding(input_key("g"), press("gene"))
-vis.win.set_binding(input_key("v"), press("view"))
-vis.win.set_binding(input_key("s"), press("sequence"))
-vis.win.set_binding(input_key("a"), press("align"))
-vis.win.set_binding(input_key("d"), clear_selgenes)
-vis.win.set_binding(input_key("w"), align_selgenes)
-vis.win.set_binding(input_key("e"), print_selgenes)
 
 
 
@@ -367,7 +371,7 @@ def main(param):
     global winsize    
 
     # init
-    print genomevis.BINDINGS_HELP
+    print syntenyvis.BINDINGS_HELP
     print """
 Modes
 g     display gene info mode
@@ -426,7 +430,7 @@ w     print alignment of selgene array
             drawGene(param["gene"][-1], context)
             gene = genes[param["gene"][-1]]
             home()
-            coords = get_visible()
+            coords = vis.win.get_visible()
             top = 2 * vis.conf["gene-size"] 
             bottom = -len(m.genomes) * vis.conf["max-genome-sep"]
             vis.win.set_visible(gene.start - context, top, gene.end + context, bottom)

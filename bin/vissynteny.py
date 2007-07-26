@@ -10,7 +10,7 @@ from reportlab import svglib
 from rasmus import util, env
 
 # rasmus bio libs
-from rasmus.bio import genomeutil, genomeio, clustalw, muscle, ensembl, fasta
+from rasmus.bio import genomeutil, genomeio, muscle, ensembl, fasta, alignlib
 from rasmus.bio.genomeutil import *
 
 # for easy user iteraction
@@ -19,7 +19,7 @@ from rasmus.common import *
 
 # graphics libs
 from summon.core import *
-from rasmus.vis import genomevis
+from rasmus.vis import syntenyvis as genomevis
 from summon.colors import *
 
 from summon import svg
@@ -117,7 +117,7 @@ class SyntenyVis (genomevis.SyntenyVis):
             
             comp = filter(lambda x: x in genes, comps[lookup[gene.name]])
             seqs2 = util.subdict(seqs, comp)
-            aln = clustalw.clustalw(seqs2)
+            aln = muscle.muscle(seqs2)
             
             keys = aln.keys()
             
@@ -126,7 +126,7 @@ class SyntenyVis (genomevis.SyntenyVis):
                     genes[key].y = -1e1000
             
             keys.sort(lambda a,b: cmp(genes[b].y, genes[a].y))
-            clustalw.printAlign(aln, order=keys)
+            alignlib.printAlign(aln, order=keys)
 
 
 def draw(genome, chrom, start, end):
@@ -153,8 +153,8 @@ def align(* names):
         names = [i.name for i in names]
     
     seqs2 = util.subdict(seqs, names)
-    aln = clustalw.clustalw(seqs2)
-    clustalw.printAlign(aln)
+    aln = muscle.muscle(seqs2)
+    muscle.printAlign(aln)
 
 def mark(shape="box", col=blue):
     names = []
@@ -176,7 +176,7 @@ def markHoles(shape="box", col=blue):
 def find(name):
     return vis.find(name)
 
-printscreen = svg.printScreen
+printscreen = lambda *args, **kargs: svg.printScreen(vis.win, *args, **kargs)
 
 
 def readFasta(filename):
@@ -220,8 +220,8 @@ def visparts(parts, refGenome, outdir):
         
         draw(refGenome, refChrom.name, start, end)
         markGenes(part, markColor, "box")
-        set_visible(start, 2*conf["gene-size"], end, 
-                    -conf["max-genome-sep"] * len(m.genomes))
+        vis.win.set_visible(start, 2*conf["gene-size"], end, 
+                            -conf["max-genome-sep"] * len(m.genomes))
                     
         # output svg 
         svg.printScreen(param["visual"][-1] + "/synteny%d.svg" % i)
@@ -255,8 +255,8 @@ def viswindows(refGenome, windowSize, windowStep, outdir):
             draw(refGenome, chrom.name, start, end)
             #visgroup = vis.draw(conf, m, refGenome, chrom.name, start, end)
 
-            set_visible(start, 10*conf["gene-size"], end, 
-                        -conf["max-genome-sep"] * len(m.genomes))
+            vis.win.set_visible(start, 10*conf["gene-size"], end, 
+                                -conf["max-genome-sep"] * len(m.genomes))
             
             filename = ("%s_%s_%s-%s.svg" % 
                 (refGenome, chrom.name, 
@@ -279,7 +279,7 @@ def viswindows(refGenome, windowSize, windowStep, outdir):
                             +"\n")
             
             # output svg 
-            svg.printScreen(outdir + "/" + filename) #, visgroup)
+            svg.printScreen(vis.win, outdir + "/" + filename) #, visgroup)
             
             # conversion
             #grid.execute("svg2pdf.py %s -r" % filename)
@@ -346,13 +346,13 @@ def readData(genomes, compfile, syntenyfile, smapfile):
 
 
 
-set_binding(input_key("g"), press("gene"))
-set_binding(input_key("v"), press("view"))
-set_binding(input_key("s"), press("sequence"))
-set_binding(input_key("a"), press("align"))
-set_binding(input_key("d"), clear_selgenes)
-set_binding(input_key("w"), align_selgenes)
-set_binding(input_key("e"), print_selgenes)
+vis.win.set_binding(input_key("g"), press("gene"))
+vis.win.set_binding(input_key("v"), press("view"))
+vis.win.set_binding(input_key("s"), press("sequence"))
+vis.win.set_binding(input_key("a"), press("align"))
+vis.win.set_binding(input_key("d"), clear_selgenes)
+vis.win.set_binding(input_key("w"), align_selgenes)
+vis.win.set_binding(input_key("e"), print_selgenes)
 
 
 
@@ -378,7 +378,7 @@ a     display gene alignment mode
 Gene array
 d     clear selgene array (selected genes)
 e     print selgene array
-w     print clustalw of selgene array
+w     print alignment of selgene array
 
     """
 
@@ -429,7 +429,7 @@ w     print clustalw of selgene array
             coords = get_visible()
             top = 2 * vis.conf["gene-size"] 
             bottom = -len(m.genomes) * vis.conf["max-genome-sep"]
-            set_visible(gene.start - context, top, gene.end + context, bottom)
+            vis.win.set_visible(gene.start - context, top, gene.end + context, bottom)
 
 
         if "visual" in param:
@@ -444,7 +444,7 @@ w     print clustalw of selgene array
                 viswindows(refGenome, context, param["visual"][-1])
                 sys.exit(0)
             else:
-                svg.printScreen(param["visual"][-1])
+                svg.printScreen(vis.win, param["visual"][-1])
                 sys.exit(0)
 
 

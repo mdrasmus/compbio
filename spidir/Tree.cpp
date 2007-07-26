@@ -244,7 +244,7 @@ void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
 
     // recurse
     for (int i=0; i<node->nchildren; i++)
-        getTreePostOrder(tree, nodes, node->children[i]);
+        getTreePreOrder(tree, nodes, node->children[i]);
 }
 
 

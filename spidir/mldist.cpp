@@ -593,15 +593,41 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
 //=============================================================================
 // find MLE branch lengths
 
+
+void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
+{
+    if (!node) {
+        // start at tree root (but don't include root)
+        getRootOrder(tree, nodes, tree->root->children[0]);
+        getRootOrder(tree, nodes, tree->root->children[1]);
+    } else {
+        // record pre-process
+        nodes->append(node);
+
+        // recurse
+        for (int i=0; i<node->nchildren; i++)
+            getRootOrder(tree, nodes, node->children[i]);
+
+        // record post-process
+        if (!node->isLeaf())
+            nodes->append(node);
+    }
+}
+
+
 // NOTE: assumes binary Tree
 template <class Model>
 float findMLBranchLengths(Tree *tree, int nseqs, char **seqs, 
                          float *bgfreq, Model &model,
                          int maxiter=10)
 {
+    const float converge = logf(2.0);
+    const int samples = 600; // fixed for now
+        
+    int convergenum = 1000; //2* tree->nnodes;
+
     int seqlen = strlen(seqs[0]);
     float lastLogl = -INFINITY, logl = -INFINITY;
-    float converge = logf(2.0);
     
     
     // allocate conditional likelihood dynamic programming table
@@ -620,20 +646,14 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
-    int convergenum = 1000; //2* tree->nnodes;
-    const int samples = 0; // fixed for now
     
     
     // determine rooting order
     ExtendArray<Node*> rootingOrder(0, 3*tree->nnodes);
     
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
-    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-    
+    getRootOrder(tree, &rootingOrder);
+    getRootOrder(tree, &rootingOrder);
+    getRootOrder(tree, &rootingOrder);
     
     for (int i=rootingOrder.size(); i<maxiter; i++) {
         rootingOrder.append(tree->nodes[irand(tree->nnodes)]);

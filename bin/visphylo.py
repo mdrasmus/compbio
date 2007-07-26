@@ -5,17 +5,20 @@
 #
 
 
-
+# python libs
 import sys
 
+# summon libs
 from summon.core import *
 from summon import multiwindow, sumtree, matrix
 import summon
 
+# rasmus libs
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip
 from rasmus.vis import distmatrixvis, alignvis
 from rasmus.vis.genomebrowser import *
+
 
 
 options = [

@@ -13,16 +13,15 @@ from rasmus.bio import fasta, clustalw, muscle, phylip, alignlib
 from summon.core import *
 from summon import sumtree
 from summon import svg
+from summon import hud
 import summon
 
 
 options = [
- ["p:", "ptree=", "ptree", "<ptree file>",
-    {"single": True}],
- ["l:", "labels=", "labels", "<leaf labels file>",
-    {"single": True}],
- ["n:", "newick=", "newick", "<newick file>",
-    {"single": True}],
+# ["p:", "ptree=", "ptree", "<ptree file>",
+#    {"single": True}],
+# ["l:", "labels=", "labels", "<leaf labels file>",
+#    {"single": True}],
  ["t:", "usedist=", "usedist", "<distance factor>",
     {"single": True,
      "default": 1.0,
@@ -45,13 +44,16 @@ options = [
 ]
 
 
-conf = util.parseOptions(sys.argv, options)
+conf = util.parseOptions(sys.argv, options, resthelp="<newick tree> ...")
 
 selnode = None
 
 class VisTree (sumtree.SumTree):
-    def __init__(self, conf, tree, **options):
-        sumtree.SumTree.__init__(self, tree, **options)
+    def __init__(self, conf, trees, filenames, **options):
+        sumtree.SumTree.__init__(self, trees[0], **options)
+        
+        self.trees = trees
+        self.filenames = filenames
         
         self.conf = conf
         self.colorOrths = color(0,0,0)
@@ -62,13 +64,26 @@ class VisTree (sumtree.SumTree):
         self.orths = []
         self.orthcomps = []
         self.seqs = {}
+        self.selnode = None
+        self.curtree = 0
+    
 
+
+    def switchTree(self, step=1):
+        
+        self.curtree = (self.curtree + step) % len(self.trees)
+        self.tree = self.trees[self.curtree]
+        self.show()
+        
 
     # override node clicks
     def nodeClick(self, node):
-        global selnode
+        self.selnode = node
         
+        # set global selnode variable for interactive users
+        global selnode        
         selnode = node
+        
         
         print "-------------"
 
@@ -97,24 +112,23 @@ class VisTree (sumtree.SumTree):
 
     def alignNode(self, node):
         # get all protein sequences of sub tree
-        seqs2 = util.subdict(self.seqs, self.tree.leafNames(node))
+        seqs2 = self.seqs.get(self.tree.leafNames(node))
 
         self.selalign = self.alignfunc(seqs2, verbose = True)
         self.selalign.names = tree.leafNames(node)
         alignlib.printAlign(self.selalign)
 
 
+    """
     def refine(self, node):
         #seqs2 = util.subdict(seqs, tree.leafNames(node))
         #aln = alignfunc(seqs2, verbose = True)
 
         phylip.refineNode(self.tree, node, self.seqs, 
                           phylip.protpars, muscle.muscle)
-        self.win.clear_groups()
-
-        self.setupTree(self.conf, self.tree)
-        self.drawTree(self.conf, self.tree, self.orths)
-
+        self.show()
+    """
+    
 
     def drawOrthologs(self, conf, tree, orths):      
         vis = []
@@ -138,9 +152,11 @@ class VisTree (sumtree.SumTree):
 
     def show(self):
         sumtree.SumTree.show(self)
-        
+            
+        # draw ortholog links
         self.win.add_group(self.drawOrthologs(self.conf, self.tree, self.orths))
         
+        self.win.set_name(self.filenames[self.curtree])
         
         # add key bindings
         def keypress(mode):
@@ -149,47 +165,46 @@ class VisTree (sumtree.SumTree):
                 self.clickMode = mode
             return func
 
+        
+        # build sidebar menu
+        self.bar = hud.SideBar(self.win, width=150)
+        self.bar.addItem(hud.MenuItem("align mode (a)", keypress("align")))
+        self.bar.addItem(hud.MenuItem("gene mode (d)", keypress("gene")))
+        #self.bar.addItem(hud.MenuItem("refine mode (r)", keypress("refine")))
+        self.bar.addItem(hud.MenuItem("next tree (n)", lambda: self.switchTree(step=1)))
+        self.bar.addItem(hud.MenuItem("prev tree (p)", lambda: self.switchTree(step=-1)))
+        
+        # register key bindings
         self.win.set_binding(input_key("a"), keypress("align"))
-        self.win.set_binding(input_key("d"), keypress("desc"))
+        #self.win.set_binding(input_key("d"), keypress("desc"))
         self.win.set_binding(input_key("g"), keypress("gene"))
-        self.win.set_binding(input_key("r"), keypress("refine"))
+        #self.win.set_binding(input_key("r"), keypress("refine"))
+        self.win.set_binding(input_key("n"), lambda: self.switchTree(step=1))
+        self.win.set_binding(input_key("p"), lambda: self.switchTree(step=-1))
 
 
+        
 
 
-
-
-def readTree(conf):
-    util.tic("reading input")
-
-    tree = treelib.Tree()
-
-    if "ptree" in conf:
-        tree.readParentTree(conf["ptree"], conf["labels"])
-        print "%s: %d nodes, %d leaves\n" % \
-            (conf["ptree"], len(tree.nodes), len(tree.leaves()))
-
-    elif "newick" in conf:
-        tree.readNewick(conf["newick"])
-        print "%s: %d nodes, %d leaves\n" % \
-            (conf["newick"], len(tree.nodes), len(tree.leaves()))
-
-    util.toc()    
-    return tree
 
 
 # read tree
-tree = readTree(conf)
+treefilenames = conf["REST"]
+trees = []
+for filename in treefilenames:
+    tree = treelib.Tree()
+    tree.readNewick(filename)
+    trees.append(tree)
+    
+    print "%s: %d nodes, %d leaves\n" % \
+        (filename, len(tree.nodes), len(tree.leaves()))
 
 
 # init visualization
-if "newick" in conf:
-    filename = conf["newick"]
-elif "ptree" in conf:
-    filename = conf["ptree"]
-vis = VisTree(conf, tree, name=filename, xscale=conf["usedist"], 
-                      showLabels=not conf["noshowlabels"],
-                      vertical=conf["vertical"])
+vis = VisTree(conf, trees, treefilenames, 
+                    xscale=conf["usedist"], 
+                    showLabels=not conf["noshowlabels"],
+                    vertical=conf["vertical"])
 
 find = vis.find
 mark = vis.mark

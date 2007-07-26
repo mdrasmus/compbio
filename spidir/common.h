@@ -46,6 +46,11 @@ float normallog(float x, float u, float s);
 double gammln(double xx);
 float gammalog(float x, float a, float b);
 
+inline float logadd(float lna, float lnb)
+{
+    return logf(expf(lna - lnb) + 1.0) + lnb;
+}
+
 void invertPerm(int *perm, int *inv, int size);
 
 template <class T>

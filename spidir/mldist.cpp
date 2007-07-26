@@ -298,10 +298,10 @@ public:
             float terms2[4];
             
             for (int i=0; i<4; i++)
-                terms1[i] = expf(logbgfreq[i] + probs1[matind(4, k, i)]);
+                terms1[i] = bgfreq[i] * probs1[matind(4, k, i)];
             
             for (int j=0; j<4; j++)
-                terms2[j] = expf(probs2[matind(4, k, j)]);
+                terms2[j] = probs2[matind(4, k, j)];
             
             float *ptr = &probs3[matind(16, k, 0)];
             for (int ij=0; ij<16; ij++) {
@@ -472,17 +472,40 @@ inline void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
     
     float *lktablea = lktable[a];
     float *lktableb = lktable[b];
+    float *lktablec = lktable[c];
     
     // iterate over sites
     for (int j=0; j<seqlen; j++) {
         float terma[4];
-        float termb[4];
+        float termb[4];       
         
         for (int x=0; x<4; x++) {
-            terma[x] = expf(lktablea[matind(4, j, x)]);
-            termb[x] = expf(lktableb[matind(4, j, x)]);
+            terma[x] = lktablea[matind(4, j, x)]; //expf(lktablea[matind(4, j, x)]);
+            termb[x] = lktableb[matind(4, j, x)]; //expf(lktableb[matind(4, j, x)]);
         }
     
+        
+        for (int k=0; k<4; k++) {
+            //float prob1 = 0.0, prob2 = 0.0;                
+
+            //for (int x=0; x<4; x++) {
+            float *aptr = atransmat[k];
+            float *bptr = btransmat[k];
+            
+            float prob1 = aptr[0] * terma[0] +
+                          aptr[1] * terma[1] +
+                          aptr[2] * terma[2] +
+                          aptr[3] * terma[3];
+            float prob2 = bptr[0] * termb[0] +
+                          bptr[1] * termb[1] +
+                          bptr[2] * termb[2] +
+                          bptr[3] * termb[3];
+            
+
+            lktablec[matind(4, j, k)] = prob1 * prob2; //logf(prob1 * prob2);
+        }
+        
+        /*
         for (int k=0; k<4; k++) {
             float prob1 = 0.0, prob2 = 0.0;                
 
@@ -492,7 +515,8 @@ inline void calcLkTable(ExtendArray<float*> &lktable, int seqlen, Model &model,
             }
 
             lktable[c][matind(4, j, k)] = logf(prob1 * prob2);
-        }
+        }*/
+        
     }
 }
 
@@ -519,12 +543,12 @@ void initCondLkTable(ExtendArray<float*> &lktable, Tree *tree,
 
                 if (base == -1) {
                     // handle gaps
-                    lktable[i][matind(4, j, 0)] = 0.0;
-                    lktable[i][matind(4, j, 1)] = 0.0;
-                    lktable[i][matind(4, j, 2)] = 0.0;
-                    lktable[i][matind(4, j, 3)] = 0.0;
+                    lktable[i][matind(4, j, 0)] = 1.0; // 0.0;
+                    lktable[i][matind(4, j, 1)] = 1.0; // 0.0;
+                    lktable[i][matind(4, j, 2)] = 1.0; // 0.0;
+                    lktable[i][matind(4, j, 3)] = 1.0; // 0.0;
                 } else 
-                    lktable[i][matind(4, j, base)] = 0.0;
+                    lktable[i][matind(4, j, base)] = 1.0; // 0.0;
             }
         } else {
             // compute internal nodes from children
@@ -556,7 +580,8 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
         float prob = 0.0;
         for (int x=0; x<4; x++) {
             prob += bgfreq[x] * 
-                    expf(lktable[tree->root->name][matind(4, k, x)]);
+                    lktable[tree->root->name][matind(4, k, x)];
+                    //expf(lktable[tree->root->name][matind(4, k, x)]);
         }
         lk += logf(prob);
     }
@@ -584,7 +609,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     for (int i=0; i<tree->nnodes; i++) {
         lktable[i] = new float [4 * seqlen];
         for (int j=0; j<4*seqlen; j++)
-            lktable[i][j] = -INFINITY;
+            lktable[i][j] = 0.0; //-INFINITY;
     }
     
     // allocate auxiliary likelihood table
@@ -595,19 +620,21 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
-    int convergenum = tree->nnodes;
+    int convergenum = 1000; //2* tree->nnodes;
     const int samples = 0; // fixed for now
     
     
     // determine rooting order
     ExtendArray<Node*> rootingOrder(0, 3*tree->nnodes);
+    
     getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
     getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
     getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
     getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-    //getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
-    //getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
-
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[0]);
+    getTreePreOrder(tree, &rootingOrder, tree->root->children[1]);
+    
+    
     for (int i=rootingOrder.size(); i<maxiter; i++) {
         rootingOrder.append(tree->nodes[irand(tree->nnodes)]);
     }
@@ -686,7 +713,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         // determine whether logl has converged
         float diff = fabs(logl - lastLogl);
         if (i > 0 && diff < converge) {
-            printLog("hky: diff = %f < %f\n", diff, converge);
+            //printLog("hky: diff = %f < %f\n", diff, converge);
             convergenum--;
             if (convergenum < 0)
                 break;

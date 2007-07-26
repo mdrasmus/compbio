@@ -157,7 +157,30 @@ void Tree::reroot(Node *newroot, bool onBranch)
     // - all leaves don't change numbers
     assert(root->name = nnodes-1);
 }
+/*
 
+// store a hash key representing the topology into the key array
+// key is a parent tree representation where the internal nodes are 
+// given a consistent numbering
+void Tree:hashkey(int *key)
+{
+    // initialize partids
+    ExtendArray<int> parentids(nnodes);    
+    for (int i=0; i<nnodes; i++)
+        parentids[i] = -1;
+    
+    // set new parent id to be greater than all leaves
+    int newparent = 0;
+    for (int i=0; i<nnodes; i++)
+        if (nodes[i]->isLeaf())
+            newparent++;
+    
+    // populate key
+    for (int i=0; i<nnodes; i++) {
+        Node *node = nodes[i];
+    }
+}
+*/
 
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()

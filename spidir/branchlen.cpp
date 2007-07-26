@@ -689,7 +689,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
             printLog("hky: diff = %f < %f\n", diff, converge);
             convergenum--;
             if (convergenum < 0)
-                i = maxiter;
+                break;
         } else {
             printLog("hky: diff = %f > %f\n", diff, converge);
         }

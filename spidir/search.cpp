@@ -135,25 +135,37 @@ NniProposer::NniProposer() :
     
 void NniProposer::propose(Tree *tree)
 {
-    // propose new tree
-    proposeRandomNni(tree, &node1, &node2, &change1);
-    proposeNni(tree, node1, node2, change1);
+    const float rerootProb = 0.1;
+    const float doubleNniProb = 0.2;
 
-    if (frand() < .5) {
-        proposeRandomNni(tree, &node3, &node4, &change2);        
-        proposeNni(tree, node3, node4, change2);
-    }
+    node1 = NULL;
+    node3 = NULL;
+    
 
     // TODO: need random reroot or recon root.
-    oldroot = tree->root->children[0];
-    //int choice = int((rand() / float(RAND_MAX)) * tree->nnodes);
-    //tree->reroot(tree->nodes[choice]);
-    int choice1 = irand(2); // * 2);
-    int choice2 = irand(2); // * 2);
-    if (tree->root->children[choice1]->nchildren == 2)
-        tree->reroot(tree->root->children[choice1]->children[choice2]);
-    else
-        tree->reroot(tree->root->children[!choice1]->children[choice2]);
+    if (frand() > rerootProb) {
+        oldroot = tree->root->children[0];
+        //int choice = irand(tree->nnodes);
+        //tree->reroot(tree->nodes[choice]);
+        
+        int choice1 = irand(2);
+        int choice2 = irand(2);
+        if (tree->root->children[choice1]->nchildren == 2)
+            tree->reroot(tree->root->children[choice1]->children[choice2]);
+        else
+            tree->reroot(tree->root->children[!choice1]->children[choice2]);
+    } else {
+        oldroot = NULL;
+        
+        // propose new tree
+        proposeRandomNni(tree, &node1, &node2, &change1);
+        proposeNni(tree, node1, node2, change1);
+
+        if (frand() < doubleNniProb) {
+            proposeRandomNni(tree, &node3, &node4, &change2);        
+            proposeNni(tree, node3, node4, change2);
+        }
+    }
 
     assert(tree->assertTree());
 }
@@ -161,12 +173,15 @@ void NniProposer::propose(Tree *tree)
 void NniProposer::revert(Tree *tree)
 {
     // reject, undo topology change
-    tree->reroot(oldroot);
+    if (oldroot)
+        tree->reroot(oldroot);
+    
     //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
     //       node2->name, node2->nchildren);
     if (node3)
         proposeNni(tree, node3, node3->parent, change2);
-    proposeNni(tree, node1, node1->parent, change1);    
+    if (node1)
+        proposeNni(tree, node1, node1->parent, change1);
 }
 
 
@@ -189,22 +204,29 @@ float ParsimonyFitter::findLengths(Tree *tree)
 
 
 HkyFitter::HkyFitter(int nseqs, int seqlen, char **seqs, 
-                     float *bgfreq, float tsvratio, int maxiter) :
+                     float *bgfreq, float tsvratio, int maxiter,
+                     bool useLogl) :
     nseqs(nseqs),
     seqlen(seqlen),
     seqs(seqs),
     bgfreq(bgfreq),
     tsvratio(tsvratio),
     maxiter(maxiter),
-    logl(0.0)
+    useLogl(useLogl)
 {
 }
 
 float HkyFitter::findLengths(Tree *tree)
 { 
-    logl = findMLBranchLengthsHky(tree, nseqs, seqs, bgfreq, tsvratio, maxiter);
-    return logl;
+    float logl = findMLBranchLengthsHky(tree, nseqs, seqs, bgfreq, 
+                                        tsvratio, maxiter);
+    if (useLogl)
+        return logl;
+    else
+        return 0.0;
 }
+
+
 
 
 //=============================================================================
@@ -236,6 +258,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     if (initTree != NULL) {
         // use specified initial tree
         tree = initTree;
+        logl = 0.0;
     } else {
         // initialized tree with NJ
         ExtendArray<int> ptree(nnodes);
@@ -251,7 +274,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
         // reconroot        
         // tree = phylo.reconRoot(tree, stree, gene2species)
         parsimony(tree, nseqs, seqs);
-        fitter->findLengths(tree);
+        logl = fitter->findLengths(tree);
     }
     
     
@@ -261,10 +284,10 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     reconcile(tree, stree, gene2species, recon);
     labelEvents(tree, recon, events);
     
-    logl = treelk(tree, stree,
-                  recon, events, params,
-                  -1, 0,
-                  predupprob, dupprob, errorlogl);
+    logl += treelk(tree, stree,
+                   recon, events, params,
+                   -1, 0,
+                   predupprob, dupprob, errorlogl);
     toplogl = logl;
     toptree = tree->copy();
     
@@ -276,20 +299,19 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     
         // propose new tree
         proposer->propose(tree);
-        fitter->findLengths(tree);
-        
-        //findMLBranchLengthsHky(tree, nseqs, seqs, 
-        //                       bgfreq, ratio, tree->nnodes);
+        float nextlogl = fitter->findLengths(tree);
         
         // calc new likelihood
         reconcile(tree, stree, gene2species, recon);
         labelEvents(tree, recon, events);
-        float nextlogl = treelk(tree, stree,
-                                recon, events, params,
-                                -1, 0,
-                                predupprob, dupprob, errorlogl);
+        nextlogl += treelk(tree, stree,
+                           recon, events, params,
+                           -1, 0,
+                           predupprob, dupprob, errorlogl);
         
-        displayTree(toptree, getLogFile());
+        displayTree(tree, getLogFile());
+        
+        
         // acceptance rule
         if (nextlogl > logl ||
             nextlogl - logl + speed > log(frand()))
@@ -310,7 +332,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
             }
         } else {
             printLog("search: reject %f < %f\n", nextlogl, toplogl);
-            //speed = (speed + 1) * 1.3;
+            speed = (speed + 1) * 1.3;
             
             // reject, undo topology change
             proposer->revert(tree);

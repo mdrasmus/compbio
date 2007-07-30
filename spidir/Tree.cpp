@@ -157,6 +157,29 @@ void Tree::reroot(Node *newroot, bool onBranch)
     // - all leaves don't change numbers
     assert(root->name = nnodes-1);
 }
+
+
+void Tree::reroot(Node *node1, Node *node2)
+{
+    // determine new root
+    Node *newroot;      
+    if (node1->parent == node2)
+        newroot = node1;
+    else if (node2->parent == node1)
+        newroot = node2;
+    else if (node1->parent == root ||
+             node2->parent == root)
+        // do nothing
+        return;
+    else
+        // not a valid branch
+        assert(0);
+    
+    reroot(newroot);
+}
+
+
+
 /*
 
 // store a hash key representing the topology into the key array

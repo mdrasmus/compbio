@@ -91,11 +91,50 @@ protected:
 
 
 //=============================================================================
-// reconciliation functions
+// phylogenetic reconstruction
+
 void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches);
+
+
+//=============================================================================
+// reconciliation functions
+
+void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species);
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);
+Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2);
+
+inline int countDuplications(int nnodes, int *events)
+{
+    int dups = 0;
+    for (int i=0; i<nnodes; i++)
+        if (events[i] == EVENT_DUP)
+            dups++;
+    return dups;
+}
+
+
+inline int reconcileNode(Node *node, SpeciesTree *stree, int *recon) {
+    Node *snode1 = stree->nodes[recon[node->children[0]->name]];
+    Node *snode2 = stree->nodes[recon[node->children[1]->name]];
+    Node *snode = treeLca(stree, snode1, snode2);
+    return snode->name;
+}
+
+
+inline int labelEventsNode(Node *node, int *recon)
+{
+    if (!node->isLeaf()) {
+        for (int i=0; i<node->nchildren; i++)
+            if (recon[node->name] == recon[node->children[i]->name])
+                return EVENT_DUP;
+        return EVENT_SPEC;
+    } else {
+        return EVENT_GENE;
+    }
+}
+
 
 
 } // namespace spidir

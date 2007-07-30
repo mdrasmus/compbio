@@ -165,10 +165,20 @@ string trim(const char *word);
 
 
 // logging
-void printLog(const char *fmt, ...);
+enum {
+    LOG_QUIET=0,
+    LOG_LOW=1,
+    LOG_MEDIUM=2,
+    LOG_HIGH=3
+};
+
+void printLog(int level, const char *fmt, ...);
 bool openLogFile(const char *filename);
+void openLogFile(FILE *stream);
 void closeLogFile();
 FILE *getLogFile();
+void setLogLevel(int level);
+bool isLogLevel(int level);
 
 void printError(const char *fmt, ...);
 

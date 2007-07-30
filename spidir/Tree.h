@@ -142,6 +142,7 @@ public:
     }
     
     void reroot(Node *newroot, bool onBranch=true);
+    void reroot(Node *node1, Node *node2);
     Tree *copy();
     Node *readNode(FILE *infile, Node *parent, int &depth);
     bool readNewick(FILE *infile);

@@ -13,16 +13,18 @@ public:
     virtual ~TopologyProposer() {}
     virtual void propose(Tree *tree) {}
     virtual void revert(Tree *tree) {}
+    virtual bool more() { return false; }
 };
 
 
 class NniProposer: public TopologyProposer
 {
 public:
-    NniProposer();
+    NniProposer(SpeciesTree *stree=NULL, int *gene2species=NULL, int niter=500);
 
     virtual void propose(Tree *tree);
     virtual void revert(Tree *tree);
+    virtual bool more();
     
     Node *node1;
     Node *node2;
@@ -31,6 +33,10 @@ public:
     Node *oldroot;
     int change1;
     int change2;
+    SpeciesTree *stree;
+    int *gene2species;
+    int niter;
+    int iter;
 };
 
 class BranchLengthFitter
@@ -71,7 +77,35 @@ public:
 };
 
 
-extern NniProposer nniProposer;
+class BranchLikelihoodFunc
+{
+public:
+    BranchLikelihoodFunc() {}
+    virtual ~BranchLikelihoodFunc() {}
+    
+    float likelihood(Tree *tree) { return 0.0; }
+};
+
+
+class SpidirBranchLikelihoodFunc : public BranchLikelihoodFunc
+{
+public:
+    SpidirBranchLikelihoodFunc(int nnodes, SpeciesTree *stree, 
+                               SpidirParams *params, 
+                               int *gene2species,
+                               float predupprob, float dupprob);
+    float likelihood(Tree *tree);
+    
+protected:
+    int nnodes;
+    SpeciesTree *stree;
+    SpidirParams *params;
+    int *gene2species;
+    ExtendArray<int> recon;
+    ExtendArray<int> events;
+    float predupprob;
+    float dupprob;  
+};
 
 
 void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0);
@@ -79,10 +113,14 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0);
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 string *genes, int nseqs, int seqlen, char **seqs,
-                int niter=500, 
-                TopologyProposer *proposer=&nniProposer,
-                BranchLengthFitter *fitter=NULL
-                );
+                int niter=500, float predupprob=0.01, float dupprob=1.0);
+
+
+Tree *searchMCMC(Tree *initTree, 
+                 string *genes, int nseqs, int seqlen, char **seqs,
+                 BranchLikelihoodFunc *lkfunc,
+                 TopologyProposer *proposer,
+                 BranchLengthFitter *fitter);
 
 
 } // namespace spidir

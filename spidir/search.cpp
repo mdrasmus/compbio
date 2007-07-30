@@ -15,9 +15,6 @@
 namespace spidir {
 
 
-// globals
-NniProposer nniProposer;
-
 
 //=============================================================================
 // Nearest Neighbor Interchange Topology Proposal
@@ -125,46 +122,59 @@ void proposeRandomNni(Tree *tree, Node **node1, Node **node2, int *change)
 }
 
 
-NniProposer::NniProposer() :
+NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
+                         int niter) :
     node1(NULL),
     node2(NULL),
     node3(NULL),
-    node4(NULL)
+    node4(NULL),
+    stree(stree),
+    gene2species(gene2species),
+    niter(niter),
+    iter(0)
 {}
     
     
 void NniProposer::propose(Tree *tree)
 {
-    const float rerootProb = 0.1;
+    const float rerootProb = 1.0;
     const float doubleNniProb = 0.2;
-
+    
+    // increase iteration
+    iter++;
+    
     node1 = NULL;
     node3 = NULL;
     
 
+
+        
+    // propose new tree
+    proposeRandomNni(tree, &node1, &node2, &change1);
+    proposeNni(tree, node1, node2, change1);
+
+    if (frand() < doubleNniProb) {
+        proposeRandomNni(tree, &node3, &node4, &change2);        
+        proposeNni(tree, node3, node4, change2);
+    }
+
     // TODO: need random reroot or recon root.
-    if (frand() > rerootProb) {
+    if (frand() < rerootProb) {
         oldroot = tree->root->children[0];
         //int choice = irand(tree->nnodes);
         //tree->reroot(tree->nodes[choice]);
         
-        int choice1 = irand(2);
-        int choice2 = irand(2);
-        if (tree->root->children[choice1]->nchildren == 2)
-            tree->reroot(tree->root->children[choice1]->children[choice2]);
-        else
-            tree->reroot(tree->root->children[!choice1]->children[choice2]);
+        //int choice1 = irand(2);
+        //int choice2 = irand(2);
+        //if (tree->root->children[choice1]->nchildren == 2)
+        //    tree->reroot(tree->root->children[choice1]->children[choice2]);
+        //else
+        //    tree->reroot(tree->root->children[!choice1]->children[choice2]);
+        
+        if (stree != NULL)
+            reconRoot(tree, stree, gene2species);
     } else {
         oldroot = NULL;
-        
-        // propose new tree
-        proposeRandomNni(tree, &node1, &node2, &change1);
-        proposeNni(tree, node1, node2, change1);
-
-        if (frand() < doubleNniProb) {
-            proposeRandomNni(tree, &node3, &node4, &change2);        
-            proposeNni(tree, node3, node4, change2);
-        }
     }
 
     assert(tree->assertTree());
@@ -173,8 +183,6 @@ void NniProposer::propose(Tree *tree)
 void NniProposer::revert(Tree *tree)
 {
     // reject, undo topology change
-    if (oldroot)
-        tree->reroot(oldroot);
     
     //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
     //       node2->name, node2->nchildren);
@@ -182,8 +190,17 @@ void NniProposer::revert(Tree *tree)
         proposeNni(tree, node3, node3->parent, change2);
     if (node1)
         proposeNni(tree, node1, node1->parent, change1);
+
+    if (oldroot)
+        tree->reroot(oldroot);
+
 }
 
+
+bool NniProposer::more()
+{
+    return iter < niter;
+}
 
 //=============================================================================
 // Fitting branch lengths
@@ -227,6 +244,38 @@ float HkyFitter::findLengths(Tree *tree)
 }
 
 
+//=============================================================================
+// Likelihood function
+
+SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
+    int nnodes, SpeciesTree *stree, 
+    SpidirParams *params, 
+    int *gene2species,
+    float predupprob, float dupprob) :
+    
+    nnodes(nnodes),
+    stree(stree),
+    params(params),
+    gene2species(gene2species),
+    recon(nnodes),
+    events(nnodes),
+    predupprob(predupprob),
+    dupprob(dupprob)
+{}
+
+
+float SpidirBranchLikelihoodFunc::likelihood(Tree *tree) {
+    // reconcile tree to species tree
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+
+    return treelk(tree, stree,
+                  recon, events, params,
+                  -1, 0,
+                  predupprob, dupprob, 0);
+}
+
+
 
 
 //=============================================================================
@@ -235,24 +284,36 @@ float HkyFitter::findLengths(Tree *tree)
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 string *genes, int nseqs, int seqlen, char **seqs,
-                int niter, 
-                TopologyProposer *proposer,
-                BranchLengthFitter *fitter)
+                int niter, float predupprob, float dupprob)
+{
+        
+    NniProposer nniProposer(stree, gene2species, niter);
+    ParsimonyFitter parsFitter(nseqs, seqlen, seqs);
+    
+    int nnodes = nseqs * 2 - 1;
+    SpidirBranchLikelihoodFunc lkfunc(nnodes, stree, params, gene2species,
+                                      predupprob, dupprob);
+    
+    return searchMCMC(initTree, 
+                      genes, nseqs, seqlen, seqs,
+                      &lkfunc,
+                      &nniProposer,
+                      &parsFitter);
+}
+                
+
+
+Tree *searchMCMC(Tree *initTree, 
+                 string *genes, int nseqs, int seqlen, char **seqs,
+                 BranchLikelihoodFunc *lkfunc,
+                 TopologyProposer *proposer,
+                 BranchLengthFitter *fitter)
 {
     Tree *toptree = NULL;
     float toplogl = -1e10, logl=-1e10;
     Tree *tree = NULL;
     int nnodes = nseqs * 2 - 1;
-    
-    float predupprob=.001, dupprob=1.0, errorlogl=0;
-    
-    
-    // determine branch length fitter
-    ParsimonyFitter parsFitter(nseqs, seqlen, seqs);
-    if (!fitter) {
-        fitter = &parsFitter;
-    }
-    
+        
     
     // determine initial tree
     if (initTree != NULL) {
@@ -279,60 +340,54 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     
     
     // init likelihood score
-    ExtendArray<int> recon(nnodes);
-    ExtendArray<int> events(nnodes);
-    reconcile(tree, stree, gene2species, recon);
-    labelEvents(tree, recon, events);
-    
-    logl += treelk(tree, stree,
-                   recon, events, params,
-                   -1, 0,
-                   predupprob, dupprob, errorlogl);
+    logl += lkfunc->likelihood(tree);
     toplogl = logl;
     toptree = tree->copy();
     
     float speed = 0;
     
     // MCMC loop
-    for (int i=0; i<niter; i++) {
-        printLog("search: iter %d\n", i);
+    for (int i=0; proposer->more(); i++) {
+        printLog(LOG_LOW, "search: iter %d\n", i);
     
-        // propose new tree
+        // propose new tree 
         proposer->propose(tree);
+        
+        // calculate lieklihood
         float nextlogl = fitter->findLengths(tree);
+        nextlogl += lkfunc->likelihood(tree);
         
-        // calc new likelihood
-        reconcile(tree, stree, gene2species, recon);
-        labelEvents(tree, recon, events);
-        nextlogl += treelk(tree, stree,
-                           recon, events, params,
-                           -1, 0,
-                           predupprob, dupprob, errorlogl);
-        
-        displayTree(tree, getLogFile());
         
         
         // acceptance rule
         if (nextlogl > logl ||
             nextlogl - logl + speed > log(frand()))
         {
-            printLog("search: accept %f  %f\n", nextlogl, logl);
+            printLog(LOG_MEDIUM, "search: accept %f  %f\n", nextlogl, logl);
             // accept
             logl = nextlogl;
             speed /= 2.0;
 
             // keep track of toptree            
             if (logl > toplogl) {
-                displayTree(toptree, getLogFile());
+                printLog(LOG_LOW, "search: logl = %f\n", logl);            
+                if (isLogLevel(LOG_LOW))
+                    displayTree(toptree, getLogFile());
             
                 delete toptree;
                 speed = 0.0;
                 toptree = tree->copy();
                 toplogl = logl;
+            } else {
+                if (isLogLevel(LOG_MEDIUM))
+                    displayTree(toptree, getLogFile());
             }
         } else {
-            printLog("search: reject %f < %f\n", nextlogl, toplogl);
-            speed = (speed + 1) * 1.3;
+            printLog(LOG_MEDIUM, "search: reject %f < %f\n", nextlogl, toplogl);
+            if (isLogLevel(LOG_MEDIUM))
+                displayTree(tree, getLogFile());
+            
+            //speed = (speed + 1) * 1.3;
             
             // reject, undo topology change
             proposer->revert(tree);

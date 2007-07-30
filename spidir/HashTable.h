@@ -30,7 +30,7 @@ struct HashCharStar {
         
         for (; *s; s++) {
             h = (h << 4) + *s;
-            if (g = h & 0xF0000000)
+            if ((g = h & 0xF0000000))
                 h ^= g >> 24;
             h &= ~g;
         }
@@ -80,9 +80,9 @@ public:
     inline ValueType &insert(const KeyType &key, const ValueType &object)
     {
         unsigned int hash = HashFunc::hash(key);
-        NodeType node(key, object)
-        m_table[hash % m_size].push_back(node);
-        return node.second;
+        int index = hash % m_size;
+        m_table[index].push_back(NodeType(key, object));
+        return m_table[index].back().second;
     }
     
     void remove(const KeyType &key)

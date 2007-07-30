@@ -716,7 +716,7 @@ class AlignTrack (Track):
 
 
     def onClickCallback(self):
-        x, y = get_mouse_pos('world')
+        x, y = self.win.get_mouse_pos('world')
         x -= self.pos[0]
         y = self.size[1] - (y - self.pos[1])
         self.onClick(x, y)

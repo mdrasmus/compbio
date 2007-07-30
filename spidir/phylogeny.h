@@ -2,6 +2,7 @@
 #define SPIDIR_PHYLOGENY_H
 
 #include "Tree.h"
+#include "HashTable.h"
 
 
 namespace spidir {
@@ -74,7 +75,8 @@ class Gene2species
 {
 public:
     Gene2species() :
-        m_rules(0, 20)
+        m_rules(0, 20),
+        m_exactLookup(1000, NULL_SPECIES)
     {}
     
     const static string NULL_SPECIES;
@@ -86,7 +88,7 @@ public:
     
 protected:
     ExtendArray<Gene2speciesRule> m_rules;
-    
+    HashTable<string,string,HashString> m_exactLookup;
 };
 
 

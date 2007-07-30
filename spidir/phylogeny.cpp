@@ -309,7 +309,7 @@ bool Gene2species::read(const char *filename)
                                             species));
         } else {
             // exact match
-            //assert(0);
+            m_exactLookup[expr] = species;
         }
     }
 
@@ -329,14 +329,12 @@ string Gene2species::getSpecies(string gene)
                 if (gene.rfind(m_rules[i].expr, gene.size()-1) == 
                     gene.size() - m_rules[i].expr.size())
                     return m_rules[i].species;
-                break;                
-
-            case Gene2speciesRule::EXACT:
                 break;
         }
     }
 
-    return NULL_SPECIES;
+    // try to find gene in exact match hashtable
+    return m_exactLookup[gene];
 }
 
 bool Gene2species::getMap(string *genes, int ngenes, 

@@ -310,7 +310,7 @@ Tree *searchMCMC(Tree *initTree,
                  BranchLengthFitter *fitter)
 {
     Tree *toptree = NULL;
-    float toplogl = -1e10, logl=-1e10;
+    float toplogl = -1e10, logl=-1e10, nextlogl;
     Tree *tree = NULL;
     int nnodes = nseqs * 2 - 1;
         
@@ -346,6 +346,14 @@ Tree *searchMCMC(Tree *initTree,
     
     float speed = 0;
     
+    typedef ExtendArray<int> TopologyKey;
+    typedef pair<Tree*,float> TreeLogl;
+    TopologyKey key(tree->nnodes);
+
+    HashTable<TopologyKey, TreeLogl, HashTopology> hashtrees(2000, 
+                                                   TreeLogl(NULL, 0));
+    
+    
     // MCMC loop
     for (int i=0; proposer->more(); i++) {
         printLog(LOG_LOW, "search: iter %d\n", i);
@@ -353,10 +361,23 @@ Tree *searchMCMC(Tree *initTree,
         // propose new tree 
         proposer->propose(tree);
         
-        // calculate lieklihood
-        float nextlogl = fitter->findLengths(tree);
-        nextlogl += lkfunc->likelihood(tree);
+        // hash topology
+        tree->hashkey(key);
         
+        // have we seen this topology before?
+        TreeLogl &tmp = hashtrees[key];
+        if (tmp.first != NULL) {
+            printf("repeat\n");
+            // retrieve previously seen tree and logl
+            nextlogl = tmp.second;
+        } else {    
+            // calculate lieklihood
+            nextlogl = fitter->findLengths(tree);
+            nextlogl += lkfunc->likelihood(tree);
+        
+            // hash result
+            tmp = TreeLogl(tree->copy(), nextlogl);
+        }
         
         
         // acceptance rule

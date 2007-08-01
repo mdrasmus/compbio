@@ -86,6 +86,29 @@ int findval(T *array, int size, const T &val)
 }
 
 
+//=============================================================================
+// sorting
+
+template <class KeyType, class ValueType>
+struct RankSortCmp
+{
+    RankSortCmp(ValueType *values):
+        values(values)
+    {}
+    
+    bool operator()(KeyType i, KeyType j)
+    { return values[i] < values[j]; }
+    
+    ValueType *values;
+};
+
+template <class KeyType, class ValueType>
+void ranksort(KeyType *keys, ValueType *values, int size)
+{
+    RankSortCmp<KeyType, ValueType> cmp(values);
+    sort(keys, keys + size, cmp);
+}
+
 
 
 //=============================================================================

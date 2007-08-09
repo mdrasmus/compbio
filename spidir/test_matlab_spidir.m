@@ -50,8 +50,12 @@ function test_matlab_spidir()
     % specify a negative number to request SPIDIR to estimate it for you
     generate = 1.0
     
+    % display gene tree for debuging
+    'hello what is up'
+    spidir_display_tree(ptree, dists, 10)
+    
     % make the call
-    logl = matlab_spidir(ptree, dists, pstree, gene2species, ...
+    logl = spidir_treelk(ptree, dists, pstree, gene2species, ...
                          mu, sigma, alpha, beta, generate)
     
     

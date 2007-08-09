@@ -862,7 +862,7 @@ void generateBranchLengths(int nnodes, int *ptree,
     SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
     tree.setDists(dists);
 }
-                           
+                         
 
 
 } // namespace spidir

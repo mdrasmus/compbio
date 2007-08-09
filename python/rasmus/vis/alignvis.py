@@ -48,10 +48,11 @@ class AlignViewer (object):
         # build sidebar menu
         self.bar = hud.SideBar(self.win, width=150)
         self.bar.addItem(hud.MenuItem("toggle color (c)", self.toggleColorBases))
+        self.bar.addItem(hud.MenuItem("toggle leftwin (l)", self.toggleLeftWindow))
         
         # register key bindings
         self.win.set_binding(input_key("c"), self.toggleColorBases)
-    
+        self.win.set_binding(input_key("l"), self.toggleLeftWindow)
     
     def enableColorBases(self, enabled=True):
         self.alntrack.showColorBases = enabled
@@ -61,3 +62,5 @@ class AlignViewer (object):
     def toggleColorBases(self):
         self.enableColorBases(not self.alntrack.showColorBases)
     
+    def toggleLeftWindow(self):
+        self.vis.enableSideWindows(left=not self.vis.showLeftWindow)

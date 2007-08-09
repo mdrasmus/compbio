@@ -78,6 +78,7 @@ MATLAB_DISPLAY_TREE_FUNC = spidir_display_tree
 MATLAB_DISPLAY_TREE_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_display_tree.cpp
 MATLAB_DISPLAY_TREE_OBJ = spidir_display_tree.mexglx
 
+MATLAB_OBJS = $(MATLAB_TREELK_OBJ) $(MATLAB_DISPLAY_TREE_OBJ)
 
 #=============================================================================
 # optional CFLAGS
@@ -143,5 +144,5 @@ install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 clean:
 	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
                 $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
-                $(MATLAB_OBJ) \
+                $(MATLAB_OBJS) \
 	        test.o test_spidir

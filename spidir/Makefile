@@ -118,6 +118,8 @@ test_spidir: $(SPIDIR_OBJS) test.o
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 	$(CXX) -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
 
+
+# matlab interface
 matlab_funcs: $(MATLAB_FUNCS)
 
 # matlab treelk function

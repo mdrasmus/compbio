@@ -154,47 +154,43 @@ SpidirParams *readSpidirParams(const char* filename)
 }
 
 
-// get the preorder traversal of the species tree
-void paramsOrder_helper(Node *node, ExtendArray<Node*> *nodeorder)
-{
-    nodeorder->append(node);
-    for (int i=0; i<node->nchildren; i++) {
-        paramsOrder_helper(node->children[i], nodeorder);
-    }
-}
 
 
 // UNDER CONSTRUCTION
 bool SpidirParams::order(SpeciesTree *stree)
 {
     if (stree->nnodes != nsnodes) {
-        printf("%d %d\n", stree->nnodes, nsnodes);
+        printError("wrong number of parameters: %d %d\n", stree->nnodes, nsnodes);
         return false;
     }
     
     ExtendArray<Node*> nodeorder(0, stree->nnodes);
-    paramsOrder_helper(stree->root, &nodeorder);
-    ExtendArray<int> perm(0, stree->nnodes);
-    ExtendArray<int> invperm(0, stree->nnodes);
-    
+    getTreePreOrder(stree, &nodeorder);
+        
+
     // make interior node names
-    ExtendArray<int> inodes(0, stree->nnodes);
+    ExtendArray<int> inodes(stree->nnodes);
     
     int inodename = 1;
     for (int i=0; i<stree->nnodes; i++) {
-        if (nodeorder[i]->isLeaf()) {
-            inodes.append(-1);
+        Node *node = nodeorder[i];
+        if (node->isLeaf()) {
+            inodes[node->name] = -1;
         } else {
-            inodes.append(inodename++);
+            inodes[node->name] = inodename++;
         }
     }
     
     
     // loop through preordered nodes to construct permutation
+    ExtendArray<int> invperm(0, stree->nnodes);
+        
     for (int j=0; j<nsnodes; j++) {
+        assert(invperm.size() == j);    
         for (int i=0; i<stree->nnodes; i++) {
-            if (nodeorder[i]->isLeaf()) {
-                if (names[j] == nodeorder[i]->leafname) {
+            if (stree->nodes[i]->isLeaf()) {
+                // if leaf, check if names match
+                if (names[j] == stree->nodes[i]->leafname) {
                     invperm.append(i);
                     break;
                 }
@@ -207,8 +203,13 @@ bool SpidirParams::order(SpeciesTree *stree)
         }
     }
     
+
+    
+    ExtendArray<int> perm(stree->nnodes);
+    
     // apply permutation
-    invertPerm(invperm, perm, nsnodes);
+    invertPerm(invperm, perm, nsnodes);    
+      
     permute(names, perm, nsnodes);
     permute(mu, perm, nsnodes);
     permute(sigma, perm, nsnodes);

@@ -19,6 +19,18 @@ float treelk(Tree *tree,
              float generate, float disterror,
              float predupprob, float dupprob, float errorlogl);
 
+void generateBranchLengths(int nnodes, int *ptree, 
+                           int nsnodes, int *pstree,
+                           int *recon, int *events,
+                           float *mu, float *sigma,
+                           float alpha, float beta,
+                           float *dists);
+
+void generateBranchLengths(Tree *tree,
+                           SpeciesTree *stree,
+                           int *recon, int *events,
+                           SpidirParams *params);
+
 } // namespace spidir
 
 #endif // SPIDIR_LIKELIHOOD_H

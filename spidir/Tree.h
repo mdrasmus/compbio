@@ -24,7 +24,8 @@ public:
         name(-1),
         parent(NULL),
         children(NULL),
-        nchildren(nchildren)
+        nchildren(nchildren),
+        dist(0.0)
     {
         if (nchildren != 0)
             setChildren(nchildren);

@@ -53,11 +53,10 @@ BranchParams NULL_PARAM;
 class ReconParams
 {
 public:
-    ReconParams(int nnodes, bool *freebranches, int unfold, float unfolddist) :
+    ReconParams(int nnodes) :
         nnodes(nnodes),
-        freebranches(freebranches),
-        unfold(unfold),
-        unfolddist(unfolddist)
+        unfold(-1),
+        unfolddist(0)
     {
         startparams = new BranchParams [nnodes];
         midparams = new BranchParams [nnodes];
@@ -66,6 +65,8 @@ public:
         startfrac = new int [nnodes];
         endfrac = new int [nnodes];
         midpoints = new float [nnodes];
+        
+        freebranches = new bool [nnodes];
     }
     
     ~ReconParams()
@@ -77,6 +78,8 @@ public:
         delete [] startfrac;
         delete [] endfrac;
         delete [] midpoints;
+        
+        delete [] freebranches;
     }
     
     
@@ -432,8 +435,7 @@ void setRandomMidpoints(int root, int *ptree,
 }
 
 
-// Calculate branch likelihood
-float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
+BranchParams getBranchParams(int node, int *ptree, ReconParams *reconparams)
 {
     float totmean = 0.0;
     float totvar = 0.0;
@@ -480,6 +482,17 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
     }
     // endfrac == FRAC_NONE, do nothing
     
+    return BranchParams(totmean, sqrt(totvar));
+}
+
+
+// Calculate branch likelihood
+float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
+{
+    BranchParams bparam = getBranchParams(node, ptree, reconparams);
+    float totmean = bparam.mu;
+    float totsigma = bparam.sigma;
+    
     // handle partially-free branches and unfold
     if (reconparams->unfold == node)
         dist += reconparams->unfolddist;
@@ -490,7 +503,7 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
             dist = totmean;
     }
     
-    float logl = normallog(dist, totmean, sqrt(totvar));
+    float logl = normallog(dist, totmean, totsigma);
     assert(!isnan(logl));
     return logl;
 }
@@ -674,14 +687,14 @@ float treelk(Tree *tree,
         generate = estimateGenerate(tree, stree, 
                        recon, events, params);
     
-    bool *freebranches = new bool [tree->nnodes];
-    int unfold;
-    float unfolddist;
+    // determine reconciliation parameters
+    ReconParams reconparams = ReconParams(tree->nnodes);
     determineFreeBranches(tree, stree, recon, events, generate,
-                          &unfold, &unfolddist, freebranches);
+                          &reconparams.unfold, 
+                          &reconparams.unfolddist, 
+                          reconparams.freebranches);
     //printf("UNFOLD: %d %f\n", unfold, unfolddist);    
-    ReconParams reconparams = ReconParams(tree->nnodes, freebranches, 
-                                          unfold, unfolddist);
+
     
         
     // loop through independent subtrees
@@ -718,7 +731,6 @@ float treelk(Tree *tree,
     delete [] pstree;
     delete [] dists;
     freeFtree(tree->nnodes, ftree);
-    delete [] freebranches;    
     
     return logl;
 }
@@ -754,69 +766,71 @@ float treelk(int nnodes, int *ptree, float *dists,
 //=============================================================================
 // branch length generation
 
+float genBranch(float generate, float mean, float sdev)
+{
+    float blen = 0;
+    
+    while (blen <= 0)
+        blen = generate * normalvariate(mean, sdev);
+    
+    return blen;
+}
+
+
+
+// NOTE: currently generates zero branch length for freebranches...
 void genSubtree(Tree *tree, Node *root,
-                 SpeciesTree *stree,
-                 int *recon, int *events, SpidirParams *params,
-                 float generate,
-                 ReconParams *reconparams)
+                SpeciesTree *stree,
+                int *ptree, int *pstree,
+                int *recon, int *events, SpidirParams *params,
+                float generate,
+                ReconParams *reconparams)
 {
     int sroot = stree->root->name;
 
     
     if (events[root->name] != EVENT_DUP) {
-        // single branch, no integration needed
+        // single branch
                 
         if (recon[root->name] != sroot) {
-            // no midpoints, no integration needed
-            //reconBranch(root, ptree, pstree, recon, events, params,
-            //            reconparams);
-            //logl = branchlk(dists[root] / generate, 
-            //                root, ptree, reconparams);
+            // no midpoints
+            reconBranch(root->name, ptree, pstree, recon, events, params,
+                        reconparams);
+            BranchParams bparam = getBranchParams(root->name, ptree, reconparams);            
+            root->dist = genBranch(generate, bparam.mu, bparam.sigma);
         }
     } else {
-        // multiple branches, integrate
-        
+        // multiple branches
+                
         // set reconparams by traversing subtree
         ExtendArray<Node*> subnodes(0, tree->nnodes);
         getSubtree(tree->root, events, &subnodes);
         
+        ExtendArray<int> subnames(subnodes.size());
+        for (int i=0; i<subnodes.size(); i++)
+            subnames[i] = subnodes[i]->name;
+        
+        
         for (int i=0; i<subnodes.size(); i++) {
-            //reconBranch(subnodes[i], ptree, pstree, 
-            //            recon, events, params, reconparams);
+            reconBranch(subnodes[i]->name, ptree, pstree, 
+                        recon, events, params, reconparams);
         }
         
-        // choose number of samples based on number of nodes to integrate over
-        //nsamples = int(500*logf(subnodes.size())) + 500;
-        //if (nsamples > 2000) nsamples = 2000;
-        //nsamples = int(100*log(nodesi)) + 50;
-        //if (nsamples > 600) nsamples = 600;
+        
+        // propose a setting of midpoints
+        reconparams->midpoints[root->name] = 1.0; // TODO: need to understand why this is here
+        setRandomMidpoints(root->name, ptree, subnames, subnodes.size(),
+                           recon, events, reconparams);
 
-        /*
-        // perform integration by sampling
-        double prob = 0.0;
-        for (int i=0; i<nsamples; i++) {
-            double sampleLogl = 0.0;
-            
-            // propose a setting of midpoints
-            reconparams->midpoints[root] = 1.0; // TODO: need to understand why this is here
-            setRandomMidpoints(root, ptree, subnodes, subnodes.size(),
-                               recon, events, reconparams);
-            
-            // loop through all branches in subtree
-            for (int j=0; j<subnodes.size(); j++) {
-                int node = subnodes[j];
-                
-                if (recon[node] != sroot) {
-                    sampleLogl += branchlk(dists[node] / generate, 
-                                           node, ptree, reconparams);
-                }
+        // loop through all branches in subtree
+        for (int j=0; j<subnodes.size(); j++) {
+            Node *node = subnodes[j];
+
+            if (recon[node->name] != sroot) {
+                BranchParams bparam = getBranchParams(node->name, ptree, reconparams);
+                node->dist = genBranch(generate, bparam.mu, bparam.sigma);
             }
-            
-            prob += exp(sampleLogl);
         }
-        
-        logl = log(prob  / nsamples);
-        */
     }
 }
 
@@ -826,17 +840,35 @@ void generateBranchLengths(Tree *tree,
                            int *recon, int *events,
                            SpidirParams *params)
 {
+    // generate a generate
+    float generate = gammavariate(params->alpha, params->beta);
+    
+    
+    // determine reconciliation parameters
+    ReconParams reconparams = ReconParams(tree->nnodes);
+    determineFreeBranches(tree, stree, recon, events, generate,
+                          &reconparams.unfold, 
+                          &reconparams.unfolddist, 
+                          reconparams.freebranches);
+    
+    
+    // make array formats
+    ExtendArray<int> ptree(tree->nnodes);
+    ExtendArray<int> pstree(stree->nnodes);
+    tree2ptree(tree, ptree);
+    tree2ptree(stree, pstree);
+        
+    
     // loop through independent subtrees
     for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_SPEC || i == tree->root->name) {
             for (int j=0; j<2; j++) {
-                int node = tree->nodes[i]->children[j]->name;
-                /*genSubtree(tree, node,
-                           stree,
+                Node *node = tree->nodes[i]->children[j];
+                genSubtree(tree, node,
+                           stree, ptree, pstree,
                            recon, events, params,
                            generate,
                            &reconparams);
-                */
             }
         }
     }
@@ -850,17 +882,23 @@ void generateBranchLengths(int nnodes, int *ptree,
                            float alpha, float beta,
                            float *dists)
 {
-    // create tree objects
+    // create gene tree object
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
     tree.setDists(dists);
     
+    // create species tree object
     SpeciesTree stree(nsnodes);
     ptree2tree(nsnodes, pstree, &stree);
     stree.setDepths();  
     
-    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
-    tree.setDists(dists);
+    // build parameters object
+    SpidirParams params(nsnodes, NULL, mu, sigma, alpha, beta);
+    
+    generateBranchLengths(&tree, &stree, recon, events, &params);
+    
+    // record distances into array
+    tree.getDists(dists);
 }
                          
 

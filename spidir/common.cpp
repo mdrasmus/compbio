@@ -35,8 +35,8 @@ float normallog(float x, float u, float s)
 {
     if (s == 0.0)
         return -INFINITY;
-    return - log(s) - log(sqrt(2.0*PI)) - (x-u)*(x-u) / (2.0*s*s);
-    //return log(1.0/(s * sqrt(2.0*PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
+    return - log(s) - log(sqrt(2.0*M_PI)) - (x-u)*(x-u) / (2.0*s*s);
+    //return log(1.0/(s * sqrt(2.0*M_PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
 }
 
 
@@ -70,6 +70,95 @@ float gammalog(float x, float a, float b)
         return 0.0;
     else
         return -x * b + (a - 1.0) * log(x) + a * log(b) - gammln(a);
+}
+
+
+// Normal distribution.
+//
+// mu is the mean, and sigma is the standard deviation.
+//
+float normalvariate(float mu, float sigma)
+{
+    // Uses Kinderman and Monahan method. Reference: Kinderman,
+    // A.J. and Monahan, J.F., "Computer generation of random
+    // variables using the ratio of uniform deviates", ACM Trans
+    // Math Software, 3, (1977), pp257-260.
+
+    const static float NV_MAGICCONST = 4 * exp(-0.5)/sqrt(2.0);
+    float u1, u2, z, zz;
+
+    do {
+        u1 = frand();
+        u2 = 1.0 - frand();
+        z = NV_MAGICCONST*(u1-0.5)/u2;
+        zz = z*z/4.0;
+    } while (zz > -log(u2));
+    
+    return mu + z*sigma;
+}
+
+
+float gammavariate(float alpha, float beta)
+{
+    const static float LOG4 = 1.3862943611198906;
+    const static float SG_MAGICCONST = 1.0 + log(4.5);
+    
+    assert(alpha > 0.0 && beta > 0.0);
+    
+    // convert beta
+    beta = 1.0 / beta;
+    
+    if (alpha > 1.0) {
+        // Uses R.C.H. Cheng, "The generation of Gamma
+        // variables with non-integral shape parameters",
+        // Applied Statistics, (1977), 26, No. 1, p71-74
+
+        float ainv = sqrt(2.0 * alpha - 1.0);
+        float bbb = alpha - LOG4;
+        float ccc = alpha + ainv;
+
+        while (1) {
+            float u1 = frand();
+            if (u1 < 1e-7 || u1 > .9999999)
+                continue;
+            float u2 = 1.0 - frand();
+            float v = log(u1 / (1.0-u1)) / ainv;
+            float x = alpha * exp(v);
+            float z = u1*u1*u2;
+            float r = bbb+ccc*v-x;
+            if (r + SG_MAGICCONST - 4.5*z >= 0.0 || r >= log(z))
+                return x * beta;
+        }
+        
+    } else if (alpha == 1.0) {
+        // expovariate(1)
+        float u = 0;
+        while (u <= 1e-7)
+            u = frand();
+        return -log(u) * beta;
+        
+    } else { 
+        // alpha in (0, 1)
+        // Uses ALGORITHM GS of Statistical Computing - Kennedy & Gentle
+        float x;
+
+        while (1) {
+            float u = frand();
+            float b = (M_E + alpha)/M_E;
+            float p = b*u;
+            if (p <= 1.0)
+                x = pow(p, (1.0/alpha));
+            else
+                x = -log((b-p)/alpha);
+            float u1 = frand();
+            if (p > 1.0)
+                if (u1 <= pow(x, (alpha - 1.0)))
+                    break;
+            else if (u1 <= exp(-x))
+                break;
+        }
+        return x * beta;
+    }
 }
 
 

@@ -364,10 +364,10 @@ Tree *searchMCMC(Tree *initTree,
         // hash topology
         tree->hashkey(key);
         
+        // TURN OFF hashing
         // have we seen this topology before?
         TreeLogl &tmp = hashtrees[key];
-        if (tmp.first != NULL) {
-            printf("repeat\n");
+        if (0 && tmp.first != NULL) {
             // retrieve previously seen tree and logl
             nextlogl = tmp.second;
         } else {    

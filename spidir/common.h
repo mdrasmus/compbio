@@ -27,7 +27,6 @@ using namespace std;
 namespace spidir {
 
 // constants
-#define PI 3.1415926
 #ifndef INFINITY
 #   define INFINITY 1e1000
 #endif
@@ -45,6 +44,9 @@ namespace spidir {
 float normallog(float x, float u, float s);
 double gammln(double xx);
 float gammalog(float x, float a, float b);
+float normalvariate(float mu, float sigma);
+float gammavariate(float alpha, float beta);
+
 
 inline float logadd(float lna, float lnb)
 {
@@ -56,8 +58,7 @@ void invertPerm(int *perm, int *inv, int size);
 template <class T>
 void permute(T* array, int *perm, int size)
 {
-    ExtendArray<T> tmp(0, size);
-    tmp.extend(array, size);
+    ExtendArray<T> tmp(size);
     
     // transfer permutation to temp array
     for (int i=0; i<size; i++)

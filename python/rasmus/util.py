@@ -943,7 +943,26 @@ def writeDict(filename, dct, delim="\t"):
     for k, v in dct.iteritems():
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
     
+
+'''
+def makeReopenStream(stream):
+    """Object used to wrap a stream that is 'opened' multiple times.
+       Will ignore first close"""
     
+    closecount = [0]
+    
+    # save old close
+    old_close = stream.close
+    
+    def new_close():
+        closecount[0] += 1
+        if closecount[0] > 1:
+            old_close()
+    
+    # dynamically replace close function
+    stream.close = new_close
+'''
+
 
 # TODO: add code for multiple close() calls
 def openStream(filename, mode = "r"):

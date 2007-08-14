@@ -280,6 +280,15 @@ def factorial(x, k=1):
     return n
 
 
+def logfactorial(x, k=1):
+    """returns the log(factorial(x) / factorial(k)"""
+    
+    n = 0
+    for i in xrange(int(k)+1, int(x)+1):
+        n += log(i)
+    return n
+
+
 def choose(n, k):
     return factorial(n, n - k) / factorial(k)
 
@@ -405,11 +414,40 @@ def logNormalCdf(x, params):
 
 
 def poissonPdf(x, params):
-    p = params[0]
-    if x > 0 and p > 0:
-        return exp(p) * p **x / x
-    else:
+    lambd = params[0]
+    
+    if x < 0 or lambd <= 0:
         return 0.0
+    
+    a = 0
+    for i in xrange(1, int(x)+1):
+        a += log(lambd / float(i))
+    return exp(-lambd + a)
+
+
+def poissonCdf(x, params):
+    """Cumulative distribution function of the Poisson distribution"""
+    # NOTE: not implemented accurately for large x or lambd
+    lambd = params[0]
+    
+    if x < 0:
+        return 0
+    else:
+        return (gamma(floor(x+1)) - gammainc(floor(x + 1), lambd)) / \
+               factorial(floor(x))
+    
+
+def poissonvariate(lambd):
+    """Sample from a Poisson distribution"""
+    l = exp(-lambd)
+    k = 0
+    p = 1.0
+
+    while 1:
+        k += 1
+        p *= random.random()
+        if p < l:
+            return k - 1
 
 
 def gammaPdf(x, params):
@@ -545,6 +583,7 @@ def gammaln(xx):
 
 GAMMA_INCOMP_ACCURACY = 1000
 def gammainc(a, x):
+    """Lower incomplete gamma function"""
     # found on http://www.rskey.org/gamma.htm
     
     ret = 0

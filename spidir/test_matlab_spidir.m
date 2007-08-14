@@ -51,9 +51,8 @@ function test_matlab_spidir()
     generate = 1.0
     
     % display gene tree for debuging
-    'hello what is up'
     spidir_display_tree(ptree, dists, 10)
-    
+            
     % make the call
     logl = spidir_treelk(ptree, dists, pstree, gene2species, ...
                          mu, sigma, alpha, beta, generate)
@@ -67,6 +66,13 @@ function test_matlab_spidir()
     end
     logl2 = logl2 + log(gammadist(generate, alpha, beta));
     logl2
+    
+
+    % generate new branches lengths for the gene tree
+    dists2 = spidir_genbranches(ptree, pstree, gene2species, ...
+                                mu, sigma, alpha, beta)
+    spidir_display_tree(ptree, dists2, 10)
+    
     
 
 function g = gammadist(x, alpha, beta)

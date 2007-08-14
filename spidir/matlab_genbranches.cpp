@@ -42,7 +42,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         mexErrMsgTxt("Too many output arguments");
     }
     
-
     
     // return value
     float logl = 0;
@@ -59,27 +58,27 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     // species parent tree (pstree)
     int nsnodes;
     StackArray<int> pstree;
-    if (!getIntArray(prhs[2], &pstree, &nsnodes)) mexErrMsgTxt("bad pstree");
+    if (!getIntArray(prhs[1], &pstree, &nsnodes)) mexErrMsgTxt("bad pstree");
     
     // reconciliation (gene2species)
     StackArray<int> gene2species;
-    if (!getIntArray(prhs[3], &gene2species, &nnodes)) mexErrMsgTxt("bad gene2species");
+    if (!getIntArray(prhs[2], &gene2species, &nnodes)) mexErrMsgTxt("bad gene2species");
     
     // mean branch lengths (mu)
     StackArray<float> mu;    
-    if (!getFloatArray(prhs[4], &mu, &nsnodes)) mexErrMsgTxt("bad mu");
+    if (!getFloatArray(prhs[3], &mu, &nsnodes)) mexErrMsgTxt("bad mu");
     
     // standard deviation of branch lengths (sigma)
     StackArray<float> sigma;
-    if (!getFloatArray(prhs[5], &sigma, &nsnodes)) mexErrMsgTxt("bad sigma");
+    if (!getFloatArray(prhs[4], &sigma, &nsnodes)) mexErrMsgTxt("bad sigma");
     
     // gene-rate distribution (alpha)
     float alpha;
-    if (!getFloat(prhs[6], &alpha)) mexErrMsgTxt("bad alpha");
+    if (!getFloat(prhs[5], &alpha)) mexErrMsgTxt("bad alpha");
 
     // gene-rate distribution (beta)
     float beta;
-    if (!getFloat(prhs[7], &beta)) mexErrMsgTxt("bad beta");
+    if (!getFloat(prhs[6], &beta)) mexErrMsgTxt("bad beta");
 
 
     // create gene tree object
@@ -87,7 +86,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     ptree2tree(nnodes, ptree, &tree);
     if (!tree.assertTree())
         mexErrMsgTxt("gene tree is invalid");
-    tree.setDists(dists);
     
     // create species tree object
     SpeciesTree stree(nsnodes);
@@ -115,8 +113,10 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     
     // TODO: need to change
     // create return value 
-    plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
-    *mxGetPr(plhs[0]) = dists[0];
+    plhs[0] = mxCreateDoubleMatrix(1, nnodes, mxREAL);
+    double *ptr = mxGetPr(plhs[0]);
+    for (int i=0; i<nnodes; i++)
+        ptr[i] = dists[i];
 }
 
 

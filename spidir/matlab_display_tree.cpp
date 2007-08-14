@@ -66,6 +66,15 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         mexErrMsgTxt("gene tree is invalid");
     tree.setDists(dists);
     
+    char leafname[101];
+    
+    for (int i=0; i<tree.nnodes; i++) {
+        if (tree.nodes[i]->isLeaf()) {
+            snprintf(leafname, 100, "%d", tree.nodes[i]->name);
+            tree.nodes[i]->leafname = leafname;
+        }
+    }
+    
     displayTree(&tree, out, xscale);
     
     fclose(out);

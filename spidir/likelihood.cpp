@@ -700,8 +700,19 @@ float treelk(Tree *tree,
     // loop through independent subtrees
     for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_SPEC || i == tree->root->name) {
-            for (int j=0; j<2; j++) {
-                int node = tree->nodes[i]->children[j]->name;
+            if (events[i] == EVENT_SPEC) {
+                for (int j=0; j<2; j++) {
+                    int node = tree->nodes[i]->children[j]->name;
+                    float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                                            node,
+                                            stree->nnodes, pstree, 
+                                            recon, events, params,
+                                            generate,
+                                            &reconparams);
+                    logl += slogl;
+                }
+            } else {
+                int node = tree->nodes[i];
                 float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
                                         node,
                                         stree->nnodes, pstree, 

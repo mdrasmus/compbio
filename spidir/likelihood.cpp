@@ -712,7 +712,7 @@ float treelk(Tree *tree,
                     logl += slogl;
                 }
             } else {
-                int node = tree->nodes[i];
+                int node = tree->nodes[i]->name;
                 float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
                                         node,
                                         stree->nnodes, pstree, 

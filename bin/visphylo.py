@@ -178,8 +178,8 @@ else:
 # read tree
 if len(treefiles) > 0:
     tree = treelib.readTree(treefiles[0])
-    vistree = sumtree.SumTree(tree, name=treefiles[0])
-                              #xscale=conf["usedist"]
+    vistree = sumtree.SumTree(tree, name=treefiles[0],
+                              xscale=100.0)
     vistree.show()
     vistree.win.set_size(340, 500)
     #vistree.win.set_position(0, 0)

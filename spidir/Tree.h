@@ -140,8 +140,12 @@ public:
         nnodes = nodes.size();
         return node;
     }
+
+    void hashkey(int *key);
+    
     
     void reroot(Node *newroot, bool onBranch=true);
+    void reroot(Node *node1, Node *node2);
     Tree *copy();
     Node *readNode(FILE *infile, Node *parent, int &depth);
     bool readNewick(FILE *infile);
@@ -157,8 +161,25 @@ public:
 
 
 
+struct HashTopology {
+    static unsigned int hash(const ExtendArray<int> &key)
+    {
+        unsigned int h = 0, g;
+        
+        for (int i=0; i<key.size(); i++) {
+            h = (h << 4) + key[i];
+            if ((g = h & 0xF0000000))
+                h ^= g >> 24;
+            h &= ~g;
+        }
+        
+        return h;
+    }    
+};
 
 
+void getTreeSortedPostOrder(Tree *tree, ExtendArray<Node*> *nodes, 
+                      int *ordering, Node *node=NULL);
 void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 

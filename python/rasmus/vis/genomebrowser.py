@@ -4,6 +4,8 @@ import copy
 
 from summon.core import *
 import summon
+from summon import multiwindow
+
 from rasmus.vis import visual
 from rasmus import util, stats, regionlib
 from rasmus.regionlib import Region
@@ -19,6 +21,10 @@ class Browser (visual.VisObject):
     def __init__(self):
         visual.VisObject.__init__(self)
         
+        self.leftwin = None     # left margin window
+        self.topwin = None      # top margin window
+        self.showLeftWindow = False
+        self.showTopWindow = False
         self._tracks = []
         
     
@@ -43,15 +49,31 @@ class Browser (visual.VisObject):
     
     def show(self):    
         pass
+    
+    
+    def getLeftWindow(self):
+        return self.leftwin
+    
+    
+    def getTopWindow(self):
+        return self.topwin
 
+    def enableSideWindows(self, left=False, top=False):
+        self.showLeftWindow = left
+        self.showTopWindow = top
+        
+        self.show()
 
 
 class Track (visual.VisObject):
-    def __init__(self, pos=[0.0, 0.0], size=[0.0, 1.0], view=None):
+    def __init__(self, pos=[0.0, 0.0], size=[0.0, 1.0], 
+                       posOffset=[0.0, 0.0],
+                       view=None):
         visual.VisObject.__init__(self)
         self.height = size[1]
         self.size = size
         self.pos = pos[:]
+        self.posOffset = posOffset[:]
         self.view = copy.copy(view)
         self.browser = None
     
@@ -78,6 +100,12 @@ class Track (visual.VisObject):
     def draw(self):
         return group()
     
+    def drawLeft(self):
+        return group()
+    
+    def drawTop(self):
+        return group()
+    
     def get_window(self):
         
         # get window from browser
@@ -86,13 +114,16 @@ class Track (visual.VisObject):
 
 
 class GenomeStackBrowser (Browser):
+    """A browser where tracks are stacked vertically"""
+
     def __init__(self, view=None):
         Browser.__init__(self)
         
         self.tracks = []
-        self.win = None
-        self.view = view
-    
+        self.win = None         # main window
+        self.view = view        # region of genome in view
+        self.gid = None
+        
     
     def addTrack(self, track):
         self.tracks.append(track)
@@ -107,13 +138,19 @@ class GenomeStackBrowser (Browser):
         summon.stop_updating()    
         self.win.set_bgcolor(1, 1, 1)
         
-        # zooming
-        self.win.set_binding(input_click("right", "down"), "focus")
-        self.win.set_binding(input_motion("right", "down"), "zoomx")
-        self.win.set_binding(input_click("right", "down", "shift"), "focus")
-        self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
+        if self.gid == None:
+            self.gid = self.win.add_group(group())
+        else:
+            self.gid = self.win.replace_group(self.gid, group())
         
-        self.gid = self.win.add_group(group())
+        if self.leftwin:
+            if self.leftgid == None:
+                self.leftgid = self.leftwin.add_group(group())
+            else:
+                self.leftgid = self.leftwin.replace_group(self.leftgid, group())
+        else:
+            self.leftgid = None
+        
         
         # draw tracks
         top = 2.0
@@ -122,7 +159,7 @@ class GenomeStackBrowser (Browser):
         maxend = 0.0
         for track in self.tracks:
             y -= track.size[1]
-            track.setPos(track.pos[0] + x, track.pos[1] + y)
+            track.setPos(track.posOffset[0] + x, track.posOffset[1] + y)
             if species != None:
                 track.setView(species, chrom, start, end)
             elif self.view != None:
@@ -132,8 +169,17 @@ class GenomeStackBrowser (Browser):
                 maxend = max(maxend, track.pos[0] + track.view.end - track.view.start)
             else:
                 maxend = max(maxend, track.pos[0] + track.size[0])
+            
+            
+            # perform drawing 
             self.win.insert_group(self.gid, track.draw())
+            if self.leftwin:
+                self.leftwin.insert_group(self.leftgid, track.drawLeft())
         
+        # setup left window
+        if self.leftwin:
+            w, h = self.leftwin.get_size()
+            self.leftwin.home()
         
         # setup window
         w, h = self.win.get_size()
@@ -150,10 +196,40 @@ class GenomeStackBrowser (Browser):
                    width=800, height=400):
         summon.stop_updating()
         
-        self.win = summon.Window()
-        self.win.set_size(width, height) 
-        self.redraw(species=species, chrom=chrom, start=start, end=end)
+        # initialize window if needed
+        if self.win == None:
+            self.win = summon.Window()
+            self.win.set_size(width, height) 
+            
+            # zooming
+            self.win.set_binding(input_click("right", "down"), "focus")
+            self.win.set_binding(input_motion("right", "down"), "zoomx")
+            self.win.set_binding(input_click("right", "down", "shift"), "focus")
+            self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
         
+        
+        # initialize left window if needed
+        if self.showLeftWindow:
+            if self.leftwin == None:
+                self.leftwin = summon.Window(" ")
+                self.leftwin.set_bgcolor(1, 1, 1)
+                self.leftwin.set_size(150, height)
+                
+                self.leftEnsemble = multiwindow.WindowEnsemble(
+                                     [self.leftwin, self.win], 
+                                      stacky=True, sameh=True,
+                                      tiey=True, piny=True,
+                                      master=self.win)
+        else:
+            if self.leftwin:
+                self.leftwin.close()
+                self.leftwin = None
+        
+        self.redraw(species=species, chrom=chrom, start=start, end=end)
+        summon.begin_updating()
+
+    
+
 
 
 
@@ -634,6 +710,8 @@ class AlignTrack (Track):
         for i, key in enumerate(self.aln):
             labels.append(text_clip(key, -self.aln.alignlen() * 10, -i, 0, -i-1,
                                     4, 12, "middle", "right"))
+        labelsgroup = group(*labels)
+        
         
         # build hotspot
         click = hotspot("click", 0, 0, self.aln.alignlen(), -self.size[1],
@@ -643,7 +721,7 @@ class AlignTrack (Track):
         self.textGid = get_group_id(textGroup)
         return group(translate(self.pos[0], self.pos[1] + self.size[1],
                      color(0, 0, 0),
-                     group(*labels),
+                     labelsgroup,
                      
                      click,
                      
@@ -658,6 +736,21 @@ class AlignTrack (Track):
                      lines(* nobase_diagpts2),
                      group(textGroup)))
     
+    def drawLeft(self):
+        labels = []
+        maxsize = max(map(len, self.aln.keys()))
+        
+        for i, key in enumerate(self.aln):
+            labels.append(text_clip(key, -self.aln.alignlen() * 10, -i, 0, -i-1,
+                                    4, 12, "middle", "right"))
+        return group(translate(self.pos[0], self.pos[1] + self.size[1],
+                     color(0,0,0), 
+                     lines(0, 0, 0, -len(self.aln),
+                           -maxsize, 0, 0, 0,
+                           -maxsize, -len(self.aln), 0, -len(self.aln)),
+                     *labels))
+        
+        
     
     def update(self):
         win = self.get_window()
@@ -716,7 +809,7 @@ class AlignTrack (Track):
 
 
     def onClickCallback(self):
-        x, y = get_mouse_pos('world')
+        x, y = self.win.get_mouse_pos('world')
         x -= self.pos[0]
         y = self.size[1] - (y - self.pos[1])
         self.onClick(x, y)

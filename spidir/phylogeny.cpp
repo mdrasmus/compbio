@@ -5,7 +5,7 @@
 
 #include "phylogeny.h"
 #include "Matrix.h"
-
+#include <utility>
 
 namespace spidir {
 
@@ -108,116 +108,91 @@ void neighborjoin(int ngenes, float **distmat, int *ptree, float *branches)
 }
 
 
+//=============================================================================
+// reconciliation functions
 
-void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
+
+typedef pair<Node*, Node*> Edge;
+void getReconRootOrder(Node *node, ExtendArray<Edge> *edges)
 {
+    edges->append(Edge(node, node->parent));
     
+    if (!node->isLeaf()) {
+        for (int i=0; i<node->nchildren; i++)
+            getReconRootOrder(node->children[i], edges);
+        edges->append(Edge(node, node->parent));
+    }
 }
 
 
-/*
-def reconRoot(gtree, stree, gene2species = gene2species, 
-               rootby = "duploss", newCopy=True):
-    # make a consistent unrooted copy of gene tree
-    if newCopy:
-        gtree = gtree.copy()
-    treelib.unroot(gtree, newCopy=False)
-    treelib.reroot(gtree, 
-                   gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 
-                   onBranch=False, newCopy=False)
+
+// NOTE: assumes binary tree
+void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
+{
     
-    
-    # make recon root consistent for rerooting tree of the same names
-    # TODO: there is the possibility of ties, they are currently broken
-    # arbitrarily.  In order to make comparison of reconRooted trees with 
-    # same gene names accurate, hashOrdering must be done, for now.
-    hashOrderTree(gtree, gene2species)
-    
-    # get list of edges to root on
-    edges = []
-    def walk(node):
-        edges.append((node, node.parent))
-        if not node.isLeaf():
-            node.recurse(walk)
-            edges.append((node, node.parent))
-    for child in gtree.root.children:
-        walk(child)
-    
-    
-    # try initial root and recon    
-    treelib.reroot(gtree, edges[0][0].name, newCopy=False)
-    recon = reconcile(gtree, stree, gene2species)
-    events = labelEvents(gtree, recon)     
-    
-    # find reconciliation that minimizes loss
-    minroot = edges[0]
-    rootedge = sorted(edges[0])
-    if rootby == "dup": 
-        cost = countDup(gtree, events)
-    elif rootby == "loss":
-        cost = len(findLoss(gtree, stree, recon))
-    elif rootby == "duploss":
-        cost = countDupLoss(gtree, stree, recon, events)
-    else:
-        raise "unknown rootby value '%s'"  % rootby
-    mincost = cost
-    
-    
-    # try rooting on everything
-    for edge in edges[1:-1]:
-        if sorted(edge) == rootedge:
-            continue
-        rootedge = sorted(edge)
+    // determine rooting order
+    ExtendArray<Edge> edges(0, tree->nnodes);
+    edges.append(Edge(tree->root->children[0],
+                      tree->root->children[1]));
         
-        node1, node2 = edge
-        if node1.parent != node2:
-            node1, node2 = node2, node1
-        assert node1.parent == node2, "%s %s" % (node1.name, node2.name)
-        
-        # uncount cost
-        if rootby in ["dup", "duploss"]:
-            if events[gtree.root] == "dup":
-                cost -= 1
-            if events[node2] == "dup":
-                cost -= 1
-        if rootby in ["loss", "duploss"]:
-            cost -= len(findLossNode(gtree.root, recon))
-            cost -= len(findLossNode(node2, recon))
-        
-        # new root and recon
-        treelib.reroot(gtree, node1.name, newCopy=False)        
-        
-        recon[node2] = reconcileNode(node2, stree, recon)
-        recon[gtree.root] = reconcileNode(gtree.root, stree, recon)
-        events[node2] = labelEventsNode(node2, recon)
-        events[gtree.root] = labelEventsNode(gtree.root, recon)
-        
-        if rootby in ["dup", "duploss"]:
-            if events[node2] ==  "dup":
-                cost += 1
-            if events[gtree.root] ==  "dup":
-                cost += 1
-        if rootby in ["loss", "duploss"]:
-            cost += len(findLossNode(gtree.root, recon))
-            cost += len(findLossNode(node2, recon))
-        
-        #print edge[0].name, edge[1].name, cost
-        
-        # keep track of min cost
-        if cost < mincost:
-            mincost = cost
-            minroot = edge
+    for (int i=0; i<tree->root->nchildren; i++) {
+        Node *node = tree->root->children[i];
+        for (int j=0; j<node->nchildren; j++) {
+            getReconRootOrder(node->children[j], &edges);
+        }
+        edges.append(Edge(tree->root->children[0],
+                          tree->root->children[1]));
+    }
     
-    # root tree by minroot
-    if edge != minroot:
-        node1, node2 = minroot
-        if node1.parent != node2:
-            node1, node2 = node2, node1
-        assert node1.parent == node2
-        treelib.reroot(gtree, node1.name, newCopy=False)
+    // try initial root and recon
+    tree->reroot(edges[0].first, edges[0].second);
+    ExtendArray<int> recon(tree->nnodes);
+    ExtendArray<int> events(tree->nnodes);
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+
+    int minroot = 0;
+    int mincost = countDuplications(events.size(), events);
+    int cost = mincost;
     
-    return gtree
-*/
+    // try other roots
+    for (int i=0; i<edges.size(); i++) {
+        // get new edge
+        Edge edge = edges[i];
+        if (edge.first->parent != edge.second)
+            swap(edge.first, edge.second);
+    
+        // uncount cost
+        if (events[tree->root->name] == EVENT_DUP)
+            cost--;
+        if (events[edge.second->name] == EVENT_DUP)
+            cost--;
+        
+        // reroot
+        tree->reroot(edge.first, edge.second);
+        
+        // recompute recon and events
+        recon[edge.second->name] = reconcileNode(edge.second, stree, recon);
+        recon[tree->root->name] = reconcileNode(tree->root, stree, recon);
+        events[edge.second->name] = labelEventsNode(edge.second, recon);
+        events[tree->root->name] = labelEventsNode(tree->root, recon);
+        
+        // count any new duplications
+        if (events[tree->root->name] ==  EVENT_DUP)
+            cost ++;        
+        if (events[edge.second->name] ==  EVENT_DUP)
+            cost++;
+        
+        // record mincost root
+        if (cost < mincost) {
+            mincost = cost;
+            minroot = i;
+        }
+    }
+    
+    // root tree by minroot
+    tree->reroot(edges[minroot].first, edges[minroot].second);
+}
 
 
 
@@ -334,7 +309,7 @@ bool Gene2species::read(const char *filename)
                                             species));
         } else {
             // exact match
-            //assert(0);
+            m_exactLookup[expr] = species;
         }
     }
 
@@ -354,14 +329,12 @@ string Gene2species::getSpecies(string gene)
                 if (gene.rfind(m_rules[i].expr, gene.size()-1) == 
                     gene.size() - m_rules[i].expr.size())
                     return m_rules[i].species;
-                break;                
-
-            case Gene2speciesRule::EXACT:
                 break;
         }
     }
 
-    return NULL_SPECIES;
+    // try to find gene in exact match hashtable
+    return m_exactLookup[gene];
 }
 
 bool Gene2species::getMap(string *genes, int ngenes, 

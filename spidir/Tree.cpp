@@ -157,30 +157,75 @@ void Tree::reroot(Node *newroot, bool onBranch)
     // - all leaves don't change numbers
     assert(root->name = nnodes-1);
 }
-/*
+
+
+void Tree::reroot(Node *node1, Node *node2)
+{
+    // determine new root
+    Node *newroot;      
+    if (node1->parent == node2)
+        newroot = node1;
+    else if (node2->parent == node1)
+        newroot = node2;
+    else if (node1->parent == root ||
+             node2->parent == root)
+        // do nothing
+        return;
+    else
+        // not a valid branch
+        assert(0);
+    
+    reroot(newroot);
+}
+
+
+
+
 
 // store a hash key representing the topology into the key array
 // key is a parent tree representation where the internal nodes are 
 // given a consistent numbering
-void Tree:hashkey(int *key)
-{
-    // initialize partids
-    ExtendArray<int> parentids(nnodes);    
-    for (int i=0; i<nnodes; i++)
-        parentids[i] = -1;
+void Tree::hashkey(int *key)
+{   
+    // get post order of nodes
+    ExtendArray<Node*> postnodes;
+    getTreePostOrder(this, &postnodes);
     
-    // set new parent id to be greater than all leaves
-    int newparent = 0;
-    for (int i=0; i<nnodes; i++)
-        if (nodes[i]->isLeaf())
-            newparent++;
+    // order children
+    ExtendArray<int> ordering(nnodes);    
+    for (int i=0; i<postnodes.size(); i++)
+    {
+        Node *node=postnodes[i];
+        
+        if (node->isLeaf()) {
+            ordering[node->name] = node->name;
+        } else {
+            // propogate the min order to the parent
+            int minorder = ordering[node->children[0]->name];
+            for (int j=1; j<node->nchildren; j++) {
+                int order = ordering[node->children[j]->name];
+                if (order < minorder)
+                    minorder = order;
+            }
+            ordering[node->name] = minorder;
+        }
+    }
     
-    // populate key
-    for (int i=0; i<nnodes; i++) {
-        Node *node = nodes[i];
+    // get a sorted post ordering of nodes
+    ExtendArray<Node*> sortpostnodes;
+    getTreeSortedPostOrder(this, &sortpostnodes, ordering);
+    
+    // generate a unique key for this topology
+    for (int i=0; i<sortpostnodes.size(); i++) {
+        Node *node = sortpostnodes[i];
+        
+        if (node->isLeaf())
+            key[i] = node->name;
+        else
+            key[i] = -1;
     }
 }
-*/
+
 
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()
@@ -220,6 +265,32 @@ bool Tree::assertTree()
 }
 
 
+
+void getTreeSortedPostOrder(Tree *tree, ExtendArray<Node*> *nodes, 
+                      int *ordering, Node *node)
+{
+    if (!node)
+        node = tree->root;
+    
+    // make a child index array
+    int childperm[node->nchildren];    
+    int childorder[node->nchildren];
+    for (int i=0; i<node->nchildren; i++) {
+        childperm[i] = i;
+        childorder[i] = ordering[node->children[i]->name];
+    }
+    
+    // sort index array by order
+    ranksort(childperm, childorder, node->nchildren);
+    
+    // recurse
+    for (int i=0; i<node->nchildren; i++)
+        getTreeSortedPostOrder(tree, nodes, ordering, node->children[childperm[i]]);
+    
+    // record post-process
+    nodes->append(node);
+}
+
 void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
 {
     if (!node)
@@ -232,7 +303,6 @@ void getTreePostOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
     // record post-process
     nodes->append(node);
 }
-
 
 void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node)
 {
@@ -613,6 +683,7 @@ void displayTree(Tree *tree, FILE *outfile, float xscale, int yscale)
 // primitive tree format conversion functions
 
 // creates a forward tree from a parent tree
+// Note: assumes binary tree
 void makeFtree(int nnodes, int *ptree, int ***ftree)
 {
     *ftree = new int* [nnodes];

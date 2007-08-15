@@ -24,7 +24,7 @@ namespace spidir {
 
 // stream for logging
 static FILE *g_logstream = stderr;
-
+static int g_loglevel = LOG_QUIET;
 
 
 //=============================================================================
@@ -158,33 +158,55 @@ string trim(const char *word)
 
 void printError(const char *fmt, ...)
 {
-   va_list ap;   
-   va_start(ap, fmt);
+    va_list ap;   
+    va_start(ap, fmt);
    
-   fprintf(stderr, "error: ");
-   vfprintf(stderr, fmt, ap);
-   fprintf(stderr, "\n");
+    fprintf(stderr, "error: ");
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
    
-   va_end(ap);
+    va_end(ap);
 }
 
 
-void printLog(const char *fmt, ...)
+void printLog(int level, const char *fmt, ...)
 {
-   va_list ap;   
-   va_start(ap, fmt);
-   vfprintf(g_logstream, fmt, ap);
-   va_end(ap);
+    if (level <= g_loglevel) {
+        va_list ap;   
+        va_start(ap, fmt);
+        vfprintf(g_logstream, fmt, ap);
+        va_end(ap);
+    }
 }
 
 
 bool openLogFile(const char *filename)
 {
-    g_logstream = fopen(filename, "w");
+    FILE *stream = fopen(filename, "w");
     
-    return (g_logstream != NULL);
+    if (g_logstream != NULL) {
+        openLogFile(stream);
+        return true;
+    } else {
+        return false;
+    }
 }
 
+void openLogFile(FILE *stream)
+{
+    g_logstream = stream;
+}
+
+
+void setLogLevel(int level)
+{
+    g_loglevel = level;
+}
+
+bool isLogLevel(int level)
+{
+    return level <= g_loglevel;
+}
 
 void closeLogFile()
 {

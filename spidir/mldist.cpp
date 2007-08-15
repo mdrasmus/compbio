@@ -119,7 +119,6 @@ public:
                      (1 - ebt) * pi[j];
         return prob;        
     }
-
     
     // parameters
     float ratio;
@@ -135,38 +134,6 @@ public:
 
 
 
-template <class Model>
-float distLikelihood(float *probs1, float *probs2, 
-                      int seqlen, Model &model, float *bgfreq, float t)
-{
-    // trivial case
-    if (t < 0)
-        return 0;
-    
-    float logl = 0;
-    float logbgfreq[4];
-    logbgfreq[0] = log(bgfreq[0]);
-    logbgfreq[1] = log(bgfreq[1]);
-    logbgfreq[2] = log(bgfreq[2]);
-    logbgfreq[3] = log(bgfreq[3]);
-    
-    // interate over sequence
-    for (int k=0; k<seqlen; k++) {
-        float prob = 0.0;
-        
-        // integrate over all transitions
-        for (int i=0; i<4; i++) {
-            float logterm = logbgfreq[i] + probs1[matind(4, k, i)];
-            for (int j=0; j<4; j++)
-                prob += expf(logterm + probs2[matind(4, k, j)]) * model(i, j, t);
-        }
-        logl += logf(prob);
-    }
-    
-    return logl;
-}
-
-
 // Find a root of a function func(x) using the secant method
 // x0 and x1 are initial estimates of the root
 template <class Func>
@@ -179,7 +146,6 @@ float secantRoot(Func &f, float x0, float x1, int maxiter,
             return x0;
         float f1 = f(x1);
         float x2 = x1 - (x1 - x0) * f1 / (f1 - f0);
-        //printf("%f %f | %f %f\n", x0, x1, f0, f1);
         
         x0 = x1;
         x1 = (x2 > minx) ? x2 : minx;
@@ -202,7 +168,6 @@ float bisectRoot(Func &f, float x0, float x1, int maxiter,
     // move x0 left until f(x0) > 0
     float f0 = f(x0);
     while (f0 < 0) {
-        //printf("x0=%f f0=%f\n", x0, f0);
         x0 /= 2.0;
         f0 = f(x0);
         if (x0 < minx)
@@ -213,7 +178,6 @@ float bisectRoot(Func &f, float x0, float x1, int maxiter,
     float f1 = f(x1);
     assert(x1 >= 0.0);
     while (f1 > 0) {
-        //printf("x1=%f f1=%f\n", x1, f1);
         x1 *= 2.0;
         f1 = f(x1);
         if (x1 > maxx)
@@ -234,8 +198,6 @@ float bisectRoot(Func &f, float x0, float x1, int maxiter,
             x1 = x2;
             f1 = f2;
         }
-        
-        //printf("%d: %.4f %.4f | %.2f %.2f\n", i, x0, x1, f0, f1);
     }
 
     return x1;
@@ -278,10 +240,10 @@ public:
         
         
         // save log back ground frequency
-        logbgfreq[0] = log(bgfreq[0]);
-        logbgfreq[1] = log(bgfreq[1]);
-        logbgfreq[2] = log(bgfreq[2]);
-        logbgfreq[3] = log(bgfreq[3]);        
+        //logbgfreq[0] = log(bgfreq[0]);
+        //logbgfreq[1] = log(bgfreq[1]);
+        //logbgfreq[2] = log(bgfreq[2]);
+        //logbgfreq[3] = log(bgfreq[3]);        
         
         // allocate if needed the precomputed probability terms
         if (!probs3) {
@@ -348,7 +310,7 @@ public:
         if (t < 0)
             return INFINITY;
 
-        float logl = 0;
+        float totprob = 1.0;
 
         
         // build transition matrices
@@ -367,33 +329,13 @@ public:
             // integrate over all transitions
             float *termptr = &probs3[matind(16, k, 0)];
             for (int ij=0; ij<16; ij++) {
-                float term2 = termptr[ij];
-                prob1 += term2 * transmat1[ij];
-                prob2 += term2 * transmat2[ij];
+                prob1 += termptr[ij] * transmat1[ij];
+                prob2 += termptr[ij] * transmat2[ij];
             }
-            logl += logf(prob1 / prob2);
+            totprob *= prob1 / prob2;
         }
         
-        /*
-        // interate over sequence
-        for (int kk=0; kk<sample; kk++) {
-            int k = bases[kk];
-            float prob1 = 0.0, prob2 = 0.0;
-
-            // integrate over all transitions
-            for (int i=0; i<4; i++) {
-                float logterm = logbgfreq[i] + probs1[matind(4, k, i)];
-                for (int j=0; j<4; j++) {
-                    float term2 = expf(logterm + probs2[matind(4, k, j)]);
-                    prob1 += term2 * transmat1[i][j];
-                    prob2 += term2 * transmat2[i][j];
-                }
-            }
-            logl += logf(prob1 / prob2);
-        }
-        */
-        
-        return logl / step;
+        return logf(totprob) / step;
     }
     
     float *probs1;
@@ -408,7 +350,7 @@ public:
     ExtendArray<float> transmat2;
     float *probs3;
     bool ownProbs3;
-    float logbgfreq[4];
+    //float logbgfreq[4];
 };
 
 
@@ -594,6 +536,7 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
 // find MLE branch lengths
 
 
+// todo: need to think about more carefully
 void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
 {
     if (!node) {
@@ -602,15 +545,28 @@ void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
         getRootOrder(tree, nodes, tree->root->children[1]);
     } else {
         // record pre-process
-        nodes->append(node);
+        if (node->parent == tree->root) {
+            nodes->append(tree->root->children[0]);
+            nodes->append(tree->root->children[1]);
+        } else {
+            nodes->append(node);
+            nodes->append(node->parent);
+        }
 
         // recurse
         for (int i=0; i<node->nchildren; i++)
             getRootOrder(tree, nodes, node->children[i]);
 
         // record post-process
-        if (!node->isLeaf())
-            nodes->append(node);
+        if (!node->isLeaf()) {
+            if (node->parent == tree->root) {
+                nodes->append(tree->root->children[0]);
+                nodes->append(tree->root->children[1]);
+            } else {
+                nodes->append(node);
+                nodes->append(node->parent);
+            }
+        }
     }
 }
 
@@ -622,7 +578,7 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
                          int maxiter=10)
 {
     const float converge = logf(2.0);
-    const int samples = 600; // fixed for now
+    const int samples = 0; // fixed for now
         
     int convergenum = 1000; //2* tree->nnodes;
 
@@ -644,39 +600,36 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     // initialize the condition likelihood table
     initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
     
+    // remember original rooting for restoring later
     Node *origroot1 = tree->root->children[0];
     Node *origroot2 = tree->root->children[1];
     
     
     // determine rooting order
-    ExtendArray<Node*> rootingOrder(0, 3*tree->nnodes);
-    
+    ExtendArray<Node*> rootingOrder(0, 2*3*tree->nnodes);
     getRootOrder(tree, &rootingOrder);
     getRootOrder(tree, &rootingOrder);
     getRootOrder(tree, &rootingOrder);
     
-    for (int i=rootingOrder.size(); i<maxiter; i++) {
-        rootingOrder.append(tree->nodes[irand(tree->nnodes)]);
-    }
+    // add additional random roots
+    //for (int i=rootingOrder.size(); i<maxiter; i++) {
+    //    rootingOrder.append(tree->nodes[irand(tree->nnodes)]);
+    //}
     
     
     // iterate over branches improving each likelihood
-    for (int i=0; i<rootingOrder.size(); i++) {
-        printLog("hky: iter %d\n", i);
-        
-        Node *newroot = rootingOrder[i];
+    for (int i=0; i<rootingOrder.size(); i+=2) {
+        printLog(LOG_HIGH, "hky: iter %d\n", i);
         
         // remembering old children of root
         Node *oldnode1 = tree->root->children[0];
         Node *oldnode2 = tree->root->children[1];
         
-        // reroot tree, skip if choosen node does not change root
-        if (newroot == tree->root ||
-            newroot == oldnode1 ||
-            newroot == oldnode2)
+        // choose new root
+        tree->reroot(rootingOrder[i], rootingOrder[i+1]);
+        if (tree->root->children[0] == oldnode1 &&
+            tree->root->children[1] == oldnode2)
             continue;
-        tree->reroot(newroot);
-
 
         // rebuild invaild likelihood values
         // determine starting node to rebuild
@@ -721,26 +674,27 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
         logl = getTotalLikelihood(lktable, tree, 
                                   seqlen, model, bgfreq);
 
+        // don't accept a new branch length if it lowers total likelihood
         if (logl < loglBefore) {
             // revert
             node1->dist = initdist / 2.0;
             node2->dist = initdist / 2.0;
             logl = loglBefore;
         }
-
-        printLog("hky: lk=%f\n", logl);
         
         // determine whether logl has converged
         float diff = fabs(logl - lastLogl);
         if (i > 0 && diff < converge) {
-            //printLog("hky: diff = %f < %f\n", diff, converge);
+            //printLog(LOG_HIGH, "hky: diff = %f < %f\n", diff, converge);
             convergenum--;
             if (convergenum < 0)
                 break;
         } else {
-            printLog("hky: diff = %f > %f\n", diff, converge);
+            printLog(LOG_HIGH, "hky: diff = %f > %f\n", diff, converge);
         }
         lastLogl = logl;
+        
+        printLog(LOG_HIGH, "hky: lk=%f\n", logl);        
     }
     
     
@@ -750,10 +704,8 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     {
         if (origroot1->parent == origroot2) {
             tree->reroot(origroot1);
-            //printLog("hky: old root = %d\n", origroot1->name);
         } else if  (origroot2->parent == origroot1) {
             tree->reroot(origroot2);
-            //printLog("hky: old root = %d\n", origroot2->name);
         } else
             assert(0);
     }

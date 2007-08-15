@@ -127,7 +127,7 @@ int test_reconstruct(int argc, char **argv)
     Tree *toptree = searchMCMC(NULL, &stree,
                                params, gene2species,
                                genes, aln->nseqs, aln->seqlen, aln->seqs,
-                               niter);
+                               niter, 0.01, 1.0);
     
     toptree->setLeafNames(genes);
     toptree->writeNewick();
@@ -243,6 +243,33 @@ int test_reroot(int argc, char **argv)
 }
 
 
+int test_reconroot(int argc, char **argv)
+{
+    Tree tree;
+    tree.readNewick(argv[1]);
+    
+    SpeciesTree stree;
+    stree.readNewick(argv[2]);
+    stree.setDepths();
+    
+    // read gene2species map
+    Gene2species g;
+    g.read(argv[3]);
+    
+    // produce mapping array
+    ExtendArray<string> genes(tree.nnodes);
+    ExtendArray<string> species(stree.nnodes);
+    tree.getLeafNames(genes);
+    stree.getLeafNames(species);
+    
+    ExtendArray<int> gene2species(tree.nnodes);
+    g.getMap(genes, tree.nnodes, species, stree.nnodes, gene2species);
+    
+    reconRoot(&tree, &stree, gene2species);
+    displayTree(&tree, stdout, 100);
+}
+
+
 int main(int argc, char **argv)
 {
 
@@ -251,7 +278,8 @@ int main(int argc, char **argv)
                "  reconstruct\n"
                "  gene2species\n"
                "  mledist\n"
-               "  reroot\n");
+               "  reroot\n"
+               "  reconroot\n");
         return 1;
     }
 
@@ -267,7 +295,10 @@ int main(int argc, char **argv)
         test_mledist(argc-1, &argv[1]);
     } else if (testname == "reroot") {
         test_reroot(argc-1, &argv[1]);
+    } else if (testname == "reconroot") {
+        test_reconroot(argc-1, &argv[1]);
     }
+
     
     return 0;
 }

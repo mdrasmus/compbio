@@ -46,7 +46,7 @@ int dnatype[] = {
 
 
 //=============================================================================
-// Distance Matix
+// Distance Matrix
 
 // calculate the pairwise distances between sequences
 // NOTE: simple version implemented first

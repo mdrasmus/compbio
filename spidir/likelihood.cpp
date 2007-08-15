@@ -510,6 +510,18 @@ void getSubtree(int **ftree, int node, int *events, ExtendArray<int> *subnodes)
 }
 
 
+void getSubtree(Node *node, int *events, ExtendArray<Node*> *subnodes)
+{
+    subnodes->append(node);
+
+    // recurse
+    if (events[node->name] == EVENT_DUP) {
+        for (int i=0; i<node->nchildren; i++) 
+            getSubtree(node->children[i], events, subnodes);
+    }
+}
+
+
 // Calculate the likelihood of a subtree
 float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 int nsnodes, int *pstree, 
@@ -737,6 +749,120 @@ float treelk(int nnodes, int *ptree, float *dists,
                   generate, disterror,
                   predupprob, dupprob, errorlogl);
 }
+
+
+//=============================================================================
+// branch length generation
+
+void genSubtree(Tree *tree, Node *root,
+                 SpeciesTree *stree,
+                 int *recon, int *events, SpidirParams *params,
+                 float generate,
+                 ReconParams *reconparams)
+{
+    int sroot = stree->root->name;
+
+    
+    if (events[root->name] != EVENT_DUP) {
+        // single branch, no integration needed
+                
+        if (recon[root->name] != sroot) {
+            // no midpoints, no integration needed
+            //reconBranch(root, ptree, pstree, recon, events, params,
+            //            reconparams);
+            //logl = branchlk(dists[root] / generate, 
+            //                root, ptree, reconparams);
+        }
+    } else {
+        // multiple branches, integrate
+        
+        // set reconparams by traversing subtree
+        ExtendArray<Node*> subnodes(0, tree->nnodes);
+        getSubtree(tree->root, events, &subnodes);
+        
+        for (int i=0; i<subnodes.size(); i++) {
+            //reconBranch(subnodes[i], ptree, pstree, 
+            //            recon, events, params, reconparams);
+        }
+        
+        // choose number of samples based on number of nodes to integrate over
+        //nsamples = int(500*logf(subnodes.size())) + 500;
+        //if (nsamples > 2000) nsamples = 2000;
+        //nsamples = int(100*log(nodesi)) + 50;
+        //if (nsamples > 600) nsamples = 600;
+
+        /*
+        // perform integration by sampling
+        double prob = 0.0;
+        for (int i=0; i<nsamples; i++) {
+            double sampleLogl = 0.0;
+            
+            // propose a setting of midpoints
+            reconparams->midpoints[root] = 1.0; // TODO: need to understand why this is here
+            setRandomMidpoints(root, ptree, subnodes, subnodes.size(),
+                               recon, events, reconparams);
+            
+            // loop through all branches in subtree
+            for (int j=0; j<subnodes.size(); j++) {
+                int node = subnodes[j];
+                
+                if (recon[node] != sroot) {
+                    sampleLogl += branchlk(dists[node] / generate, 
+                                           node, ptree, reconparams);
+                }
+            }
+            
+            prob += exp(sampleLogl);
+        }
+        
+        logl = log(prob  / nsamples);
+        */
+    }
+}
+
+
+void generateBranchLengths(Tree *tree,
+                           SpeciesTree *stree,
+                           int *recon, int *events,
+                           SpidirParams *params)
+{
+    // loop through independent subtrees
+    for (int i=0; i<tree->nnodes; i++) {
+        if (events[i] == EVENT_SPEC || i == tree->root->name) {
+            for (int j=0; j<2; j++) {
+                int node = tree->nodes[i]->children[j]->name;
+                /*genSubtree(tree, node,
+                           stree,
+                           recon, events, params,
+                           generate,
+                           &reconparams);
+                */
+            }
+        }
+    }
+}
+
+
+void generateBranchLengths(int nnodes, int *ptree, 
+                           int nsnodes, int *pstree,
+                           int *recon, int *events,
+                           float *mu, float *sigma,
+                           float alpha, float beta,
+                           float *dists)
+{
+    // create tree objects
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    tree.setDists(dists);
+    
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();  
+    
+    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
+    tree.setDists(dists);
+}
+                         
 
 
 } // namespace spidir

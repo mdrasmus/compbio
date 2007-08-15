@@ -50,6 +50,10 @@ int main(int argc, char **argv)
     string lenfitter;
     float tsvratio;
     string bgfreqstr;
+    float predupprob=0.01;
+    float dupprob=1.0;
+    string logfile;
+    int verbose = LOG_QUIET;
     bool help = false;
     bool version = false;
     
@@ -73,20 +77,36 @@ int main(int argc, char **argv)
         "prefix for all output filenames"));
     
     
+    config.add(new ConfigParamComment("Sequence model evolution"));
+    config.add(new ConfigParam<string>(
+        "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
+        "algorithm for determining branch lengths"));    
+    config.add(new ConfigParam<float>(
+        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
+        "used for HKY model (default=0.5)"));
+    config.add(new ConfigParam<string>(
+        "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
+        &bgfreqstr, ".25,.25,.25,.25",
+        "background frequencies (default=0.25,0.25,0.25,0.25"));
+    
+    
     config.add(new ConfigParamComment("Miscellaneous"));
     config.add(new ConfigParam<int>(
         "-i", "--niter", "<# iterations>", &niter, 100, 
         "number of iterations"));
-    config.add(new ConfigParam<string>(
-        "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
-        "algorithm for determining branch lengths"));
     config.add(new ConfigParam<float>(
-        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
-        "used for HKY model"));
+        "-D", "--dupprob", "<duplication probability>", &dupprob, 1.0,
+        "probability of a node being a duplication (default=1.0)"));
+    config.add(new ConfigParam<float>(
+        "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
+        "probability of a node being a pre-duplication (default=0.01)"));
+
+    config.add(new ConfigParam<int>(
+        "-V", "--verbose", "<verbosity level>", &verbose, LOG_QUIET, 
+        "verbosity level 0=quiet, 1=low, 2=medium, 3=high"));
     config.add(new ConfigParam<string>(
-        "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
-        &bgfreqstr, ".25,.25,.25,.25",
-        "background frequencies"));
+        "", "--log", "<log filename>", &logfile, "", 
+        "log filename.  Use '-' to display on stdout."));
     config.add(new ConfigSwitch(
         "-v", "--version", &version, "display version information"));
     config.add(new ConfigSwitch(
@@ -116,9 +136,30 @@ int main(int argc, char **argv)
     //============================================================
     // output filenames
     string outtreeFilename = outprefix  + ".tree";
-    string logFilename = outprefix + ".log";
     
-    openLogFile(logFilename.c_str());
+    // use default log filename
+    if (logfile == "")
+        logfile = outprefix + ".log";
+    
+    if (logfile == "-") {
+        // use standard out
+        openLogFile(stdout);
+    } else {
+        if (!openLogFile(logfile.c_str())) {
+            printError("cannot open log file '%s'.", logfile.c_str());
+            return 1;
+        }
+    }
+    
+    setLogLevel(verbose);
+    
+    if (isLogLevel(LOG_LOW)) {
+        printLog(LOG_LOW, "SPIDIR executed with the following arguments:\n");
+        for (int i=0; i<argc; i++) {
+            printLog(LOG_LOW, "%s ", argv[i]);
+        }
+        printLog(LOG_LOW, "\n\n");
+    }
     
     //============================================================
     // read species tree
@@ -178,6 +219,17 @@ int main(int argc, char **argv)
     g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
     
     
+    
+
+    //=====================================================
+    // init likelihood function
+    SpidirBranchLikelihoodFunc lkfunc(nnodes, &stree, params, gene2species,
+                                      predupprob, dupprob);
+    
+    // init topology proposer
+    NniProposer nniProposer(&stree, gene2species, niter);
+    
+    
     // determine branch length algorithm
     BranchLengthFitter *fitter = NULL;
     if (lenfitter == "parsimony") {
@@ -192,19 +244,21 @@ int main(int argc, char **argv)
                    lenfitter.c_str());
         return 1;
     }
-        
+    
     
     // search
-    Tree *toptree = searchMCMC(NULL, &stree,
-                               params, gene2species,
+    Tree *toptree = searchMCMC(NULL, 
                                genes, aln->nseqs, aln->seqlen, aln->seqs,
-                               niter, &nniProposer,
+                               &lkfunc,
+                               &nniProposer,
                                fitter);
     
     toptree->setLeafNames(genes);
     toptree->writeNewick(outtreeFilename.c_str());
     
     delete toptree;
+    delete params;
+    delete fitter;
     
     closeLogFile();
 }

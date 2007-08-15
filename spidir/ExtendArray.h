@@ -66,11 +66,51 @@ public:
         }
     }
     
+    ExtendArray(const ExtendArray &other) :
+        len(other.len),
+        datasize(other.datasize),
+        minsize(other.minsize)
+    {
+        // allocate new memory
+        data = new ValueType [datasize];
+        
+        // copy over data
+        for (int i=0; i<len; i++)
+            data[i] = other.data[i];
+    }
+    
     ~ExtendArray()
     {
         if (data)
             delete [] data;
     }
+    
+    ExtendArray &operator=(const ExtendArray &other)
+    {
+        ensureSize(other.len);
+        len = other.len;
+        
+        // copy over data
+        for (int i=0; i<len; i++)
+            data[i] = other.data[i];
+        
+        return other;
+    }
+    
+    
+    bool operator==(const ExtendArray &other) const
+    {
+        if (len != other.len)
+            return false;
+        
+        // copy over data
+        for (int i=0; i<len; i++)
+            if (data[i] != other.data[i])
+                return false;
+        
+        return true;
+    }
+    
     
     ValueType *detach()
     {
@@ -129,7 +169,7 @@ public:
         return setCapacity(newsize);
     }
     
-    inline int capacity()
+    inline int capacity() const
     {
         return datasize;
     }
@@ -162,23 +202,23 @@ public:
         len = 0;
     }
     
-    inline ValueType &operator[](const int i)
+    inline ValueType &operator[](const int i) const
     {
         return data[i];
     }
     
-    inline ValueType *get()
+    inline ValueType *get() const
     {
         return data;
     }
     
     // easy access to underling data
-    inline operator ValuePtrType()
+    inline operator ValuePtrType() const
     {
         return data;
     }
     
-    inline int size()
+    inline int size() const
     {
         return len;
     }

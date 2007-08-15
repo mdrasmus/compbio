@@ -261,6 +261,9 @@ if 1:
         high2 = vals[int(len(vals) * .90)]
         high = 3 * stats.median(lens[name])
         
+        if high == 0:
+            high = high2
+        
         step = (high - low) / conf["nbins"]
         p, fit = plotAbsLens(name, lens[name], low, high, high2, step)
         p.enableOutput()
@@ -291,8 +294,11 @@ if 1:
         #high = 3 * stats.mean(rlens[name])
         vals = util.sort(lens[name])
         high =  params[name][0] + 4 * params[name][1]
-        low = params[name][0] - 2 * params[name][1] 
+        low = params[name][0] - 2 * params[name][1]
         high2 = params[name][0] + 2 * params[name][1]
+        
+        if high == 0: 
+            high = high2
         
         step = (high - low) / conf["nbins"]
         p, fit = plotRelLens(name, params[name], rlens[name], low, high, high2, step)

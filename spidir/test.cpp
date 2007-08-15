@@ -14,6 +14,7 @@
 // spidir headers
 #include "common.h"
 #include "mldist.h"
+#include "likelihood.h"
 #include "phylogeny.h"
 #include "parsimony.h"
 #include "search.h"
@@ -270,8 +271,98 @@ int test_reconroot(int argc, char **argv)
 }
 
 
+int test_genbranches(int argc, char **argv)
+{
+    string treefile;
+    string streefile;
+    string smapfile;
+    string paramsfile;
+
+    // parse arguments
+    ConfigParser config;
+    config.add(new ConfigParam<string>(
+        "-t", "--tree", "<tree topology file>", &treefile, 
+        "topology to simulate"));
+    config.add(new ConfigParam<string>(
+        "-S", "--smap", "<species map>", &smapfile, 
+        "gene to species map"));
+    config.add(new ConfigParam<string>(
+        "-s", "--stree", "<species tree>", &streefile, 
+        "species tree file in newick format"));
+    config.add(new ConfigParam<string>(
+        "-p", "--param", "<spidir params file>", &paramsfile, 
+        "SPIDIR branch length parameters file"));
+    
+    
+    if (!config.parse(argc, (const char**) argv)) {
+        if (argc < 2)
+            config.printHelp();
+        return 1;
+    }
+
+
+    Tree tree;
+    tree.readNewick(treefile.c_str());
+    
+    SpeciesTree stree;
+    stree.readNewick(streefile.c_str());
+    stree.setDepths();
+    
+    // read gene2species map
+    Gene2species g;
+    g.read(smapfile.c_str());
+    
+    // read SPIDIR parameters
+    SpidirParams* params;
+    if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
+    {
+        printError("bad parameters file");
+        return 1;
+    }
+    
+    if (!params->order(&stree)) {
+        printError("parameters do not correspond to the given species tree");
+        return 1;
+    }    
+    
+    
+    // produce mapping array
+    ExtendArray<string> genes(tree.nnodes);
+    ExtendArray<string> species(stree.nnodes);
+    tree.getLeafNames(genes);
+    stree.getLeafNames(species);
+    
+    ExtendArray<int> gene2species(tree.nnodes);
+    g.getMap(genes, tree.nnodes, species, stree.nnodes, gene2species);
+    
+    
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(tree.nnodes);
+    ExtendArray<int> events(tree.nnodes);
+
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
+     
+    // generate branch lengths
+    generateBranchLengths(&tree,
+                          &stree,
+                          recon, events,
+                          params);
+    
+    displayTree(&tree, stdout, 100);
+    tree.writeNewick(stdout);
+    
+    
+    //for (int i=0; i<10000; i++)
+    //    printf("%f\n", gammavariate(10, 2));
+        //printf("%f\n", normalvariate(10, 1));
+}
+
+
+
 int main(int argc, char **argv)
 {
+    srand(time(NULL));
 
     if (argc < 2) {
         printf("choose a test:\n"
@@ -279,7 +370,8 @@ int main(int argc, char **argv)
                "  gene2species\n"
                "  mledist\n"
                "  reroot\n"
-               "  reconroot\n");
+               "  reconroot\n"
+               "  genbranches\n");
         return 1;
     }
 
@@ -297,6 +389,11 @@ int main(int argc, char **argv)
         test_reroot(argc-1, &argv[1]);
     } else if (testname == "reconroot") {
         test_reconroot(argc-1, &argv[1]);
+    } else if (testname == "genbranches") {
+        test_genbranches(argc-1, &argv[1]);
+    } else {
+        printf("unknown test\n");
+        return 1;
     }
 
     

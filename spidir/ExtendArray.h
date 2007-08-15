@@ -262,6 +262,7 @@ public:
         return ret;
     }
     
+    
     ValuePtrType &get()
     { return ptr; }
     

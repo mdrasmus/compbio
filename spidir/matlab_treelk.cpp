@@ -9,78 +9,15 @@
 #include <mex.h>
 
 // spidir headers
+#include "matlab_interface.h"
 #include "likelihood.h"
+#include "phylogeny.h"
 #include "common.h"
 #include "Tree.h"
 #include "ExtendArray.h"
 
 using namespace spidir;
 
-
-//=============================================================================
-// MATLAB parsing
-
-bool getInt(const mxArray *arr, int *value)
-{
-    int nrows = mxGetM(arr);
-    int ncols = mxGetN(arr);
-    
-    if (!mxIsDouble(arr) || nrows != 1 || ncols != 1)
-        return false;
-    *value = (int) mxGetPr(arr)[0];
-    return true;
-}
-
-bool getFloat(const mxArray *arr, float *value)
-{
-    int nrows = mxGetM(arr);
-    int ncols = mxGetN(arr);
-    
-    if (!mxIsDouble(arr) || nrows != 1 || ncols != 1)
-        return false;
-    *value = mxGetPr(arr)[0];
-    return true;
-}
-
-
-bool getFloatArray(const mxArray *arr, float **value, int *size)
-{
-    int nrows = mxGetM(arr);
-    int ncols = mxGetN(arr);
-    
-    if (!mxIsDouble(arr) || nrows != 1)
-        return false;
-    
-    *size = ncols;
-    *value = new float [ncols];
-    double *ptr = mxGetPr(arr);
-    
-    for (int i=0; i<ncols; i++) {
-        (*value)[i] = ptr[i];
-    }
-    
-    return true;    
-}
-
-
-bool getIntArray(const mxArray *arr, int **value, int *size)
-{
-    int nrows = mxGetM(arr);
-    int ncols = mxGetN(arr);
-    
-    if (!mxIsDouble(arr) || nrows != 1)
-        return false;
-    
-    *size = ncols;
-    *value = new int [ncols];
-    double *ptr = mxGetPr(arr);
-    
-    for (int i=0; i<ncols; i++) {
-        (*value)[i] = (int) ptr[i];
-    }
-    
-    return true;
-}
 
 
 //=============================================================================
@@ -109,7 +46,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     
     
     // debug output file
-    FILE *out = fopen("debug.txt", "w");
+    FILE *out = fopen("debug.txt", "a");
     
     
     // return value
@@ -170,39 +107,35 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     float errorprob = 0.0;
     
     
-    // log likelihood
-    {
-        // make tree object
-        Tree tree(nnodes);
-        ptree2tree(nnodes, ptree, &tree);
-        fprintf(out, "gene tree\n");        
-        tree.assertTree();
-        tree.setDists(dists);        
-        tree.writeNewick(out);
+    
+    // make tree object
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    if (!tree.assertTree())
+        mexErrMsgTxt("gene tree is invalid");
+    tree.setDists(dists);
+
+    // species tree
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    if (!stree.assertTree())
+        mexErrMsgTxt("species tree is invalid");
+    stree.setDepths();
 
 
-        SpeciesTree stree(nsnodes);
-        ptree2tree(nsnodes, pstree, &stree);
-        fprintf(out, "species tree\n");
-        stree.assertTree();
-        stree.setDepths();
-        stree.writeNewick(out);
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(nnodes);
+    ExtendArray<int> events(nnodes);
 
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
 
-        // reconcile gene tree to species tree
-        ExtendArray<int> recon(nnodes);
-        ExtendArray<int> events(nnodes);
-
-        reconcile(&tree, &stree, gene2species, recon);
-        labelEvents(&tree, recon, events);
-
-        // calculate likelihood
-        logl = treelk(nnodes, ptree, dists,
-                      nsnodes, pstree, 
-                      recon, events,
-                      mu, sigma, generate, disterror,
-                      predupprob, dupprob, errorprob, alpha, beta);
-    }
+    // calculate likelihood
+    logl = treelk(nnodes, ptree, dists,
+                  nsnodes, pstree, 
+                  recon, events,
+                  mu, sigma, generate, disterror,
+                  predupprob, dupprob, errorprob, alpha, beta);
     
     fclose(out);
     
@@ -210,3 +143,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
     *mxGetPr(plhs[0]) = logl;
 }
+
+
+

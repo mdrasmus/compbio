@@ -68,9 +68,27 @@ PYTHON_MODULE_OBJS = \
 
 
 # matlab files
-MATLAB_FUNC = matlab_spidir
-MATLAB_SRC = $(SPIDIR_SRC) matlab_spidir.cpp
-MATLAB_OBJ = matlab_spidir.mexglx
+MATLAB_FUNCS = $(MATLAB_TREELK_FUNC) \
+               $(MATLAB_DISPLAY_TREE_FUNC) \
+               $(MATLAB_GENBRANCHES_FUNC)
+               
+MATLAB_OBJS = $(MATLAB_TREELK_OBJ) \
+              $(MATLAB_DISPLAY_TREE_OBJ) \
+              $(MATLAB_GENBRANCHES_OBJ)
+
+
+MATLAB_TREELK_FUNC = spidir_treelk
+MATLAB_TREELK_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_treelk.cpp
+MATLAB_TREELK_OBJ = spidir_treelk.mexglx
+
+MATLAB_DISPLAY_TREE_FUNC = spidir_display_tree
+MATLAB_DISPLAY_TREE_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_display_tree.cpp
+MATLAB_DISPLAY_TREE_OBJ = spidir_display_tree.mexglx
+
+MATLAB_GENBRANCHES_FUNC = spidir_genbranches
+MATLAB_GENBRANCHES_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_genbranches.cpp
+MATLAB_GENBRANCHES_OBJ = spidir_genbranches.mexglx
+
 
 
 #=============================================================================
@@ -111,10 +129,20 @@ test_spidir: $(SPIDIR_OBJS) test.o
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 	$(CXX) -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
 
-# matlab function
-$(MATLAB_FUNC): $(MATLAB_SRC)
-	$(MEX) -v $(MATLAB_CFLAGS) $(MATLAB_SRC) -o $(MATLAB_FUNC)
 
+# matlab interface
+matlab_funcs: $(MATLAB_FUNCS)
+
+# matlab treelk function
+$(MATLAB_TREELK_FUNC): $(MATLAB_TREELK_SRC)
+	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_TREELK_SRC) -o $(MATLAB_TREELK_FUNC)
+
+# matlab display tree function
+$(MATLAB_DISPLAY_TREE_FUNC): $(MATLAB_DISPLAY_TREE_SRC)
+	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_DISPLAY_TREE_SRC) -o $(MATLAB_DISPLAY_TREE_FUNC)
+
+$(MATLAB_GENBRANCHES_FUNC): $(MATLAB_GENBRANCHES_SRC)
+	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_GENBRANCHES_SRC) -o $(MATLAB_GENBRANCHES_FUNC)
 
 
 #=============================================================================
@@ -132,5 +160,5 @@ install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
 clean:
 	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
                 $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
-                $(MATLAB_OBJ) \
+                $(MATLAB_OBJS) \
 	        test.o test_spidir

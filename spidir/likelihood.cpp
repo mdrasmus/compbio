@@ -385,8 +385,13 @@ void reconBranch(int node, int *ptree, int *pstree, int *recon, int *events,
 
         // walk up species spath until starting species branch
         // starting species branch is either fractional or NULL
-        int parent_snode = recon[ptree[node]];
-        while (snode != parent_snode) {
+        
+        int parent_snode;
+        if (ptree[node] != -1)
+            parent_snode = recon[ptree[node]];
+        else
+            parent_snode = -1;
+        while (snode != parent_snode && pstree[snode] != -1) {
             totmean += params->mu[snode];
             totvar += params->sigma[snode] * params->sigma[snode];
             snode = pstree[snode];
@@ -712,9 +717,8 @@ float treelk(Tree *tree,
                     logl += slogl;
                 }
             } else {
-                int node = tree->nodes[i]->name;
                 float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
-                                        node,
+                                        i,
                                         stree->nnodes, pstree, 
                                         recon, events, params,
                                         generate,

@@ -699,8 +699,8 @@ def dnadist(seqs, output=None, verbose=True, force = False, args=None):
 
 
 def correctDistMatrix(distmat, maxdist=40, fardist=None):
-    """remove -1 and extremely large distances, replace them with 
-       maxdist in matrix"""
+    """remove -1 and extremely large distances (>maxdist), replace them with 
+       fatdist (defaults to maximum distance in matrix)"""
 
     if fardist == None:
         fardist = 0

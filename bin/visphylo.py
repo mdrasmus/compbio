@@ -324,7 +324,7 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
 
 # show alignment
 if len(alignfiles) > 0:
-    visalign = alignvis.AlignViewer(aln, size=[580, 500], colorBases=colors,
+    visalign = alignvis.AlignViewer(aln, size=[580, 500], #colorBases=colors,
                                     view=view, title=alignfiles[0])
     visalign.show()
     #visalign.vis.win.set_position(0, 0)

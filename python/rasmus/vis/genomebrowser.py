@@ -58,9 +58,11 @@ class Browser (visual.VisObject):
     def getTopWindow(self):
         return self.topwin
 
-    def enableSideWindows(self, left=False, top=False):
-        self.showLeftWindow = left
-        self.showTopWindow = top
+    def enableSideWindows(self, left=None, top=None):
+        if left != None:
+            self.showLeftWindow = left
+        if top != None:
+            self.showTopWindow = top
         
         self.show()
 
@@ -152,6 +154,7 @@ class GenomeStackBrowser (Browser):
             self.leftgid = None
         
         
+        
         # draw tracks
         top = 2.0
         y = 0.0
@@ -194,7 +197,7 @@ class GenomeStackBrowser (Browser):
     
     def show(self, species=None, chrom=None, start=None, end=None,
                    width=800, height=400):
-        summon.stop_updating()
+        #summon.stop_updating()
         
         # initialize window if needed
         if self.win == None:
@@ -226,7 +229,7 @@ class GenomeStackBrowser (Browser):
                 self.leftwin = None
         
         self.redraw(species=species, chrom=chrom, start=start, end=end)
-        summon.begin_updating()
+        #summon.begin_updating()
 
     
 
@@ -719,6 +722,7 @@ class AlignTrack (Track):
         
         textGroup = group()
         self.textGid = get_group_id(textGroup)
+        
         return group(translate(self.pos[0], self.pos[1] + self.size[1],
                      color(0, 0, 0),
                      labelsgroup,
@@ -809,7 +813,8 @@ class AlignTrack (Track):
 
 
     def onClickCallback(self):
-        x, y = self.win.get_mouse_pos('world')
+        win = self.get_window()
+        x, y = win.get_mouse_pos('world')
         x -= self.pos[0]
         y = self.size[1] - (y - self.pos[1])
         self.onClick(x, y)

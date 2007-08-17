@@ -968,7 +968,7 @@ def makeKDepend(node, events, recon):
 
 
 def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
-                      integration="quad"):
+                      integration="fastsampling"):
     midpoints = {}
     extraBranches = getExtraBranches(root, recon, events, stree)
     
@@ -984,18 +984,6 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
         err = 0
         return (val, err)
         
-    """
-    def quad2(func, start, end, epsrel=None):
-        tot = 0
-        n = 0
-        if end <= start:
-            return [0, 666]
-        step = (end - start) / 20.
-        for i in util.frange(start, end, step):
-            tot += func(i) * step
-        
-        return [tot, 666]
-    """
     
     print "INT", integration
     
@@ -1624,7 +1612,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
 
 
 def treeLogLikelihood_python(conf, tree, stree, gene2species, params, 
-                             baserate=None, integration="quad"):
+                             baserate=None, integration="fastsampling"):
 
     # debug info
     if isDebug(DEBUG_MED):

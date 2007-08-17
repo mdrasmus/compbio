@@ -3,7 +3,7 @@
 import sys
 from rasmus import util, env, treelib
 from rasmus.bio import phylo, genomeutil
-from rasmus.vis import treevis
+from rasmus.vis import treesvg
 from rasmus import tablelib
 
 
@@ -162,12 +162,12 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         
         if "graphical" in conf:            
             if conf["graphical"] == "-":
-                treevis.showTree(tree, labels=labels,
+                treesvg.showTree(tree, labels=labels,
                                        xscale=conf["scale"],
                                        minlen=conf["minlen"],
                                        maxlen=conf["maxlen"])
             else:
-                treevis.drawTree(tree, labels=labels,
+                treesvg.drawTree(tree, labels=labels,
                                        xscale=conf["scale"],
                                        minlen=conf["minlen"],
                                        maxlen=conf["maxlen"],

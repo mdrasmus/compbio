@@ -15,7 +15,7 @@ import summon
 
 # rasmus libs
 from rasmus import treelib, util
-from rasmus.bio import alignlib, blast, fasta, phylip
+from rasmus.bio import alignlib, blast, fasta, phylip, genomeutil
 from rasmus.vis import distmatrixvis, alignvis
 from rasmus.vis.genomebrowser import *
 
@@ -31,6 +31,11 @@ options = [
         {"single": True}],
     ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
     ["b:", "blast=", "blast", "<blast hit -m8 format>"],
+    
+    ["s:", "stree=", "stree", "<species tree newick file>",
+        {"single": True}],
+    ["S:", "smap=", "smap", "<gene to species mapping>",
+        {"single": True}],
     
     "data file extensions",
     ["F:", "fastaext=", "fastaext", "<fasta sequences extension>",
@@ -173,8 +178,23 @@ if len(fastafiles) > 0:
     seqs = fasta.readFasta(fastafiles[0])
 else:
     seqs = None
-    
 
+
+#=============================================================================
+# read species information
+
+if "smap" in conf:
+    gene2species = genomeutil.readGene2species(conf["smap"])
+else:
+    gene2species = None
+
+if "stree" in conf:
+    stree = treelib.readTree(conf["stree"])
+else:
+    stree = None
+        
+    
+#=============================================================================
 # read tree
 if len(treefiles) > 0:
     tree = treelib.readTree(treefiles[0])
@@ -191,6 +211,8 @@ if len(treefiles) > 0:
 else:
     leaves = None
 
+
+#=============================================================================
 # read alignment
 if len(alignfiles) > 0:
     view = Region("", "", "", 1, 1)
@@ -206,6 +228,7 @@ if len(alignfiles) > 0:
     colors = colorAlign(aln)
 
 
+#=============================================================================
 # read distance matrix
 if len(distmatfiles) > 0 or len(blastfiles) > 0:
     mats = []
@@ -320,8 +343,9 @@ if len(distmatfiles) > 0 or len(blastfiles) > 0:
     
     visdist.win.set_binding(input_key("n"), nextMatrix)
     visdist.win.set_binding(input_key("p"), prevMatrix)    
-    
 
+    
+#=============================================================================
 # show alignment
 if len(alignfiles) > 0:
     visalign = alignvis.AlignViewer(aln, size=[580, 500], #colorBases=colors,

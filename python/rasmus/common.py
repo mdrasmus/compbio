@@ -17,7 +17,7 @@ from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
 from regionlib import *
-from rasmus.vis.treevis import showTree
+from rasmus.vis.treesvg import showTree
 
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib

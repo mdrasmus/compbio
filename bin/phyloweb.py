@@ -7,7 +7,7 @@ import math
 
 
 from rasmus import util, env, treelib, progress
-from rasmus.vis import treevis
+#from rasmus.vis import treesvg
 from rasmus import svg, tablelib
 
 from rasmus.bio import fasta, genomeutil, phylip, phylo

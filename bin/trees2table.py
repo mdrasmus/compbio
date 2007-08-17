@@ -4,7 +4,7 @@ import os, sys
 
 from rasmus import treelib, env, tablelib, util
 from rasmus.bio import genomeutil, phylo
-from rasmus.vis import treevis
+#from rasmus.vis import treesvg
 
 import Spidir
 

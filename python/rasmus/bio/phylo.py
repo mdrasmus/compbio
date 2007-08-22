@@ -97,8 +97,7 @@ def labelEventsNode(node, recon):
     else:
         return "gene"
 
-
-def findLossNode(node, recon):
+def findLossUnderNode(node, recon):
     loss = []
     snodes = {}
     internal = {}
@@ -119,6 +118,39 @@ def findLossNode(node, recon):
         for child in i.children:
             if child not in snodes:
                 loss.append([node,child])
+    return loss
+
+
+def findLossNode(node, recon):
+    loss = []
+    
+    # if not parent, then no losses
+    if not node.parent:
+        return loss
+    
+    # determine starting and ending species
+    sstart = recon[node]
+    send = recon[node.parent]
+    
+    # determine species path of this gene branch (node, node.parent)
+    ptr = sstart
+    spath = []
+    while ptr != send:
+        spath.append(ptr)
+        ptr = ptr.parent
+    
+    # determine whether node.parent is a dup
+    # if so, send (species end) is part of species path
+    if labelEventsNode(node.parent, recon) == "dup":
+        spath.append(send)
+    
+    # go up species path (skip starting species)
+    # every node on the list is at least one loss
+    for i, snode in enumerate(spath[1:]):
+        for schild in snode.children:
+            if schild != spath[i]:
+                loss.append([node, schild])
+        
     return loss
 
 
@@ -233,8 +265,8 @@ def reconRoot(gtree, stree, gene2species = gene2species,
             if events[node2] == "dup":
                 cost -= 1
         if rootby in ["loss", "duploss"]:
-            cost -= len(findLossNode(gtree.root, recon))
-            cost -= len(findLossNode(node2, recon))
+            cost -= len(findLossUnderNode(gtree.root, recon))
+            cost -= len(findLossUnderNode(node2, recon))
         
         # new root and recon
         treelib.reroot(gtree, node1.name, newCopy=False)        
@@ -250,8 +282,8 @@ def reconRoot(gtree, stree, gene2species = gene2species,
             if events[gtree.root] ==  "dup":
                 cost += 1
         if rootby in ["loss", "duploss"]:
-            cost += len(findLossNode(gtree.root, recon))
-            cost += len(findLossNode(node2, recon))
+            cost += len(findLossUnderNode(gtree.root, recon))
+            cost += len(findLossUnderNode(node2, recon))
         
         #print edge[0].name, edge[1].name, cost
         

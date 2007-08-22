@@ -16,7 +16,7 @@ import summon
 # rasmus libs
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip, genomeutil
-from rasmus.vis import distmatrixvis, alignvis
+from rasmus.vis import distmatrixvis, alignvis, treevis
 from rasmus.vis.genomebrowser import *
 
 
@@ -198,8 +198,10 @@ else:
 # read tree
 if len(treefiles) > 0:
     tree = treelib.readTree(treefiles[0])
-    vistree = sumtree.SumTree(tree, name=treefiles[0],
-                              xscale=100.0)
+    vistree = treevis.TreeViewer(tree, name=treefiles[0],
+                                 xscale=100.0,
+                                 stree=stree,
+                                 gene2species=gene2species)
     vistree.show()
     vistree.win.set_size(340, 500)
     #vistree.win.set_position(0, 0)

@@ -340,14 +340,14 @@ def readAlignment(filename):
     # parse remaining lines
     for line in infile:
         line = line.rstrip()
-        print line
     
         if len(line) > 0:
             if first:
-                (name, seq) = line.split()[:2]
+                name = line[:10].strip()
+                seq = line[10:].strip().replace(" ", "")
                 names.append(name)
             else:
-                seq = line.strip()
+                seq = line.strip().replace(" ", "")
                 name = names[i]
             i += 1                
         

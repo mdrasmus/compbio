@@ -299,6 +299,41 @@ def makeCodonPosAlign(aln):
     return mapalign(aln, valfunc=func)
 
 
+def findAlignedCodons(aln, ref=None):
+    # throw out cols with gap in reference species
+    if ref != None:
+        ind = util.find(util.neqfunc("-"), aln[ref])
+    else:
+        ind = range(aln.alignlen())
+    
+    # throw out codons with non mod 3 gaps
+    ind2 = []
+    for i in range(0, len(ind), 3):
+        bad = False
+        
+        for key, val in aln.iteritems():
+            codon = util.mget(val, ind[i:i+3])
+            if "-" in codon and \
+               codon != ["-", "-", "-"]:
+                bad = True
+                break
+
+        if not bad:
+            ind2.extend(ind[i:i+3])
+
+    return ind2
+
+
+
+
+def filterAlignCodons(aln, ref=None):
+    """filter an alignment for only aligned codons"""
+
+    ind = findAlignCodons(aln, ref=ref)
+    return subalign(aln, ind)
+
+
+'''
 def findAlignCodons(aln):
     """find all columns of aligned codons"""
     
@@ -328,15 +363,56 @@ def findAlignCodons(aln):
                 gaps[key] = 0
 
     return ind
+'''
 
 
-def filterAlignCodons(aln):
-    """filter an alignment for only aligned codons"""
 
-    ind = findAlignCodons(aln)
-    return mapalign(aln, valfunc=lambda x: "".join(util.mget(x, ind)))
+def findFourFold(aln):
+    """Returns index of all columns in alignment that are completely 
+       fourfold degenerate
+       
+       Assumes that columns are already filtered for aligned codons
+    """
+    
+    # create peptide alignment
+    pepAln = mapalign(aln, valfunc=translate)
+    
+    # find peptide conservation
+    pepcons = []
+    for i in xrange(pepAln.alignlen()):
+        # get a column from the peptide alignment
+        col = [seq[i] for seq in pepAln.itervalues()]
+        
+        # compute the histogram of the column.
+        # ignore gaps '-' and non-translated 'X'
+        hist = util.histDict(col)
+        if "-" in hist:
+            del hist["-"]
+        if "X" in hist:
+            del hist["X"]
+        
+        # column is conserved if only one AA appears
+        pepcons.append(len(hist) == 1 and "X" not in hist)
+        
+    
+    ind = []
+    
+    # get peptides of 1st sequence
+    pep = pepAln.values()[0]
+    
+    for i in range(0, len(aln.values()[0]), 3):
+        # process only those columns that are conserved at the peptide level
+        if pepcons[i//3]:
+            degen = AA_DEGEN[pep[i//3]]
+            
+            for j in range(3):
+                if degen[j] == 4:
+                    ind.append(i+j)
+    return ind
 
 
+
+'''
 def findFourFold(aln):
     """Returns index of all columns in alignment that are completely 
        fourfold degenerate
@@ -368,7 +444,7 @@ def findFourFold(aln):
                 if degen[j] == 4:
                     ind.append(i+j)
     return ind
-
+'''
 
 def calcFourFoldDistMatrix(aln):
     names = aln.keys()

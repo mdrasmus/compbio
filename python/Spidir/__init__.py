@@ -19,7 +19,7 @@ from rasmus.bio import fasta
 from rasmus.bio import phylo
 from rasmus.bio import phylip
 
-from rasmus.vis import treevis
+from rasmus.vis import treesvg
 
 # scipy libs
 # (needed for numerical integration and least square error fitting)
@@ -191,12 +191,12 @@ def drawParamTree(tree, params, *args, **kargs):
     # draw basic tree
     tmargin = 10
     lmargin = 10
-    canvas = treevis.drawTree(tree, autoclose=False, 
+    canvas = treesvg.drawTree(tree, autoclose=False, 
                               tmargin=tmargin, lmargin=lmargin,
                               *args, **kargs)
     
     # draw variance
-    coords = treevis.layoutTree(tree, kargs["xscale"], kargs["yscale"],
+    coords = treesvg.layoutTree(tree, kargs["xscale"], kargs["yscale"],
                                       kargs["minlen"], kargs["maxlen"])
     
     canvas.beginTransform(("translate", lmargin, tmargin))

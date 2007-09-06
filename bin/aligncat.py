@@ -46,13 +46,17 @@ for aln in alns:
     #for gene, seq in aln.iteritems():
     #    fullaln[gene2species(gene)] += seq
     
-    for gene in fullaln:
-        if gene not in aln:
+    species2gene = {}
+    for gene in aln.keys():
+        species2gene[gene2species(gene)] = gene
+    
+    for sp in fullaln:
+        if sp not in species2gene:
             seq = "N" * aln.alignlen()
         else:
-            seq = aln[gene2species(gene)]
+            seq = aln[species2gene[sp]]
         
-        fullaln[gene] += seq
+        fullaln[sp] += seq
         
 
 # write full alignment

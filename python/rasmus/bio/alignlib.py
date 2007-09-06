@@ -646,6 +646,56 @@ def align2global(align_coord, start, end, strand, localLookup):
     return local2global(local_coord, start, end, strand)
 
 
+class CoordConverter (object):
+    """Converts between coordinate systems on a gapped sequence"""
+    
+    def __init__(self, seq):
+        self.local2alignLookup = local2align(seq)
+        self.align2localLookup = align2local(seq)
+    
+    
+    def local2align(self, i, clamp=False):
+        if clamp:
+            return self.local2alignLookup[int(util.clamp(i, 0, 
+                                                len(self.local2alignLookup)-1))]
+        else:
+            return self.local2alignLookup[i]
+
+
+    def align2local(self, i, clamp=False):
+        if clamp:
+            return self.align2localLookup[int(util.clamp(i, 0, 
+                                                len(self.align2localLookup)-1))]
+        else:
+            return self.align2localLookup[i]
+
+
+    def global2local(self, gobal_coord, start, end, strand):
+        """Returns local coordinate in a global region"""
+        return global2local(gobal_coord, start, end, strand)
+        
+
+    def local2global(self, local_coord, start, end, strand):
+        """Return global coordinate within a region from a local coordinate"""
+        local2global(local_coord, start, end, strand)
+
+
+    def global2align(self, global_coord, start, end, strand):
+        local_coord = global2local(global_coord, start, end, strand)
+    
+        # throw exception for out of bounds
+        if local_coord < 0 or \
+           local_coord >= len(alignLookup):
+            raise Exception("coordinate outside [start, end]")
+
+        return self.local2alignLookup[local_coord]
+
+
+    def align2global(self, align_coord, start, end, strand):
+        local_coord = self.align2localLookup[align_coord]
+        return local2global(local_coord, start, end, strand)
+
+
 
 
 

@@ -375,34 +375,158 @@ class DividerTrack (Track):
 class RulerTrack (Track):
     def __init__(self, top=2.0, bottom=0.0, 
                  minicolor=color(.8,.8,.8), maincolor = color(0,0,0),
+                 align=None,
                  **options):
+        
         Track.__init__(self, **options)
         self.top = top
         self.bottom = bottom
         self.minicolor = minicolor
-        self.maincolor = maincolor   
+        self.maincolor = maincolor
         
+        if align != None:
+            self.coords = alignlib.CoordConverter(align)
+            #self.local2alignLookup = alignlib.local2align(align)
+            #self.align2localLookup = alignlib.align2local(align)
+        else:
+            self.coords = None
+            #self.local2alignLookup = None
+            #self.align2localLookup = None
+        
+        self.multiscale = visual.Multiscale(marginx=.5, marginy=.5, scalex=10, scaley=10)
+    
+    
+    #def local2align(self, i):
+    #    return self.local2alignLookup[int(util.clamp(i, 0, 
+    #                                           len(self.local2alignLookup)-1))]
+    
+    
+    #def align2local(self, i):
+    #    return self.align2localLookup[int(util.clamp(i, 0, 
+    #                                           len(self.align2localLookup)-1))]
+        
+    
     def draw(self):
-        assert self.view != None, "Track view not initialized"
-    
-        # change start from 1's based to 0's based
-        self.ruler = visual.Ruler(self.get_window(), 
-                                  self.view.start-1, self.view.end, 
-                                  height=self.top, 
-                                  bottom=self.bottom,
-                                  minicolor=self.minicolor,
-                                  maincolor=self.maincolor,
-                                  pos=self.pos)
+        self.multiscale.init(self.get_window())
+
+        self.start = self.view.start-1
+        self.end = self.view.end
+        self.height = self.top
+        self.bottom = self.bottom
         
-        return group(self.ruler.draw())
-    
+        self.gid = group()
+        return group(self.gid)
+        
     
     def update(self):
-        # change start from 1's based to 0's based
-        # let ruler know the start and end
-        #self.ruler.start = self.view.start - 1
-        #self.ruler.end = self.view.end
-        self.ruler.update()
+        self.win = self.get_window()
+    
+        if not self.multiscale.sameScale():
+            if self.coords == None:
+                g = self.drawRuler(self.pos, 
+                                   self.start, 
+                                   self.end)
+            else:
+                g = self.drawAlignRuler(self.pos, self.start, self.end)
+            self.gid = self.win.replace_group(self.gid, g)
+
+
+    def drawRuler(self, pos, start, end):
+        worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
+        screenwidth, screenheight = self.win.get_size()
+        height = self.height
+        bottom = self.bottom
+        
+        worldwidth = worldx2 - worldx1
+        worldx1 -= worldwidth / 2.0
+        worldx2 += worldwidth / 2.0
+
+        # find appropriate unit if one is not given
+        unit = visual.getRulerAutoSize(screenwidth, worldwidth)
+        order = int(math.log10(unit))
+        unit2, unitstr = visual.getUnitSuffix(unit)
+        
+        
+        x, y = pos
+        vis = []
+
+        # make mini hashes
+        if unit >= 10:
+            vis.append(self.minicolor)
+            i = unit * (max(start, worldx1 - x + start) // unit)
+            while x + i - start <= worldx2 and i < end:
+                if i >= start:
+                    vis.append(lines(x + i - start, y+bottom, x + i - start, y+height))
+                i += unit // 10
+
+
+        # make main hashes
+        vis.append(self.maincolor)
+        i = unit * (max(start, worldx1 - x + start) // unit)
+        while x + i - start <= worldx2 and i < end:
+            if i >= start:
+                vis.append(lines(x + i - start, y, x + i - start, y + height))
+                vis.append(text(str(int(i//unit2)) + unitstr, 
+                                x + i - start, y, x + i -start - unit, y + height, "middle", "right"))
+            i += unit
+
+        # base line
+        vis.append(lines(color(0,0,0), x, y, x + end - start, y))
+
+        return group(* vis)
+    
+    
+    def drawAlignRuler(self, pos, start, end):
+        worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
+        screenwidth, screenheight = self.win.get_size()
+        
+        worldwidth = worldx2 - worldx1
+        worldx1 -= worldwidth / 2.0
+        worldx2 += worldwidth / 2.0
+
+        # find appropriate unit if one is not given
+        unit = visual.getRulerAutoSize(screenwidth, worldwidth)
+        order = int(math.log10(unit))
+        unit2, unitstr = visual.getUnitSuffix(unit)
+        
+        x, y = pos
+        vis = []
+        
+        # make mini hashes
+        vis.append(self.minicolor)
+        i = unit * (max(start, worldx1 - x + start) // unit)
+        while x + i - start <= worldx2 and i < end:
+            if i >= start:
+                vis.append(lines(x + i - start, y + self.bottom, 
+                                 x + i - start, y + self.height))
+            i += max(unit // 10, 1)
+
+
+        # make main hashes
+        
+        # find starting local coord
+        seqi = unit * ((start + self.coords.align2local(max(0, worldx1 - x), 
+                                                        clamp=True)) // unit) \
+                                                        - start-1
+        # find starting align coord
+        i = self.coords.local2align(seqi)
+        endseqi = min(self.coords.align2local(end, clamp=True), 
+                      self.coords.align2local(worldx2-x, clamp=True))
+        
+        # draw all hashes in view
+        vis.append(self.maincolor)
+        while seqi <= endseqi:
+            vis.append(lines(x + i+1, y, x + i+1, y + self.height))
+            vis.append(text(str(int((seqi+start+1)//unit2)) + unitstr, 
+                            x + i+1, y, x + i+1 - unit, y + self.height, 
+                            "middle", "right"))
+            seqi += unit
+            i = self.coords.local2align(seqi, clamp=True)
+
+        # base line
+        vis.append(lines(color(0,0,0), x, y, x + end - start, y))
+
+        return group(* vis)
 
 
 
@@ -421,9 +545,8 @@ class SeqTrack (Track):
         self.multiscale.init(self.get_window())
         
         # return placeholder group
-        grp = group()
-        self.gid = get_group_id(grp)        
-        return grp
+        self.gid = group()
+        return self.gid
     
     
     def update(self):
@@ -476,9 +599,8 @@ class CurveTrack (Track):
         self.shown = False
         
         # return placeholder group
-        grp = group()
-        self.gid = get_group_id(grp)        
-        return grp
+        self.gid = group()
+        return self.gid
         
     
     def update(self):
@@ -720,8 +842,7 @@ class AlignTrack (Track):
         click = hotspot("click", 0, 0, self.aln.alignlen(), -self.size[1],
                         self.onClickCallback)
         
-        textGroup = group()
-        self.textGid = get_group_id(textGroup)
+        self.textGroup = group()
         
         return group(translate(self.pos[0], self.pos[1] + self.size[1],
                      color(0, 0, 0),
@@ -738,7 +859,7 @@ class AlignTrack (Track):
                      quads(* nobase_boxpts),
                      lines(* nobase_diagpts),
                      lines(* nobase_diagpts2),
-                     group(textGroup)))
+                     group(self.textGroup)))
     
     def drawLeft(self):
         labels = []
@@ -804,12 +925,12 @@ class AlignTrack (Track):
                                               end2, -i-1, 
                                               "left", "bottom"))
                 
-                self.textGid = win.replace_group(self.textGid, 
+                self.textGroup = win.replace_group(self.textGroup, 
                     group(group(*vis2), color(0,0,0), * vis))
             
         elif self.textShown:
             self.textShown = False
-            self.textGid = win.replace_group(self.textGid, group())
+            self.textGroup = win.replace_group(self.textGroup, group())
 
 
     def onClickCallback(self):
@@ -967,4 +1088,35 @@ def guessAlign(aln):
     else:
         return "dna"
 
+
+
+'''
+class RulerTrack (Track):
+    def __init__(self, top=2.0, bottom=0.0, 
+                 minicolor=color(.8,.8,.8), maincolor = color(0,0,0),
+                 **options):
+        Track.__init__(self, **options)
+        self.top = top
+        self.bottom = bottom
+        self.minicolor = minicolor
+        self.maincolor = maincolor   
+        
+    def draw(self):
+        assert self.view != None, "Track view not initialized"
+    
+        # change start from 1's based to 0's based
+        self.ruler = visual.Ruler(self.get_window(), 
+                                  self.view.start-1, self.view.end, 
+                                  height=self.top, 
+                                  bottom=self.bottom,
+                                  minicolor=self.minicolor,
+                                  maincolor=self.maincolor,
+                                  pos=self.pos)
+        
+        return group(self.ruler.draw())
+    
+    
+    def update(self):
+        self.ruler.update()
+'''
 

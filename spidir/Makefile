@@ -116,6 +116,9 @@ all: $(SPIDIR_PROG) $(LIBSPIDIR) $(PYTHON_MODULE) test_spidir
 $(SPIDIR_PROG): $(PROG_OBJS)
 	$(CXX) $(CFLAGS) $(PROG_OBJS) $(PROG_LIBS) -o $(SPIDIR_PROG)
 
+maxml: maxml.o $(SPIDIR_OBJS)
+	$(CXX) $(CFLAGS) maxml.o $(SPIDIR_OBJS) $(PROG_LIBS) -o maxml
+
 # C-library
 $(LIBSPIDIR): $(LIBSPIDIR_OBJS)
 	mkdir -p lib
@@ -152,8 +155,8 @@ $(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
 
-install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir
-	cp $(SPIDIR_PROG) test_spidir ../bin
+install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
+	cp $(SPIDIR_PROG) test_spidir maxml ../bin
 	cp $(PYTHON_MODULE) ../python
 
 

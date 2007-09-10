@@ -385,30 +385,32 @@ def align2tree(conf, prog, alignfile, basename):
 
     elif prog in ["spidir_pars"]:
         import Spidir
-        assert usertree != None
-        Spidir.parsimony(aln, usertree)
-        tree = usertree
+        if usertree != None:
+            Spidir.parsimony(aln, usertree)
+            tree = usertree
+        else:
+            tree = Spidir.maxml.maxml(aln, args="-l pars")
         
     elif prog in ["spidir_ml"]:
         import Spidir
-        assert usertree != None
-        
-        if conf["args"] != None:
-            # format is -a "spidir_ml:a b c d r"
-            args = map(float, conf["args"].split())
-            bgfreq = args[:4]
-            ratio = args[4]
+        import Spidir.maxml
+        if usertree != None:
+            if conf["args"] != None:
+                # format is -a "spidir_ml:a c t g r"
+                args = map(float, conf["args"].split())
+                bgfreq = args[:4]
+                ratio = args[4]
+            else:
+                # use JC evolution
+                bgfreq = [.25, .25, .25, .25]
+                ratio = .5
+
+            maxiter = len(usertree.nodes)
+
+            Spidir.mlhkydist(aln, usertree, bgfreq, ratio, maxiter)
+            tree = usertree
         else:
-            # use JC evolution
-            bgfreq = [.25, .25, .25, .25]
-            ratio = .5
-            
-        #bgfreq = [.258, .267, .266, .209]
-        #ratio = 1.59
-        maxiter = len(usertree.nodes)
-        
-        Spidir.mlhkydist(aln, usertree, bgfreq, ratio, maxiter)
-        tree = usertree
+            tree = Spidir.maxml.maxml(aln)
         
     else:
         raise "unknown phylogeny program '%s'" % prog

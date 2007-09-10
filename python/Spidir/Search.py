@@ -628,13 +628,10 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         thash = phylo.hashTree(tree2)
         if thash in visited:
             logl, tree2, count = visited[thash]
-            this.nold += 1
+            #this.nold += 1
         else:
             Spidir.setTreeDistances(conf, tree2, distmat, labels)
             logl = Spidir.treeLogLikelihood(conf, tree2, stree, gene2species, params)
-            
-            #tree2, logl = Spidir.treeLogLikelihoodAllRoots(conf, tree2, stree, 
-            #                                        gene2species, params)
             this.nold = 0
         
         addVisited(conf, visited, tree2, gene2species, thash)

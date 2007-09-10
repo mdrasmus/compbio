@@ -1766,12 +1766,8 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         printVisitedTrees(visited)
         
 
-    def evalUserTree(tree):
-        if True: #sum(node.dist for node in tree.nodes.values()) == 0.0: # or True:
-            debug("fitting distances")     
-            setTreeDistances(conf, tree, distmat, labels)
-        else:
-            debug("use distances from file")
+    def evalUserTree(tree):        
+        setTreeDistances(conf, tree, distmat, labels)
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
         thash = phylo.hashTree(tree)

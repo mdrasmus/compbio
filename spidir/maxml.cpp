@@ -22,17 +22,16 @@
 #include "spidir.h"
 
 
+
+using namespace std;
+using namespace spidir;
+
 #define VERSION_INFO  "\
    ___    SPIDIR v0.8 (beta) July 2007 \n\
   /0 0\\   SPecies Informed DIstanced-base Reconstruction \n\
   \\___/   Matt Rasmussen \n\
  /// \\\\\\  CSAIL, MIT \n\
 "
-
-
-using namespace std;
-using namespace spidir;
-
 
 
 int main(int argc, char **argv)
@@ -64,16 +63,7 @@ int main(int argc, char **argv)
         "-a", "--align", "<alignment fasta>", &alignfile, 
         "sequence alignment in fasta format"));
     config.add(new ConfigParam<string>(
-        "-S", "--smap", "<species map>", &smapfile, 
-        "gene to species map"));
-    config.add(new ConfigParam<string>(
-        "-s", "--stree", "<species tree>", &streefile, 
-        "species tree file in newick format"));
-    config.add(new ConfigParam<string>(
-        "-p", "--param", "<spidir params file>", &paramsfile, 
-        "SPIDIR branch length parameters file"));
-    config.add(new ConfigParam<string>(
-        "-o", "--output", "<output filename prefix>", &outprefix, "spidir",
+        "-o", "--output", "<output filename prefix>", &outprefix, "maxml",
         "prefix for all output filenames"));
     
     
@@ -94,12 +84,6 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<int>(
         "-i", "--niter", "<# iterations>", &niter, 100, 
         "number of iterations"));
-    config.add(new ConfigParam<float>(
-        "-D", "--dupprob", "<duplication probability>", &dupprob, 1.0,
-        "probability of a node being a duplication (default=1.0)"));
-    config.add(new ConfigParam<float>(
-        "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
-        "probability of a node being a pre-duplication (default=0.01)"));
 
     config.add(new ConfigParam<int>(
         "-V", "--verbose", "<verbosity level>", &verbose, LOG_QUIET, 
@@ -161,17 +145,7 @@ int main(int argc, char **argv)
         printLog(LOG_LOW, "\n\n");
     }
     
-    //============================================================
-    // read species tree
-    SpeciesTree stree;
-    stree.readNewick(streefile.c_str());
-    stree.setDepths();
-    
-    // read gene2species map
-    Gene2species mapping;
-    mapping.read(smapfile.c_str());
-    
-    
+    //============================================================   
     // read sequences
     Sequences *aln;
     
@@ -181,18 +155,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // read SPIDIR parameters
-    SpidirParams *params;
-    if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
-    {
-        printError("bad parameters file");
-        return 1;
-    }
-    
-    if (!params->order(&stree)) {
-        printError("parameters do not correspond to the given species tree");
-        return 1;
-    }
     
     // determine background base frequency
     float bgfreq[4];
@@ -206,28 +168,16 @@ int main(int argc, char **argv)
     
     
     int nnodes = aln->nseqs * 2 - 1;
-
-    // produce mapping array
-    ExtendArray<string> genes(0, nnodes);
-    ExtendArray<string> species(stree.nnodes);
-    ExtendArray<int> gene2species(nnodes);
-    genes.extend(aln->names, aln->nseqs);
-    for (int i=aln->nseqs; i<nnodes; i++)
-        genes.append("");
-    stree.getLeafNames(species);   
-    
-    mapping.getMap(genes, nnodes, species, stree.nnodes, gene2species);
-    
+   
     
     
 
     //=====================================================
     // init likelihood function
-    SpidirBranchLikelihoodFunc lkfunc(nnodes, &stree, params, gene2species,
-                                      predupprob, dupprob);
+    BranchLikelihoodFunc lkfunc;
     
     // init topology proposer
-    NniProposer nniProposer(&stree, gene2species, niter);
+    NniProposer nniProposer(NULL, NULL, niter);
     
     
     // determine branch length algorithm
@@ -248,16 +198,15 @@ int main(int argc, char **argv)
     
     // search
     Tree *toptree = searchMCMC(NULL, 
-                               genes, aln->nseqs, aln->seqlen, aln->seqs,
+                               aln->names, aln->nseqs, aln->seqlen, aln->seqs,
                                &lkfunc,
                                &nniProposer,
                                fitter);
     
-    toptree->setLeafNames(genes);
+    toptree->setLeafNames(aln->names);
     toptree->writeNewick(outtreeFilename.c_str());
     
     delete toptree;
-    delete params;
     delete fitter;
     
     closeLogFile();

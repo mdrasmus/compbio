@@ -536,7 +536,7 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
 // find MLE branch lengths
 
 
-// todo: need to think about more carefully
+// TODO: need to think about more carefully
 void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
 {
     if (!node) {

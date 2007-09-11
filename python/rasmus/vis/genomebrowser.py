@@ -5,6 +5,7 @@ import copy
 from summon.core import *
 import summon
 from summon import multiwindow
+from summon import select
 
 from rasmus.vis import visual
 from rasmus import util, stats, regionlib
@@ -247,7 +248,7 @@ class GenomeStackBrowser (Browser):
 class GenomeOverview (Browser):
     """Get an overview of region distribution across the genome"""
 
-    def __init__(self, chroms=None):
+    def __init__(self, chroms=None, regionsets=None):
         Browser.__init__(self)
         self.win = None
         
@@ -256,7 +257,12 @@ class GenomeOverview (Browser):
         else:
             self.chroms = chroms
         
-        self.regionsets = []
+        if regionsets == None:
+            self.regionsets = []
+        else:
+            self.regionsets = regionsets
+            
+        self.resolution_scale = 1
         
 
     def addRegions(self, regions, **options):
@@ -266,7 +272,7 @@ class GenomeOverview (Browser):
         self.regionsets.append(RegionSet(regions, options))
     
     
-    def show(self):
+    def show(self, winsize=None, winpos=None):
         
         self.clearTracks()
         
@@ -283,11 +289,24 @@ class GenomeOverview (Browser):
 
         # create window
         self.win = summon.Window()
-        self.win.set_bgcolor(1, 1, 1)       
+        self.win.set_bgcolor(1, 1, 1)
+        self.select = select.Select(self.win, self.onSelect, fillColor=(0,0,1,.3))
+        
+        if winpos != None:
+            self.win.set_position(*winpos)
+        
+        if winsize != None:
+            self.win.set_size(*winsize)
+
+        # zooming
+        self.win.set_binding(input_click("right", "down"), "focus")
+        self.win.set_binding(input_motion("right", "down"), "zoomx")
+        self.win.set_binding(input_click("right", "down", "shift"), "focus")
+        self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
+
         
         
-        maxchrom = max(x.end for x in self.chroms)         
-        
+        maxchrom = max(x.length() for x in self.chroms)
         
         # process each chromosome
         for chrom in self.chroms:
@@ -298,14 +317,14 @@ class GenomeOverview (Browser):
                 group(color(0,0,0), 
                       text_clip(chrom.seqname + " ", 
                            -maxchrom, y-step/2.0, 
-                           chrom.start, y+step/2.0,
+                           0, y+step/2.0,
                            4, 20, 
                            "right", "middle")
                       ))
                         
             # buld ruler for this chromosome
-            ruler = RulerTrack(top=1.0, bottom=-1.0,
-                               minicolor=color(0, 0, 0, 0))
+            ruler = RulerTrack(top=1.0, bottom=-1.0)
+                               #minicolor=color(0, 0, 0, 0))
             ruler.setPos(x, y)
             ruler.setView(chrom.species, 
                           chrom.seqname,
@@ -320,26 +339,70 @@ class GenomeOverview (Browser):
                     track = RegionTrack(regionset.chroms[chrom.seqname],
                                         **regionset.options)
                     track.setPos(x, y - .5)
-                    track.setSize(chrom.end - chrom.start, 1.0)
+                    track.setSize(chrom.length(), 1.0)
                     track.setView(chrom.species, 
                                   chrom.seqname,
                                   chrom.start,
                                   chrom.end)
                     self.addTrack(track)
-                    self.win.add_group(track.draw())
+                    self.win.add_group(scale(self.resolution_scale, self.resolution_scale, 
+                                             track.draw()))
         
         
         # setup window
-        print maxchrom / abs(float(y+step))
-        
         w, h = self.win.get_size()
         self.win.set_visible(0, -step, maxchrom, y+step)
         self.win.focus(w/2, h/2)
         self.win.zoom(1, maxchrom / abs(float(y+step)))
-        self.win.zoom(.9, .9)
+        self.win.zoom(.7, .9)
 
         self.setVisible(True)
-        summon.begin_updating()        
+        summon.begin_updating()
+    
+    
+    def pos2chrom(self, x, y):
+        for chrom in self.chroms:
+            pos = self.chromPos[chrom.seqname]
+            
+            if pos[0] <= x <= pos[0] + chrom.length() and \
+               pos[1] -1 <= y <= pos[1] + 1:
+                return chrom
+        return None
+             
+             
+    
+    def onSelect(self, pos1, pos2):
+         print pos1, pos2
+         
+         # determine selected chrom
+         chrom = self.pos2chrom(*pos1)
+         chrom2 = self.pos2chrom(*pos2)
+         
+         if chrom == None:
+            return
+         
+         if chrom != chrom2:
+            print "please select only one chromosome"
+            return
+         
+         x1 = pos1[0]
+         x2 = pos2[0]
+         if x1 > x2:
+            x1, x2 = x2, x1
+         chromPos = self.chromPos[chrom.seqname][0]
+         
+         newchrom = Region(chrom.species, chrom.seqname, chrom.feature, 
+                           max(chrom.start + x1 - chromPos, 0),
+                           min(chrom.start + x2 - chromPos, chrom.end))
+         
+         print "displaying region"
+         print newchrom
+         
+         # create sub-browser
+         subbrowser = GenomeOverview([newchrom], regionsets=self.regionsets)
+         subbrowser.show(winpos=self.win.get_position(),
+                         winsize=self.win.get_size())
+         
 
 
 class RegionSet (object):
@@ -395,25 +458,11 @@ class RulerTrack (Track):
         
         if align != None:
             self.coords = alignlib.CoordConverter(align)
-            #self.local2alignLookup = alignlib.local2align(align)
-            #self.align2localLookup = alignlib.align2local(align)
         else:
             self.coords = None
-            #self.local2alignLookup = None
-            #self.align2localLookup = None
         
         self.multiscale = visual.Multiscale(marginx=.5, marginy=.5, scalex=10, scaley=10)
-    
-    
-    #def local2align(self, i):
-    #    return self.local2alignLookup[int(util.clamp(i, 0, 
-    #                                           len(self.local2alignLookup)-1))]
-    
-    
-    #def align2local(self, i):
-    #    return self.align2localLookup[int(util.clamp(i, 0, 
-    #                                           len(self.align2localLookup)-1))]
-        
+       
     
     def draw(self):
         self.multiscale.init(self.get_window())
@@ -1014,6 +1063,7 @@ class AlignTrack (Track):
 
 
     def onClickCallback(self):
+        # TODO: should not rely on get_mouse_pos("world")
         win = self.get_window()
         x, y = win.get_mouse_pos('world')
         x -= self.pos[0]

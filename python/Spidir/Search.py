@@ -291,7 +291,8 @@ def proposeTree3(conf, tree,  distmat, labels,
     
     names = tree1.nodes.keys()
     names.remove(tree1.root.name)
-    names.sort(key=lambda x: dists[x])
+    #names.sort(key=lambda x: dists[x])
+    random.shuffle(names)
     
     
     for name in names[:min(len(names), conf["regraftloop"])]:

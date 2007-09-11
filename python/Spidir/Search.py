@@ -244,9 +244,12 @@ def proposeTreeWeighted(tree):
 def proposeTree2(conf, tree,  distmat, labels, 
                   stree, gene2species, params, visited):
     tree2 = tree
-    for i in range(random.randint(1,3)):
+    nniprobs = [.70, .20, .10]
+    
+    pick = stats.sample(nniprobs)
+    
+    for i in xrange(pick+1):
         tree2 = proposeTree(conf, tree2)
-        #tree2 = proposeTreeWeighted(tree2)
 
     if random.random() < conf["rerootprob"]:
         phylo.reconRoot(tree2, stree, gene2species, newCopy=False)

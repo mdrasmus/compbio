@@ -50,6 +50,7 @@ float gammavariate(float alpha, float beta);
 
 inline float logadd(float lna, float lnb)
 {
+    // can be improved. see python:rasmus.stats
     return logf(expf(lna - lnb) + 1.0) + lnb;
 }
 

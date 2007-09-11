@@ -198,10 +198,10 @@ def regraftTree(tree, subtree, node1, node2):
 def proposeTree(conf, tree):
     tree2 = tree.copy()
     
-    if random.random() < conf["rerootprob"]:
-        nodes = tree.nodes.values()
-        newnode = nodes[random.randint(0, len(nodes)-1)]
-        tree2 = treelib.reroot(tree2, newnode.name)
+    #if random.random() < conf["rerootprob"]:
+    #    nodes = tree.nodes.values()
+    #    newnode = nodes[random.randint(0, len(nodes)-1)]
+    #    tree2 = treelib.reroot(tree2, newnode.name)
     
     # find edges for NNI
     nodes = tree2.nodes.values()
@@ -241,6 +241,84 @@ def proposeTreeWeighted(tree):
     return tree2
 
 
+def proposeTree2(conf, tree,  distmat, labels, 
+                  stree, gene2species, params, visited):
+    tree2 = tree
+    for i in range(random.randint(1,3)):
+        tree2 = proposeTree(conf, tree2)
+        #tree2 = proposeTreeWeighted(tree2)
+
+    if random.random() < conf["rerootprob"]:
+        phylo.reconRoot(tree2, stree, gene2species, newCopy=False)
+    return tree2
+
+
+def proposeTree3(conf, tree,  distmat, labels, 
+                  stree, gene2species, params, visited):
+    toplogl = tree.data["logl"]
+    toptree = tree.copy()
+    
+    tree = tree.copy()
+    
+    nodes = tree.nodes.values()
+    nodes.remove(tree.root)
+    weights = [1 for x in nodes] #[x.data["error"] for x in nodes]
+    badgene = nodes[stats.sample(weights)]
+    
+    
+    # detemine distance from badgene to everyone else
+    dists = util.Dict(default=-util.INF)
+    def walk(node, dist):
+        dists[node.name] = dist
+        for child in node.children:
+            walk(child, dist + child.dist)
+    walk(badgene, 0)
+    seen = set([badgene])
+    node = badgene.parent
+    dist = badgene.dist
+    while node != None:        
+        for child in node.children:
+            if child not in seen:
+                walk(child, dist)
+        seen.add(node)
+        dist +=  node.dist
+        node = node.parent
+    
+    tree1, tree2 = splitTree(tree, badgene, badgene.parent)
+    
+    names = tree1.nodes.keys()
+    names.remove(tree1.root.name)
+    names.sort(key=lambda x: dists[x])
+    
+    
+    for name in names[:min(len(names), conf["regraftloop"])]:
+        tree = tree1.copy()
+        node = tree.nodes[name]
+        
+        #print "p3>>", node.name, node.parent.name
+        regraftTree(tree, tree2.copy(), node, node.parent)
+        
+        thash = phylo.hashTree(tree)
+        
+        if thash not in visited:        
+            Spidir.setTreeDistances(conf, tree, distmat, labels)
+            logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
+        addVisited(conf, visited, tree, gene2species, thash)
+        logl, tree, count = visited[thash]
+        
+        if logl > toplogl:
+            toplogl = logl
+            toptree = tree
+            
+            # try returning immediately
+            #return toptree
+
+    
+    assert toptree != None
+    
+    return toptree
+
+
 
 def printMCMC(conf, i, tree, stree, gene2species, visited):
     if isDebug(DEBUG_LOW):
@@ -252,9 +330,6 @@ def printMCMC(conf, i, tree, stree, gene2species, visited):
         drawTreeLogl(tree, events=events)
         debug()
         debug()
-    
-    
-        
 
 
 
@@ -474,83 +549,6 @@ class McmcChain:
             self.state = nextState
             self.logl = nextLogl
 
-
-def proposeTree2(conf, tree,  distmat, labels, 
-                  stree, gene2species, params, visited):
-    tree2 = tree
-    for i in range(random.randint(1,3)):
-        tree2 = proposeTree(conf, tree2)
-        #tree2 = proposeTreeWeighted(tree2)
-
-    if random.random() < conf["rerootprob"]:
-        phylo.reconRoot(tree2, stree, gene2species, newCopy=False)
-    return tree2
-
-
-def proposeTree3(conf, tree,  distmat, labels, 
-                  stree, gene2species, params, visited):
-    toplogl = tree.data["logl"]
-    toptree = tree.copy()
-    
-    tree = tree.copy()
-    
-    nodes = tree.nodes.values()
-    nodes.remove(tree.root)
-    weights = [1 for x in nodes] #[x.data["error"] for x in nodes]
-    badgene = nodes[stats.sample(weights)]
-    
-    
-    # detemine distance from badgene to everyone else
-    dists = util.Dict(default=-util.INF)
-    def walk(node, dist):
-        dists[node.name] = dist
-        for child in node.children:
-            walk(child, dist + child.dist)
-    walk(badgene, 0)
-    seen = set([badgene])
-    node = badgene.parent
-    dist = badgene.dist
-    while node != None:        
-        for child in node.children:
-            if child not in seen:
-                walk(child, dist)
-        seen.add(node)
-        dist +=  node.dist
-        node = node.parent
-    
-    tree1, tree2 = splitTree(tree, badgene, badgene.parent)
-    
-    names = tree1.nodes.keys()
-    names.remove(tree1.root.name)
-    names.sort(key=lambda x: dists[x])
-    
-    
-    for name in names[:min(len(names), conf["regraftloop"])]:
-        tree = tree1.copy()
-        node = tree.nodes[name]
-        
-        #print "p3>>", node.name, node.parent.name
-        regraftTree(tree, tree2.copy(), node, node.parent)
-        
-        thash = phylo.hashTree(tree)
-        
-        if thash not in visited:        
-            Spidir.setTreeDistances(conf, tree, distmat, labels)
-            logl = Spidir.treeLogLikelihood(conf, tree, stree, gene2species, params)
-        addVisited(conf, visited, tree, gene2species, thash)
-        logl, tree, count = visited[thash]
-        
-        if logl > toplogl:
-            toplogl = logl
-            toptree = tree
-            
-            # try returning immediately
-            #return toptree
-
-    
-    assert toptree != None
-    
-    return toptree
 
 
 def searchRegraft(conf, distmat, labels, stree, gene2species, params,

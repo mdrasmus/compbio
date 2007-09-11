@@ -66,7 +66,6 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
             node2 = node2->children[0];
         
         // if edge is not an internal edge, give up
-        //assert(node2->nchildren >= 2);
         if (node2->nchildren < 2)
             return;
     }
@@ -102,23 +101,16 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, int change)
 
 void proposeRandomNni(Tree *tree, Node **node1, Node **node2, int *change)
 {
-    /*
-    if random.random() < conf["rerootprob"]:
-        nodes = tree.nodes.values()
-        newnode = nodes[random.randint(0, len(nodes)-1)]
-        tree2 = treelib.reroot(tree2, newnode.name)
-    */
-    
     // find edges for NNI
     int choice = tree->root->name;
     do {
-        choice = irand(tree->nnodes); // * tree->nnodes);
+        choice = irand(tree->nnodes);
     } while (tree->nodes[choice]->isLeaf() || 
              tree->nodes[choice]->parent == NULL);
     
     *node1 = tree->nodes[choice];
     *node2 = tree->nodes[choice]->parent;
-    *change = irand(2); //int(frand() * 2);
+    *change = irand(2);
 }
 
 
@@ -161,18 +153,23 @@ void NniProposer::propose(Tree *tree)
     // TODO: need random reroot or recon root.
     if (frand() < rerootProb) {
         oldroot = tree->root->children[0];
-        //int choice = irand(tree->nnodes);
-        //tree->reroot(tree->nodes[choice]);
         
-        //int choice1 = irand(2);
-        //int choice2 = irand(2);
-        //if (tree->root->children[choice1]->nchildren == 2)
-        //    tree->reroot(tree->root->children[choice1]->children[choice2]);
-        //else
-        //    tree->reroot(tree->root->children[!choice1]->children[choice2]);
-        
-        if (stree != NULL)
+        if (stree != NULL) {
             reconRoot(tree, stree, gene2species);
+        } else {
+            /*
+            // do random reroot if species tree is not given
+            int choice = irand(tree->nnodes);
+            tree->reroot(tree->nodes[choice]);
+
+            int choice1 = irand(2);
+            int choice2 = irand(2);
+            if (tree->root->children[choice1]->nchildren == 2)
+                tree->reroot(tree->root->children[choice1]->children[choice2]);
+            else
+                tree->reroot(tree->root->children[!choice1]->children[choice2]);
+            */
+        }
     } else {
         oldroot = NULL;
     }

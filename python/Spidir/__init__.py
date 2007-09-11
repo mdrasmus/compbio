@@ -1579,6 +1579,8 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     phylo.midrootRecon(tree, stree, recon, events, params, baserate)
     
     # calc likelihood in C
+    #this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
+    #                             0.0, gene2species)
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
                                  baserate, gene2species)
     

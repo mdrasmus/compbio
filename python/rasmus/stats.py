@@ -162,6 +162,17 @@ def percentile(vals, perc, rounding=-1, sort=True):
         raise Exception("rounding must be 1 or -1")
 
 
+def logadd(lna, lnb):
+    """Adding numbers in log-space"""
+    
+    diff = lna - lnb
+    if diff < 500:
+        return log(exp(diff) + 1.0) + lnb
+    else:
+        return diff + lnb
+
+
+
 def smooth(vals, radius):
     """
     return an averaging of vals using a radius

@@ -688,9 +688,13 @@ float treelk(Tree *tree,
     tree->getDists(dists);
     
     // estimate generate
-    if (generate < 0)
+    if (generate <= 0)
         generate = estimateGenerate(tree, stree, 
                        recon, events, params);
+    if (generate == 0.0)
+        generate = estimateGenerate(tree, stree, 
+                       recon, events, params);
+    
     
     // determine reconciliation parameters
     ReconParams reconparams = ReconParams(tree->nnodes);

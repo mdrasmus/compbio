@@ -17,7 +17,7 @@ from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
 from regionlib import *
-from rasmus.vis.treesvg import showTree
+#from rasmus.vis.treesvg import showTree
 
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib
@@ -85,6 +85,13 @@ def pl(lines, out=sys.stdout):
     for line in lines:
         print >>out, line
 
+
+def showTree(tree, **options):
+    from rasmus.vis import treevis
+    vis = treevis.TreeViewer(tree, **options)
+    vis.show()
+    
+    return vis
 
 
 # try to setup DATAPATH env

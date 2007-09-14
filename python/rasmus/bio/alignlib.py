@@ -330,7 +330,7 @@ def findAlignedCodons(aln, ref=None):
             ind2.extend(ind[i:i+3])
 
     return ind2
-
+findAlignCodons = findAlignedCodons
 
 
 

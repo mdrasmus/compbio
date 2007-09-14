@@ -300,6 +300,14 @@ def makeCodonPosAlign(aln):
 
 
 def findAlignedCodons(aln, ref=None):
+    """returns the columns indices of the alignment that represent aligned 
+       codons.  
+       
+       aln - alignment (FastaDict)
+       ref - reference sequence (default: None)
+             if not None, all columns with gap in reference are removed
+    """
+
     # throw out cols with gap in reference species
     if ref != None:
         ind = util.find(util.neqfunc("-"), aln[ref])
@@ -327,43 +335,10 @@ def findAlignedCodons(aln, ref=None):
 
 
 def filterAlignCodons(aln, ref=None):
-    """filter an alignment for only aligned codons"""
+    """filters an alignment for only aligned codons"""
 
     ind = findAlignCodons(aln, ref=ref)
     return subalign(aln, ind)
-
-
-'''
-def findAlignCodons(aln):
-    """find all columns of aligned codons"""
-    
-    codonAln = mapalign(aln, valfunc=markCodonPos)
-    cols = map(util.histDict, zip(* codonAln.values()))
-
-    ind = []
-    codon = []
-    gaps = util.Dict(default=0)
-    for i in range(len(cols)):
-
-        if len(cols[i]) == 1:
-            codon.append(i)
-        elif len(cols[i]) == 2 and -1 in cols[i]:
-            for key, val in aln.iteritems():
-                if val[i] == "-":
-                    gaps[key] += 1 
-            codon.append(i)
-        else:
-            codon = []
-        if len(codon) == 3:
-            if len(gaps) == 0 or \
-               util.unique([x % 3 for x in gaps.values()]) == [0]:
-                ind.extend(codon)
-            codon = []
-            for key in gaps:
-                gaps[key] = 0
-
-    return ind
-'''
 
 
 
@@ -411,8 +386,54 @@ def findFourFold(aln):
     return ind
 
 
+def filterFourFold(aln, ref=None):
+    """returns an alignment of only four-fold degenerate sites from an 
+       alignment of coding sequences
+    
+       This function performs the following steps:
+       
+       1. remove all columns that are a gap in ref sequence (if not None)
+       2. remove all codon columns that don't have 0 or 3 gaps
+       3. keep all codon columns that code for identical AA
+       4. if the codon column codes for a 4D AA, then keep its 3rd position
+    """
+
+    aln_codons = filterAlignCodons(aln, ref=ref)
+    ind = findFourFold(aln_codons)
+    return subalign(aln_codons, ind)
 
 '''
+def findAlignCodons(aln):
+    """find all columns of aligned codons"""
+    
+    codonAln = mapalign(aln, valfunc=markCodonPos)
+    cols = map(util.histDict, zip(* codonAln.values()))
+
+    ind = []
+    codon = []
+    gaps = util.Dict(default=0)
+    for i in range(len(cols)):
+
+        if len(cols[i]) == 1:
+            codon.append(i)
+        elif len(cols[i]) == 2 and -1 in cols[i]:
+            for key, val in aln.iteritems():
+                if val[i] == "-":
+                    gaps[key] += 1 
+            codon.append(i)
+        else:
+            codon = []
+        if len(codon) == 3:
+            if len(gaps) == 0 or \
+               util.unique([x % 3 for x in gaps.values()]) == [0]:
+                ind.extend(codon)
+            codon = []
+            for key in gaps:
+                gaps[key] = 0
+
+    return ind
+
+
 def findFourFold(aln):
     """Returns index of all columns in alignment that are completely 
        fourfold degenerate
@@ -575,6 +596,57 @@ def pssmSeq(pssm, seq):
 #--------------------------------------------------------------------------------
 
 
+class CoordConverter (object):
+    """Converts between coordinate systems on a gapped sequence"""
+    
+    def __init__(self, seq):
+        self.local2alignLookup = local2align(seq)
+        self.align2localLookup = align2local(seq)
+    
+    
+    def local2align(self, i, clamp=False):
+        if clamp:
+            return self.local2alignLookup[int(util.clamp(i, 0, 
+                                                len(self.local2alignLookup)-1))]
+        else:
+            return self.local2alignLookup[i]
+
+
+    def align2local(self, i, clamp=False):
+        if clamp:
+            return self.align2localLookup[int(util.clamp(i, 0, 
+                                                len(self.align2localLookup)-1))]
+        else:
+            return self.align2localLookup[i]
+
+
+    def global2local(self, gobal_coord, start, end, strand):
+        """Returns local coordinate in a global region"""
+        return global2local(gobal_coord, start, end, strand)
+        
+
+    def local2global(self, local_coord, start, end, strand):
+        """Return global coordinate within a region from a local coordinate"""
+        local2global(local_coord, start, end, strand)
+
+
+    def global2align(self, global_coord, start, end, strand):
+        local_coord = global2local(global_coord, start, end, strand)
+    
+        # throw exception for out of bounds
+        if local_coord < 0 or \
+           local_coord >= len(alignLookup):
+            raise Exception("coordinate outside [start, end]")
+
+        return self.local2alignLookup[local_coord]
+
+
+    def align2global(self, align_coord, start, end, strand):
+        local_coord = self.align2localLookup[align_coord]
+        return local2global(local_coord, start, end, strand)
+
+
+
 def local2align(seq):
     """
     Returns list of indices of non-gap characters
@@ -644,58 +716,6 @@ def global2align(global_coord, start, end, strand, alignLookup):
 def align2global(align_coord, start, end, strand, localLookup):
     local_coord = localLookup[align_coord]
     return local2global(local_coord, start, end, strand)
-
-
-class CoordConverter (object):
-    """Converts between coordinate systems on a gapped sequence"""
-    
-    def __init__(self, seq):
-        self.local2alignLookup = local2align(seq)
-        self.align2localLookup = align2local(seq)
-    
-    
-    def local2align(self, i, clamp=False):
-        if clamp:
-            return self.local2alignLookup[int(util.clamp(i, 0, 
-                                                len(self.local2alignLookup)-1))]
-        else:
-            return self.local2alignLookup[i]
-
-
-    def align2local(self, i, clamp=False):
-        if clamp:
-            return self.align2localLookup[int(util.clamp(i, 0, 
-                                                len(self.align2localLookup)-1))]
-        else:
-            return self.align2localLookup[i]
-
-
-    def global2local(self, gobal_coord, start, end, strand):
-        """Returns local coordinate in a global region"""
-        return global2local(gobal_coord, start, end, strand)
-        
-
-    def local2global(self, local_coord, start, end, strand):
-        """Return global coordinate within a region from a local coordinate"""
-        local2global(local_coord, start, end, strand)
-
-
-    def global2align(self, global_coord, start, end, strand):
-        local_coord = global2local(global_coord, start, end, strand)
-    
-        # throw exception for out of bounds
-        if local_coord < 0 or \
-           local_coord >= len(alignLookup):
-            raise Exception("coordinate outside [start, end]")
-
-        return self.local2alignLookup[local_coord]
-
-
-    def align2global(self, align_coord, start, end, strand):
-        local_coord = self.align2localLookup[align_coord]
-        return local2global(local_coord, start, end, strand)
-
-
 
 
 

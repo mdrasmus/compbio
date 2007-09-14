@@ -251,6 +251,7 @@ class GenomeOverview (Browser):
     def __init__(self, chroms=None, regionsets=None):
         Browser.__init__(self)
         self.win = None
+        self.leftwin = None
         
         if chroms == None:
             self.chroms = []
@@ -305,8 +306,26 @@ class GenomeOverview (Browser):
         self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
 
         
+        # create left window
+        self.leftwin = summon.Window(" ")
+        self.leftwin.set_bgcolor(1, 1, 1)
+        self.leftwin.set_size(150, self.win.get_size()[1])
+        
+        self.leftEnsemble = multiwindow.WindowEnsemble(
+                             [self.leftwin, self.win], 
+                              stacky=True, sameh=True,
+                              tiey=True, piny=True,
+                              master=self.win)
         
         maxchrom = max(x.length() for x in self.chroms)
+        
+        # add line to left window
+        maxname = max(len(x.seqname) for x in self.chroms) * 20
+        self.leftwin.add_group(lines(color(1,1,1), 
+                                     0, 0, -maxname, 0,
+                                     0, 0, 0, step * len(self.chroms),
+                                     0, step * len(self.chroms), 
+                                     -maxname, step * len(self.chroms)))
         
         # process each chromosome
         for chrom in self.chroms:
@@ -314,6 +333,15 @@ class GenomeOverview (Browser):
             
             # draw chromosome names
             self.win.add_group(
+                group(color(0,0,0), 
+                      text_clip(chrom.seqname + " ", 
+                           -maxchrom, y-step/2.0, 
+                           0, y+step/2.0,
+                           4, 20, 
+                           "right", "middle")
+                      ))
+            
+            self.leftwin.add_group(
                 group(color(0,0,0), 
                       text_clip(chrom.seqname + " ", 
                            -maxchrom, y-step/2.0, 
@@ -348,13 +376,16 @@ class GenomeOverview (Browser):
                     self.win.add_group(scale(self.resolution_scale, self.resolution_scale, 
                                              track.draw()))
         
+        # setup left window
+        self.leftwin.home()
+        
         
         # setup window
         w, h = self.win.get_size()
         self.win.set_visible(0, -step, maxchrom, y+step)
         self.win.focus(w/2, h/2)
         self.win.zoom(1, maxchrom / abs(float(y+step)))
-        self.win.zoom(.7, .9)
+        self.win.zoom(.9, .9)
 
         self.setVisible(True)
         summon.begin_updating()

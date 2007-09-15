@@ -354,6 +354,7 @@ def findFourFold(aln):
     
     # find peptide conservation
     pepcons = []
+    pep = []
     for i in xrange(pepAln.alignlen()):
         # get a column from the peptide alignment
         col = [seq[i] for seq in pepAln.itervalues()]
@@ -367,13 +368,12 @@ def findFourFold(aln):
             del hist["X"]
         
         # column is conserved if only one AA appears
-        pepcons.append(len(hist) == 1 and "X" not in hist)
+        pepcons.append(len(hist) == 1)
+        pep.append(hist.values()[0])
         
     
+    # find four-fold sites in conserved peptides
     ind = []
-    
-    # get peptides of 1st sequence
-    pep = pepAln.values()[0]
     
     for i in range(0, len(aln.values()[0]), 3):
         # process only those columns that are conserved at the peptide level

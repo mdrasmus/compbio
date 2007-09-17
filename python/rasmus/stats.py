@@ -135,12 +135,28 @@ def fitLine(xlist, ylist):
 
 
 def fitLineError(xlist, ylist, slope, inter):
+    """Returns the Mean Square Error of the data fit"""
     error = 0
     n = len(xlist)
     
     for i in range(n):
         error += ((xlist[i]*slope + inter) - ylist[i]) ** 2
     return error / n
+
+
+def pearsonsRegression(observed, expected):
+    """Pearson's co-efficient of regression"""
+    
+    # error sum of squares
+    ess = sum((a - b)**2 for a, b in util.izip(observed, expected))
+    
+    # total sum of squares
+    u = mean(observed)
+    tss = sum((a - u)**2 for a in util.izip(observed))
+    
+    r2 = 1 - ess / tss
+    return r2
+    
 
 
 def percentile(vals, perc, rounding=-1, sort=True):

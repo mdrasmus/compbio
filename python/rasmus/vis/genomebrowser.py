@@ -248,8 +248,8 @@ class GenomeStackBrowser (Browser):
 class GenomeOverview (Browser):
     """Get an overview of region distribution across the genome"""
 
-    def __init__(self, chroms=None, regionsets=None):
-        Browser.__init__(self)
+    def __init__(self, chroms=None, regionsets=None, **options):
+        Browser.__init__(self, **options)
         self.win = None
         self.leftwin = None
         
@@ -298,6 +298,7 @@ class GenomeOverview (Browser):
         
         if winsize != None:
             self.win.set_size(*winsize)
+    
 
         # zooming
         self.win.set_binding(input_click("right", "down"), "focus")

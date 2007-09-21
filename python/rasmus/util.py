@@ -398,15 +398,12 @@ def mapapply(funcs, lst):
 
 
 def cumsum(vals):
-    """Returns a cumalative sum of vals"""
-    sums = []
+    """Returns a cumalative sum of vals (as an iterator)"""
     
     tot = 0
     for v in vals:
         tot += v
-        sums.append(tot)
-    
-    return sums
+        yield tot
 
 
 def frange(start, end, step):
@@ -463,16 +460,17 @@ def transpose(mat):
 
 def submatrix(mat, rows=None, cols=None):
     if rows == None:
-        rows = range(len(mat))
+        rows = xrange(len(mat))
     if cols == None:
-        cols = range(len(mat[0]))
+        cols = xrange(len(mat[0]))
     
     mat2 = []
     
     for i in rows:
-        mat2.append([])
+        newrow = []
+        mat2.append(newrow)
         for j in cols:
-            mat2[-1].append(mat[i][j])
+            newrow.append(mat[i][j])
     
     return mat2
 
@@ -513,7 +511,11 @@ def max2(matrix):
 
 
 def range2(width, height):
-    """Iterates over the indices of a matrix"""
+    """Iterates over the indices of a matrix
+    
+       Thus list(range2(3, 2)) returns
+        [(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
+    """
     
     for i in xrange(width):
         for j in xrange(height):
@@ -553,6 +555,10 @@ def countgt(a, lst): return count(gtfunc(a), lst)
 def find(func, *lsts):
     """
     Returns the indices 'i' of 'lst' where func(lst[i]) == True
+    
+    if N lists are passed, N arguments are passed to 'func' at a time.
+    Thus, find(func, list1, list2) returns the list of indices 'i' where 
+    func(list1[i], list2[i]) == True
     
     See also:
         findeq(a, lst)   find items equal to a
@@ -1465,7 +1471,7 @@ sortInd = sortrank
 def sortTogether(compare, lst, *others):
     """Sort several lists based on the sorting of 'lst'"""
 
-    ind = sortInd(lst, compare)
+    ind = sortrank(lst, compare)
     lsts = [mget(lst, ind)]
     
     for other in others:

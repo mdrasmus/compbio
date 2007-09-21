@@ -552,7 +552,7 @@ def hashOrderTree(tree, smap = lambda x: x):
             return smap(node.name)
         else:
             childHashes = map(walk, node.children)
-            ind = util.sortInd(childHashes)
+            ind = util.sortrank(childHashes)
             childHashes = util.mget(childHashes, ind)
             node.children = util.mget(node.children, ind)
             return hashTreeCompose(childHashes)

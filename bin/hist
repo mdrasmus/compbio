@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+# prints a nice histogram of input lines
+
+import sys
+from rasmus import tablelib
+
+
+if len(sys.argv) > 1:
+    infile = sys.argv[1]
+else:
+    infile = sys.stdin
+
+# read data
+lines = []
+for line in infile:
+    lines.append(line.rstrip())
+
+hist = tablelib.histTable(lines)
+
+for row in hist:
+    row['percent'] *= 100
+
+# display histogram
+print hist.__repr__()
+

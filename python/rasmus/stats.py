@@ -15,7 +15,12 @@ from rasmus import algorithms
 
 
 def mean(vals):
-    return sum(vals) / float(len(vals))
+    n = 0
+    s = 0.0
+    for i in vals:
+        s += i
+        n += 1
+    return s / float(n)
 
 def median(vals):
     lenvals = len(vals)
@@ -813,8 +818,8 @@ def spearman(vec1, vec2):
     assert len(vec1) == len(vec2), "vec1 and vec2 are not the same length"
     
     n = len(vec1)
-    rank1 = util.sortInd(vec1)
-    rank2 = util.sortInd(vec2)
+    rank1 = util.sortrank(vec1)
+    rank2 = util.sortrank(vec2)
     
     R = sum((vec1[i] - vec2[i])**2 for i in xrange(n))
     

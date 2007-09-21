@@ -90,6 +90,8 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
             writeSquareMatrix(tmpfile, mat)
         else:
             writeDenseMatrix(tmpfile, mat)
+        
+        assert nclusters >= len(mat), "too many clusters requested"
     
     partfile = tmpfile + ".clustering.%d" % nclusters
     
@@ -110,7 +112,8 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
 
 
 # TODO: add saveOutput
-def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
+def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False,
+                returnPartids=False):
     """Cluster a matrix into 'nclusters'
         
        mat  - a matrix or a matrix filename
@@ -132,6 +135,8 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
             writeSquareMatrix(tmpfile, mat)
         else:
             writeDenseMatrix(tmpfile, mat)
+    
+        assert nclusters >= len(mat), "too many clusters requested"
         
     # determine files
     partfile = matfile + ".clustering.%d" % nclusters
@@ -145,13 +150,18 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False):
     
     tree = treelib.Tree()
     tree.readParentTree(treefile)
+    partids = util.readInts(partfile)
     
+    # clean up
     if tmpfile != None:
         os.remove(tmpfile)
     os.remove(partfile)
     os.remove(treefile)
     
-    return tree
+    if returnPartids:
+        return tree, partids
+    else:
+        return tree
 
 
 def reorderTree(tree, mat, prog="vcluster"):
@@ -176,6 +186,9 @@ def reorderTree(tree, mat, prog="vcluster"):
     
     os.remove(matfile)
     os.remove(treefile)
+    
+    if len(perm) != len(mat):
+        raise Exception("error running 'cluto_reorder_tree'")
     
     return perm
 

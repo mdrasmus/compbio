@@ -151,6 +151,11 @@ def determineParam(node, recon, events, stree, params, midpoints):
     # convert variance to sdev
     param[1] = math.sqrt(param[1])
     
+    # handle pre-speciation branch
+    if len(fracs) == 1 and fracs[0] == 0.0:
+        mean = .10
+        param = [mean, mean/3.0]
+    
     return param
 
 
@@ -199,9 +204,9 @@ def setMidpointsRandom(node, events, recon, params, midpoints, wholeTree=True):
                 startpoint = midpoints[node.parent]
             else:
                 # im the first on this branch so the last midpoint is zero
-                #startpoint = 0.0
+                startpoint = 0.0
                 
-                startpoint = chooseStartpoint(node, recon, params)
+                #startpoint = chooseStartpoint(node, recon, params)
             
             # pick a midpoint uniformly after the last one
             midpoints[node] = startpoint + \

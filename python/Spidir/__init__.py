@@ -23,13 +23,13 @@ from rasmus.vis import treesvg
 
 # scipy libs
 # (needed for numerical integration and least square error fitting)
-#try:
-#    import scipy
-#    import scipy.linalg
-#    import scipy.integrate
-#    import scipy.optimize
-#except:
-#    pass
+try:
+    import scipy
+    import scipy.linalg
+    import scipy.integrate
+    import scipy.optimize
+except:
+    pass
 
 
 # SPIDIR libs

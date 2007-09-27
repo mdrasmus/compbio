@@ -49,10 +49,10 @@ def phyml(seqs, verbose=True, args=None,
     
     if args == None:
         if seqtype == "dna":
-            args = "infile 0 s 1 %d HKY e e 2 e %s %s" % \
+            args = "infile 0 s 1 %d HKY e e 4 e %s %s" % \
                 (bootiter, treefile, optimize)
         elif seqtype == "pep":
-            args = "infile 1 s 1 %d JTT e 2 e %s %s" % \
+            args = "infile 1 s 1 %d JTT e 4 e %s %s" % \
                 (bootiter, treefile, optimize)
         else:
             assert False, "unknown sequence type '%s'" % seqtype

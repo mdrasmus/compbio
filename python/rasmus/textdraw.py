@@ -6,8 +6,10 @@ from rasmus import util
 
 
 class TextCanvas:
+    """Draw ascii art on a automatically growing matrix"""
+    
     def __init__(self, default=' '):
-        self.mat = util.Dict(2, default)
+        self.mat = util.Dict(dim=2, default=default)
         self.default = default
     
     

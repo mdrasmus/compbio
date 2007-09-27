@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from rasmus import util, genomeio, genomeutil, fasta, env
+from rasmus import util, env
+from rasmus.bio import genomeio, genomeutil, fasta
 import sys
 
 

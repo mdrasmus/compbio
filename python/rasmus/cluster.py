@@ -10,11 +10,11 @@ import os
 import sys
 
 from rasmus import algorithms
-from rasmus import blast
 from rasmus import graph
 from rasmus import matrix
 from rasmus import util
 
+from rasmus.bio import blast
 
 
 ##############################################

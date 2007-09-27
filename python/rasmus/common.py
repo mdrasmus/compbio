@@ -6,6 +6,9 @@
 """
 
 # python libs
+import os, sys, re
+from math import *
+import StringIO
 from itertools import izip, imap
 
 
@@ -23,29 +26,15 @@ from regionlib import *
 from rasmus import env, svg, tablelib, treelib
 from rasmus.tablelib import Table, readTable
 from rasmus.treelib import *
-import genomeio
 
 # bio tools
 from rasmus.bio.fasta import *
 from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, alignlib
-from rasmus.bio import gff
+from rasmus.bio import gff, genomeio
 
 
 
 
-"""
-# common compbio imports
-try:
-    from compbio.tools import pp
-    from compbio import tools
-except:
-    pass
-"""
-
-# python imports
-import os, sys, re
-from math import *
-import StringIO
 
 
 

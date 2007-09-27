@@ -6,7 +6,7 @@ import os, sys
 # rasmus libs
 from rasmus import util, env
 from rasmus.bio import genomeio, genomeutil, clustalw, fasta, gff
-from rasmus.genomeutil import *
+from rasmus.bio import genomeutil import *
 
 # graphics libs
 from summon import *

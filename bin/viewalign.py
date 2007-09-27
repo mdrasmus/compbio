@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 import sys
-from rasmus import util, fasta, alignlib
+from rasmus import util
+from rasmus.bio fasta, alignlib
 
 
 options = [

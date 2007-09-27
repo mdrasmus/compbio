@@ -404,7 +404,6 @@ class GenomeOverview (Browser):
              
     
     def onSelect(self, pos1, pos2):
-         print pos1, pos2
          
          # determine selected chrom
          chrom = self.pos2chrom(*pos1)

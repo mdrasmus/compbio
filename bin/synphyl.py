@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import sys, time, os
-from rasmus import synphylweb,  env, ensembl
+from rasmus import synphylweb,  env
 from rasmus import util, algorithms
 
 # rasmus bio libs
 from rasmus.bio import muscle, phylip, clustalw, synteny, bionj
-from rasmus.bio import phylo, genomeio, genomeutil, fasta
+from rasmus.bio import phylo, genomeio, genomeutil, fasta, ensembl
 
 
 options = [

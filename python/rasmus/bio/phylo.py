@@ -25,7 +25,7 @@ from rasmus.bio import phylip
 
 
 # I was thinking about moving these functions over here... not sure yet
-from rasmus.genomeutil import gene2species, makeGene2species, readGene2species
+from rasmus.bio.genomeutil import gene2species, makeGene2species, readGene2species
 
 
 

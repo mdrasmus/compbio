@@ -5,11 +5,11 @@ import math
 import sys
 
 # rasmus libs
-from rasmus import clustalw
 from rasmus import matrix
 from rasmus import stats
 from rasmus import util
-from rasmus.genomeutil import *
+from rasmus.bio.genomeutil import *
+from rasmus.bio import clustalw
 
 
 # summon libs

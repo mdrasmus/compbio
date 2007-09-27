@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-import getopt
+
 import sys
-from rasmus import util, synteny, genomeio, genomeutil
+from rasmus import util
+from rasmus.bio import synteny, genomeio, genomeutil
 
 options = [
     ["g:", "genome=", "genome", "AUTO<genome>"],

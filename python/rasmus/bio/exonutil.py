@@ -2,7 +2,8 @@
 # old file
 #
 
-from rasmus import util, genomeutil, graph, genomeio, fasta, graph, ensembl
+from rasmus import util, graph
+from rasmus.bio import genomeutil, genomeio, fasta, ensembl
 
 
 def findAlignedExons(aln, genomes):

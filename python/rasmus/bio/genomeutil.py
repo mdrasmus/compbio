@@ -11,7 +11,6 @@ import sys
 
 # rasmus libs
 from rasmus import algorithms
-from rasmus import ensembl
 from rasmus import env
 from rasmus import stats
 from rasmus import treelib
@@ -19,7 +18,7 @@ from rasmus import util
 
 from rasmus.bio import fasta
 from rasmus.bio import gff
-
+from rasmus.bio import ensembl
 
 #
 # Wed May  9 21:25:13 EDT 2007

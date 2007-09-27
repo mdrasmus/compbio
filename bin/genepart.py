@@ -2,11 +2,12 @@
 
 import sys
 
-from rasmus import genecluster
-from rasmus import genomeutil
 from rasmus import util
 from rasmus import treelib
 from rasmus import tablelib
+
+from rasmus.bio import genecluster
+from rasmus.bio import genomeutil
 
 
 options = [

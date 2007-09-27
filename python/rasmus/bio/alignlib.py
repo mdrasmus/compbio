@@ -40,7 +40,7 @@ def newAlign(aln=None):
 def mapalign(aln, keyfunc=lambda x: x, valfunc=lambda x: x):
     """Maps the keys and values of an alignment
        
-       very similar to util.mapdict()
+       very similar to rasmus.util.mapdict()
     """
     
     aln2 = newAlign(aln)
@@ -135,7 +135,7 @@ def calcConservation(aln):
 
 def printAlign(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(), 
                out=sys.stdout, order=None):
-    """Pretty print an align"""
+    """Pretty print an alignment"""
                
     if order == None:
         order = aln.keys()
@@ -354,6 +354,7 @@ def findFourFold(aln):
     
     # find peptide conservation
     pepcons = []
+    pep = []
     for i in xrange(pepAln.alignlen()):
         # get a column from the peptide alignment
         col = [seq[i] for seq in pepAln.itervalues()]
@@ -367,13 +368,17 @@ def findFourFold(aln):
             del hist["X"]
         
         # column is conserved if only one AA appears
-        pepcons.append(len(hist) == 1 and "X" not in hist)
+        
+        if len(hist) == 1:
+            pepcons.append(True)
+            pep.append(hist.keys()[0])
+        else:
+            pepcons.append(False)
+            pep.append("X")
         
     
+    # find four-fold sites in conserved peptides
     ind = []
-    
-    # get peptides of 1st sequence
-    pep = pepAln.values()[0]
     
     for i in range(0, len(aln.values()[0]), 3):
         # process only those columns that are conserved at the peptide level
@@ -551,8 +556,8 @@ def align2pssm(aln, pseudocounts = {}):
     pssm = []
     denom = float(len(aln)) + sum(pseudocounts.values())
     
-    for i in xrange(len(aln[0])):
-        freqs = util.Dict(1, 0)
+    for i in xrange(aln.alignlen()):
+        freqs = util.Dict(default=0)
         for j in xrange(len(aln)):
             freqs[aln[j][i]] += 1
         

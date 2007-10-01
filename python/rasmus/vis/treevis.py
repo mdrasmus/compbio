@@ -14,6 +14,7 @@ from summon.core import *
 import summon
 from summon import sumtree
 from summon import shapes
+from summon import hud
 
 
 class TreeViewer (sumtree.SumTree):
@@ -55,6 +56,12 @@ class TreeViewer (sumtree.SumTree):
         self.win.set_binding(input_key("g"), lambda: self.setMode("gene"))
         self.win.set_binding(input_key("e"), lambda: self.setMode("events"))
         self.win.set_binding(input_key("r"), lambda: self.setMode("reroot"))
+        
+        # build sidebar menu
+        self.bar = hud.SideBar(self.win, width=150)
+        self.bar.addItem(hud.MenuItem("gene mode (g)", lambda: self.setMode("gene")))
+        self.bar.addItem(hud.MenuItem("events mode (e)", lambda: self.setMode("events")))
+        self.bar.addItem(hud.MenuItem("reroot mode (r)", lambda: self.setMode("reroot")))
         
         if self.events:
             self.win.add_group(self.drawEvents())

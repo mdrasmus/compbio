@@ -77,7 +77,7 @@ class DistMatrixViewer (matrix.MatrixViewer):
         self.selgenes.add(row)
         self.selgenes.add(col)
 
-        print row, col, i, j, val
+        print "%s %s (%d, %d) = %f" % (row, col, i, j, val)
 
     def clearSelection(self):
         self.selgenes.clear()

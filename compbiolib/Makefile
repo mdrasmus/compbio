@@ -1,6 +1,7 @@
 LIB = compbio.a
 C_OBJS = dnatrie.o
 CXX_OBJS = 
+PROGS = grep-overlap
 
 #CC=g++
 #CXX=g++
@@ -13,7 +14,7 @@ else
 	CFLAGS := $(CFLAGS) -O3
 endif
 
-all: $(LIB) test_compbio
+all: $(LIB) grep-overlap test_compbio 
 
 
 # basic compile rule
@@ -26,10 +27,13 @@ $(CXX_OBJS): %.o: %.cpp
 test_compbio: $(LIB) test.cpp
 	$(CXX) $(CFLAGS) test.cpp $(LIB) -o test_compbio 
 
+grep-overlap: grep-overlap.c
+	$(CC) -Wall -O3 grep-overlap.c -o grep-overlap
+
 # basic library building
 $(LIB): $(C_OBJS) $(CXX_OBJS)
 	$(AR) -r $(LIB) $(C_OBJS) $(CXX_OBJS)
 
 
 clean:
-	rm -f $(LIB) $(C_OBJS) $(CXX_OBJS)
+	rm -f $(PROGS) $(LIB) $(C_OBJS) $(CXX_OBJS)

@@ -6,11 +6,13 @@ from summon.core import *
 import summon
 from summon import multiwindow
 from summon import select
+from summon import hud
 
 from rasmus.vis import visual
 from rasmus import util, stats, regionlib
 from rasmus.regionlib import Region
 from rasmus.bio import gff, fasta, alignlib, seqlib
+
 
 
 
@@ -67,7 +69,7 @@ class Browser (visual.VisObject):
         
         self.show()
 
-
+# NOTE: I probably don't need to subclass from VisObject
 class Track (visual.VisObject):
     def __init__(self, pos=[0.0, 0.0], size=[0.0, 1.0], 
                        posOffset=[0.0, 0.0],
@@ -92,29 +94,32 @@ class Track (visual.VisObject):
     def setView(self, species, chrom, start, end):
         self.view = Region(species, chrom, "", start, end)
         
-    
-    def show(self, species, chrom, start, end):
-        """Draw the track for sequence from the given
-           'species' and 'chrom' from base 'start' to 'end'.
-        """
-        return group()
-    
-    
     def draw(self):
+        """Returns initial graphics for track"""
         return group()
     
     def drawLeft(self):
+        """Returns initial graphics for track that should appear in the left window"""
         return group()
     
     def drawTop(self):
+        """Returns initial graphics for track that should appear in the top window"""
         return group()
     
     def get_window(self):
+        """Gets the main browser window"""
         
         # get window from browser
         return self.browser.get_window()
 
 
+    '''
+    def show(self, species, chrom, start, end):
+        """Draw the track for sequence from the given
+           'species' and 'chrom' from base 'start' to 'end'.
+        """
+        return group()
+    '''
 
 class GenomeStackBrowser (Browser):
     """A browser where tracks are stacked vertically"""
@@ -246,155 +251,204 @@ class GenomeStackBrowser (Browser):
 
 
 class GenomeOverview (Browser):
-    """Get an overview of region distribution across the genome"""
+    """Get an overview of elements across the genome"""
 
-    def __init__(self, chroms=None, regionsets=None, **options):
+    def __init__(self, chroms=None, chromStep=-3, **options):
+        """Initialize browser
+        
+           chroms    -- chromosomes to display (Region objects)
+           chromStep -- separation between chromosomes (default: -3)
+        """
+        
         Browser.__init__(self, **options)
         self.win = None
         self.leftwin = None
+        self.metatracks = []
+        self.showRuler = True
+        
         
         if chroms == None:
             self.chroms = []
         else:
             self.chroms = chroms
         
-        if regionsets == None:
-            self.regionsets = []
-        else:
-            self.regionsets = regionsets
-            
-        self.resolution_scale = 1
-        
-
-    def addRegions(self, regions, **options):
-        options.setdefault("col", color(0,0,1))
-        options.setdefault("style", "line")
-        options.setdefault("height", 0.5)
-        self.regionsets.append(RegionSet(regions, options))
-    
-    
-    def show(self, winsize=None, winpos=None):
-        
-        self.clearTracks()
-        
         # layout chromosomes
-        step = -3
+        self.chromStep = chromStep
                 
         self.chromPos = {}
         y = 0
         x = 0
         for chrom in self.chroms:
-            self.chromPos[chrom.seqname] = [x, y]
-            y += step
-        
+            self.chromPos[chrom] = [x, y]
+            y += self.chromStep
+            
+        self.rulers = self.addTrack(RulerTrack, 0, top=1.0, bottom=-1.0, textAlign="top")
+                
 
-        # create window
-        self.win = summon.Window()
-        self.win.set_bgcolor(1, 1, 1)
-        self.select = select.Select(self.win, self.onSelect, fillColor=(0,0,1,.3))
+    def addRegions(self, regions, **options):
+        """Add regions to browser
         
-        if winpos != None:
-            self.win.set_position(*winpos)
-        
-        if winsize != None:
-            self.win.set_size(*winsize)
+           options:
+            col    -- color (default: color(0,0,1))
+            style  -- drawing style (default: "box")
+            height -- height with respect to ruler (default: 0.5)
+        """
     
+        options.setdefault("col", color(0,0,1))
+        options.setdefault("style", "box")
+        options.setdefault("height", 0.5)
+        
+        return self.addTrack(RegionTrack, -.5, regions, **options)
+          
+    
+    
+    def show(self, winsize=(400,400), winpos=(-1, -1)):
+        """Display browser"""
+        self.enableUpdating(False)
+        
+        # create window
+        if self.win == None or not self.win.is_open():
+            newwin = True
+            try:
+                raise
+                self.win = summon.Window(position=winpos, size=winsize)
+            except:
+                # this is for back compatiability to summon-1.8.2
+                self.win = summon.Window()
+                self.win.set_position(*winpos)
+                self.win.set_size(*winsize)
+                
+            self.win.set_bgcolor(1, 1, 1)
+            self.select = select.Select(self.win, self.onSelect, fillColor=(0,0,1,.3))
+        
 
-        # zooming
-        self.win.set_binding(input_click("right", "down"), "focus")
-        self.win.set_binding(input_motion("right", "down"), "zoomx")
-        self.win.set_binding(input_click("right", "down", "shift"), "focus")
-        self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
+            # zooming
+            self.win.set_binding(input_click("right", "down"), "focus")
+            self.win.set_binding(input_motion("right", "down"), "zoomx")
+            self.win.set_binding(input_click("right", "down", "shift"), "focus")
+            self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
 
         
-        # create left window
-        self.leftwin = summon.Window(" ")
-        self.leftwin.set_bgcolor(1, 1, 1)
-        self.leftwin.set_size(150, self.win.get_size()[1])
+            # create left window
+            pos = self.win.get_position()
+            self.leftwin = summon.Window(" ", size=(150, self.win.get_size()[1]),
+                      position=(pos[0]-150-self.win.get_decoration()[0], pos[1]))
+            self.leftwin.set_bgcolor(1, 1, 1)
         
-        self.leftEnsemble = multiwindow.WindowEnsemble(
-                             [self.leftwin, self.win], 
-                              stacky=True, sameh=True,
-                              tiey=True, piny=True,
-                              master=self.win)
+            self.leftEnsemble = multiwindow.WindowEnsemble(
+                                 [self.leftwin, self.win], 
+                                  stacky=True, sameh=True,
+                                  tiey=True, piny=True,
+                                  master=self.win)
+            
+            # menu
+            self.sidebar = hud.SideBar(self.win, width=150)
+            self.sidebar.addItem(hud.MenuItem("toggle ruler (r)", self.toggleRuler))
+            self.win.set_binding(input_key("r"), self.toggleRuler)
+            
+        else:
+            newwin = False
+            self.win.clear_groups()
         
+        # determine largest chromosome size
         maxchrom = max(x.length() for x in self.chroms)
         
         # add line to left window
         maxname = max(len(x.seqname) for x in self.chroms) * 20
         self.leftwin.add_group(lines(color(1,1,1), 
                                      0, 0, -maxname, 0,
-                                     0, 0, 0, step * len(self.chroms),
-                                     0, step * len(self.chroms), 
-                                     -maxname, step * len(self.chroms)))
-        
-        # process each chromosome
-        for chrom in self.chroms:
-            x, y = self.chromPos[chrom.seqname]
-            
-            # draw chromosome names
-            self.win.add_group(
-                group(color(0,0,0), 
-                      text_clip(chrom.seqname + " ", 
-                           -maxchrom, y-step/2.0, 
-                           0, y+step/2.0,
-                           4, 20, 
-                           "right", "middle")
-                      ))
-            
-            self.leftwin.add_group(
-                group(color(0,0,0), 
-                      text_clip(chrom.seqname + " ", 
-                           -maxchrom, y-step/2.0, 
-                           0, y+step/2.0,
-                           4, 20, 
-                           "right", "middle")
-                      ))
-                        
-            # buld ruler for this chromosome
-            ruler = RulerTrack(top=1.0, bottom=-1.0)
-                               #minicolor=color(0, 0, 0, 0))
-            ruler.setPos(x, y)
-            ruler.setView(chrom.species, 
-                          chrom.seqname,
-                          chrom.start,
-                          chrom.end)
-            self.addTrack(ruler)
-            self.win.add_group(ruler.draw())
-            
-            # build region tracks for this chrom
-            for regionset in self.regionsets:
-                if chrom.seqname in regionset.chroms:
-                    track = RegionTrack(regionset.chroms[chrom.seqname],
-                                        **regionset.options)
-                    track.setPos(x, y - .5)
-                    track.setSize(chrom.length(), 1.0)
-                    track.setView(chrom.species, 
-                                  chrom.seqname,
-                                  chrom.start,
-                                  chrom.end)
-                    self.addTrack(track)
-                    self.win.add_group(scale(self.resolution_scale, self.resolution_scale, 
-                                             track.draw()))
-        
-        # setup left window
-        self.leftwin.home()
+                                     0, 0, 0, self.chromStep * len(self.chroms),
+                                     0, self.chromStep * len(self.chroms), 
+                                     -maxname, self.chromStep * len(self.chroms)))
         
         
-        # setup window
-        w, h = self.win.get_size()
-        self.win.set_visible(0, -step, maxchrom, y+step)
-        self.win.focus(w/2, h/2)
-        self.win.zoom(1, maxchrom / abs(float(y+step)))
-        self.win.zoom(.9, .9)
+        # draw chromosome labels
+        self.win.add_group(self.drawChromLabels())
+        self.leftwin.add_group(self.drawChromLabels())
+        
+        # draw all tracks
+        for track in self._tracks:
+            self.win.add_group(track.draw())
+        
 
-        self.setVisible(True)
+        if newwin:    
+            # setup left window
+            self.leftwin.home()
+        
+            # setup window
+            w, h = self.win.get_size()
+            bottom = float(min(self.chromPos[i][1] for i in self.chroms) +
+                           2*self.chromStep)
+        
+
+            self.win.set_visible(0, -2*self.chromStep, maxchrom, bottom)
+            self.win.focus(w/2, h/2)
+            self.win.zoom(1, maxchrom / abs(-2*self.chromStep - bottom))
+            self.win.zoom(.9, .9)
+
+        self.enableUpdating(True)
         summon.begin_updating()
     
     
-    def pos2chrom(self, x, y):
+    def drawChromLabels(self):
+        """draw chromosome labels"""
+        
+        vis = [color(0, 0, 0)]
+        
+        # determine largest chromosome size
+        maxchrom = max(x.length() for x in self.chroms)
+        
+        # draw labels
+        y = 0
         for chrom in self.chroms:
-            pos = self.chromPos[chrom.seqname]
+            x, y = self.chromPos[chrom]
+            
+            # draw chromosome name (main window)
+            vis.append(text_clip(chrom.seqname + " ", 
+                                 -maxchrom, y-self.chromStep/2.0, 
+                                 0, y+self.chromStep/2.0,
+                                 4, 20, 
+                                 "right", "middle"))
+        return group(*vis)
+       
+    
+    def addTrack(self, trackClass, offset, *args, **kargs):
+        tracks = []
+    
+        for chrom in self.chroms:
+            x, y = self.chromPos[chrom]
+                                    
+            # build ruler for this chromosome
+            track = trackClass(*args, **kargs)
+            track.setPos(x, y+offset)
+            track.setView(chrom.species, 
+                          chrom.seqname,
+                          chrom.start,
+                          chrom.end)
+            Browser.addTrack(self, track)
+            tracks.append(track)
+        
+        metatrack = (trackClass, offset, args, kargs, tracks)
+        self.metatracks.append(metatrack)
+        return metatrack
+    
+    
+    def removeTrack(self, metatrack):
+        (trackClass, offset, args, kargs, tracks) = metatrack
+        
+        # remove meta track
+        self.metatracks.remove(metatrack)
+        
+        # remove tracks
+        for track in tracks:
+            Browser.removeTrack(self, track)
+    
+    
+    def pos2chrom(self, x, y):
+        """Returns a chromosome that intersects the given point (x, y)"""
+    
+        for chrom in self.chroms:
+            pos = self.chromPos[chrom]
             
             if pos[0] <= x <= pos[0] + chrom.length() and \
                pos[1] -1 <= y <= pos[1] + 1:
@@ -404,46 +458,59 @@ class GenomeOverview (Browser):
              
     
     def onSelect(self, pos1, pos2):
+        """Callback for region selections"""
          
-         # determine selected chrom
-         chrom = self.pos2chrom(*pos1)
-         chrom2 = self.pos2chrom(*pos2)
+        # determine selected chrom
+        chrom = self.pos2chrom(*pos1)
+        chrom2 = self.pos2chrom(*pos2)
+
+        if chrom == None:
+           print "no chromosome selected"
+           return
+
+        if chrom != chrom2:
+           print "please select only one chromosome"
+           return
+
+        x1 = pos1[0]
+        x2 = pos2[0]
+        if x1 > x2:
+           x1, x2 = x2, x1
+        chromPos = self.chromPos[chrom][0]
+
+        newchrom = Region(chrom.species, chrom.seqname, chrom.feature, 
+                          int(max(chrom.start + x1 - chromPos, 0)),
+                          int(min(chrom.start + x2 - chromPos, chrom.end)))
+
+        print "displaying region: %s:%s:%s-%s:%s" % \
+           (newchrom.species, newchrom.seqname, 
+            util.int2pretty(newchrom.start),
+            util.int2pretty(newchrom.end),
+            ["+", "+", "-"][newchrom.strand])
+
+        # create sub-browser
+        subbrowser = GenomeOverview([newchrom])
+
+        for trackClass, offset, args, kargs, tracks in self.metatracks:
+            subbrowser.addTrack(trackClass, offset, *args, **kargs)
          
-         if chrom == None:
-            return
-         
-         if chrom != chrom2:
-            print "please select only one chromosome"
-            return
-         
-         x1 = pos1[0]
-         x2 = pos2[0]
-         if x1 > x2:
-            x1, x2 = x2, x1
-         chromPos = self.chromPos[chrom.seqname][0]
-         
-         newchrom = Region(chrom.species, chrom.seqname, chrom.feature, 
-                           max(chrom.start + x1 - chromPos, 0),
-                           min(chrom.start + x2 - chromPos, chrom.end))
-         
-         print "displaying region"
-         print newchrom
-         
-         # create sub-browser
-         subbrowser = GenomeOverview([newchrom], regionsets=self.regionsets)
-         subbrowser.show(winpos=self.win.get_position(),
-                         winsize=self.win.get_size())
+        subbrowser.show(winpos=self.win.get_position(),
+                        winsize=self.win.get_size())
          
 
-
-class RegionSet (object):
-    def __init__(self, regions, options):
-        self.options = options
-        self.chroms = util.groupby(lambda x: x.seqname, regions)
-
+    def toggleRuler(self):
+        self.showRuler = not self.showRuler
+        
+        for ruler in self.rulers[4]:
+            ruler.setVisible(self.showRuler)
 
 
 class DividerTrack (Track):
+    """Track for visually separating other tracks
+    
+       This track is especailly useful with the GenomeStackBrowser
+    """
+
     def __init__(self, topColor=color(0,0,0,0),
                        bottomColor=color(0,0,0,0),
                        height=1,
@@ -476,9 +543,14 @@ class DividerTrack (Track):
 
 
 class RulerTrack (Track):
+    """Track for displaying a base-pair ruler along the genome"""
+
     def __init__(self, top=2.0, bottom=0.0, 
                  minicolor=color(.8,.8,.8), maincolor = color(0,0,0),
                  align=None,
+                 textAlign="middle",
+                 textColor=color(0, 0, 0),
+                 show=True,
                  **options):
         
         Track.__init__(self, **options)
@@ -486,6 +558,10 @@ class RulerTrack (Track):
         self.bottom = bottom
         self.minicolor = minicolor
         self.maincolor = maincolor
+        self.textAlign = textAlign
+        self.textColor = textColor
+        self.show      = show
+        self.shown     = show
         
         if align != None:
             self.coords = alignlib.CoordConverter(align)
@@ -509,17 +585,28 @@ class RulerTrack (Track):
     
     def update(self):
         self.win = self.get_window()
+        
+        if not self.show:
+            if self.shown:
+                self.gid = self.win.replace_group(self.gid, group())
+                self.shown = False
+        else:
+            self.shown = True
+            
+            if not self.multiscale.sameScale() or not self.shown:
+                if self.coords == None:
+                    g = self.drawRuler(self.pos, 
+                                       self.start, 
+                                       self.end)
+                else:
+                    g = self.drawAlignRuler(self.pos, self.start, self.end)
+                self.gid = self.win.replace_group(self.gid, g)
     
-        if not self.multiscale.sameScale():
-            if self.coords == None:
-                g = self.drawRuler(self.pos, 
-                                   self.start, 
-                                   self.end)
-            else:
-                g = self.drawAlignRuler(self.pos, self.start, self.end)
-            self.gid = self.win.replace_group(self.gid, g)
-
-
+    
+    def setVisible(self, visible):
+        self.show = visible
+    
+    
     def drawRuler(self, pos, start, end):
         worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
         screenwidth, screenheight = self.win.get_size()
@@ -550,17 +637,19 @@ class RulerTrack (Track):
 
 
         # make main hashes
-        vis.append(self.maincolor)
         i = unit * (max(start, worldx1 - x + start) // unit)
         while x + i - start <= worldx2 and i < end:
             if i >= start:
+                vis.append(self.maincolor)            
                 vis.append(lines(x + i - start, y, x + i - start, y + height))
+                vis.append(self.textColor)
                 vis.append(text(str(int(i//unit2)) + unitstr, 
-                                x + i - start, y, x + i -start - unit, y + height, "middle", "right"))
+                                x + i - start, y, x + i -start - unit, y + height, 
+                                self.textAlign, "right"))
             i += unit
 
         # base line
-        vis.append(lines(color(0,0,0), x, y, x + end - start, y))
+        vis.append(lines(self.maincolor, x, y, x + end - start, y))
 
         return group(* vis)
     
@@ -603,23 +692,26 @@ class RulerTrack (Track):
                       self.coords.align2local(worldx2-x, clamp=True))
         
         # draw all hashes in view
-        vis.append(self.maincolor)
         while seqi <= endseqi:
+            vis.append(self.maincolor)
             vis.append(lines(x + i+1, y, x + i+1, y + self.height))
+            vis.append(self.textColor)
             vis.append(text(str(int((seqi+start+1)//unit2)) + unitstr, 
                             x + i+1, y, x + i+1 - unit, y + self.height, 
-                            "middle", "right"))
+                            self.textAlign, "right"))
             seqi += unit
             i = self.coords.local2align(seqi, clamp=True)
 
         # base line
-        vis.append(lines(color(0,0,0), x, y, x + end - start, y))
+        vis.append(lines(self.maincolor, x, y, x + end - start, y))
 
         return group(* vis)
 
 
 
 class SeqTrack (Track):
+    """Track for displaying a single sequence along the genome"""
+
     def __init__(self, seqs, **options):
         options.setdefault("size", [0.0, 0.5])
         Track.__init__(self, **options)
@@ -639,7 +731,8 @@ class SeqTrack (Track):
     
     
     def update(self):
-        assert self.view != None, "Track view not initialized"
+        if self.view == None:
+            raise Exception("Track view not initialized")
         
         win = self.get_window()
         
@@ -654,6 +747,7 @@ class SeqTrack (Track):
                             int(self.view.start))
                 end = min(int(self.multiscale.worldx2 - x + self.view.start), 
                           int(self.view.end))
+                
                 seq = self.seqs.getseq(self.view.seqname, start, end)
                 
                 # convert from inclusive to exclusive
@@ -673,6 +767,8 @@ class SeqTrack (Track):
 
 
 class CurveTrack (Track):
+    """Track for displaying a curve along the genome"""
+
     def __init__(self, xdata, ydata, **options):
         Track.__init__(self, **options)
         
@@ -736,16 +832,22 @@ class CurveTrack (Track):
 
 
 class RegionTrack (Track):
+    """Track for displaying genomic regions (genes, regulator elements, etc)"""
+
     def __init__(self, regions, height=0.5, col=color(0,0,1,.5), 
                        textColor=color(1, 1, 1),
-                       style="box", **options):
+                       textSize=12,
+                       style="box", onClick=None,
+                       **options):
         Track.__init__(self, **options)
         
         self.regions = regions
         self.color = col
         self.textColor = textColor
+        self.textSize = textSize
         self.style = style
         self.height = height
+        self.onClick = onClick
         
     
     def draw(self):
@@ -761,15 +863,20 @@ class RegionTrack (Track):
                                    x.species == species, self.regions)
         
         
+        def clickRegion(region):
+            return lambda: self.onClick(region)
+        
         if self.style == 'box':
             # box style
             vis = []
             vis2 = []
+            hotspots = []
             names = []
         
             for reg in regions:
                 if util.overlap(start, end, reg.start, reg.end):
                     if reg.strand == 1:
+                        # positive strand
                         vis.extend([reg.start-start, 0,
                                     reg.end-start+1, 0,
                                     reg.end-start+1, height,
@@ -780,8 +887,15 @@ class RegionTrack (Track):
                             names.append(text_clip(reg.data['ID'], 
                                                    reg.start-start, 0,
                                                    reg.end-start+1, height,
-                                                   6, 6))
+                                                   4, 
+                                                   self.textSize))
+                        if self.onClick:
+                            hotspots.append(hotspot("click",
+                                                    reg.start-start, height,
+                                                    reg.end-start+1, 0,
+                                                    clickRegion(reg)))
                     else:
+                        # negative strand
                         vis.extend([reg.start-start, -height,
                                     reg.end-start+1, -height,
                                     reg.end-start+1, 0,
@@ -792,11 +906,19 @@ class RegionTrack (Track):
                             names.append(text_clip(reg.data['ID'], 
                                                    reg.start-start, -height,
                                                    reg.end-start+1, 0,
-                                                   6, 6))
+                                                   4, 
+                                                   self.textSize))
+                    
+                        if self.onClick:
+                            hotspots.append(hotspot("click",
+                                                    reg.start-start, -height,
+                                                    reg.end-start+1, 0,
+                                                    clickRegion(reg)))
             
             return group(translate(self.pos[0], self.pos[1] + self.size[1] / 2.0,
                      color(0,0,0), lines(0, 0, end-start+1, 0),
                      self.color, quads(*vis), lines(*vis2),
+                     group(*hotspots),
                      self.textColor, *names))
                 
         elif self.style == 'line':
@@ -815,10 +937,14 @@ class RegionTrack (Track):
             return group(translate(self.pos[0], self.pos[1]  + self.size[1] / 2.0,
                                    color(0,0,0), lines(0, 0, end-start+1, 0),
                                    self.color, lines(* vis)))
+        
         else:
+            # custom style
+            regions2 = (reg for reg in regions 
+                        if util.overlap(start, end, reg.start, reg.end))
             
-            return group(translate(self.pos[0], self.pos[1], 
-                         self.style(regions, start, end)))
+            return group(translate(self.pos[0], self.pos[1] + self.size[1] / 2.0, 
+                         self.style(regions2, start)))
         
 
 
@@ -1111,6 +1237,8 @@ class AlignTrack (Track):
         
 
 class TrackOverlay (Track):
+    """Overlay several tracks on top of one another to create a single track"""
+    
     def __init__(self, tracks, **options):
         Track.__init__(self, **options)
         
@@ -1125,6 +1253,8 @@ class TrackOverlay (Track):
     
     
     def draw(self):
+        """Returns initial display graphics"""
+    
         vis = []
         for track in self.tracks:
             track.view = self.view
@@ -1133,29 +1263,10 @@ class TrackOverlay (Track):
     
     
     def update(self):
+        """Updates track periodically if needed"""
+    
         for track in self.tracks:
             track.update()
-
-
-
-def LabelsTrack (Track):
-    def __init__(self, labels, color=color(0,0,0), **options):
-        Track.__init__(self, **options)
-        self.labels = labels
-        self.color = color
-        self.size = [0, len(labels)]
-    
-        
-    def draw(self):
-        # build labels
-        labels = []
-        for i, key in enumerate(self.aln):
-            labels.append(text_clip(key, -1000 * 10, -i, 0, -i-1,
-                                    4, 12, "middle", "right"))
-                
-        return group(translate(self.pos[0], self.pos[1] + self.size[1],
-                     self.color,
-                     group(*labels)))
 
 
 
@@ -1250,34 +1361,25 @@ def guessAlign(aln):
         return "dna"
 
 
-
 '''
-class RulerTrack (Track):
-    def __init__(self, top=2.0, bottom=0.0, 
-                 minicolor=color(.8,.8,.8), maincolor = color(0,0,0),
-                 **options):
+
+def LabelsTrack (Track):
+    def __init__(self, labels, color=color(0,0,0), **options):
         Track.__init__(self, **options)
-        self.top = top
-        self.bottom = bottom
-        self.minicolor = minicolor
-        self.maincolor = maincolor   
+        self.labels = labels
+        self.color = color
+        self.size = [0, len(labels)]
+    
         
     def draw(self):
-        assert self.view != None, "Track view not initialized"
-    
-        # change start from 1's based to 0's based
-        self.ruler = visual.Ruler(self.get_window(), 
-                                  self.view.start-1, self.view.end, 
-                                  height=self.top, 
-                                  bottom=self.bottom,
-                                  minicolor=self.minicolor,
-                                  maincolor=self.maincolor,
-                                  pos=self.pos)
-        
-        return group(self.ruler.draw())
-    
-    
-    def update(self):
-        self.ruler.update()
-'''
+        # build labels
+        labels = []
+        for i, key in enumerate(self.aln):
+            labels.append(text_clip(key, -1000 * 10, -i, 0, -i-1,
+                                    4, 12, "middle", "right"))
+                
+        return group(translate(self.pos[0], self.pos[1] + self.size[1],
+                     self.color,
+                     group(*labels)))
 
+'''

@@ -196,7 +196,7 @@ def sort(lst, compare=cmp, key=None, reverse=False):
        key     -- function of one arg to map items
        reverse -- when True reverse sorting
     """
-    lst2 = copy.copy(lst)
+    lst2 = list(lst)
     lst2.sort(compare, key=key, reverse=reverse)
     return lst2
 

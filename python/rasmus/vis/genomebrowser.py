@@ -331,8 +331,16 @@ class GenomeOverview (Browser):
         
             # create left window
             pos = self.win.get_position()
-            self.leftwin = summon.Window(" ", size=(150, self.win.get_size()[1]),
-                      position=(pos[0]-150-self.win.get_decoration()[0], pos[1]))
+            try:
+                self.leftwin = summon.Window(" ", size=(150, self.win.get_size()[1]),
+                          position=(pos[0]-150-self.win.get_decoration()[0], pos[1]))
+            except:
+                # this is for back compatiability to summon-1.8.2
+                self.leftwin = summon.Window(" ")
+                
+                self.leftwin.set_size(150, self.win.get_size()[1])
+                self.leftwin.set_position(pos[0]-150-self.win.get_decoration()[0], pos[1])
+                
             self.leftwin.set_bgcolor(1, 1, 1)
         
             self.leftEnsemble = multiwindow.WindowEnsemble(

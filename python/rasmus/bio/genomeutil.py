@@ -644,6 +644,8 @@ class Matching:
     def readGenomes(self, filename, gene2species=gene2species):
         if filename.endswith(".coord"):
             self.readCoordFile(filename, gene2species)
+        elif filename.endswith(".gff"):
+            self.readGffFile(filename, gene2species)
     
     
     def readGffFile(self, filename, gene2species):
@@ -651,16 +653,16 @@ class Matching:
         
         for region in gff.iterGff(filename,
                             lineFilter=lambda x: "\tgene\t" in x,
-                            regionFilter=lambda x: region.feature == "gene"):
+                            regionFilter=lambda x: x.feature == "gene"):
             
-            geneName = region.attrs["gene_id"]
+            geneName = region.data["ID"]
             
             # don't add duplicate genes
-            assert geneName not in self.genes
-            genomeName = gene2species(geneName)
+            if geneName not in self.genes:
+                genomeName = gene2species(geneName)
             
-            self.addGene(geneName, genomeName, region.seqname, 
-                         region.start, region.end, region.strand)
+                self.addGene(geneName, genomeName, region.seqname, 
+                             region.start, region.end, region.strand)
     
     def addRegions(self, regions, gene2species):
         for region in regions:

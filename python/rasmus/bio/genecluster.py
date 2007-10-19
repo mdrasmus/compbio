@@ -447,6 +447,12 @@ class FamilyDb (object):
             self.famtab = tablelib.Table(headers=["famid", "genes"])
         
         self.famlookup = self.famtab.lookup("famid")
+        self.genelookup = {}
+        
+        for fam in self:
+            for gene in self.getGenes(fam["famid"]):
+                self.genelookup[gene] = fam
+        
         self.filename = filename        
         self.datadir = datadir
         self.olddatadir = olddatadir

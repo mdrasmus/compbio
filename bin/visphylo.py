@@ -59,12 +59,6 @@ options = [
 conf = util.parseOptions(sys.argv, options)
 
       
-def colorAlign(aln):
-    if guessAlign(aln) == "pep":
-        return pep_colors
-    else:
-        return dna_colors
-
 
 def readBlastMatrix(blastfile, order=None):
     mat = matrix.Matrix()
@@ -118,6 +112,13 @@ def readBlastMatrix(blastfile, order=None):
         vals2.append(vals[i])
         mat[r][c] = vals[i]
     mat.setup(len(labels), len(labels), len(vals))
+    
+    # blast hits have their own color map
+    mat.colormap = util.ColorMap([[0, (0, 0, 0)],
+                                  [100, (0, 0, 1)],
+                                  [300, (0, 1, 0)],
+                                  [500, (1, 1, 0)],
+                                  [1000, (1, 0, 0)]])
 
     return mat
 
@@ -202,12 +203,24 @@ class PhyloViewer (object):
     def __init__(self, trees=[], distmats=[], aligns=[],
                        stree=None,
                        gene2species=None,
+                       
                        distlabels=None, 
-                       matrixColormap=None, 
+                       matrixColormap=None,
+                       distlabelsFromAlign=True,
+                       seqs=None,
+                       
                        treeWinSize=(350, 500),
                        distmatWinSize=None,
                        alignWinSize=(580, 500),
+                       
                        treeNames=None, distmatNames=None, alignNames=None):
+        """
+        Initialize PhyloViewer
+        
+        NOTE: distlabelsFromAlign (bool) determines whether a distance matrix 
+        should ignore its own labels (which are probablu dummy labels) and 
+        assume its rows and columns are ordered the same as the given alignment.
+        """
         
         # data
         self.trees = trees
@@ -218,7 +231,8 @@ class PhyloViewer (object):
         self.stree = stree
         self.gene2species = gene2species
         self.distlabels = distlabels
-        
+        self.distlabelsFromAlign = distlabelsFromAlign
+        self.seqs = seqs
         
         # names
         self.treeNames = treeNames
@@ -242,19 +256,16 @@ class PhyloViewer (object):
         self.currentMatrix = None
         self.currentAlign = None
         
-        # sub visualizations
-        self.vistree = None
-        self.visdist = None
-        self.visalign = None
-        
         # window sizes
         self.treeWinSize = treeWinSize
         self.distmatWinSize = distmatWinSize
         self.alignWinSize = alignWinSize
-
+        
+        # window ensemble properties
         self.windows = []
         self.coords = []
         
+        # colormap
         if matrixColormap != None:
             self.matrixColormap = matrixColormap
         else:
@@ -266,27 +277,90 @@ class PhyloViewer (object):
                                                  [1.0, util.yellow],
                                                  [5.0, util.red],
                                                  [10, util.white]])
-
-    def show(self):
         
-        # tree visualization
+        # initialize data
+        self.initTrees()
+        self.initAligns()
+        self.initDistmats()        
+    
+    
+    def initTrees(self):
+        """Initialize trees"""
+        
         if len(self.trees) > 0:
             self.currentTree = self.trees[0]
             self.vistree = treevis.TreeViewer(self.currentTree, name=self.treeNames[0],
                                          xscale=100.0,
                                          stree=self.stree,
-                                         gene2species=self.gene2species)
-            self.vistree.show()
-            self.vistree.win.set_size(*self.treeWinSize)
-            
+                                         gene2species=self.gene2species)            
             self.order = self.currentTree.leafNames()
-            self.windows.append(vis.vistree.win)
-            self.coords.append(max(node.y for node in self.currentTree.nodes.itervalues()))
         else:
+            self.vistree = None
             self.order = None
+    
+    
+    def initDistmats(self):
+        """Initialize distance matrices
         
+           Initialization should by done after trees and alignments
+        """
+    
+        if len(self.distmats) > 0:
+            self.matrices = []
+            
+            # setup matrices            
+            for i, distmat in enumerate(self.distmats):
+                # convert distmatrix to summon Matrix
+                if isinstance(distmat, matrix.Matrix):
+                    mat = distmat
+                else:
+                    mat = matrix.Matrix()
+                    mat.from2DList(distmat)            
+
+                # set default colormap
+                if mat.colormap == None:
+                    mat.colormap = self.matrixColormap
+                
+                # determine labels
+                if self.distlabelsFromAlign and self.alignOrder != None:
+                    # determine row/col labels from alignment if it exists
+                    mat.rowlabels = self.alignOrder
+                    mat.collabels = self.alignOrder
+                
+                elif self.distlabels != None:
+                    mat.rowlabels = self.distlabels[i]
+                    mat.collabels = self.distlabels[i]
+                    
+                else:
+                    raise Exception("no labels given for matrix")
+                
+                # reorder according to any given tree
+                if self.order != None:
+                    lookup = util.list2lookup(mat.rowlabels)
+                    mat.rperm = util.mget(lookup, self.order)
+                    mat.cperm = util.mget(lookup, self.order)
+                
+                mat.setup()
+
+                self.matrices.append(mat)
         
-        # alignment visualization
+            if self.seqs == None:
+                seqs = self.currentAlign
+            else:
+                seqs = self.seqs
+            
+            # create matrix vis
+            self.currentMatrix = self.matrices[0]
+            self.visdist = distmatrixvis.DistMatrixViewer(self.currentMatrix, 
+                                                          seqs=seqs, 
+                                                          bgcolor=(1,1,1))
+        else:
+            self.visdist = None
+    
+    
+    def initAligns(self):
+        """Initialize sequence alignments"""
+    
         if len(self.aligns) > 0:
             self.currentAlign = self.aligns[0]
             
@@ -299,64 +373,42 @@ class PhyloViewer (object):
             self.visalign = alignvis.AlignViewer(self.currentAlign, 
                                                  size=self.alignWinSize,
                                                  title=self.alignNames[0])
-            self.visalign.show()
-
+        else:
+            self.visalign = None
+    
+    
+    
+    def show(self):
+        """Make visualization window visible"""
         
+        # tree visualization
+        if self.vistree != None:
+            self.vistree.show()
+            self.vistree.win.set_size(*self.treeWinSize)
+            
+            self.windows.append(self.vistree.win)
+            self.coords.append(max(node.y for node in self.currentTree.nodes.itervalues()))
         
         # distance matrix visualization
-        if len(self.distmats) > 0:
-            
-            # setup matrices
-            mats = []
-            for i, distmat in enumerate(self.distmats):
-                # determine labels
-                if self.alignOrder != None:
-                    # determine row/col labels from alignment if it exists
-                    label = self.alignOrder            
-                
-                elif self.distlabels != None:
-                    label = self.distlabels[i]
-                    
-                else:
-                    raise Exception("no labels given for matrix")
-                
-        
-                # reorder according to any given tree
-                if self.order != None:
-                    lookup = util.list2lookup(label)
-                    rperm = util.mget(lookup, self.order)
-                    cperm = util.mget(lookup, self.order)
-                else:
-                    rperm = None
-                    cperm = None            
-                
-                # convert distmatrix to summon Matrix
-                mat = matrix.Matrix()
-                mat.from2DList(distmat)
-                mat.colormap = self.matrixColormap
-                mat.rowlabels = label
-                mat.collabels = label
-                mat.rperm = rperm
-                mat.cperm = cperm
-                mat.setup()
-
-                mats.append(mat)
-        
-            # create matrix vis
-            self.visdist = distmatrixvis.DistMatrixViewer(mats[0], 
-                                                          #seqs=seqs, 
-                                                          bgcolor=(1,1,1))
+        if self.visdist != None:            
             self.visdist.show()
             self.visdist.win.set_name(self.distmatNames[0])
             
-            self.windows.append(vis.visdist.win)
+            self.windows.append(self.visdist.win)
             self.coords.append(0)
             
-            #self.visdist.win.set_binding(input_key("n"), nextMatrix)
-            #self.visdist.win.set_binding(input_key("p"), prevMatrix)
-        
-        # append visalign, if it exists
+            # add additional menu options
+            self.visdist.bar.addItem(hud.MenuItem("next matrix (n)", self.nextMatrix))
+            self.visdist.bar.addItem(hud.MenuItem("next matrix (p)", self.prevMatrix))
+            
+            # add additional key binding
+            self.visdist.win.set_binding(input_key("n"), self.nextMatrix)
+            self.visdist.win.set_binding(input_key("p"), self.prevMatrix)
+
+
+        # alignment visualization
         if self.visalign != None:
+            self.visalign.show()        
             self.windows.append(self.visalign.vis.win)
             self.coords.append(-1.5)        
         
@@ -367,23 +419,25 @@ class PhyloViewer (object):
                                                       sameh=True, tiey=True, 
                                                       coordsy=self.coords)
 
-    
-# allow easy switching between matrices
-'''
-def nextMatrix():
-    global currentMatrix
-    currentMatrix = (currentMatrix + 1) % len(mats)
-    vis.visdist.setMatrix(mats[currentMatrix])
-    vis.visdist.win.set_name(matnames[currentMatrix])
-    vis.visdist.redraw()
 
-def prevMatrix():
-    global currentMatrix
-    currentMatrix = (currentMatrix - 1) % len(mats)
-    vis.visdist.setMatrix(mats[currentMatrix])
-    vis.visdist.win.set_name(matnames[currentMatrix])
-    vis.visdist.redraw()
-'''
+    #=============================================
+    # allow easy switching between matrices
+    def nextMatrix(self):
+        matindex = self.matrices.index(self.currentMatrix)
+        matindex = (matindex + 1) % len(self.matrices)
+        self.currentMatrix = self.matrices[matindex]
+        self.visdist.setMatrix(self.currentMatrix)
+        self.visdist.win.set_name(self.distmatNames[matindex])
+        self.visdist.redraw()
+
+    def prevMatrix(self):
+        matindex = self.matrices.index(self.currentMatrix)
+        matindex = (matindex - 1) % len(self.matrices)
+        self.currentMatrix = self.matrices[matindex]
+        self.visdist.setMatrix(self.currentMatrix)
+        self.visdist.win.set_name(self.distmatNames[matindex])
+        self.visdist.redraw()
+
 
 
     
@@ -413,6 +467,8 @@ if "maxdist" in conf:
                               [.3 * high, util.green],
                               [.7 * high, util.yellow],
                               [     high, util.red]])
+else:
+    colormap = None
 
 
 #=============================================================================
@@ -431,19 +487,28 @@ for matfile in distmatfiles:
 
 # read in multiple blast hits
 for blastfile in blastfiles:
-    label = seq.keys()
-    mat = readBlastMatrix(blastfile, order=label)
+    mat = readBlastMatrix(blastfile)
     distmats.append(mat)
     distmatLabels.append(label)
     distmatNames.append(blastfile)        
 
 
+#=============================================================================
+# create PhyloViewer
 
 vis = PhyloViewer(trees, distmats, aligns,
+                  
+                  # tree config
                   stree=stree,
                   gene2species=gene2species,
+                  
+                  # distmat config
                   distlabels=distmatLabels, 
+                  matrixColormap=colormap,
+                  seqs=seqs,
+                  
+                  # filenames
                   treeNames=treefiles,
-                  distmatNames=distmatNames,
+                  distmatNames=distmatNames,                  
                   alignNames=alignfiles)
 vis.show()

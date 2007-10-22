@@ -7,6 +7,11 @@
 #
 
 
+# install prefix paths
+prefix = /usr
+python_prefix = /usr/lib/python2.4/site-packages/
+
+
 CXX = g++
 MEX = mex
 
@@ -120,6 +125,8 @@ maxml: maxml.o $(SPIDIR_OBJS)
 	$(CXX) $(CFLAGS) maxml.o $(SPIDIR_OBJS) $(PROG_LIBS) -o maxml
 
 # C-library
+spidirlib: $(LIBSPIDIR)
+
 $(LIBSPIDIR): $(LIBSPIDIR_OBJS)
 	mkdir -p lib
 	$(AR) -r $(LIBSPIDIR) $(LIBSPIDIR_OBJS)
@@ -129,6 +136,8 @@ test_spidir: $(SPIDIR_OBJS) test.o
 	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o $(PROG_LIBS) -o test_spidir
 
 # python module
+pyspidir: $(PYTHON_MODULE)
+
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 	$(CXX) -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
 
@@ -155,13 +164,19 @@ $(PYTHON_MODULE_OBJS): %.o: %.cpp
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
 
-install: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
-	cp $(SPIDIR_PROG) test_spidir maxml ../bin
-	cp $(PYTHON_MODULE) ../python
+install: $(SPIDIR_PROG)
+	cp $(SPIDIR_PROG) $(prefix)/bin
+	
+installpy:
+	cp $(PYTHON_MODULE) $(prefix_python)
+	
 
+myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
+	cp $(SPIDIR_PROG) test_spidir maxml $(prefix)/bin
+	cp $(PYTHON_MODULE) $(prefix_python)
 
 clean:
-	rm -rf $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
-                $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
-                $(MATLAB_OBJS) \
-	        test.o test_spidir
+	rm -f $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
+              $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
+              $(MATLAB_OBJS max) maxml maxml.o \
+	      test.o test_spidir

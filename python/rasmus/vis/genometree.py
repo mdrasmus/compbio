@@ -18,6 +18,8 @@ if __name__ != "__main__":
     from summon import shapes
 
 
+# DEPRECATED: use rasmis.bio.treevis
+
 def setupTree(tree, genes):
     def walk(node):
         if node.isLeaf():

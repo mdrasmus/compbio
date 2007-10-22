@@ -447,13 +447,33 @@ class FamilyDb (object):
             self.famtab = tablelib.Table(headers=["famid", "genes"])
         
         self.famlookup = self.famtab.lookup("famid")
+        self.genelookup = {}
+        
+        for fam in self:
+            for gene in self.getGenes(fam["famid"]):
+                self.genelookup[gene] = fam
+        
         self.filename = filename        
         self.datadir = datadir
         self.olddatadir = olddatadir
 
 
+    def __iter__(self):
+        return iter(self.famtab)
+    
+    def iterGenes(self):
+        """iterate over gene families as lists"""
+        
+        for fam in self:
+            genes = self.parseGenes(fam["genes"])
+            yield genes
+        
+
     def getGenes(self, famid):
-        return remove(self.famlookup[famid].split(","), "")
+        return self.parseGenes(self.famlookup[famid]['genes'])
+    
+    def parseGenes(self, genes):
+        return util.remove(genes.split(","), "")
     
     def getPartition(self):
         return famtab2parts(self.famtab)

@@ -545,17 +545,15 @@ class SyntenyVis:
                         if conf['fat-matches']:
                             vis.append(quads(
                                 getBlockColor(botGene.chrom.name),
-                                vertices(
                                   x1, y1,
                                   x2, y1,
                                   x3, y2,
-                                  x4, y2)))
+                                  x4, y2))
 
                         vis.append(lines(
                             getBlockColor(botGene.chrom.name),
-                            vertices(
                               x1, y1,
-                              x4, y2)))
+                              x4, y2))
         return group(* vis)
 
 
@@ -563,9 +561,9 @@ class SyntenyVis:
         def arrow(direction, width, height, func):
             return group(
                 triangles(conf['color-arrow'],
-                    vertices(0, height/2,
-                             direction * width, 0,
-                             0, height/-2)),
+                          0, height/2,
+                          direction * width, 0,
+                          0, height/-2),
                 hotspot("click",
                         0, height/-2,
                         direction * width, height/2,
@@ -603,9 +601,9 @@ class SyntenyVis:
 
         # backbone
         vis.append(lines(conf['color-frag'],
-                   vertices(x, mid, x2, mid,
-                            x, y, x, top,
-                            x2, y, x2, top)))
+                         x, mid, x2, mid,
+                         x, y, x, top,
+                         x2, y, x2, top))
         
         
         # controls
@@ -644,8 +642,8 @@ class SyntenyVis:
                 col = conf['color-gene2-pos']
         
             mid = max(length - (height * steep), 0)
-            return group(polygon(col, vertices( 
-                0, 0, mid, 0, length, height/2, mid, height, 0, height)),
+            return group(polygon(col,  
+                0, 0, mid, 0, length, height/2, mid, height, 0, height),
                 lines(0, 0, 0, height))
         else:
             if order % 2 == 0:
@@ -654,8 +652,8 @@ class SyntenyVis:
                 col = conf['color-gene2-neg']
         
             mid = min(height * steep, length)
-            return group(polygon(col, vertices( 
-                length, 0, length, height, mid, height, 0, height/2, mid, 0)),
+            return group(polygon(col,  
+                length, 0, length, height, mid, height, 0, height/2, mid, 0),
                 lines(length, 0, length, height))
 
 
@@ -716,7 +714,7 @@ class SyntenyVis:
         if self.groupid != 0:
             self.win.replace_group(self.groupid, self.drawPlaced())
         else:
-            self.groupid = add_group(self.drawPlaced())
+            self.groupid = self.win.add_group(self.drawPlaced())
         self.showControls()
     
     
@@ -934,16 +932,16 @@ class SyntenyVis:
                     x2, y1), lines(x1, y1, x1, mid))
             
         elif shape == "cross":
-            return group(lines(col, vertices(
+            return group(lines(col, 
                 x1, y1, 
                 x2, y2,
                 x1, y2, 
-                x2, y1)))
+                x2, y1))
             
         elif shape == "flag":
             x = min(x1, x2)
-            return group(lines(col, vertices(
-                x, y1, x, self.conf["gene-size"] * 6)))
+            return group(lines(col, 
+                x, y1, x, self.conf["gene-size"] * 6))
             
         elif shape == "hash":
             return group(col, lines(x1, y1, x1, y2))

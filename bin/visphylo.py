@@ -10,25 +10,29 @@ import sys
 
 # summon libs
 from summon.core import *
-from summon import multiwindow, sumtree, matrix
+from summon import matrix
 import summon
 
 # rasmus libs
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip, genomeutil
-from rasmus.vis import distmatrixvis, alignvis, treevis
-from rasmus.vis.genomebrowser import *
+from rasmus.vis import phylovis
+#from rasmus.vis.genomebrowser import *
 
 
 
 options = [
+"""\
+Visualizes phylogenetic trees, distance matrices, and sequence alignments
+simultaneously.
+
+"""
+
     "data files",
     ["f:", "fasta=", "fasta", "<fasta sequences>",
         {"single": True}],
-    ["a:", "align=", "align", "<fasta alignment>",
-        {"single": True}],
-    ["t:", "tree=", "tree", "<newick file>",
-        {"single": True}],
+    ["a:", "align=", "align", "<fasta alignment>"],
+    ["t:", "tree=", "tree", "<newick file>"],
     ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
     ["b:", "blast=", "blast", "<blast hit -m8 format>"],
     
@@ -49,24 +53,21 @@ options = [
     ["B:", "blastext=", "blastext", "<blast hit -m8 format extension>",
         {"default": []}],
     
-    
+    "optional",
     ["M:", "maxdist=", "maxdist", "<maximum distance>",
         {"single": True,
-         "parser": float}]
+         "parser": float,
+         "help": "set max distance in matrix colormap"}]
     ]
 
 
 conf = util.parseOptions(sys.argv, options)
 
       
-def colorAlign(aln):
-    if guessAlign(aln) == "pep":
-        return pep_colors
-    else:
-        return dna_colors
-
 
 def readBlastMatrix(blastfile, order=None):
+    """Reads a BLAST file (-m8 format) into a sparse SUMMON Matrix"""
+    
     mat = matrix.Matrix()
 
     qnames = []
@@ -118,6 +119,13 @@ def readBlastMatrix(blastfile, order=None):
         vals2.append(vals[i])
         mat[r][c] = vals[i]
     mat.setup(len(labels), len(labels), len(vals))
+    
+    # blast hits have their own color map
+    mat.colormap = util.ColorMap([[0, (0, 0, 0)],
+                                  [100, (0, 0, 1)],
+                                  [300, (0, 1, 0)],
+                                  [500, (1, 1, 0)],
+                                  [1000, (1, 0, 0)]])
 
     return mat
 
@@ -126,40 +134,30 @@ def readBlastMatrix(blastfile, order=None):
 
         
 #=============================================================================
-#
+# determine input filenames
 
-windows = []
-coords = []
-
-# determine data files
-fastafiles = []
-alignfiles = []
+treefiles = []
 distmatfiles = []
 blastfiles = []
-treefiles = []
+alignfiles = []
+fastafiles = []
+
+treefiles.extend(conf.get("tree", []))
+distmatfiles.extend(conf.get("distmat", []))
+blastfiles.extend(conf.get("blast", []))
+alignfiles.extend(conf.get("align", []))
 
 # add explicit filenames
 if "fasta" in conf:
     fastafiles.append(conf["fasta"])
-if "align" in conf:
-    alignfiles.append(conf["align"])
-if "distmat" in conf:
-    distmatfiles.extend(conf["distmat"])
-if "blast" in conf:
-    blastfiles.extend(conf["blast"])
-if "tree" in conf:
-    treefiles.append(conf["tree"])
-        
+
 
 # add any implicit files with matching extension
 if len(conf["REST"]) > 0:
     basename = conf["REST"][0]
-
-    for ext in conf["fastaext"]:
-        fastafiles.append(basename + ext)
     
-    for ext in conf["alignext"]:
-        alignfiles.append(basename + ext)
+    for ext in conf["treeext"]:
+        treefiles.append(basename + ext)
     
     for ext in conf["distmatext"]:
         distmatfiles.append(basename + ext)
@@ -167,20 +165,21 @@ if len(conf["REST"]) > 0:
     for ext in conf["blastext"]:
         blastfiles.append(basename + ext)
     
-    for ext in conf["treeext"]:
-        treefiles.append(basename + ext)
-
-
-
-
-# read sequences
-if len(fastafiles) > 0:
-    seqs = fasta.readFasta(fastafiles[0])
-else:
-    seqs = None
-
-
+    for ext in conf["alignext"]:
+        alignfiles.append(basename + ext)
+        
+    for ext in conf["fastaext"]:
+        fastafiles.append(basename + ext)
+    
+    
 #=============================================================================
+# read tree
+trees = []
+for filename in treefiles:
+    trees.append(treelib.readTree(filename))
+
+
+
 # read species information
 
 if "smap" in conf:
@@ -192,185 +191,72 @@ if "stree" in conf:
     stree = treelib.readTree(conf["stree"])
 else:
     stree = None
-        
-    
+
 #=============================================================================
-# read tree
-if len(treefiles) > 0:
-    tree = treelib.readTree(treefiles[0])
-    vistree = treevis.TreeViewer(tree, name=treefiles[0],
-                                 xscale=100.0,
-                                 stree=stree,
-                                 gene2species=gene2species)
-    vistree.show()
-    vistree.win.set_size(340, 500)
-    #vistree.win.set_position(0, 0)
+# read distance matrix
+distmats = []
+distmatNames = []
+distmatLabels = []
     
-    leaves = tree.leafNames()
-    
-    windows.append(vistree.win)
-    coords.append(max(node.y for node in tree.nodes.itervalues()))
+        
+# read in multiple distance matrices
+for matfile in distmatfiles:
+    label, mat = phylip.readDistMatrix(matfile)
+    distmats.append(mat)
+    distmatLabels.append(label)
+    distmatNames.append(matfile)    
+
+# read in multiple blast hits
+for blastfile in blastfiles:
+    mat = readBlastMatrix(blastfile)
+    distmats.append(mat)
+    distmatLabels.append(label)
+    distmatNames.append(blastfile)        
+
+# setup color map
+if "maxdist" in conf:
+    low = 0
+    high = conf["maxdist"]
+    colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
+                              [0, util.black],
+                              [1e-10, util.blue],
+                              [.3 * high, util.green],
+                              [.7 * high, util.yellow],
+                              [     high, util.red]])
 else:
-    leaves = None
+    colormap = None
+
+# read sequences
+if len(fastafiles) > 0:
+    seqs = fasta.readFasta(fastafiles[0])
+else:
+    seqs = None
 
 
 #=============================================================================
 # read alignment
-if len(alignfiles) > 0:
-    view = Region("", "", "", 1, 1)
-    aln = fasta.readFasta(alignfiles[0])
-    
-    original_order = aln.keys()
-    
-    if len(treefiles) > 0:
-        aln = aln.get(leaves)
-    
-    view.end = max(view.end, aln.alignlen())
-    height = len(aln)
-    colors = colorAlign(aln)
+aligns = []
+for filename in alignfiles:
+    aligns.append(fasta.readFasta(filename))
+
 
 
 #=============================================================================
-# read distance matrix
-if len(distmatfiles) > 0 or len(blastfiles) > 0:
-    mats = []
-    matnames = []
-    
-    currentMatrix = 0
+# create PhyloViewer
 
-    # determine row/col labels from alignment if it exists
-    if len(alignfiles) > 0:
-        label = original_order
-    else:
-        label = None
-    
-    # reorder according to any given tree
-    if leaves != None:
-        lookup = util.list2lookup(label)
-        rperm = util.mget(lookup, leaves)
-        cperm = util.mget(lookup, leaves)
-    else:
-        rperm = []
-        cperm = []
-    
-    
-    # setup color map
-    if "maxdist" in conf:
-        low = 0
-        high = conf["maxdist"]
-        colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
-                                  [0, util.black],
-                                  [1e-10, util.blue],
-                                  [.3 * high, util.green],
-                                  [.7 * high, util.yellow],
-                                  [     high, util.red]])
-    else:
-        colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
-                                  [0, util.black],
-                                  [1e-10, util.blue],
-                                  [.5, util.green],
-                                  [1.0, util.yellow],
-                                  [5.0, util.red],
-                                  [10, util.white]])    
-    
-    
-    # read in multiple distance matrices
-    for matfile in distmatfiles:
-        util.tic("reading matrix '%s'" % matfile)
-        label2, mat = phylip.readDistMatrix(matfile)
-        util.toc()
-        
-        if label == None:
-            label = label2
+vis = phylovis.PhyloViewer(trees, distmats, aligns,
+                  
+                           # tree config
+                           stree=stree,
+                           gene2species=gene2species,
 
-        # convert distmatrix to summon Matrix
-        mat2 = matrix.Matrix()
-        mat2.from2DList(mat, cutoff=-util.INF)
-        mat2.colormap = colormap
-        mat2.rowlabels = label
-        mat2.collabels = label
-        mat2.rperm = rperm
-        mat2.cperm = cperm
-        mat2.setup()
+                           # distmat config
+                           distlabels=distmatLabels, 
+                           matrixColormap=colormap,
+                           seqs=seqs,
 
-        mats.append(mat2)
-        matnames.append(matfile)
-    
-    # read in multiple blast hits
-    for blastfile in blastfiles:
-        if label == None and len(fastafiles) > 0:
-            label = seqs.keys()
-            rperm = []
-            cperm = []
-    
-        util.tic("reading blast file '%s'" % blastfile)
-        mat = readBlastMatrix(blastfile, order=label)
-        util.toc()
-
-        mat.colormap = colormap
-        mat.rperm = rperm
-        mat.cperm = cperm
-        mat.setup()
-        mats.append(mat)
-        matnames.append(blastfile)
-
-
-    
-    # allow easy switching between matrices
-    def nextMatrix():
-        global currentMatrix
-        currentMatrix = (currentMatrix + 1) % len(mats)
-        visdist.setMatrix(mats[currentMatrix])
-        visdist.win.set_name(matnames[currentMatrix])
-        visdist.redraw()
-    
-    def prevMatrix():
-        global currentMatrix
-        currentMatrix = (currentMatrix - 1) % len(mats)
-        visdist.setMatrix(mats[currentMatrix])
-        visdist.win.set_name(matnames[currentMatrix])
-        visdist.redraw()
-    
-    
-    # create matrix vis
-    visdist = distmatrixvis.DistMatrixViewer(mats[0], seqs=seqs, bgcolor=(1,1,1))
-    visdist.show()
-    visdist.win.set_name(matnames[0])
-    #visdist.win.set_size(300, 500)
-    #visdist.win.set_position(0, 0)
-    
-    windows.append(visdist.win)
-    coords.append(0)
-    
-    
-    visdist.win.set_binding(input_key("n"), nextMatrix)
-    visdist.win.set_binding(input_key("p"), prevMatrix)    
-
-    
-#=============================================================================
-# show alignment
-if len(alignfiles) > 0:
-    visalign = alignvis.AlignViewer(aln, size=[580, 500], #colorBases=colors,
-                                    view=view, title=alignfiles[0])
-    visalign.show()
-    #visalign.vis.win.set_position(0, 0)
-
-    """
-    visalign = GenomeStackBrowser(view=view)
-    visalign.addTrack(RulerTrack(bottom=-height))
-    visalign.addTrack(AlignTrack(aln, colorBases=colors))
-    visalign.show()
-    visalign.win.set_name(alignfiles[0])
-    visalign.win.set_size(580, 500)
-    visalign.win.set_position(0, 0)
-    """  
-
-    windows.append(visalign.vis.win)
-    coords.append(-1.5)
-
-
-# tie all windows by their y-coordinate
-if len(windows) > 1:
-    e = multiwindow.WindowEnsemble(windows, stacky=True, sameh=True,
-                                   tiey=True, coordsy=coords)
-
+                           # filenames
+                           treeNames=treefiles,
+                           distmatNames=distmatNames,                  
+                           alignNames=alignfiles)
+vis.show()

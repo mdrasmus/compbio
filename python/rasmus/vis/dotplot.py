@@ -202,17 +202,17 @@ class Dotplot (summon.VisObject):
             
             # draw match based on direction
             if gene1.direction == gene2.direction:
-                vis.append(lines(vertices(
+                vis.append(lines(
                     conf['scale'] * coord1[0],
                     conf['scale'] * coord2[0],
                     conf['scale'] * coord1[1],
-                    conf['scale'] * coord2[1])))
+                    conf['scale'] * coord2[1]))
             else:
-                vis.append(lines(vertices(
+                vis.append(lines(
                     conf['scale'] * coord1[0],
                     conf['scale'] * coord2[1],
                     conf['scale'] * coord1[1],
-                    conf['scale'] * coord2[0])))
+                    conf['scale'] * coord2[0]))
         
         return group(* vis)
     
@@ -248,15 +248,15 @@ class Dotplot (summon.VisObject):
         allSize = conf['scale'] * self.plotSize
         
         vis.append(lines(conf['color-chrom-div'], 
-                         vertices(0, allSize, allSize, allSize, 
-                                  allSize, 0, allSize, allSize)))
+                         0, allSize, allSize, allSize, 
+                                  allSize, 0, allSize, allSize))
         for genome in matching.genomes.values():
             for chrom in genome.chroms.values():
                 pos = conf['scale'] * (genome.position + chrom.position)
-                vis.append(lines(vertices(0, pos, 
-                                          allSize, pos,
-                                          pos, 0,
-                                          pos, allSize)))
+                vis.append(lines(0, pos, 
+                                 allSize, pos,
+                                 pos, 0,
+                                 pos, allSize))
         return group(* vis)
     
 
@@ -265,13 +265,13 @@ class Dotplot (summon.VisObject):
         allSize = conf['scale'] * self.plotSize
         
         vis.append(lines(conf['color-genome-div'], 
-                         vertices(0, allSize, allSize, allSize, 
-                                  allSize, 0, allSize, allSize)))
+                         0, allSize, allSize, allSize, 
+                                  allSize, 0, allSize, allSize))
         for genome in matching.genomes.values():
-            vis.append(lines(vertices(0, conf['scale'] * genome.position, 
+            vis.append(lines(0, conf['scale'] * genome.position, 
                                       allSize, conf['scale'] * genome.position,
                                       conf['scale'] * genome.position, 0,
-                                      conf['scale'] * genome.position, allSize)))
+                                      conf['scale'] * genome.position, allSize))
         
         # hotspot
         vis.append(hotspot("click", 0, 0, allSize, allSize, self.click))

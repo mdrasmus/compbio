@@ -6,7 +6,7 @@ import os, sys
 # rasmus libs
 from rasmus import util, env
 from rasmus.bio import genomeio, genomeutil, clustalw, fasta, gff
-from rasmus.bio import genomeutil import *
+from rasmus.bio.genomeutil import *
 
 # graphics libs
 from summon import *
@@ -18,7 +18,8 @@ options = [
         {"single": True}],
     ["g:", "gff=", "gff", "<gff file>"],
     ["c:", "comps=", "comps", "<ortholog components file>"],
-    ["s:", "synteny=", "synteny", "<synteny file>"],
+    ["s:", "synteny=", "synteny", "<synteny file>",
+        {"default": []}],
     ["q", "sequence", "sequence", "", 
         {"help": "automatically read sequences"}],
     ["S:", "speciesmap=", "speciesmap", "<species map>"],

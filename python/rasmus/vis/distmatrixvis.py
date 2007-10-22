@@ -100,7 +100,11 @@ class DistMatrixViewer (matrix.MatrixViewer):
         if self.seqs == None:
             print "cannot build alignment: no sequences are loaded"
             return
-    
+        
+        if len(self.selgenes) == 0:
+            print "cannot build alignment: no sequences selected"
+            return
+        
         genes = list(self.selgenes)
         lookup = util.list2lookup(self.mat.rowlabels)
            

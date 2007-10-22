@@ -9,6 +9,7 @@ from rasmus import util
 from rasmus.bio import muscle
 from rasmus.vis import genomebrowser as gb
 
+
 # summon libs
 from summon.core import *
 import summon
@@ -27,7 +28,8 @@ class AlignViewer (object):
         self.title = title
         self.size = size
         
-        self.vis = gb.GenomeStackBrowser(**options)
+        view = gb.Region("", "", "", 1, aln.alignlen())
+        self.vis = gb.GenomeStackBrowser(view=view, **options)
         self.vis.addTrack(gb.RulerTrack(bottom=-len(aln)))
         self.alntrack = gb.AlignTrack(aln, colorBases=colorBases,
                                         showColorBases=showColorBases,
@@ -44,7 +46,6 @@ class AlignViewer (object):
         self.win.set_name(self.title)
         self.win.set_size(* self.size)
         
-        #self.set_binding(
         
         if self.bar == None:
             # build sidebar menu

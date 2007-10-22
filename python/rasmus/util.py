@@ -196,7 +196,7 @@ def sort(lst, compare=cmp, key=None, reverse=False):
        key     -- function of one arg to map items
        reverse -- when True reverse sorting
     """
-    lst2 = copy.copy(lst)
+    lst2 = list(lst)
     lst2.sort(compare, key=key, reverse=reverse)
     return lst2
 
@@ -204,7 +204,7 @@ def sort(lst, compare=cmp, key=None, reverse=False):
 def reverse(lst):
     """Returns a reversed copy of a list
     """
-    lst2 = copy.copy(lst)
+    lst2 = list(lst)
     lst2.reverse()
     return lst2
 
@@ -1164,11 +1164,11 @@ def list2matrix(lst, nrows=None, ncols=None, bycols=True):
     
     if nrows == None and ncols == None:
         nrows = int(math.sqrt(len(lst)))
-        ncols = int(math.ceil(len(lst) / nrows))
+        ncols = int(math.ceil(len(lst) / float(nrows)))
     elif nrows == None:
-        nrows = int(math.ceil(len(lst) / min(ncols, len(lst))))
+        nrows = int(math.ceil(len(lst) / float(min(ncols, len(lst)))))
     else:
-        ncols = int(math.ceil(len(lst) / min(nrows, len(lst))))
+        ncols = int(math.ceil(len(lst) / float(min(nrows, len(lst)))))
 
     for i in xrange(nrows):
         mat.append([])

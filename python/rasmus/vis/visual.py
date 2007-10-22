@@ -8,6 +8,8 @@ from rasmus import util
 from summon import VisObject
 
 
+# TODO: make multiscale also track y-axis
+
 class Multiscale (object):
     """Manage detecting when the zoom and scroll of the visualization is 
        sufficently different to justify a redraw"""
@@ -96,13 +98,13 @@ class Multiscale (object):
 
 
 
-class Ruler (VisObject):
+class Ruler (summon.VisObject):
     """ Ruler visualization object """
     
     def __init__(self, win, start, end, height=20, bottom=0, unitstr="", 
                  minicolor=color(.8,.8,.8), maincolor=color(0,0,0),
                  pos=[0.0, 0.0]):
-        VisObject.__init__(self)
+        summon.VisObject.__init__(self)
          
         self.win = win
         self.start = start

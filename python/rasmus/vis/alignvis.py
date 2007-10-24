@@ -21,15 +21,19 @@ from summon import hud
 
 class AlignViewer (object):
     def __init__(self, aln, colorBases=True, title="alignviewer",
-                 size=[580, 500], showColorBases=True, showBases=True,
+                 winsize=[580, 500], winpos=None, 
+                 showColorBases=True, showBases=True,
                  **options):
         
         self.aln = aln
         self.title = title
-        self.size = size
+        self.winsize = winsize
+        self.winpos = winpos
         
         view = gb.Region("", "", "", 1, aln.alignlen())
-        self.vis = gb.GenomeStackBrowser(view=view, **options)
+        self.vis = gb.GenomeStackBrowser(view=view, winsize=winsize, 
+                                         winpos=winpos,
+                                         **options)
         self.vis.addTrack(gb.RulerTrack(bottom=-len(aln)))
         self.alntrack = gb.AlignTrack(aln, colorBases=colorBases,
                                         showColorBases=showColorBases,
@@ -40,11 +44,14 @@ class AlignViewer (object):
         
     
     def show(self):
+        newwin = (self.vis.win == None)
+        
         self.vis.show()
         self.win = self.vis.win # for convenience
         
-        self.win.set_name(self.title)
-        self.win.set_size(* self.size)
+        if newwin:
+            self.win.set_name(self.title)
+            self.win.set_size(* self.winsize)
         
         
         if self.bar == None:

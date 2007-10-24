@@ -70,7 +70,7 @@ def readOptions(conf):
 #
 
 def gene2species(genename):
-    # default gene2species mapping
+    """default gene2species mapping"""
     return genename
 
 

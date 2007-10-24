@@ -7,7 +7,7 @@
 # rasmus libs
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import phylo
+from rasmus.bio import phylo, genomeutil
 
 # summon libs
 from summon.core import *
@@ -27,13 +27,20 @@ class TreeViewer (sumtree.SumTree):
         self.stree = stree                  # species tree
         self.gene2species = gene2species    # gene to species mapping
         self.recon = recon                  # reconciliation
+        self.bar = None
         
         # colors
         self.dupColor = dupColor
         self.lossColor = lossColor
         
         self.setupRecon()
-            
+    
+    
+    def setTree(self, tree):
+        sumtree.SumTree.setTree(self, tree)
+        self.recon = None
+        self.setupRecon()
+                    
     
     def setupRecon(self):
         # construct default reconciliation
@@ -56,12 +63,16 @@ class TreeViewer (sumtree.SumTree):
         self.win.set_binding(input_key("g"), lambda: self.setMode("gene"))
         self.win.set_binding(input_key("e"), lambda: self.setMode("events"))
         self.win.set_binding(input_key("r"), lambda: self.setMode("reroot"))
+        self.win.set_binding(input_key("s"), lambda: self.setMode("swap"))
+        self.win.set_binding(input_key("S", "shift"), lambda: self.swap(self.tree.root))
         
         # build sidebar menu
-        self.bar = hud.SideBar(self.win, width=150)
-        self.bar.addItem(hud.MenuItem("gene mode (g)", lambda: self.setMode("gene")))
-        self.bar.addItem(hud.MenuItem("events mode (e)", lambda: self.setMode("events")))
-        self.bar.addItem(hud.MenuItem("reroot mode (r)", lambda: self.setMode("reroot")))
+        if self.bar == None:
+            self.bar = hud.SideBar(self.win, width=150)
+            self.bar.addItem(hud.MenuItem("gene mode (g)", lambda: self.setMode("gene")))
+            self.bar.addItem(hud.MenuItem("events mode (e)", lambda: self.setMode("events")))
+            self.bar.addItem(hud.MenuItem("reroot mode (r)", lambda: self.setMode("reroot")))
+            self.bar.addItem(hud.MenuItem("swap mode (s,S)", lambda: self.setMode("swap")))
         
         if self.events:
             self.win.add_group(self.drawEvents())
@@ -109,7 +120,15 @@ class TreeViewer (sumtree.SumTree):
             self.printEvents(node)
         elif self.mode == "reroot":
             self.reroot(node)
+        elif self.mode == "swap":
+            self.swap(node)
     
+    
+    def swap(self, node):
+        node.children = node.children[1:] + [node.children[0]]
+        self.show()
+        self.onReorderLeaves()        
+        
     
     def printEvents(self, node):
         """Prints the events that occur on a node"""
@@ -149,4 +168,27 @@ class TreeViewer (sumtree.SumTree):
         self.setupRecon()
         
         self.show()
-        
+        self.onReorderLeaves()
+    
+    
+    def onReorderLeaves(self):
+        """callback for when leaves are reordered"""
+        pass
+    
+    
+
+def readTreeColorMap(filename):
+    infile = util.openStream(filename)
+    maps = []
+    
+    for line in infile:
+        expr, red, green, blue = line.rstrip().split("\t")
+        maps.append([expr, map(float, (red, green, blue))])
+    
+    name2color = genomeutil.makeGene2species(maps)
+    
+    def leafmap(node):
+        return name2color(node.name)
+
+    return sumtree.treeColorMap(leafmap)
+    

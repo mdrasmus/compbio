@@ -1085,7 +1085,10 @@ def defaultFormat(val):
     elif isinstance(val, Percent):
         return str(val)
     elif isinstance(val, float):
-        return "%.3f" % val
+        if abs(val) < 1e-4:
+            return "%.2e" % val
+        else:
+            return "%.4f" % val
     else:
         return str(val)
 

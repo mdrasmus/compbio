@@ -1019,6 +1019,11 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
+        self.writePretty(s)
+        return s.getvalue()
+    
+    
+    def writePretty(self, out=sys.stdout, spacing=2):
         mat2, rlabels, clabels = self.getMatrix(rowheader=None)
         
         # get extra headers
@@ -1032,9 +1037,7 @@ class Table (list):
         # get data
         mat.extend(mat2)
         
-        util.printcols(mat, spacing=2, out=s)
-        return s.getvalue()
-    
+        util.printcols(mat, spacing=spacing, out=out)
     
     def __str__(self):
         s = StringIO.StringIO("w")

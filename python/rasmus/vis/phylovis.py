@@ -15,6 +15,8 @@ from summon.core import *
 
 
 
+
+
 class PhyloViewer (object):
     """
     Phylogeny Visualization
@@ -25,6 +27,7 @@ class PhyloViewer (object):
     def __init__(self, trees=[], distmats=[], aligns=[],
                        stree=None,
                        gene2species=None,
+                       treeColormap=lambda x: (0, 0, 0),
                        
                        distlabels=None, 
                        matrixColormap=None,
@@ -81,6 +84,7 @@ class PhyloViewer (object):
         # optional data
         self.stree = stree
         self.gene2species = gene2species
+        self.treeColormap = treeColormap
         self.distlabels = distlabels
         self.distlabelsFromAlign = distlabelsFromAlign
         self.seqs = seqs
@@ -140,10 +144,13 @@ class PhyloViewer (object):
         
         if len(self.trees) > 0:
             self.currentTree = self.trees[0]
-            self.vistree = treevis.TreeViewer(self.currentTree, name=self.treeNames[0],
+            self.vistree = PhyloTreeViewer(self.currentTree, name=self.treeNames[0],
+                                         phyloViewer=self,
                                          xscale=100.0,
                                          stree=self.stree,
-                                         gene2species=self.gene2species)            
+                                         gene2species=self.gene2species,
+                                         winsize=self.treeWinSize,
+                                         colormap=self.treeColormap)
             self.order = self.currentTree.leafNames()
         else:
             self.vistree = None
@@ -220,9 +227,11 @@ class PhyloViewer (object):
                 self.currentAlign.names = self.order
             else:
                 self.order = self.currentAlign.keys()
-
+            
+            winpos = None
             self.visalign = alignvis.AlignViewer(self.currentAlign, 
-                                                 size=self.alignWinSize,
+                                                 winsize=self.alignWinSize,
+                                                 winpos=winpos,
                                                  title=self.alignNames[0])
         else:
             self.visalign = None
@@ -235,10 +244,19 @@ class PhyloViewer (object):
         # tree visualization
         if self.vistree != None:
             self.vistree.show()
-            self.vistree.win.set_size(*self.treeWinSize)
+            #self.vistree.win.set_size(*self.treeWinSize)
             
             self.windows.append(self.vistree.win)
             self.coords.append(max(node.y for node in self.currentTree.nodes.itervalues()))
+        
+            # add additional menu options
+            self.vistree.bar.addItem(hud.MenuItem("next tree (n)", self.nextTree))
+            self.vistree.bar.addItem(hud.MenuItem("next tree (p)", self.prevTree))
+            
+            # add additional key binding
+            self.vistree.win.set_binding(input_key("n"), self.nextTree)
+            self.vistree.win.set_binding(input_key("p"), self.prevTree)
+        
         
         # distance matrix visualization
         if self.visdist != None:            
@@ -271,6 +289,45 @@ class PhyloViewer (object):
                                                       coordsy=self.coords)
 
 
+    def onReorderLeaves(self):
+        leaves = self.currentTree.leafNames()
+        
+        # reorder matrix
+        for mat in self.matrices:
+            lookup = util.list2lookup(mat.rowlabels)
+            mat.rperm = util.mget(lookup, leaves)
+            mat.cperm = util.mget(lookup, leaves)
+        mat.setup()
+        self.visdist.redraw()
+        
+        
+        # reorder alignment
+        for aln in self.aligns:
+            aln.names = leaves
+        self.visalign.show()
+
+
+    #=============================================
+    # allow easy switching between trees
+    def nextTree(self):
+        treeindex = self.trees.index(self.currentTree)
+        treeindex = (treeindex + 1) % len(self.trees)
+        self.currentTree = self.trees[treeindex]
+        self.vistree.setTree(self.currentTree)
+        self.vistree.win.set_name(self.treeNames[treeindex])
+        self.vistree.show()
+        self.onReorderLeaves()
+
+    def prevTree(self):
+        treeindex = self.trees.index(self.currentTree)
+        treeindex = (treeindex - 1) % len(self.trees)
+        self.currentTree = self.trees[treeindex]
+        self.vistree.setTree(self.currentTree)
+        self.vistree.win.set_name(self.treeNames[treeindex])
+        self.vistree.show()
+        self.onReorderLeaves()
+
+
     #=============================================
     # allow easy switching between matrices
     def nextMatrix(self):
@@ -290,3 +347,18 @@ class PhyloViewer (object):
         self.visdist.redraw()
 
 
+
+        
+
+class PhyloTreeViewer (treevis.TreeViewer):
+    def __init__(self, *args, **options):
+        
+        if "phyloViewer" in options:
+            phyloViewer = options["phyloViewer"]
+            del options["phyloViewer"]
+        treevis.TreeViewer.__init__(self, *args, **options)
+        
+        self.phyloViewer = phyloViewer
+
+    def onReorderLeaves(self):
+        self.phyloViewer.onReorderLeaves()

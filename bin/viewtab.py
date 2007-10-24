@@ -2,7 +2,7 @@
 
 import os, sys
 
-from rasmus import util
+from rasmus import util, tablelib
 
 
 options = [
@@ -22,6 +22,8 @@ options = [
     ["d:", "delim=", "delim", "<delimiter>",
      {"single": True,
       "default": "\t"}],
+    ["t", "table", "table", "",
+     {"single": True}]
 ]
 
 conf = util.parseOptions(sys.argv, options, quit=True)
@@ -33,14 +35,18 @@ else:
     infile = sys.stdin
 
 
-mat = []
-for line in infile:
-    tokens = line.rstrip().split(conf["delim"])
-    mat.append(tokens)
-    
-    if conf["rows"] > 0 and len(mat) >= conf["rows"]:
-        util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
-        mat = []
+if conf["table"]:
+    tab = tablelib.readTable(infile)
+    tab.writePretty()
+else:
+    mat = []
+    for line in infile:
+        tokens = line.rstrip().split(conf["delim"])
+        mat.append(tokens)
 
-util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
-    
+        if conf["rows"] > 0 and len(mat) >= conf["rows"]:
+            util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
+            mat = []
+
+    util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
+

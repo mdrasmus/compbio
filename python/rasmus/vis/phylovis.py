@@ -88,6 +88,7 @@ class PhyloViewer (object):
         self.distlabels = distlabels
         self.distlabelsFromAlign = distlabelsFromAlign
         self.seqs = seqs
+        self.matrices = []
         
         # names
         self.treeNames = treeNames
@@ -297,14 +298,16 @@ class PhyloViewer (object):
             lookup = util.list2lookup(mat.rowlabels)
             mat.rperm = util.mget(lookup, leaves)
             mat.cperm = util.mget(lookup, leaves)
-        mat.setup()
-        self.visdist.redraw()
+            mat.setup()
+        if self.visdist:
+            self.visdist.redraw()
         
         
         # reorder alignment
         for aln in self.aligns:
             aln.names = leaves
-        self.visalign.show()
+        if self.visalign:
+            self.visalign.show()
 
 
     #=============================================

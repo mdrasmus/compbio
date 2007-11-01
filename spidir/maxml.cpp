@@ -168,8 +168,11 @@ int main(int argc, char **argv)
     
     
     int nnodes = aln->nseqs * 2 - 1;
-   
     
+    ExtendArray<string> genes(0, nnodes);
+    genes.extend(aln->names, aln->nseqs);
+    for (int i=aln->nseqs; i<nnodes; i++)
+        genes.append("");
     
 
     //=====================================================
@@ -198,12 +201,12 @@ int main(int argc, char **argv)
     
     // search
     Tree *toptree = searchMCMC(NULL, 
-                               aln->names, aln->nseqs, aln->seqlen, aln->seqs,
+                               genes, aln->nseqs, aln->seqlen, aln->seqs,
                                &lkfunc,
                                &nniProposer,
                                fitter);
     
-    toptree->setLeafNames(aln->names);
+    toptree->setLeafNames(genes);
     toptree->writeNewick(outtreeFilename.c_str());
     
     delete toptree;

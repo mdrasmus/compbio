@@ -10,14 +10,13 @@ import sys
 
 # summon libs
 from summon.core import *
-from summon import matrix
+from summon import matrix, sumtree
 import summon
 
 # rasmus libs
 from rasmus import treelib, util
 from rasmus.bio import alignlib, blast, fasta, phylip, genomeutil
-from rasmus.vis import phylovis
-#from rasmus.vis.genomebrowser import *
+from rasmus.vis import phylovis, treevis
 
 
 
@@ -57,7 +56,9 @@ simultaneously.
     ["M:", "maxdist=", "maxdist", "<maximum distance>",
         {"single": True,
          "parser": float,
-         "help": "set max distance in matrix colormap"}]
+         "help": "set max distance in matrix colormap"}],
+    ["", "treecolormap=", "treecolormap", "<tree color map file>",
+        {"single": True}]
     ]
 
 
@@ -191,6 +192,11 @@ if "stree" in conf:
     stree = treelib.readTree(conf["stree"])
 else:
     stree = None
+    
+if "treecolormap" in conf:
+    treeColormap = treevis.readTreeColorMap(conf["treecolormap"])
+else:
+    treeColormap = None
 
 #=============================================================================
 # read distance matrix
@@ -249,6 +255,7 @@ vis = phylovis.PhyloViewer(trees, distmats, aligns,
                            # tree config
                            stree=stree,
                            gene2species=gene2species,
+                           treeColormap=treeColormap,
 
                            # distmat config
                            distlabels=distmatLabels, 

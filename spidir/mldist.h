@@ -18,6 +18,8 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
                          int nseqs, int seqlen, char **seqs, Model &model,
                          float *bgfreq);
 
+void makeHkyMatrix(float *bgfreq, float ratio, float t, float *matrix);
+
 } // namespace spidir
 
 #endif // SPIDIR_BRANCHLEN_H

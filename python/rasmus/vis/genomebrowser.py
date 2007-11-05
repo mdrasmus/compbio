@@ -16,7 +16,8 @@ from rasmus.bio import gff, fasta, alignlib, seqlib
 
 
 
-
+# TODO: think about how tracks can initialize their size first, then
+# be drawn in stack browser.
 
 class Browser (visual.VisObject):
     """Base class for containing and managing multiple graphical elements"""
@@ -124,11 +125,14 @@ class Track (visual.VisObject):
 class GenomeStackBrowser (Browser):
     """A browser where tracks are stacked vertically"""
 
-    def __init__(self, view=None, **options):
+    def __init__(self, view=None, winsize=(800,400), winpos=None,
+                 **options):
         Browser.__init__(self, **options)
         
         self.tracks = []
         self.win = None         # main window
+        self.winsize = winsize
+        self.winpos = winpos
         self.view = view        # region of genome in view
         self.gid = None
         self.leftgid = None
@@ -151,8 +155,9 @@ class GenomeStackBrowser (Browser):
         
         # initialize window if needed
         if self.win == None:
-            self.win = summon.Window()
-            self.win.set_size(width, height) 
+            self.win = summon.Window("StackBrowser", 
+                                     size=self.winsize, position=self.winpos)
+            #self.win.set_size(width, height) 
             
             # zooming
             self.win.set_binding(input_click("right", "down"), "focus")
@@ -168,9 +173,9 @@ class GenomeStackBrowser (Browser):
         # initialize left window if needed
         if self.showLeftWindow:
             if self.leftwin == None:
-                self.leftwin = summon.Window(" ")
+                self.leftwin = summon.Window(" ", size=(150, height))
                 self.leftwin.set_bgcolor(1, 1, 1)
-                self.leftwin.set_size(150, height)
+                #self.leftwin.set_size(150, height)
                 
                 self.leftEnsemble = multiwindow.WindowEnsemble(
                                      [self.leftwin, self.win], 
@@ -253,7 +258,9 @@ class GenomeStackBrowser (Browser):
 class GenomeOverview (Browser):
     """Get an overview of elements across the genome"""
 
-    def __init__(self, chroms=None, chromStep=-3, **options):
+    def __init__(self, chroms=None, chromStep=-3, 
+                       winsize=(400,400), winpos=None,
+                       **options):
         """Initialize browser
         
            chroms    -- chromosomes to display (Region objects)
@@ -265,6 +272,8 @@ class GenomeOverview (Browser):
         self.leftwin = None
         self.metatracks = []
         self.showRuler = True
+        self.winsize = winsize
+        self.winpos = winpos
         
         
         if chroms == None:
@@ -302,7 +311,7 @@ class GenomeOverview (Browser):
           
     
     
-    def show(self, winsize=(400,400), winpos=(-1, -1)):
+    def show(self):
         """Display browser"""
         self.enableUpdating(False)
         
@@ -311,12 +320,13 @@ class GenomeOverview (Browser):
             newwin = True
             try:
                 raise
-                self.win = summon.Window(position=winpos, size=winsize)
+                self.win = summon.Window(position=self.winpos, size=self.winsize)
             except:
                 # this is for back compatiability to summon-1.8.2
                 self.win = summon.Window()
-                self.win.set_position(*winpos)
-                self.win.set_size(*winsize)
+                if self.winpos:
+                    self.win.set_position(*self.winpos)
+                self.win.set_size(*self.winsize)
                 
             self.win.set_bgcolor(1, 1, 1)
             self.select = select.Select(self.win, self.onSelect, fillColor=(0,0,1,.3))
@@ -497,13 +507,14 @@ class GenomeOverview (Browser):
             ["+", "+", "-"][newchrom.strand])
 
         # create sub-browser
-        subbrowser = GenomeOverview([newchrom])
+        subbrowser = GenomeOverview([newchrom],
+                                    winpos=self.win.get_position(),
+                                    winsize=self.win.get_size())
 
         for trackClass, offset, args, kargs, tracks in self.metatracks:
             subbrowser.addTrack(trackClass, offset, *args, **kargs)
          
-        subbrowser.show(winpos=self.win.get_position(),
-                        winsize=self.win.get_size())
+        subbrowser.show()
          
 
     def toggleRuler(self):

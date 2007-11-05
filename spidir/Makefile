@@ -62,6 +62,7 @@ PROG_LIBS =
 
 # C-library files
 LIBSPIDIR = lib/libspidir.a
+LIBSPIDIR_SHARED = lib/libspidir.so
 LIBSPIDIR_OBJS = $(SPIDIR_OBJS)
 
 
@@ -125,11 +126,15 @@ maxml: maxml.o $(SPIDIR_OBJS)
 	$(CXX) $(CFLAGS) maxml.o $(SPIDIR_OBJS) $(PROG_LIBS) -o maxml
 
 # C-library
-spidirlib: $(LIBSPIDIR)
+spidirlib: $(LIBSPIDIR) $(LIBSPIDIR_SHARED)
 
 $(LIBSPIDIR): $(LIBSPIDIR_OBJS)
 	mkdir -p lib
 	$(AR) -r $(LIBSPIDIR) $(LIBSPIDIR_OBJS)
+
+$(LIBSPIDIR_SHARED): $(LIBSPIDIR_OBJS)
+	mkdir -p lib
+	$(CXX) -o $(LIBSPIDIR_SHARED) -shared $(LIBSPIDIR_OBJS)
 
 # testing program
 test_spidir: $(SPIDIR_OBJS) test.o
@@ -172,8 +177,8 @@ installpy:
 	
 
 myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
-	cp $(SPIDIR_PROG) test_spidir maxml $(prefix)/bin
-	cp $(PYTHON_MODULE) $(prefix_python)
+	cp $(SPIDIR_PROG) test_spidir maxml ../bin
+	cp $(PYTHON_MODULE) ../python
 
 clean:
 	rm -f $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \

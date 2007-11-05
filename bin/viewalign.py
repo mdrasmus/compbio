@@ -2,7 +2,7 @@
 
 import sys
 from rasmus import util
-from rasmus.bio fasta, alignlib
+from rasmus.bio import fasta, alignlib
 
 
 options = [

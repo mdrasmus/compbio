@@ -31,7 +31,7 @@ namespace spidir {
         alpha_r / alpha_y = rho = pi_r / pi_y 
 
     NOTE: parameters are chosen such that 
-        P(i != j | j, t=1, pi, ratio) = 1
+        P(j != i | i, t=1, pi, ratio) = 1
         thus, time also corresponds to sub/site
 
     Definitions:
@@ -60,7 +60,7 @@ namespace spidir {
         int delta_ij =  int(i == j);
         int e_ij = int(dnatype[i] == dnatype[j]);    
 
-    prob(i | j, t, pi, R) = 
+    prob(j | i, t, pi, R) = 
         exp(-(alpha_i + beta)*t) * delta_ij + 
         exp(-beta*t) * (1 - exp(-alpha_i*t)) * (pi_j*e_ij/pi_ry) + 
         (1 - exp(-beta*t)) * pi_j
@@ -86,19 +86,22 @@ public:
         a_y = (pi_r*pi_y*ratio - pi[DNA_A]*pi[DNA_G] - pi[DNA_C]*pi[DNA_T]) / 
           (2.0*(1+ratio)*(pi_y*pi[DNA_A]*pi[DNA_G]*rho + pi_r*pi[DNA_C]*pi[DNA_T]));
         a_r = rho * a_y;
-
     }
 
 
-    // transition probability P(i | j, t)
-    inline float operator()(int i, int j, float t)
+    // transition probability P(j | i, t)
+    inline float operator()(int j, int i, float t)
     {
-        //  convenience variables
+        swap(i, j);
+        
+        // convenience variables
+        // NOTE: it is ok to assign pi_ry, because it is only used when
+        // dnatype[i] == dnatype[j]
         float a_i, pi_ry;
         switch (dnatype[i]) {
             case DNA_PURINE:
                 a_i = a_r;
-                pi_ry = pi_r;
+                pi_ry = pi_r;  
                 break;
             case DNA_PRYMIDINE:
                 a_i = a_y;
@@ -113,9 +116,9 @@ public:
         // return transition probability
         float ait = expf(-a_i*t);
         float ebt = expf(-b*t);
-
+        
         float prob = ait*ebt * delta_ij + 
-                     ebt * (1 - ait) * (pi[j]*e_ij/pi_ry) + 
+                     ebt * (1.0 - ait) * (pi[j]*e_ij/pi_ry) + 
                      (1 - ebt) * pi[j];
         return prob;        
     }
@@ -132,6 +135,14 @@ public:
 };
 
 
+void makeHkyMatrix(float *bgfreq, float ratio, float t, float *matrix)
+{
+    HkyModel model(bgfreq, ratio);
+    
+    for (int i=0; i<4; i++)
+        for (int j=0; j<4; j++)
+            matrix[4*i+j] = model(i, j, t);
+}
 
 
 // Find a root of a function func(x) using the secant method

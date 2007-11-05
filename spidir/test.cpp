@@ -189,10 +189,59 @@ int test_mledist(int argc, char **argv)
     float ratio = .5;
     int maxiter = 20;
     
+    
+    
     findMLBranchLengthsHky(&tree, nseqs, seqs, bgfreq, ratio, maxiter);
     displayTree(&tree, stdout, 100);
     
     return 0;
+}
+
+
+int test_hky(int argc, char **argv)
+{
+    float tsvratio, time;
+    float bgfreq[4];
+    string bgfreqstr;
+
+    ConfigParser config;
+    config.add(new ConfigParam<float>(
+        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
+        "used for HKY model (default=0.5)"));
+    config.add(new ConfigParam<float>(
+        "-t", "--time", "<time units>", &time, 1.0,
+        "used for HKY model (default=1.0)"));
+    config.add(new ConfigParam<string>(
+        "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
+        &bgfreqstr, ".25,.25,.25,.25",
+        "background frequencies (default=0.25,0.25,0.25,0.25"));
+    
+    
+    if (!config.parse(argc, (const char**) argv)) {
+        if (argc < 2)
+            config.printHelp();
+        return 1;
+    }
+    
+    
+    // determine background base frequency
+    vector<string> tokens = split(bgfreqstr.c_str(), ",");
+    if (tokens.size() != 4) {
+        printError("bgfreq requires four base frequencies e.g .25,.25,.25,.25");
+        return 1;
+    }
+    for (unsigned int i=0; i<tokens.size(); i++)
+        bgfreq[i] = atof(tokens[i].c_str());
+
+    float matrix[16];
+    makeHkyMatrix(bgfreq, tsvratio, time, matrix);
+    
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            printf("%f ", matrix[4*i+j]);
+        }
+        printf("\n");
+    }
 }
 
 
@@ -385,6 +434,8 @@ int main(int argc, char **argv)
         
     } else if (testname == "mledist") {
         test_mledist(argc-1, &argv[1]);
+    } else if (testname == "hky") {
+        test_hky(argc-1, &argv[1]);
     } else if (testname == "reroot") {
         test_reroot(argc-1, &argv[1]);
     } else if (testname == "reconroot") {

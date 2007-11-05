@@ -423,7 +423,16 @@ def mleBaserate(lens, means, sdevs, baserateparam):
     c = - sum(lens[i] ** 2 / sdevs[i] ** 2
               for i in range(len(lens))) / beta
     
-    return max(stats.solveCubic(a, b, c))
+    roots = stats.solveCubic(a, b, c)
+    
+    def like(generate):
+        if generate < 0:
+            return -util.INF
+        prod = 0
+        for l, u, s in zip(lens, means, sdevs):
+            prod += log(stats.normalPdf(l / generate, [u, s*s]))
+        return log(stats.gammaPdf(generate, baserateparam)) + prod
+    return roots[util.argmax(roots, like)]
 
 
 

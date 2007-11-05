@@ -883,7 +883,7 @@ def plotdistribFit(func, paramsInit, data, start, end, step, plot = None,
 
 
 def solveCubic(a, b, c, real=True):
-    """solves x^3 + ax^2 + bx + x = 0 for x"""
+    """solves x^3 + ax^2 + bx + c = 0 for x"""
     
     p = b - a*a / 3.0
     q = c + (2*a*a*a - 9*a*b) / 27.0
@@ -916,7 +916,9 @@ def solveCubic(a, b, c, real=True):
     root3 = p / (3*u3) - u3 - a / 3.0
     
     if real:
-        return [root1.real, root2.real, root3.real]
+        return [x.real 
+                for x in [root1, root2, root3]
+                if abs(x.imag) < 1e-10]
     else:
         return [root1, root2, root3]
     

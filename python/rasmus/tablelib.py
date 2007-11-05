@@ -273,12 +273,18 @@ def stringExpand(text=None):
     
     return "".join(text2)
 
+def _eval2(text=None):
+    if text == None:
+        return None
+    else:
+        return eval(text)
+        
 
 QuotedString = TableType(stringExpand, stringQuote)
 TableBool = TableType(manoli_str2bool, str)
 TableStr = TableType(str, str)
 TableFloat = TableType(float, str)
-
+TableExpr = TableType(_eval2, str)
 
 _defaultTypeLookup = \
     TableTypeLookup([["unknown", str], # backwards compatiable name                     
@@ -289,7 +295,8 @@ _defaultTypeLookup = \
                      ["float",  TableFloat],
                      ["bool",   bool],
                      ["bool",   TableBool],
-                     ["quoted_string", QuotedString]])
+                     ["quoted_string", QuotedString],
+                     ["expr", TableExpr]])
 
 # NOTE: ordering of name-type pairs is important
 

@@ -244,6 +244,7 @@ void reconcile_helper(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
 }
 
 
+// TODO: implement more efficiently with post order traversal
 // reconcile a gene tree with a species tree
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon)

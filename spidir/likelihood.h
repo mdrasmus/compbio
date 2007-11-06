@@ -16,8 +16,8 @@ float treelk(int nnodes, int *ptree, float *dists,
 float treelk(Tree *tree,
              SpeciesTree *stree,
              int *recon, int *events, SpidirParams *params,
-             float generate, float disterror,
-             float predupprob, float dupprob, float errorlogl);
+             float generate, 
+             float predupprob, float dupprob);
 
 void generateBranchLengths(int nnodes, int *ptree, 
                            int nsnodes, int *pstree,

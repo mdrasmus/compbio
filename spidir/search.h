@@ -83,7 +83,7 @@ public:
     BranchLikelihoodFunc() {}
     virtual ~BranchLikelihoodFunc() {}
     
-    float likelihood(Tree *tree) { return 0.0; }
+    virtual float likelihood(Tree *tree) { return 0.0; }
 };
 
 
@@ -93,8 +93,9 @@ public:
     SpidirBranchLikelihoodFunc(int nnodes, SpeciesTree *stree, 
                                SpidirParams *params, 
                                int *gene2species,
-                               float predupprob, float dupprob);
-    float likelihood(Tree *tree);
+                               float predupprob, float dupprob,
+                               bool estGenerate);
+    virtual float likelihood(Tree *tree);
     
 protected:
     int nnodes;
@@ -105,10 +106,15 @@ protected:
     ExtendArray<int> events;
     float predupprob;
     float dupprob;  
+    bool estGenerate;
 };
 
 
 void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0);
+
+
+Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
+                     SpeciesTree *stree, int *gene2species);
 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,

@@ -139,7 +139,6 @@ void NniProposer::propose(Tree *tree)
     node3 = NULL;
     
 
-
         
     // propose new tree
     proposeRandomNni(tree, &node1, &node2, &change1);
@@ -248,7 +247,7 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     int nnodes, SpeciesTree *stree, 
     SpidirParams *params, 
     int *gene2species,
-    float predupprob, float dupprob) :
+    float predupprob, float dupprob, bool estGenerate) :
     
     nnodes(nnodes),
     stree(stree),
@@ -257,7 +256,8 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     recon(nnodes),
     events(nnodes),
     predupprob(predupprob),
-    dupprob(dupprob)
+    dupprob(dupprob),
+    estGenerate(estGenerate)
 {}
 
 
@@ -265,13 +265,51 @@ float SpidirBranchLikelihoodFunc::likelihood(Tree *tree) {
     // reconcile tree to species tree
     reconcile(tree, stree, gene2species, recon);
     labelEvents(tree, recon, events);
-
+    float generate;
+    
+    if (estGenerate)
+        generate = -1;
+    else
+        generate = -99;
+    
     return treelk(tree, stree,
                   recon, events, params,
-                  -1, 0,
-                  predupprob, dupprob, 0);
+                  generate, predupprob, dupprob);
 }
 
+
+//=============================================================================
+
+
+// propose initial tree by Neighbor Joining
+Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs)
+{
+    int nnodes = nseqs * 2 - 1;
+
+    ExtendArray<int> ptree(nnodes);
+    ExtendArray<float> dists(nnodes);
+    Matrix<float> distmat(nseqs, nseqs);
+
+    calcDistMatrix(nseqs, seqlen, seqs, distmat.getMatrix());
+    neighborjoin(nseqs, distmat.getMatrix(), ptree, dists);
+
+    Tree *tree = new Tree(nnodes);
+    ptree2tree(nnodes, ptree, tree);
+    tree->setLeafNames(genes);
+
+    return tree;
+}
+
+
+// propose initial tree and root by species
+Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
+                     SpeciesTree *stree, int *gene2species)
+{
+    Tree *tree = getInitialTree(genes, nseqs, seqlen, seqs);
+    reconRoot(tree, stree, gene2species);
+
+    return tree;
+}
 
 
 
@@ -289,7 +327,7 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
     
     int nnodes = nseqs * 2 - 1;
     SpidirBranchLikelihoodFunc lkfunc(nnodes, stree, params, gene2species,
-                                      predupprob, dupprob);
+                                      predupprob, dupprob, -99);
     
     return searchMCMC(initTree, 
                       genes, nseqs, seqlen, seqs,
@@ -308,35 +346,18 @@ Tree *searchMCMC(Tree *initTree,
 {
     Tree *toptree = NULL;
     float toplogl = -1e10, logl=-1e10, nextlogl;
-    Tree *tree = NULL;
-    int nnodes = nseqs * 2 - 1;
+    Tree *tree = initTree;
+    //int nnodes = nseqs * 2 - 1;
         
     
     // determine initial tree
-    if (initTree != NULL) {
-        // use specified initial tree
-        tree = initTree;
-        logl = 0.0;
-    } else {
-        // initialized tree with NJ
-        ExtendArray<int> ptree(nnodes);
-        ExtendArray<float> dists(nnodes);
-        Matrix<float> distmat(nseqs, nseqs);
-        
-        calcDistMatrix(nseqs, seqlen, seqs, distmat.getMatrix());
-        neighborjoin(nseqs, distmat.getMatrix(), ptree, dists);
-        tree = new Tree(nnodes);
-        ptree2tree(nnodes, ptree, tree);
-        tree->setLeafNames(genes);
-        
-        // reconroot        
-        // tree = phylo.reconRoot(tree, stree, gene2species)
-        parsimony(tree, nseqs, seqs);
-        logl = fitter->findLengths(tree);
-    }
+    if (initTree == NULL)
+        tree = getInitialTree(genes, nseqs, seqlen, seqs);
     
     
     // init likelihood score
+    parsimony(tree, nseqs, seqs); // get initial branch lengths TODO: replace?
+    logl = fitter->findLengths(tree);
     logl += lkfunc->likelihood(tree);
     toplogl = logl;
     toptree = tree->copy();
@@ -349,7 +370,7 @@ Tree *searchMCMC(Tree *initTree,
 
     HashTable<TopologyKey, TreeLogl, HashTopology> hashtrees(2000, 
                                                    TreeLogl(NULL, 0));
-    
+
     
     // MCMC loop
     for (int i=0; proposer->more(); i++) {
@@ -371,7 +392,7 @@ Tree *searchMCMC(Tree *initTree,
             // calculate lieklihood
             nextlogl = fitter->findLengths(tree);
             nextlogl += lkfunc->likelihood(tree);
-        
+            
             // hash result
             tmp = TreeLogl(tree->copy(), nextlogl);
         }

@@ -57,7 +57,7 @@ SPIDIR_OBJS = \
 
 PROG_SRC = spidir_main.cpp 
 PROG_OBJS = spidir_main.o $(SPIDIR_OBJS)
-PROG_LIBS = 
+PROG_LIBS = `gsl-config --libs`
 
 
 # C-library files

@@ -2,6 +2,8 @@
 //  SPIDIR - Likelihood calculation
 
 
+#include <gsl/gsl_integration.h>
+
 // c++ headers
 #include <stdlib.h>
 #include <stdio.h>
@@ -665,96 +667,190 @@ void determineFreeBranches(Tree *tree, SpeciesTree *stree,
 }
 
 
-float treelk(Tree *tree,
-             SpeciesTree *stree,
-             int *recon, int *events, SpidirParams *params,
-             float generate, float disterror,
-             float predupprob, float dupprob, float errorlogl)
+class TreeLikelihoodCalculator
 {
-    float logl = 0.0; // log likelihood
-    
-    // make parent trees
-    int *ptree = new int [tree->nnodes];
-    tree2ptree(tree, ptree);
-    
-    int *pstree = new int [stree->nnodes];
-    tree2ptree(stree, pstree);
-    
-    // make forward tree
-    int **ftree;
-    makeFtree(tree->nnodes, ptree, &ftree);
-    
-    float *dists = new float [tree->nnodes];
-    tree->getDists(dists);
-    
-    // estimate generate
-    if (generate <= 0)
-        generate = estimateGenerate(tree, stree, 
-                       recon, events, params);
-    if (generate == 0.0)
-        generate = estimateGenerate(tree, stree, 
-                       recon, events, params);
-    
-    
-    // determine reconciliation parameters
-    ReconParams reconparams = ReconParams(tree->nnodes);
-    determineFreeBranches(tree, stree, recon, events, generate,
-                          &reconparams.unfold, 
-                          &reconparams.unfolddist, 
-                          reconparams.freebranches);
-    //printf("UNFOLD: %d %f\n", unfold, unfolddist);    
+public:
+    TreeLikelihoodCalculator(Tree *tree,
+             SpeciesTree *stree,
+             int *recon, int *events, SpidirParams *params) :
+        tree(tree),
+        stree(stree),
+        recon(recon),
+        events(events),
+        params(params)
+    {
+        // make parent trees
+        ptree = new int [tree->nnodes];
+        tree2ptree(tree, ptree);
 
+        pstree = new int [stree->nnodes];
+        tree2ptree(stree, pstree);
+
+        // make forward tree
+        makeFtree(tree->nnodes, ptree, &ftree);
+
+        dists = new float [tree->nnodes];
+        tree->getDists(dists);
+
+    }
     
-        
-    // loop through independent subtrees
-    for (int i=0; i<tree->nnodes; i++) {
-        if (events[i] == EVENT_SPEC || i == tree->root->name) {
-            if (events[i] == EVENT_SPEC) {
-                for (int j=0; j<2; j++) {
-                    int node = tree->nodes[i]->children[j]->name;
+    
+    ~TreeLikelihoodCalculator()
+    {
+        // clean up
+        delete [] ptree;
+        delete [] pstree;
+        delete [] dists;
+        freeFtree(tree->nnodes, ftree);
+    }
+    
+    
+    float calc(float generate)
+    {
+        float logl = 0.0;
+    
+        // determine reconciliation parameters
+        ReconParams reconparams = ReconParams(tree->nnodes);
+        determineFreeBranches(tree, stree, recon, events, generate,
+                              &reconparams.unfold, 
+                              &reconparams.unfolddist, 
+                              reconparams.freebranches);
+
+
+        // loop through independent subtrees
+        for (int i=0; i<tree->nnodes; i++) {
+            if (events[i] == EVENT_SPEC || i == tree->root->name) {
+                if (events[i] == EVENT_SPEC) {
+                    for (int j=0; j<2; j++) {
+                        int node = tree->nodes[i]->children[j]->name;
+                        float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                                                node,
+                                                stree->nnodes, pstree, 
+                                                recon, events, params,
+                                                generate,
+                                                &reconparams);
+                        logl += slogl;
+                    }
+                } else {
                     float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
-                                            node,
+                                            i,
                                             stree->nnodes, pstree, 
                                             recon, events, params,
                                             generate,
                                             &reconparams);
                     logl += slogl;
                 }
-            } else {
-                float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
-                                        i,
-                                        stree->nnodes, pstree, 
-                                        recon, events, params,
-                                        generate,
-                                        &reconparams);
-                logl += slogl;
             }
         }
+
+        // generate probability
+        if (params->alpha > 0 && params->beta > 0)
+            logl += gammalog(generate, params->alpha, params->beta);    
+            
+        printLog(LOG_HIGH, "generate: %f %f\n", generate, exp(logl));
+        return logl;
+    }
+    
+    inline float calcprob(float generate)
+    {
+        return exp(calc(generate));
+    }
+
+    Tree *tree;    
+    SpeciesTree *stree;
+    int *recon;
+    int *events;
+    SpidirParams *params;
+    
+    int *ptree;
+    int *pstree;
+    int **ftree;
+    float *dists;
+};
+
+  
+
+double lkfunction(double generate, void *params)
+{
+    TreeLikelihoodCalculator *lkcalc = (TreeLikelihoodCalculator *) params;
+    return lkcalc->calcprob(generate);
+}
+
+
+float treelk(Tree *tree,
+             SpeciesTree *stree,
+             int *recon, int *events, SpidirParams *params,
+             float generate,
+             float predupprob, float dupprob)
+{
+    float logl = 0.0; // log likelihood
+    
+    float epsabs = 1e6;
+    float epsrel = .60;
+    double result, abserr;
+    size_t workspaceSize = 40;
+
+    
+    
+    TreeLikelihoodCalculator lkcalc(tree, stree, recon, events, params);
+
+    // generate default gene rate
+    if (generate == -1)
+        generate = estimateGenerate(tree, stree, recon, events, params);    
+
+    if (generate > 0) {
+        // estimate with given generate
+        logl = lkcalc.calc(generate);
+    } else {
+        float est_generate = estimateGenerate(tree, stree, recon, events, params);
+        printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
+        
+        gsl_integration_workspace *workspace = 
+            gsl_integration_workspace_alloc(workspaceSize);
+
+        double a = est_generate * .25;;
+        double b = est_generate * 2.0;
+        gsl_function gfunc;
+        gfunc.function = lkfunction;
+        gfunc.params = (void *) &lkcalc;
+        size_t neval = 0;
+        
+        gsl_integration_qag(&gfunc, a, b, 
+                    epsabs, epsrel, 
+                    workspaceSize, GSL_INTEG_GAUSS15, //GSL_INTEG_GAUSS61, 
+                    workspace, 
+                    &result, &abserr);
+        
+        //gsl_integration_qng(&gfunc, a, b, epsabs, epsrel, 
+        //                    &result, &abserr, &neval);
+        
+        logl = log(result);
+        printLog(LOG_HIGH, "integrate: %f %f %f %d\n", 
+                            log(result), log(abserr), abserr/result, neval);
+        
+        /*
+        // integrate over generates
+        float logl2 = 0.0;
+        for (generate = .01; generate < 6; generate += .1) {
+            logl = lkcalc.calcprob(generate);
+            logl2 += logl;
+        }
+        logl = log(logl2 / ((6 - .01) / .1));
+        */
+        
+        gsl_integration_workspace_free(workspace);
     }
     
     // rare events
     logl += rareEventsLikelihood(tree->nnodes, recon, events, stree->nnodes,
                                  predupprob, dupprob);
-    
-    
-    // error cost
-    logl += errorlogl * disterror;
-    
-        
-    // generate probability
-    if (params->alpha > 0 && params->beta > 0)
-        logl += gammalog(generate, params->alpha, params->beta);
-    
-    // clean up
-    delete [] ptree;
-    delete [] pstree;
-    delete [] dists;
-    freeFtree(tree->nnodes, ftree);
+
     
     return logl;
 }
 
 
+// TODO: remove disterror and errorlogl
 // Calculate the likelihood of a tree
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
@@ -763,6 +859,8 @@ float treelk(int nnodes, int *ptree, float *dists,
              float predupprob, float dupprob, float errorlogl,
              float alpha, float beta)
 {
+    // NOTE: disterror and errorlogl are ignored
+
     // create tree objects
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
@@ -777,8 +875,8 @@ float treelk(int nnodes, int *ptree, float *dists,
     
     return treelk(&tree, &stree,
                   recon, events, &params, 
-                  generate, disterror,
-                  predupprob, dupprob, errorlogl);
+                  generate, 
+                  predupprob, dupprob);
 }
 
 

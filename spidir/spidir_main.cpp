@@ -56,6 +56,7 @@ int main(int argc, char **argv)
     int verbose = LOG_QUIET;
     bool help = false;
     bool version = false;
+    bool estGenerate = false;
     
     
     // parse arguments
@@ -100,6 +101,8 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<float>(
         "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
         "probability of a node being a pre-duplication (default=0.01)"));
+    config.add(new ConfigSwitch(
+        "-g", "--generate", &estGenerate, "estimate generate"));
 
     config.add(new ConfigParam<int>(
         "-V", "--verbose", "<verbosity level>", &verbose, LOG_QUIET, 
@@ -224,7 +227,7 @@ int main(int argc, char **argv)
     //=====================================================
     // init likelihood function
     SpidirBranchLikelihoodFunc lkfunc(nnodes, &stree, params, gene2species,
-                                      predupprob, dupprob);
+                                      predupprob, dupprob, estGenerate);
     
     // init topology proposer
     NniProposer nniProposer(&stree, gene2species, niter);
@@ -246,8 +249,12 @@ int main(int argc, char **argv)
     }
     
     
+    Tree *tree = getInitialTree(genes, aln->nseqs, aln->seqlen, aln->seqs,
+                                &stree, gene2species);
+
+    
     // search
-    Tree *toptree = searchMCMC(NULL, 
+    Tree *toptree = searchMCMC(tree, 
                                genes, aln->nseqs, aln->seqlen, aln->seqs,
                                &lkfunc,
                                &nniProposer,
@@ -262,5 +269,6 @@ int main(int argc, char **argv)
     
     closeLogFile();
 }
+
 
 

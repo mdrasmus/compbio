@@ -51,15 +51,12 @@ options = ["""\
      
  ["p:", "param=", "param", "<param file>",
     {"help": "When training this is used as an output file",
-     "single": True,
-     "req": True}],
+     "single": True}],
  ["s:", "stree=", "stree", "<species tree>",
     {"single": True,
-     "req": True,
      "help": "species tree (newick format)"}],
  ["S:", "smap=", "smap", "<gene2species map>",
-    {"req": True,
-     "help": "mapping of gene names to species names"}],
+    {"help": "mapping of gene names to species names"}],
      
  
  "Search options",
@@ -75,7 +72,7 @@ options = ["""\
  ["", "tops=", "tops", "<proposed topologies>",
     {"default": []}],
  ["i:", "iters=", "iters", "<MCMC iterations>", 
-    {"default": 1000, 
+    {"default": 500, 
      "parser": int,
      "single": True}],
  ["I:", "depth=", "depth", "<greedy NNI depth>",
@@ -132,7 +129,7 @@ options = ["""\
      "single": True}],
  ["", "errorcost=", "errorcost", "<error cost>",
     {"single": True,
-     "default": -80,
+     "default": -200,
      "parser": float}],
  ["", "famprob=", "famprob", "True|False",
     {"default": True,
@@ -163,7 +160,36 @@ options = ["""\
  ["P:", "paths=", "paths", "<files path>",
     {"single": True,
      "help": "colon separated paths used to search for data files",
-     "default": "."}]
+     "default": "."}],
+ ["h", "help", "help", "", 
+    {"single": True,
+     "help": "display program usage"}],
+     
+"""
+Examples:
+
+1. training evolutionary model (execute in spidir-examples/ directory)
+
+    spidir.py -t -p model.param -s yeast.stree -S yeast.smap yeast-one2one/*.nt.tree
+    
+    Trains a model (saved in the file 'model.param') from the genes trees 
+    'yeast-one2one/*.nt.tree' using a species tree 'yeast.stree' and a gene-to- 
+    species mapping 'yeast.smap'.
+    
+2. gene tree reconstruction
+
+    spidir.py -p yeast.param -s yeast.stree -S yeast.smap \\
+        -d yeast-one2one/0.nt.align.dist \\
+        -l yeast-one2one/0.nt.align \\
+        -o mytree
+        
+    Reconstructs the gene tree (will be saved in 'mytree.tree') for the pair-wise
+    distance matrix  'yeast-one2one/0.nt.align.dist' with gene names in
+    'yeast-one2one/0.nt.align' using a model of evolution 'model.param' (must be
+    created by training first), a specie stree 'yeast.stree', and a gene-to-
+    species mapping 'yeast.smap'.
+    
+"""
 ]
 
 # import Spidir's debug function
@@ -172,8 +198,12 @@ debug = Spidir.debug
 
 def main(argv):   
     # parse options
-    conf = util.parseOptions(argv, options, quit=True)
+    conf = util.parseOptions(argv, options, quit=True, helpOption=False)
 
+    if conf["help"]:
+        util.usage(os.path.basename(argv[0]), options)
+        sys.exit(1)
+    
     # setup debug output
     #Spidir.setDebugStream(file(Spidir.debugFile(conf), "w"))
     

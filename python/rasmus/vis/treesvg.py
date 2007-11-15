@@ -1,75 +1,19 @@
 
 from rasmus import svg
 from rasmus import util
+from rasmus import treelib
 
 import sys
 import math
 import os
 
 
-def layoutTree(tree, xscale, yscale, minlen, maxlen):
-    """\
-    Determines the x and y coordinates for every branch in the tree.    
-    """
-    
-    coords = {}
-    
-    """
-       /-----   ] 
-       |        ] nodept[node]
-    ---+ node   ]
-       |
-       |
-       \---------
-    """
-    
-    # first determine sizes and nodepts
-    sizes = {}          # number of descendents (leaves have size 1)
-    nodept = {}         # distance between node y-coord and top bracket y-coord
-    def walk(node, x):
-        # calculate new y-coordinate for node
-        dist = min(maxlen, node.dist * xscale)
-        dist = max(minlen, dist)
-        x = x + dist
-        
-        # init sizes
-        sizes[node] = 0
-        
-        # recurse
-        for child in node.children:
-            sizes[node] += walk(child, x)
-        
-        if node.isLeaf():
-            sizes[node] = 1
-            nodept[node] = yscale - 1
-        else:
-            top = nodept[node.children[0]]
-            bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
-                  nodept[node.children[-1]]
-            nodept[node] = (top + bot) / 2
-        
-        return sizes[node]
-    walk(tree.root, 0)
-    
-    # determine x, y coordinates
-    def walk(node, x, y):
-        xchildren = x+min(max(node.dist*xscale, minlen), maxlen)        
-        coords[node] = [xchildren, y + nodept[node]]
-                
-        if not node.isLeaf():
-            ychild = y
-            for child in node.children:
-                walk(child, xchildren, ychild)
-                ychild += sizes[child] * yscale
-    walk(tree.root, 0, 0)
-    
-    return coords
-
 
 def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              labelOffset=None, fontSize=10, labelSize=None,
              minlen=1, maxlen=util.INF, filename=sys.stdout,
              rmargin=100, lmargin=10, tmargin=0, bmargin=None,
+             colormap=None,
              legendScale=False, autoclose=None):
     
     # set defaults
@@ -88,9 +32,14 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         legendScale = False
         minlen = yscale * 2
     
+    if colormap == None:
+        for node in tree:
+            node.color = (0, 0, 0)
+    else:
+        colormap(tree)
     
     # layout tree
-    coords = layoutTree(tree, xscale, yscale, minlen, maxlen)
+    coords = treelib.layoutTree(tree, xscale, yscale, minlen, maxlen)
     
     xcoords, ycoords = zip(* coords.values())
     maxwidth = max(xcoords)
@@ -121,7 +70,7 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
             parentx = 0
         
         # draw branch
-        canvas.line(parentx, y, x, y)
+        canvas.line(parentx, y, x, y, color=node.color)
         if node.name in labels:
             branchlen = x - parentx
             lines = str(labels[node.name]).split("\n")
@@ -138,7 +87,8 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         
         if node.isLeaf():
             canvas.text(str(node.name), 
-                        x + fontSize, y+fontSize/2., fontSize)
+                        x + fontSize, y+fontSize/2., fontSize,
+                        fillColor=node.color)
         else:
             top = coords[node.children[0]][1]
             bot = coords[node.children[-1]][1]

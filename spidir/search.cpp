@@ -316,6 +316,8 @@ Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
 //=============================================================================
 // MCMC search
 
+// NOTE: no used any more
+// DEPRECATED, 
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 string *genes, int nseqs, int seqlen, char **seqs,

@@ -372,7 +372,9 @@ class Tree:
                 if boot.isdigit():
                     node.data["boot"] = int(boot)
                 else:
-                    node.data["boot"] = float(boot)
+                    try:
+                        node.data["boot"] = float(boot)
+                    except ValueError: pass
     
     
     
@@ -1056,8 +1058,170 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
     
     return tree
 
-   
 
+#=============================================================================
+# Tree visualization
+   
+def layoutTree(tree, xscale, yscale, minlen, maxlen):
+    """\
+    Determines the x and y coordinates for every branch in the tree.    
+    """
+    
+    coords = {}
+    
+    """
+       /-----   ] 
+       |        ] nodept[node]
+    ---+ node   ]
+       |
+       |
+       \---------
+    """
+    
+    # first determine sizes and nodepts
+    sizes = {}          # number of descendents (leaves have size 1)
+    nodept = {}         # distance between node y-coord and top bracket y-coord
+    def walk(node, x):
+        # calculate new y-coordinate for node
+        dist = min(maxlen, node.dist * xscale)
+        dist = max(minlen, dist)
+        x = x + dist
+        
+        # init sizes
+        sizes[node] = 0
+        
+        # recurse
+        for child in node.children:
+            sizes[node] += walk(child, x)
+        
+        if node.isLeaf():
+            sizes[node] = 1
+            nodept[node] = yscale - 1
+        else:
+            top = nodept[node.children[0]]
+            bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
+                  nodept[node.children[-1]]
+            nodept[node] = (top + bot) / 2
+        
+        return sizes[node]
+    walk(tree.root, 0)
+    
+    # determine x, y coordinates
+    def walk(node, x, y):
+        xchildren = x+min(max(node.dist*xscale, minlen), maxlen)        
+        coords[node] = [xchildren, y + nodept[node]]
+                
+        if not node.isLeaf():
+            ychild = y
+            for child in node.children:
+                walk(child, xchildren, ychild)
+                ychild += sizes[child] * yscale
+    walk(tree.root, 0, 0)
+    
+    return coords
+
+
+#=============================================================================
+# Tree color map
+
+def treeColorMap(leafmap=lambda x: (0, 0, 0)):
+    """Returns a simple color mixing colormap"""
+
+    def func(tree):
+        def walk(node):
+            if node.isLeaf():
+                node.color = leafmap(node)
+            else:
+                colors = []
+                for child in node.children:
+                    walk(child)
+                    colors.append(child.color)
+                node.color = colorMix(colors)
+        walk(tree.root)
+    return func
+    
+
+
+def ensemblTreeColorMap(tree):
+    """Example of a color map for a tree of Enseml genes"""
+    
+    def leafmap(node):
+        if type(node.name) == str:
+            if node.name.startswith("ENSG"): return [1,0,0]
+            elif node.name.startswith("ENSCAFG"): return [1,1,0]
+            elif node.name.startswith("ENSMUSG"): return [0,0,1]
+            elif node.name.startswith("ENSRNOG"): return [0,1,0]
+        return [0,0,0]
+    
+    return treeColorMap(leafmap)(tree)
+
+    
+def colorMix(colors):
+    """Mixes together several color vectors into one"""
+    
+    sumcolor = [0, 0, 0]
+    for c in colors:
+        sumcolor[0] += c[0]
+        sumcolor[1] += c[1]
+        sumcolor[2] += c[2]                
+    for i in range(3):
+        sumcolor[i] /= float(len(colors))
+    return sumcolor
+
+
+def makeExprMapping(maps):
+    """Returns a function that maps strings matching an expression to a value
+    
+       maps -- a list of pairs (expr, value)
+    """
+
+    # find exact matches and expressions
+    exacts = {}
+    exps = []
+    for key, val in maps:
+        if "*" not in key:
+            exacts[key] = val
+        else:
+            exps.append((key, val))
+    
+    # create mapping function
+    def mapping(key):
+        if key in exacts:
+            return exacts[key]    
+        
+        # return default color
+        if not isinstance(key, str):
+            return (0, 0, 0)
+        
+        # eval expressions first in order of appearance
+        for exp, val in exps:
+            if exp[-1] == "*":
+                if key.startswith(exp[:-1]):
+                    return val
+            elif exp[0] == "*":
+                if key.endswith(exp[1:]):
+                    return val
+        
+        raise Exception("Cannot map key '%s' to any value" % key)
+    return mapping
+
+
+def readTreeColorMap(filename):
+    """Reads a tree colormap from a file"""
+    
+    infile = util.openStream(filename)
+    maps = []
+    
+    for line in infile:
+        expr, red, green, blue = line.rstrip().split("\t")
+        maps.append([expr, map(float, (red, green, blue))])
+    
+    name2color = makeExprMapping(maps)
+    
+    def leafmap(node):
+        return name2color(node.name)
+
+    return treeColorMap(leafmap)
 
 #=========================================================================
 # Draw Tree ASCII art 

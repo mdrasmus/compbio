@@ -7,11 +7,14 @@ def color2string(color):
                             int(255 * color[2]))
 
 def colorFields(strokeColor, fillColor):
-    return "stroke='%s' fill='%s' stroke-opacity='%f' fill-opacity='%f' " % \
-        (color2string(strokeColor), 
-         color2string(fillColor), 
-         strokeColor[3],
-         fillColor[3])
+    txt = "stroke='%s' fill='%s' " % \
+          (color2string(strokeColor), 
+           color2string(fillColor))
+    if len(strokeColor) > 3:
+        txt += "stroke-opacity='%f' " % strokeColor[3]
+    if len(fillColor) > 3:
+        txt += "fill-opacity='%f' " % fillColor[3]
+    return txt
 
 # common colors
 #          r   g   b   a
@@ -57,8 +60,12 @@ class Svg:
     def writeAttrOptions(self, options):
         if "color" in options:
             color = options["color"]
-            self.out.write("stroke-opacity='%f' stroke='%s' " % 
-            (color[3], color2string(color)))
+            
+            if len(color) > 3:
+                self.out.write("stroke-opacity='%f' stroke='%s' " % 
+                (color[3], color2string(color)))
+            else:
+                self.out.write("stroke='%s' " % (color2string(color)))
     
     
     def line(self, x1, y1, x2, y2, color=None, **options):

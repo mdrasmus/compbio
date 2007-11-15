@@ -42,6 +42,7 @@ LIBS="__init__ \
     vis/treesvg \
     "
 
+cp README.txt ${SPIDIR}
 
 cp -r ../python/Spidir/*.py ${SPIDIR}/lib/Spidir
 

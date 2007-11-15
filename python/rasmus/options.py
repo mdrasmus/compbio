@@ -235,6 +235,9 @@ def usage(progname, options, resthelp = ""):
     
     print >>sys.stderr, "Usage: %s [OPTION] %s\n" % (progname, resthelp)
     for option in options:
+        if not isinstance(option, Option):
+            option = Option(option)
+    
         if option.comment != None:
             print >>sys.stderr, option.comment
         else:

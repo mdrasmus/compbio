@@ -190,5 +190,5 @@ def readTreeColorMap(filename):
     def leafmap(node):
         return name2color(node.name)
 
-    return sumtree.treeColorMap(leafmap)
+    return treelib.treeColorMap(leafmap)
     

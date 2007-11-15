@@ -21,15 +21,7 @@ from rasmus.bio import phylip
 
 from rasmus.vis import treesvg
 
-# scipy libs
-# (needed for numerical integration and least square error fitting)
-try:
-    import scipy
-    import scipy.linalg
-    import scipy.integrate
-    import scipy.optimize
-except ImportError:
-    pass
+
 
 
 # SPIDIR libs
@@ -41,6 +33,16 @@ try :
 except ImportError:
     pyspidir = None
 
+# scipy libs
+# (needed for numerical integration and least square error fitting)
+try:
+    import scipy
+    import scipy.linalg
+    import scipy.integrate
+    import scipy.optimize
+except ImportError:
+    if pyspidir == None:
+        raise Exception("Must install SciPy before using SPIDIR")
 
 # events
 EVENT_GENE = 0

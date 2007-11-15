@@ -896,43 +896,33 @@ class RegionTrack (Track):
                 if util.overlap(start, end, reg.start, reg.end):
                     if reg.strand == 1:
                         # positive strand
-                        vis.extend([reg.start-start, 0,
-                                    reg.end-start+1, 0,
-                                    reg.end-start+1, height,
-                                    reg.start-start, height])
-                        vis2.extend([reg.start-start, 0, 
-                                     reg.start-start, height])
-                        if 'ID' in reg.data:
-                            names.append(text_clip(reg.data['ID'], 
-                                                   reg.start-start, 0,
-                                                   reg.end-start+1, height,
-                                                   4, 
-                                                   self.textSize))
-                        if self.onClick:
-                            hotspots.append(hotspot("click",
-                                                    reg.start-start, height,
-                                                    reg.end-start+1, 0,
-                                                    clickRegion(reg)))
-                    else:
+                        bot = 0
+                        top = height
+                    elif reg.strand == -1:
                         # negative strand
-                        vis.extend([reg.start-start, -height,
-                                    reg.end-start+1, -height,
-                                    reg.end-start+1, 0,
-                                    reg.start-start, 0])
-                        vis2.extend([reg.start-start, 0, 
-                                     reg.start-start, -height])
-                        if 'ID' in reg.data:                    
-                            names.append(text_clip(reg.data['ID'], 
-                                                   reg.start-start, -height,
-                                                   reg.end-start+1, 0,
-                                                   4, 
-                                                   self.textSize))
-                    
-                        if self.onClick:
-                            hotspots.append(hotspot("click",
-                                                    reg.start-start, -height,
-                                                    reg.end-start+1, 0,
-                                                    clickRegion(reg)))
+                        bot = -height
+                        top = 0
+                    else:
+                        bot = -height
+                        top = height
+                        
+                    vis.extend([reg.start-start, bot,
+                                reg.end-start+1, bot,
+                                reg.end-start+1, top,
+                                reg.start-start, top])
+                    vis2.extend([reg.start-start, bot, 
+                                 reg.start-start, top])
+                    if 'ID' in reg.data:
+                        names.append(text_clip(reg.data['ID'], 
+                                               reg.start-start, bot,
+                                               reg.end-start+1, top,
+                                               4, 
+                                               self.textSize))
+                    if self.onClick:
+                        hotspots.append(hotspot("click",
+                                                reg.start-start, top,
+                                                reg.end-start+1, bot,
+                                                clickRegion(reg)))
             
             return group(translate(self.pos[0], self.pos[1] + self.size[1] / 2.0,
                      color(0,0,0), lines(0, 0, end-start+1, 0),

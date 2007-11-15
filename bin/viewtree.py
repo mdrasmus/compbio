@@ -35,6 +35,8 @@ options = [
      "help": "do not display branch length"}],
   ["r:", "reroot=", "reroot", "<branch to root tree>",
     {"single": True}],
+  ["c:", "colormap=", "colormap", "<color map file>",
+    {"single": True}],
   ["", "rootby=", "rootby", "dup|loss|duploss",
     {"single": True,
      "default": "duploss"}],
@@ -62,6 +64,10 @@ gene2species = conf["gene2species"]
 if "stree" in conf:
     stree = conf["stree"]
 
+if "colormap" in conf:
+    colormap = treelib.readTreeColorMap(conf["colormap"])
+else:
+    colormap = None
 
 
 hashes = []
@@ -165,14 +171,17 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                 treesvg.showTree(tree, labels=labels,
                                        xscale=conf["scale"],
                                        minlen=conf["minlen"],
-                                       maxlen=conf["maxlen"])
+                                       maxlen=conf["maxlen"],
+                                       legendScale=True,
+                                       colormap=colormap)
             else:
                 treesvg.drawTree(tree, labels=labels,
                                        xscale=conf["scale"],
                                        minlen=conf["minlen"],
                                        maxlen=conf["maxlen"],
                                        filename=conf["graphical"],
-                                       legendScale=True)
+                                       legendScale=True,
+                                       colormap=colormap)
         else:
             treelib.drawTree(tree, labels=labels,
                                 scale=conf["scale"],

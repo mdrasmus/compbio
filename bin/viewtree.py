@@ -63,6 +63,8 @@ genomeutil.readOptions(conf)
 gene2species = conf["gene2species"]
 if "stree" in conf:
     stree = conf["stree"]
+else:
+    stree = None
 
 if "colormap" in conf:
     colormap = treelib.readTreeColorMap(conf["colormap"])
@@ -85,13 +87,12 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         continue
     
     if "stree" in conf and \
-       "smap" in conf:
+       "smap" in conf and "reroot" in conf:
         phylo.reconRoot(tree, stree, gene2species, 
                             rootby=conf["rootby"],
                             newCopy=False)
     
-    
-    if "reroot" in conf:
+    elif "reroot" in conf:
         tree = treelib.reroot(tree, conf["reroot"])
         
     
@@ -173,7 +174,9 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                                        minlen=conf["minlen"],
                                        maxlen=conf["maxlen"],
                                        legendScale=True,
-                                       colormap=colormap)
+                                       colormap=colormap,
+                                       stree=stree,
+                                       gene2species=gene2species)
             else:
                 treesvg.drawTree(tree, labels=labels,
                                        xscale=conf["scale"],
@@ -181,7 +184,9 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                                        maxlen=conf["maxlen"],
                                        filename=conf["graphical"],
                                        legendScale=True,
-                                       colormap=colormap)
+                                       colormap=colormap,
+                                       stree=stree,
+                                       gene2species=gene2species)
         else:
             treelib.drawTree(tree, labels=labels,
                                 scale=conf["scale"],

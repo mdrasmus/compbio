@@ -2,6 +2,7 @@
 from rasmus import svg
 from rasmus import util
 from rasmus import treelib
+from rasmus.bio import phylo
 
 import sys
 import math
@@ -14,6 +15,11 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              minlen=1, maxlen=util.INF, filename=sys.stdout,
              rmargin=100, lmargin=10, tmargin=0, bmargin=None,
              colormap=None,
+             stree=None,
+             gene2species=None,
+             lossColor=(0, 0, 1),
+             dupColor=(1, 0, 0),
+             eventSize=4,
              legendScale=False, autoclose=None):
     
     # set defaults
@@ -37,6 +43,14 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
             node.color = (0, 0, 0)
     else:
         colormap(tree)
+    
+    if stree and gene2species:
+        recon = phylo.reconcile(tree, stree, gene2species)
+        events = phylo.labelEvents(tree, recon)
+        losses = phylo.findLoss(tree, stree, recon)
+    else:
+        events = None
+        losses = None
     
     # layout tree
     coords = treelib.layoutTree(tree, xscale, yscale, minlen, maxlen)
@@ -101,6 +115,12 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     
     canvas.beginTransform(("translate", lmargin, tmargin))
     walk(tree.root)
+        
+    if stree and gene2species:
+        drawEvents(canvas, tree, coords, events, losses,
+                   lossColor=lossColor,
+                   dupColor=dupColor,
+                   size=eventSize)
     canvas.endTransform()
     
     # draw legend
@@ -119,6 +139,33 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     
     return canvas
 
+
+def drawEvents(canvas, tree, coords, events, losses,
+               lossColor=(0, 0, 1),
+               dupColor=(1, 0, 0),
+               size=4):
+
+    # draw duplications
+    for node in tree:
+        x, y = coords[node]
+        if events[node] == "dup":
+            canvas.rect(x - size/2.0, y - size/2.0,
+                        size, size,  fillColor=dupColor, strokeColor=(0,0,0,0))
+
+    # draw losses
+    losses_per_branch = util.histDict([node for node, schild in losses])
+
+    for node, nlosses in losses_per_branch.iteritems():
+        if node.parent == None:
+            continue
+
+        x1 = coords[node.parent][0]
+        x2, y1 = coords[node]
+        step = (x2 - x1) / float(nlosses + 1)
+
+        for x in util.frange(x1 + step, x2-(step/2.0), step):
+            canvas.line(x, y1 - size/2.0, x, y1 + size/2.0, color=lossColor)
+            
 
 def drawScale(x, y, length, xscale, fontSize, canvas=None):
     assert canvas != None

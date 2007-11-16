@@ -10,6 +10,8 @@ import os
 
 
 
+
+
 def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              labelOffset=None, fontSize=10, labelSize=None,
              minlen=1, maxlen=util.INF, filename=sys.stdout,
@@ -221,6 +223,25 @@ def getPairwiseDists(tree, mainsp):
     
 #=============================================================================
 # additional wrapper functions
+
+def drawEventsTree(tree, stree, gene2species, **options):
+    phylo.initDupLossTree(stree)
+    phylo.countDupLossTree(tree, stree, gene2species)
+    phylo.countAncestralGenes(stree)
+    
+    labels = options.get("labels", {})
+    
+    for node in stree:
+        labels[node.name] = "%d" % node.data['genes']
+
+        if node.data['dup'] > 0:
+            labels[node.name] += " +%d" % node.data['dup']
+
+        if node.data['loss'] > 0:
+            labels[node.name] += " -%d" %  node.data['loss']
+    
+    drawTree(stree, labels=labels, **options)
+
 
 def drawTreeLens(tree, *args, **kargs):
     labels = {}

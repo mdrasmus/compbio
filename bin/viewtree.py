@@ -30,9 +30,9 @@ options = [
   ["n", "names", "names", "",
     {"single": True,
      "help": "display internal node names"}],
-  ["", "nolen", "nolen", "",
+  ["", "len", "len", "",
     {"single": True,
-     "help": "do not display branch length"}],
+     "help": "display branch lengths"}],
   ["r:", "reroot=", "reroot", "<branch to root tree>",
     {"single": True}],
   ["c:", "colormap=", "colormap", "<color map file>",
@@ -49,6 +49,8 @@ options = [
   ["g:", "graphical=", "graphical", "<filename>|-",
     {"single": True}],
   ["G", "default-graphical", "default-graphical", "",
+    {"single": True}],
+  ["e", "events", "events", "",
     {"single": True}],
   ["", "trees=", "trees", "{trees}",
    {"single": True,
@@ -138,20 +140,37 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         if conf["default-graphical"]:
             conf.setdefault("graphical", "-")
             conf['scale'] = 500.0
-            conf['nolen'] = True
 
 
-        
         labels = {}
+        
+        for node in tree.nodes.values():
+            labels[node] = ""
+        
+        if conf["events"]:
+            assert stree != None and gene2species != None
+            phylo.initDupLossTree(stree)
+            phylo.countDupLossTree(tree, stree, gene2species)
+            phylo.countAncestralGenes(stree)
+            
+            for node in stree:
+                labels[node.name] = "%d" % node.data['genes']
+                
+                if node.data['dup'] > 0:
+                    labels[node.name] += " +%d" % node.data['dup']
+                    
+                if node.data['loss'] > 0:
+                    labels[node.name] += " -%d" %  node.data['loss']
+            tree = stree
+            stree = None
+            gene2species = None
         
         # create branch labels
         for node in tree.nodes.values():
-            
+
             # label distances
-            if conf["nolen"]:
-                labels[node.name] = ""
-            else:
-                labels[node.name] = "%f" % node.dist
+            if conf["len"]:
+                labels[node.name] += "%f" % node.dist
             
             # label bootstraps
             if "boot" in node.data and node.data["boot"] != 0:
@@ -161,7 +180,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                 else:
                     labels[node.name] = "(%.2f) %s" % (node.data["boot"], 
                                                        labels[node.name])
-        
+
             # label node names
             if conf["names"] and not node.isLeaf():
                 labels[node.name] = "[%s] %s" % (node.name, 

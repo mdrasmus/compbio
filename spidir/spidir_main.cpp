@@ -81,14 +81,14 @@ int main(int argc, char **argv)
     config.add(new ConfigParamComment("Sequence model evolution"));
     config.add(new ConfigParam<string>(
         "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
-        "algorithm for determining branch lengths"));    
+        "algorithm for determining branch lengths (default: hky)"));    
     config.add(new ConfigParam<float>(
         "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
         "used for HKY model (default=0.5)"));
     config.add(new ConfigParam<string>(
         "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
         &bgfreqstr, ".25,.25,.25,.25",
-        "background frequencies (default=0.25,0.25,0.25,0.25"));
+        "background frequencies (default=0.25,0.25,0.25,0.25)"));
     
     
     config.add(new ConfigParamComment("Miscellaneous"));

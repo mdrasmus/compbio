@@ -145,7 +145,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         labels = {}
         
         for node in tree.nodes.values():
-            labels[node] = ""
+            labels[node.name] = ""
         
         if conf["events"]:
             assert stree != None and gene2species != None

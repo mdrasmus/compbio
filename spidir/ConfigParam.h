@@ -197,7 +197,8 @@ public:
             }
             
             for (unsigned int j=0; j<rules.size(); j++) {
-                if (argv[i] == rules[j]->shortarg ||
+                if (strcmp(argv[i], "") &&
+                    argv[i] == rules[j]->shortarg ||
                     argv[i] == rules[j]->longarg)
                 {
                     int consume = rules[j]->parse(argc - i-1, &argv[i+1]);
@@ -234,11 +235,14 @@ public:
         fprintf(stream, "Usage: %s [OPTION]\n\n", prog.c_str());
     
         for (unsigned int i=0; i<rules.size(); i++) {
-            if (rules[i]->kind == OPTION_ARG)
-                fprintf(stream, "  %s,%s  %s\n    %s\n\n", 
-                        rules[i]->shortarg.c_str(), rules[i]->longarg.c_str(), 
+            if (rules[i]->kind == OPTION_ARG) {
+                fprintf(stream, "  ");
+                if (rules[i]->shortarg != "")
+                    fprintf(stream, "%s,", rules[i]->shortarg.c_str());
+                fprintf(stream, "%s  %s\n    %s\n\n", 
+                        rules[i]->longarg.c_str(), 
                         rules[i]->argstr.c_str(), rules[i]->help.c_str());
-            else if (rules[i]->kind == OPTION_COMMENT)
+            } else if (rules[i]->kind == OPTION_COMMENT)
                 fprintf(stream, "%s\n", 
                         ((ConfigParamComment*) rules[i])->msg.c_str());
             else

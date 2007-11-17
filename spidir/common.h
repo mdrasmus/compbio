@@ -133,7 +133,7 @@ public:
     }
     
     
-    bool open(const char *filename, char *mode, 
+    bool open(const char *filename, const char *mode, 
               const char *errmsg="cannot read file '%s'\n")
     {
         m_stream = fopen(filename, mode);

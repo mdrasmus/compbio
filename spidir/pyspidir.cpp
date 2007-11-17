@@ -232,8 +232,8 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     float logl = treelk(nnodes, ptree, dists,
                   nsnodes, pstree, 
                   recon, events,
-                  mu, sigma, generate, disterror,
-                  predupprob, dupprob, errorprob, alpha, beta);
+                  mu, sigma, generate, 
+                  predupprob, dupprob, alpha, beta);
     
     return Py_BuildValue("f", logl);
 }

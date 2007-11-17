@@ -530,7 +530,7 @@ char readChar(FILE *stream, int &depth)
 }
 
 
-char readUntil(FILE *stream, string &token, char *stops, int &depth)
+char readUntil(FILE *stream, string &token, const char *stops, int &depth)
 {
     char chr;
     token = "";
@@ -540,7 +540,7 @@ char readUntil(FILE *stream, string &token, char *stops, int &depth)
             return chr;
         
         // compare char to stop characters
-        for (char *i=stops; *i; i++) {
+        for (const char *i=stops; *i; i++) {
             if (chr == *i)
                 return chr;
         }

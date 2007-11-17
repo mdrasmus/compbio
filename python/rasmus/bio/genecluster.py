@@ -472,6 +472,9 @@ class FamilyDb (object):
     def getGenes(self, famid):
         return self.parseGenes(self.famlookup[famid]['genes'])
     
+    def getFamid(self, gene):
+        return self.genelookup[gene]['famid']
+    
     def parseGenes(self, genes):
         return util.remove(genes.split(","), "")
     
@@ -483,7 +486,6 @@ class FamilyDb (object):
     
     def familyDir(self, famid):
         return os.path.join(self.datadir, famid)
-        
     
     def saveTable(self):
         self.famtab.write(self.filename)

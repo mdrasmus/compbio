@@ -815,18 +815,31 @@ float treelk(Tree *tree,
         gfunc.params = (void *) &lkcalc;
         size_t neval = 0;
         
+        /*
         gsl_integration_qag(&gfunc, a, b, 
                     epsabs, epsrel, 
                     workspaceSize, GSL_INTEG_GAUSS15, //GSL_INTEG_GAUSS61, 
                     workspace, 
                     &result, &abserr);
+        */
+        
+        logl = 0.0;
+        float totprob = 0;
+        float maxg = params->alpha / params->beta * 2.0;
+        float gstart = maxg * 0.05;
+        float step = maxg / 50.0;
+        for (float g=gstart; g<maxg; g+=step) {
+            float prob = lkfunction(g, (void*) &lkcalc);
+            totprob += prob * step;
+        }
+        logl = log(totprob);
         
         //gsl_integration_qng(&gfunc, a, b, epsabs, epsrel, 
         //                    &result, &abserr, &neval);
         
-        logl = log(result);
-        printLog(LOG_HIGH, "integrate: %f %f %f %d\n", 
-                            log(result), log(abserr), abserr/result, neval);
+        //logl = log(result);
+        //printLog(LOG_HIGH, "integrate: %f %f %f %f %d\n", 
+        //                    logl, log(result), log(abserr), abserr/result, neval);
         
         /*
         // integrate over generates
@@ -855,8 +868,8 @@ float treelk(Tree *tree,
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
              int *recon, int *events,
-             float *mu, float *sigma, float generate, float disterror,
-             float predupprob, float dupprob, float errorlogl,
+             float *mu, float *sigma, float generate,
+             float predupprob, float dupprob,
              float alpha, float beta)
 {
     // NOTE: disterror and errorlogl are ignored

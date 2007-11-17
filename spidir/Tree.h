@@ -208,7 +208,7 @@ void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
 float readDist(FILE *infile, int &depth);
 char readChar(FILE *stream, int &depth);
-char readUntil(FILE *stream, string &token, char *stops, int &depth);
+char readUntil(FILE *stream, string &token, const char *stops, int &depth);
 
 
 } // namespace spidir

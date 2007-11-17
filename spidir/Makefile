@@ -70,7 +70,8 @@ LIBSPIDIR_OBJS = $(SPIDIR_OBJS)
 PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
-    $(SPIDIR_OBJS)
+    $(SPIDIR_OBJS)  
+PYTHON_MODULE_LIBS = -lpython2.4 `gsl-config --libs`
 
 
 # matlab files
@@ -141,10 +142,10 @@ test_spidir: $(SPIDIR_OBJS) test.o
 	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o $(PROG_LIBS) -o test_spidir
 
 # python module
-pyspidir: $(PYTHON_MODULE)
+#pyspidir: $(PYTHON_MODULE)
 
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
-	$(CXX) -shared $(PYTHON_MODULE_OBJS) -o $(PYTHON_MODULE)
+	$(CXX) -shared $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE_LIBS) -o $(PYTHON_MODULE)
 
 
 # matlab interface

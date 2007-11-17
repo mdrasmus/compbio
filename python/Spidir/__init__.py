@@ -976,15 +976,9 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     
     # calc probability of rare events
     tree.data["eventlogl"] = rareEventsLikelihood(conf, tree, stree, recon, events)
-    #this.logl += tree.data["eventlogl"]
     
     # calc penality of error
     tree.data["errorlogl"] = tree.data["error"] * conf["errorcost"]
-    #this.logl += tree.data["errorlogl"]
-    
-    # gene rate
-    #if conf["famprob"]:
-    #    this.logl += log(stats.gammaPdf(baserate, params["baserate"]))    
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl

@@ -100,11 +100,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     // dupprob
     float dupprob = 1.0;
     
-    // disterror
-    float disterror = 0.0;
-    
-    // errorprob
-    float errorprob = 0.0;
     
     
     
@@ -134,8 +129,8 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     logl = treelk(nnodes, ptree, dists,
                   nsnodes, pstree, 
                   recon, events,
-                  mu, sigma, generate, disterror,
-                  predupprob, dupprob, errorprob, alpha, beta);
+                  mu, sigma, generate, 
+                  predupprob, dupprob, alpha, beta);
     
     fclose(out);
     

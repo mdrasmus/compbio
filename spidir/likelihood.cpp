@@ -2,7 +2,7 @@
 //  SPIDIR - Likelihood calculation
 
 
-#include <gsl/gsl_integration.h>
+//#include <gsl/gsl_integration.h>
 
 // c++ headers
 #include <stdlib.h>
@@ -805,6 +805,7 @@ float treelk(Tree *tree,
         float est_generate = estimateGenerate(tree, stree, recon, events, params);
         printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
         
+        /*
         gsl_integration_workspace *workspace = 
             gsl_integration_workspace_alloc(workspaceSize);
 
@@ -815,7 +816,7 @@ float treelk(Tree *tree,
         gfunc.params = (void *) &lkcalc;
         size_t neval = 0;
         
-        /*
+        
         gsl_integration_qag(&gfunc, a, b, 
                     epsabs, epsrel, 
                     workspaceSize, GSL_INTEG_GAUSS15, //GSL_INTEG_GAUSS61, 
@@ -851,7 +852,7 @@ float treelk(Tree *tree,
         logl = log(logl2 / ((6 - .01) / .1));
         */
         
-        gsl_integration_workspace_free(workspace);
+        //gsl_integration_workspace_free(workspace);
     }
     
     // rare events

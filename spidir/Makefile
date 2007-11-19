@@ -57,7 +57,8 @@ SPIDIR_OBJS = \
 
 PROG_SRC = spidir_main.cpp 
 PROG_OBJS = spidir_main.o $(SPIDIR_OBJS)
-PROG_LIBS = `gsl-config --libs`
+PROG_LIBS = 
+#`gsl-config --libs`
 
 
 # C-library files
@@ -71,7 +72,9 @@ PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
     $(SPIDIR_OBJS)  
-PYTHON_MODULE_LIBS = -lpython2.4 `gsl-config --libs`
+PYTHON_MODULE_LIBS = 
+#-lpython2.4 
+#`gsl-config --libs`
 
 
 # matlab files

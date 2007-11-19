@@ -162,10 +162,8 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     float alpha = PyFloat_AS_DOUBLE(pyalpha);
     float beta = PyFloat_AS_DOUBLE(pybeta);    
     float generate = PyFloat_AS_DOUBLE(pygenerate);
-    float disterror = PyFloat_AS_DOUBLE(pydisterror);
     float predupprob = PyFloat_AS_DOUBLE(pypredupprob);
     float dupprob = PyFloat_AS_DOUBLE(pydupprob);
-    float errorprob = PyFloat_AS_DOUBLE(pyerrorprob);
     
     
     // convert data

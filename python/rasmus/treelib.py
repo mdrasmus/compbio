@@ -562,10 +562,10 @@ class Tree:
         self.add(self.root)
     
 
-    def readParentTree(self, treeFile, labelFile=None):
+    def readParentTree(self, treeFile, labelFile=None, labels=None):
         if labelFile:
             labels = util.readStrings(labelFile)
-        else:
+        elif labels == None:
             nitems = (len(file(treeFile).readlines()) + 1)/ 2
             labels = map(str, range(nitems))
         
@@ -1062,9 +1062,11 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
 #=============================================================================
 # Tree visualization
    
-def layoutTree(tree, xscale, yscale, minlen, maxlen):
+def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF):
     """\
-    Determines the x and y coordinates for every branch in the tree.    
+    Determines the x and y coordinates for every branch in the tree.
+    
+    Branch lengths are determined by node.dist
     """
     
     coords = {}
@@ -1083,16 +1085,11 @@ def layoutTree(tree, xscale, yscale, minlen, maxlen):
     nodept = {}         # distance between node y-coord and top bracket y-coord
     def walk(node, x):
         # calculate new y-coordinate for node
-        dist = min(maxlen, node.dist * xscale)
-        dist = max(minlen, dist)
-        x = x + dist
-        
-        # init sizes
+                
+        # compute node sizes
         sizes[node] = 0
-        
-        # recurse
         for child in node.children:
-            sizes[node] += walk(child, x)
+            sizes[node] += walk(child)
         
         if node.isLeaf():
             sizes[node] = 1
@@ -1104,7 +1101,7 @@ def layoutTree(tree, xscale, yscale, minlen, maxlen):
             nodept[node] = (top + bot) / 2
         
         return sizes[node]
-    walk(tree.root, 0)
+    walk(tree.root)
     
     # determine x, y coordinates
     def walk(node, x, y):
@@ -1120,6 +1117,65 @@ def layoutTree(tree, xscale, yscale, minlen, maxlen):
     
     return coords
 
+
+def layoutTreeHierarchical(tree, xscale, yscale):
+    """\
+    Determines the x and y coordinates for every branch in the tree.
+    
+    Leaves are drawn to line up.  Best used for hierarchical clustering.
+    """
+    
+    coords = {}
+    
+    """
+       /-----   ] 
+       |        ] nodept[node]
+    ---+ node   ]
+       |
+       |
+       \---------
+    """
+    
+    # first determine sizes and nodepts
+    sizes = {}          # number of descendents (leaves have size 1)
+    depth = {}          # how deep in tree is node
+    nodept = {}         # distance between node y-coord and top bracket y-coord
+    def walk(node):
+        # calculate new y-coordinate for node
+        
+        # compute node sizes
+        sizes[node] = 0        
+        for child in node.children:
+            sizes[node] += walk(child)
+        
+        if node.isLeaf():
+            sizes[node] = 1
+            nodept[node] = yscale - 1
+            depth[node] = 0
+        else:
+            top = nodept[node.children[0]]
+            bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
+                  nodept[node.children[-1]]
+            nodept[node] = (top + bot) / 2
+            depth[node] = max(depth[child] + 1 for child in node.children)
+        
+        return sizes[node]
+    walk(tree.root)
+    
+    # determine x, y coordinates
+    maxdepth = depth[tree.root]
+    def walk(node, x, y):
+        xchildren = xscale * (maxdepth - depth[node])
+        coords[node] = [xchildren, y + nodept[node]]
+        
+        if not node.isLeaf():
+            ychild = y
+            for child in node.children:
+                walk(child, xchildren, ychild)
+                ychild += sizes[child] * yscale
+    walk(tree.root, 0, 0)
+    
+    return coords
 
 #=============================================================================
 # Tree color map

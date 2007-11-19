@@ -1,3 +1,9 @@
+"""
+
+    Python wrapper around the PHYML phylogeny program
+
+"""
+
 import os
 import sys
 

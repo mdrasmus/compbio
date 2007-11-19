@@ -1083,7 +1083,7 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF):
     # first determine sizes and nodepts
     sizes = {}          # number of descendents (leaves have size 1)
     nodept = {}         # distance between node y-coord and top bracket y-coord
-    def walk(node, x):
+    def walk(node):
         # calculate new y-coordinate for node
                 
         # compute node sizes

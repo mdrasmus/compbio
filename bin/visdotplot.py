@@ -6,10 +6,9 @@ import os, sys
 # rasmus libs
 from rasmus import util, env
 from rasmus.bio import genomeio, genomeutil, clustalw, fasta, gff
-from rasmus.bio.genomeutil import *
 
 # graphics libs
-from summon import *
+from summon.core import *
 from rasmus.vis import dotplot
 
 
@@ -49,12 +48,12 @@ util.tic("read")
 
 # get species map
 if "speciesmap" in conf:
-    gene2species = readGene2species(* map(env.findFile, conf["speciesmap"]))
+    gene2species = genomeutil.readGene2species(* map(env.findFile, conf["speciesmap"]))
 else:
     gene2species = genomeutil.gene2species
 
 # read genomes
-m = Matching()
+m = genomeutil.Matching()
 genomes = conf["genomes"].split(",")
 for gffFile in conf["gff"]:
     util.tic("read '%s'" % gffFile)

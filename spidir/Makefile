@@ -77,28 +77,12 @@ PYTHON_MODULE_LIBS =
 #`gsl-config --libs`
 
 
-# matlab files
-MATLAB_FUNCS = $(MATLAB_TREELK_FUNC) \
-               $(MATLAB_DISPLAY_TREE_FUNC) \
-               $(MATLAB_GENBRANCHES_FUNC)
-               
-MATLAB_OBJS = $(MATLAB_TREELK_OBJ) \
-              $(MATLAB_DISPLAY_TREE_OBJ) \
-              $(MATLAB_GENBRANCHES_OBJ)
+# matlab files              
+MATLAB_OBJS = matlab/spidir_treelk.mexglx \
+              matlab/spidir_display_tree.mexglx \
+              matlab/spidir_genbranches.mexglx
 
-
-MATLAB_TREELK_FUNC = spidir_treelk
-MATLAB_TREELK_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_treelk.cpp
-MATLAB_TREELK_OBJ = spidir_treelk.mexglx
-
-MATLAB_DISPLAY_TREE_FUNC = spidir_display_tree
-MATLAB_DISPLAY_TREE_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_display_tree.cpp
-MATLAB_DISPLAY_TREE_OBJ = spidir_display_tree.mexglx
-
-MATLAB_GENBRANCHES_FUNC = spidir_genbranches
-MATLAB_GENBRANCHES_SRC = $(SPIDIR_SRC) matlab_interface.cpp matlab_genbranches.cpp
-MATLAB_GENBRANCHES_OBJ = spidir_genbranches.mexglx
-
+MATLAB_SRC = $(SPIDIR_SRC) matlab_interface.cpp
 
 
 #=============================================================================
@@ -152,18 +136,10 @@ $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 
 
 # matlab interface
-matlab_funcs: $(MATLAB_FUNCS)
+matlab: $(MATLAB_OBJS)
 
-# matlab treelk function
-$(MATLAB_TREELK_FUNC): $(MATLAB_TREELK_SRC)
-	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_TREELK_SRC) -o $(MATLAB_TREELK_FUNC)
-
-# matlab display tree function
-$(MATLAB_DISPLAY_TREE_FUNC): $(MATLAB_DISPLAY_TREE_SRC)
-	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_DISPLAY_TREE_SRC) -o $(MATLAB_DISPLAY_TREE_FUNC)
-
-$(MATLAB_GENBRANCHES_FUNC): $(MATLAB_GENBRANCHES_SRC)
-	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_GENBRANCHES_SRC) -o $(MATLAB_GENBRANCHES_FUNC)
+$(MATLAB_OBJS): %.mexglx: %.cpp
+	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_SRC) $< -o $@
 
 
 #=============================================================================

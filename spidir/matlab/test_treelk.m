@@ -20,7 +20,7 @@
 % 5. the parent of root is -1
 %
 
-function test_matlab_spidir()
+function test_treelk()
     nnodes = 4
     nsnodes = 4
 

@@ -22,11 +22,12 @@ CFLAGS = \
 
 
 # matlab options
-MATLAB_DIR = /afs/csail/i386_linux24/matlab/6.5r13sp1
+MATLAB_DIR = /afs/csail/i386_linux24/matlab/2007a
+#MATLAB_DIR = /afs/csail/i386_linux24/matlab/6.5r13sp1
 MATLAB_CFLAGS = \
     -g \
-    -I$(MATLAB_DIR)/extern/include/cpp \
-
+    -I$(MATLAB_DIR)/extern/include/cpp 
+MEX_EXT = mexglx
 
 #=============================================================================
 # target names
@@ -78,9 +79,10 @@ PYTHON_MODULE_LIBS =
 
 
 # matlab files              
-MATLAB_OBJS = matlab/spidir_treelk.mexglx \
-              matlab/spidir_display_tree.mexglx \
-              matlab/spidir_genbranches.mexglx
+MATLAB_OBJS = matlab/spidir_treelk.$(MEX_EXT) \
+              matlab/spidir_display_tree.$(MEX_EXT) \
+              matlab/spidir_genbranches.$(MEX_EXT) \
+              matlab/spidir_mlhkydist.$(MEX_EXT)
 
 MATLAB_SRC = $(SPIDIR_SRC) matlab_interface.cpp
 
@@ -138,7 +140,7 @@ $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 # matlab interface
 matlab: $(MATLAB_OBJS)
 
-$(MATLAB_OBJS): %.mexglx: %.cpp
+$(MATLAB_OBJS): %.$(MEX_EXT): %.cpp
 	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_SRC) $< -o $@
 
 
@@ -163,5 +165,5 @@ myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
 clean:
 	rm -f $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
               $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
-              $(MATLAB_OBJS max) maxml maxml.o \
+              $(MATLAB_OBJS) maxml maxml.o \
 	      test.o test_spidir

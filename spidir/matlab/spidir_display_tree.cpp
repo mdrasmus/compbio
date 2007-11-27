@@ -4,10 +4,6 @@
 =============================================================================*/
 
 
-
-// matlab headers
-#include <mex.h>
-
 // spidir headers
 #include "../matlab_interface.h"
 #include "../common.h"
@@ -15,6 +11,9 @@
 #include "../ExtendArray.h"
 
 using namespace spidir;
+
+// matlab headers
+#include <mex.h>
 
 
 
@@ -36,11 +35,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         mexErrMsgTxt("Too many output arguments");
     }
     
-    
-    // debug output file
-    FILE *out = fopen("debug.txt", "a");
-    
-    
+
         
     //================================================
     // parse args
@@ -75,9 +70,18 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
         }
     }
     
-    displayTree(&tree, out, xscale);
+    char **matrix = NULL;
+    int nrows = 0;
+    int ncols = 0;
+    displayTreeMatrix(&tree, xscale, 2, 
+                       &matrix, &nrows, &ncols);  
     
-    fclose(out);
+    for (int i=0; i<nrows; i++) 
+        printf("%s\n", matrix[i]);
+    
+    for (int i=0; i<nrows; i++) 
+        delete [] matrix[i];
+    delete [] matrix;
 }
 
 

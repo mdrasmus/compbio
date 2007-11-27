@@ -307,7 +307,7 @@ static PyObject *
 pyspidir_mlhkydist(PyObject *self, PyObject *args)
 {
     // check number of args
-    if (PyTuple_GET_SIZE(args) < 2) {
+    if (PyTuple_GET_SIZE(args) < 5) {
         printf("wrong number of args\n");
         return NULL;
     }

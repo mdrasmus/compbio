@@ -190,6 +190,9 @@ void getTreePreOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL);
 
 void displayTree(Tree *tree, FILE *outfile=stdout, 
                  float xscale=20.0, int yscale=2);
+void displayTreeMatrix(Tree *tree, float xscale, int yscale, 
+                       char ***matrix, int *nrows, int *ncols);
+
 
 //=============================================================================
 // conversion functions

@@ -676,7 +676,42 @@ void displayTree(Tree *tree, FILE *outfile, float xscale, int yscale)
     }
 }
 
+void displayTreeMatrix(Tree *tree, float xscale, int yscale, 
+                       char ***matrix, int *nrows, int *ncols)
+{
+    const int labelSpacing = 2;
 
+    ExtendArray<int> xpt(tree->nnodes);
+    ExtendArray<int> ypt(tree->nnodes);
+    treeLayout(tree->root, xpt, ypt, xscale, yscale);
+
+    int width = 0;    
+    for (int i=0; i<tree->nnodes; i++) {
+        int extra = 0;
+        
+        if (tree->nodes[i]->isLeaf())
+            extra = labelSpacing + tree->nodes[i]->leafname.size();
+    
+        if (xpt[i] + extra > width) 
+            width = xpt[i] + extra;
+    }
+    
+    Matrix<char> matrix2(tree->nnodes+1, width+1);
+    matrix2.setAll(' ');
+    
+    displayNode(matrix2, tree->root, xpt, ypt);
+    
+    *nrows = matrix2.numRows();
+    *ncols = matrix2.numCols();
+    *matrix = new char* [*nrows];
+    
+    for (int i=0; i<matrix2.numRows(); i++) {
+        (*matrix)[i] = new char [*ncols+1];
+        for (int j=0; j<matrix2.numCols(); j++)
+            (*matrix)[i][j] = matrix2[i][j];
+        (*matrix)[i][*ncols] = '\0';
+    }
+}
 
 
 //=============================================================================

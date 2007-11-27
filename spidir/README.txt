@@ -20,7 +20,10 @@ library interfaces: C, python, and matlab.
 =============================================================================
 INSTALL
 
-To compile SPIDIR use the Makefile.
+NOTE: Makefile is installation will work best on UNIX or CYGWIN.
+
+
+To compile the SPIDIR stand-alone program use the Makefile.
 
     make spidir
 
@@ -32,12 +35,17 @@ To compile the SPIDIR python interface use:
 
     make pyspidir
 
-To compile the SPIDIR Matlab interface use:
+To compile the SPIDIR Matlab interface use one of the following:
     
-    make matlab_funcs
+    make matlab
+
+Or you can execute the following function within MATLAB:
+
+    spidir_matlab_compile
 
 
-Once compiled, to install the SPIDIR program use:
+
+Once compiled, to install the SPIDIR program (installs by default in /usr) use:
 
     make install
 

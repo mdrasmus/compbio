@@ -29,7 +29,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                      "  ptree   -- int array\n"
                      "  dists   -- float array\n"
                      "  scaling -- float\n");
-    } 
+    }
     else if (nlhs > 0) 
     {
         mexErrMsgTxt("Too many output arguments");

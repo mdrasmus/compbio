@@ -167,12 +167,18 @@ int main(int argc, char **argv)
     //============================================================
     // read species tree
     SpeciesTree stree;
-    stree.readNewick(streefile.c_str());
+    if (!stree.readNewick(streefile.c_str())) {
+        printError("error reading species tree '%s'", streefile.c_str());
+        return 1;
+    }
     stree.setDepths();
     
     // read gene2species map
     Gene2species mapping;
-    mapping.read(smapfile.c_str());
+    if (!mapping.read(smapfile.c_str())) {
+        printError("error reading gene2species mapping '%s'", smapfile.c_str());
+        return 1;
+    }
     
     
     // read sequences
@@ -188,7 +194,7 @@ int main(int argc, char **argv)
     SpidirParams *params;
     if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
     {
-        printError("bad parameters file");
+        printError("error reading parameters file '%s'", paramsfile.c_str());
         return 1;
     }
     

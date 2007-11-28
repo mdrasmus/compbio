@@ -33,7 +33,7 @@ To compile the SPIDIR C-library use:
 
 To compile the SPIDIR python interface use:
 
-    make pyspidir
+    make pyspidir.so
 
 To compile the SPIDIR Matlab interface use one of the following:
     

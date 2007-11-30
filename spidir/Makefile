@@ -85,6 +85,7 @@ MATLAB_OBJS = matlab/spidir_treelk.$(MEX_EXT) \
               matlab/spidir_mlhkydist.$(MEX_EXT) \
               matlab/spidir_neighborjoin.$(MEX_EXT)
 
+MATLAB_COMPILE = spidir_matlab_compile.m
 MATLAB_COMPILE_RULES = \
               matlab/spidir_treelk.rule \
               matlab/spidir_display_tree.rule \
@@ -146,17 +147,17 @@ $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 
 
 # matlab interface
-matlab: $(MATLAB_OBJS) $(MATLAB_COMPILE_RULES)
+matlab: $(MATLAB_OBJS) $(MATLAB_COMPILE)
 
 
 $(MATLAB_OBJS): %.$(MEX_EXT): %.cpp
 	$(MEX) $(MATLAB_CFLAGS) $(MATLAB_SRC) $< -o $@
 
 # generate compile rules for windows
-spidir_matlab_compile.m: $(MATLAB_COMPILE_RULES)
+$(MATLAB_COMPILE): $(MATLAB_COMPILE_RULES)
 $(MATLAB_COMPILE_RULES): %.rule: %.cpp
-	echo "display('compiling $<...');" >> spidir_matlab_compile.m
-	echo $(MEX) $(MATLAB_SRC) $< -o $(@:%.rule=%.mex) >> spidir_matlab_compile.m
+	echo "display('compiling $<...');" >> $(MATLAB_COMPILE)
+	echo $(MEX) $(MATLAB_SRC) $< -o $(@:%.rule=%) >> $(MATLAB_COMPILE)
 	touch $@
 
 #=============================================================================
@@ -181,5 +182,5 @@ clean:
 	rm -f $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \
               $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE) \
               $(MATLAB_OBJS) maxml maxml.o \
-              spidir_matlab_compile.m $(MATLAB_COMPILE_RULES) \
+              $(MATLAB_COMPILE) $(MATLAB_COMPILE_RULES) \
 	      test.o test_spidir

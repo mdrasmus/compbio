@@ -115,14 +115,13 @@ int test_reconstruct(int argc, char **argv)
 
     // produce mapping array
     ExtendArray<string> genes(0, nnodes);
-    ExtendArray<string> species(stree.nnodes);
-    ExtendArray<int> gene2species(nnodes);
     genes.extend(aln->names, aln->nseqs);
-    for (int i=aln->nseqs; i<nnodes; i++)
-        genes.append("");
-    stree.getLeafNames(species);   
     
-    g.getMap(genes, nnodes, species, stree.nnodes, gene2species);
+    ExtendArray<string> species(stree.nnodes);
+    stree.getLeafNames(species);
+    
+    ExtendArray<int> gene2species(nnodes);
+    g.getMap(genes, aln->nseqs, species, stree.nnodes, gene2species);
     
     // search
     Tree *toptree = searchMCMC(NULL, &stree,
@@ -267,7 +266,7 @@ int test_gene2species(int argc, char **argv)
     }
     
     ExtendArray<int> map(tree.nnodes);
-    g.getMap(genes, tree.nnodes, species, stree.nnodes, map);
+    g.getMap(genes, (tree.nnodes + 1) / 2, species, stree.nnodes, map);
     
     printIntArray(map, tree.nnodes);
     
@@ -308,12 +307,13 @@ int test_reconroot(int argc, char **argv)
     
     // produce mapping array
     ExtendArray<string> genes(tree.nnodes);
-    ExtendArray<string> species(stree.nnodes);
     tree.getLeafNames(genes);
+        
+    ExtendArray<string> species(stree.nnodes);
     stree.getLeafNames(species);
     
     ExtendArray<int> gene2species(tree.nnodes);
-    g.getMap(genes, tree.nnodes, species, stree.nnodes, gene2species);
+    g.getMap(genes, (tree.nnodes + 1)/2, species, stree.nnodes, gene2species);
     
     reconRoot(&tree, &stree, gene2species);
     displayTree(&tree, stdout, 100);
@@ -377,12 +377,13 @@ int test_genbranches(int argc, char **argv)
     
     // produce mapping array
     ExtendArray<string> genes(tree.nnodes);
+    tree.getLeafNames(genes);    
+
     ExtendArray<string> species(stree.nnodes);
-    tree.getLeafNames(genes);
     stree.getLeafNames(species);
     
     ExtendArray<int> gene2species(tree.nnodes);
-    g.getMap(genes, tree.nnodes, species, stree.nnodes, gene2species);
+    g.getMap(genes, (tree.nnodes+1)/2, species, stree.nnodes, gene2species);
     
     
     // reconcile gene tree to species tree

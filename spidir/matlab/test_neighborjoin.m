@@ -1,5 +1,4 @@
 %
-% Let's say both the gene tree and species tree have this same structure
 %
 %       4
 %      / \

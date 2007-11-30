@@ -199,26 +199,17 @@ void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
 // Find Last Common Ancestor
 Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)
 {
-    int depth1 = stree->depths[node1->name];
-    int depth2 = stree->depths[node2->name];
-        
-    // get nodes to same depth
-    if (node1 != node2) {
-        while (depth1 > depth2) {
-            node1 = node1->parent;
-            depth1 = stree->depths[node1->name];
-        }
-        
-        while (depth2 > depth1) {
-            node2 = node2->parent;
-            depth2 = stree->depths[node2->name];
-        }
-    }
+    int index1 = stree->preorder[node1->name];
+    int index2 = stree->preorder[node2->name];
     
-    // walk up both nodes until they meet
-    while (node1 != node2) {
-        node1 = node1->parent;
-        node2 = node2->parent;
+    while (index1 != index2) {
+        if (index1 > index2) {
+            node1 = node1->parent;
+            index1 = stree->preorder[node1->name];
+        } else {
+            node2 = node2->parent;
+            index2 = stree->preorder[node2->name];
+        }
     }
     
     return node1;
@@ -251,7 +242,7 @@ void reconcile(Tree *tree, SpeciesTree *stree,
 {  
     // label gene leaves with their species
     for (int i=0; i<tree->nnodes; i++)
-        if (tree->nodes[i]->nchildren == 0)
+        if (tree->nodes[i]->isLeaf())
             recon[i] = gene2species[i];
     
     reconcile_helper(tree, tree->root, stree, recon);    
@@ -288,17 +279,31 @@ bool Gene2species::read(const char *filename)
     BufferedReader reader;
     if (!reader.open(filename, "r"))
         return false;
-
+    
     char *line;
     string expr, species;
     char *ptr;
+    
+    // process each line of the file    
     while ((line = reader.readLine())) {
-        //chomp(line);
-
-        expr = strtok_r(line, "\t", &ptr);
-        species = strtok_r(NULL, "\n", &ptr);
-
-        if (expr[0] == '*') {
+        // skip blank lines
+        if (strlen(line) < 2)
+            continue;
+    
+        char *e = strtok_r(line, "\t", &ptr);
+        char *s = strtok_r(NULL, "\n", &ptr);
+        
+        // if bad format, quit
+        if (e == NULL || s == NULL)
+            return false;
+        
+        expr = e;
+        species = s;
+        
+        if (expr.size() == 0) {
+            // bad gene name expression
+            return false;
+        } else if (expr[0] == '*') {
             // suffix
             m_rules.append(Gene2speciesRule(Gene2speciesRule::SUFFIX,
                                             expr.substr(1, expr.size()-1), 
@@ -314,7 +319,7 @@ bool Gene2species::read(const char *filename)
         }
     }
 
-    return false;
+    return true;
 }
 
 string Gene2species::getSpecies(string gene)
@@ -338,20 +343,33 @@ string Gene2species::getSpecies(string gene)
     return m_exactLookup[gene];
 }
 
+// Returns the gene to species mapping in the 'map' output array
+// Only leaf nodes will have defined values for gene2species
 bool Gene2species::getMap(string *genes, int ngenes, 
                           string *species, int nspecies, int *map)
 {
+    // process each gene
     for (int i=0; i<ngenes; i++) {
+        // get the species name for the gene
         string sp = getSpecies(genes[i]);
 
         if (sp.size() == 0) {
-            map[i] = -1;
+            // no species mapping
+            // map[i] = -1;
+            return false;
         } else {
+            // find the index of the species name
             map[i] = -1;
             for (int j=0; j<nspecies; j++) {
-                if (sp == species[j])
+                if (sp == species[j]) {
                     map[i] = j;
+                    break;
+                }
             }
+            
+            // no species found
+            if (map[i] == -1)
+                return false;
         }
     }
 
@@ -359,39 +377,5 @@ bool Gene2species::getMap(string *genes, int ngenes,
 }
 
 
-
-
-
-/*
-
-def makeGene2species(maps):
-    # find exact matches and expressions
-    exacts = {}
-    exps = []
-    for mapping in maps:
-        if "*" not in mapping[0]:
-            exacts[mapping[0]] = mapping[1]
-        else:
-            exps.append(mapping)
-    
-    # create mapping function
-    def gene2species(gene):
-        # eval expressions first in order of appearance
-        for exp, species in exps:
-            if exp[-1] == "*":
-                if gene.startswith(exp[:-1]):
-                    return species
-            elif exp[0] == "*":
-                if gene.endswith(exp[1:]):
-                    return species
-        
-        if gene in exacts:
-            return exacts[gene]
-        
-        raise Exception("Cannot map gene '%s' to any species" % gene)
-    return gene2species
-
-
-*/
 
 } // namespace spidir

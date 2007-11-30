@@ -13,6 +13,13 @@
 namespace spidir {
 
 
+// reading functions for newick tree format
+float readDist(FILE *infile, int &depth);
+char readChar(FILE *stream, int &depth);
+char readUntil(FILE *stream, string &token, const char *stops, int &depth);
+
+
+
 // return a copy of the tree
 Tree *Tree::copy()
 {
@@ -97,14 +104,17 @@ void Tree::reroot(Node *newroot, bool onBranch)
             nextDist = newroot->dist;
         } else {
             // need to add a new node to be root
+            // TODO: not implemented
             assert(0);
         }
     } else {
         if (isRooted()) {
             // need to remove the root node, and make tribranch
+            // TODO: not implemented
             assert(0);
         } else {
             // just need to swap node positions
+            // TODO: not implemented
             assert(0);
         }
     }

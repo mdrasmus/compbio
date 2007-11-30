@@ -19,31 +19,33 @@ class SpeciesTree : public Tree
 public:
     SpeciesTree(int nnodes=0) :
         Tree(nnodes),
-        depths(NULL)
+        preorder(NULL)
     {
     }
     
     virtual ~SpeciesTree()
     {
-        delete [] depths;
+        delete [] preorder;
     }
     
     
-    void setDepths(Node *node=NULL, int depth=0)
-    {
+    int setDepths(Node *node=NULL, int index=0)
+    {        
         if (node == NULL)
             node = root;
         
-        if (depths == NULL)
-            depths = new int [nnodes];
+        if (preorder == NULL)
+            preorder = new int [nnodes];
         
-        depths[node->name] = depth;
+        preorder[node->name] = index;
         
         for (int i=0; i<node->nchildren; i++)
-            setDepths(node->children[i], depth+1);
+            index = setDepths(node->children[i], ++index);
+        
+        return index;
     }
     
-    int *depths;
+    int *preorder;
 };
 
 

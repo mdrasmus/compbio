@@ -105,7 +105,7 @@ int main(int argc, char **argv)
         "-g", "--generate", &estGenerate, "estimate generate"));
 
     config.add(new ConfigParam<int>(
-        "-V", "--verbose", "<verbosity level>", &verbose, LOG_QUIET, 
+        "-V", "--verbose", "<verbosity level>", &verbose, LOG_LOW, 
         "verbosity level 0=quiet, 1=low, 2=medium, 3=high"));
     config.add(new ConfigParam<string>(
         "", "--log", "<log filename>", &logfile, "", 
@@ -217,19 +217,16 @@ int main(int argc, char **argv)
     int nnodes = aln->nseqs * 2 - 1;
 
     // produce mapping array
-    ExtendArray<string> genes(0, nnodes);
+    ExtendArray<string> genes(0, aln->nseqs);
+    genes.extend(aln->names, aln->nseqs);    
+    
     ExtendArray<string> species(stree.nnodes);
+    stree.getLeafNames(species);
+        
     ExtendArray<int> gene2species(nnodes);
-    genes.extend(aln->names, aln->nseqs);
-    for (int i=aln->nseqs; i<nnodes; i++)
-        genes.append("");
-    stree.getLeafNames(species);   
-    
-    mapping.getMap(genes, nnodes, species, stree.nnodes, gene2species);
+    mapping.getMap(genes, aln->nseqs, species, stree.nnodes, gene2species);
     
     
-    
-
     //=====================================================
     // init likelihood function
     SpidirBranchLikelihoodFunc lkfunc(nnodes, &stree, params, gene2species,
@@ -245,7 +242,7 @@ int main(int argc, char **argv)
         fitter = new ParsimonyFitter(aln->nseqs, aln->seqlen, aln->seqs);
     }
     else if (lenfitter == "hky") {
-        int maxiter = 3*nnodes;
+        const int maxiter = 5;
         fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                bgfreq, tsvratio, maxiter);
     } else {

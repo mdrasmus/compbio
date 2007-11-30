@@ -1155,6 +1155,15 @@ def joinTables(* args, **kwargs):
     return tab
                
 
+def showtab(tab, name='table'):
+    """Show a table in a new xterm"""
+    
+    name = name.replace("'", "")
+    tmp = util.tempfile(".", "tmp", ".tab")
+    tab.writePretty(file(tmp, "w"))
+    os.system("(xterm -T '%s' -n '%s' -e less -S %s; rm %s) &" %
+              (name, name, tmp, tmp))
+
 
 #===========================================================================
 # Matrix functions

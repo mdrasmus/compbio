@@ -236,9 +236,13 @@ def drawEventsTree(tree, stree, gene2species, **options):
 
         if node.data['dup'] > 0:
             labels[node.name] += " +%d" % node.data['dup']
+        else:
+            labels[node.name] += "   "
 
         if node.data['loss'] > 0:
             labels[node.name] += " -%d" %  node.data['loss']
+        else:
+            labels[node.name] += "   "
     
     drawTree(stree, labels=labels, **options)
 

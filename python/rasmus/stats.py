@@ -391,10 +391,17 @@ def rhyper(m, n, M, N, report=0):
     hypergeometric distribution
     over/under/both (report = 0/1/2)
     (uses R through RPy)
+    
+    N = total balls in urn
+    M = total white balls in urn
+    n = drawn balls from urn
+    m = drawn white balls from urn
+    
     '''
     
     assert( (type(m) == type(n) == type(M) == type(N) == int)
             and m <= n and m <= M and n <= N)
+    
     
     
     if report == 0:

@@ -89,7 +89,7 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
         continue
     
     if "stree" in conf and \
-       "smap" in conf and "reroot" in conf:
+       "smap" in conf and "rootby" in conf:
         phylo.reconRoot(tree, stree, gene2species, 
                             rootby=conf["rootby"],
                             newCopy=False)

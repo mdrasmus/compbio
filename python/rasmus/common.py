@@ -68,7 +68,7 @@ pa = alignlib.printAlign
 pd = printDict
 
 histtab = tablelib.histTable
-
+showtab = tablelib.showtab
 
 def pl(lines, out=sys.stdout):
     for line in lines:

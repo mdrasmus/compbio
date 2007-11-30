@@ -26,26 +26,27 @@ class TreeViewer (sumtree.SumTree):
         self.mode = "gene"
         self.stree = stree                  # species tree
         self.gene2species = gene2species    # gene to species mapping
-        self.recon = recon                  # reconciliation
+        self.recon = recon
         self.bar = None
         
         # colors
         self.dupColor = dupColor
         self.lossColor = lossColor
         
-        self.setupRecon()
+        self.setupRecon(recon)
     
     
     def setTree(self, tree):
         sumtree.SumTree.setTree(self, tree)
-        self.recon = None
         self.setupRecon()
                     
     
-    def setupRecon(self):
+    def setupRecon(self, recon=None):
         # construct default reconciliation
-        if self.recon == None and self.stree and self.gene2species:
+        if recon == None and self.stree and self.gene2species:
             self.recon = phylo.reconcile(self.tree, self.stree, self.gene2species)
+        else:
+            self.recon = recon
         
         # construct events
         if self.recon:
@@ -125,7 +126,9 @@ class TreeViewer (sumtree.SumTree):
     
     
     def swap(self, node):
-        node.children = node.children[1:] + [node.children[0]]
+        if len(node.children) > 1:
+            node.children = node.children[1:] + [node.children[0]]
+        self.setTree(self.tree)
         self.show()
         self.onReorderLeaves()        
         
@@ -164,8 +167,7 @@ class TreeViewer (sumtree.SumTree):
         except e:
             print e
         print "rerooted on node", node.name
-        self.recon = None
-        self.setupRecon()
+        self.setTree(self.tree)
         
         self.show()
         self.onReorderLeaves()

@@ -1664,7 +1664,7 @@ def printHist(array, ndivs=20, low=None, width=None,
     
     # find max bar                                                              
     maxwidths = map(max, map2(compose(len, str), data))                         
-    maxbar = width - sum(maxwidths) - 2 * spacing                               
+    maxbar = cols- sum(maxwidths) - 2 * spacing                               
                                                                                 
     # make bars                                                                 
     bars = []                                                                   

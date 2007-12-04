@@ -54,9 +54,19 @@ def tree2distmat(tree, leaves):
     return mat
 
 
+    
+    
+
 def reconcile(gtree, stree, gene2species = gene2species):
     recon = {}
-    #depths = stree.findDepths(stree.root)
+    
+    # determine the preorder traversal of the stree
+    order = {}
+    def walk(node):
+        order[node] = len(order)
+        node.recurse(walk)
+    walk(stree.root)
+
     
     # label gene leaves with their species
     for node in gtree.leaves():
@@ -67,18 +77,46 @@ def reconcile(gtree, stree, gene2species = gene2species):
         node.recurse(walk)
         
         if not node.isLeaf():
-            # this node's species is lca of children species        
-            recon[node] = treelib.lca(util.mget(recon, node.children))
+            # this node's species is lca of children species  
+            recon[node] = reconcileLca(stree, order, 
+                                       util.mget(recon, node.children))
     walk(gtree.root)
     
     return recon
 
 
+def reconcileLca(stree, order, nodes):
+    """Helper function for reconcile"""
+    
+    # handle simple and complex cases
+    if len(nodes) == 1:
+        return nodes[0]    
+    if len(nodes) > 2:
+        return treelib.lca(nodes)
+    
+    # 2 node case
+    node1, node2 = nodes
+    index1 = order[node1]
+    index2 = order[node2]
+    
+    while index1 != index2:
+        if index1 > index2:
+            node1 = node1.parent
+            index1 = order[node1]
+        else:
+            node2 = node2.parent
+            index2 = order[node2]
+    return node1
+    
+
 def reconcileNode(node, stree, recon):
+    """Reconcile a single gene node to a species node"""
     return treelib.lca(util.mget(recon, node.children))
 
 
 def labelEvents(gtree, recon):
+    """Returns a dict with gene node keys and values indicating 
+       'gene', 'spec', or 'dup'"""
     events = {}
     
     def walk(node):
@@ -96,29 +134,6 @@ def labelEventsNode(node, recon):
             return "spec"
     else:
         return "gene"
-
-def findLossUnderNode(node, recon):
-    loss = []
-    snodes = {}
-    internal = {}
-    species1 = recon[node]
-
-    # walk from child species to parent species
-    for child in node.children:
-        ptr = recon[child]
-        snodes[ptr] = 1
-        while ptr != species1:
-            ptr = ptr.parent
-            snodes[ptr] = 1
-            internal[ptr] = 1
-
-    # foreach internal node in partial speciation tree, all children
-    # not in speciation are loss events
-    for i in internal:
-        for child in i.children:
-            if child not in snodes:
-                loss.append([node,child])
-    return loss
 
 
 def findLossNode(node, recon):
@@ -152,6 +167,32 @@ def findLossNode(node, recon):
                 loss.append([node, schild])
         
     return loss
+
+
+def findLossUnderNode(node, recon):
+    loss = []
+    snodes = {}
+    internal = {}
+    species1 = recon[node]
+
+    # walk from child species to parent species
+    for child in node.children:
+        ptr = recon[child]
+        snodes[ptr] = 1
+        while ptr != species1:
+            ptr = ptr.parent
+            snodes[ptr] = 1
+            internal[ptr] = 1
+
+    # foreach internal node in partial speciation tree, all children
+    # not in speciation are loss events
+    for i in internal:
+        for child in i.children:
+            if child not in snodes:
+                loss.append([node,child])
+    return loss
+
+
 
 
 def countDupNode(node, events):

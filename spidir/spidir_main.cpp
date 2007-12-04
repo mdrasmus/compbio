@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
         &bgfreqstr, ".25,.25,.25,.25",
         "background frequencies (default=0.25,0.25,0.25,0.25)"));
-    
+
     
     config.add(new ConfigParamComment("Miscellaneous"));
     config.add(new ConfigParam<int>(

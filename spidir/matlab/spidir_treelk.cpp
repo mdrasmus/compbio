@@ -45,9 +45,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     }
     
     
-    // debug output file
-    FILE *out = fopen("debug.txt", "a");
-    
     
     // return value
     float logl = 0;
@@ -132,7 +129,6 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
                   mu, sigma, generate, 
                   predupprob, dupprob, alpha, beta);
     
-    fclose(out);
     
     /* Create return value */
     plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);

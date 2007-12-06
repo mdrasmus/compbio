@@ -931,23 +931,7 @@ public:
 
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
                            int *recon, int *events, SpidirParams *params)
-{
-    
-    /*
-    float maxlogl = -10e1000; // infinity
-    float argmax_generate = params->alpha / params->beta;
-    
-    float maxg = params->alpha / params->beta * 2.0;
-    float gstart = maxg * 0.05;
-    float step = maxg / 50.0;
-    for (float g=gstart; g<maxg; g+=step) {
-        double logl = lkcalc.calc(g);
-        
-        if (logl > maxlogl)
-            argmax_generate = g;
-    }
-    */
-    
+{    
     float maxg = params->alpha / params->beta * 2.0;
     float ming = maxg / 4.0;
     

@@ -153,7 +153,7 @@ int floatcmp(const void *a, const void *b)
 }
 
 
-float mleGenerate(int count, float *dists, float *means, float *sdevs,
+float mleGeneRate(int count, float *dists, float *means, float *sdevs,
                   float alpha, float beta)
 {
     float a, b, c;
@@ -169,8 +169,7 @@ float mleGenerate(int count, float *dists, float *means, float *sdevs,
 
     ExtendArray<float> dists2(0, count);
     dists2.extend(dists, count);
-    qsort((void*) dists2.get(), dists2.size(), sizeof(float),
-                  floatcmp);
+    qsort((void*) dists2.get(), dists2.size(), sizeof(float), floatcmp);
     //printFloatArray(dists2, dists2.size());
     //printFloatArray(dists, dists2.size());
     int limit = int(count * .5) + 1;
@@ -196,7 +195,7 @@ float mleGenerate(int count, float *dists, float *means, float *sdevs,
 
 // help set depths for every node
 // depth is distance to next subtree root
-void estimateGenerate_helper(Tree *tree, Node *node, float *depths, int *sroots,
+void estimateGeneRate_helper(Tree *tree, Node *node, float *depths, int *sroots,
                              int *recon, int *events, bool free)
 {
     int name = node->name;
@@ -223,12 +222,12 @@ void estimateGenerate_helper(Tree *tree, Node *node, float *depths, int *sroots,
     }
     
     for (int i=0; i<node->nchildren; i++)
-        estimateGenerate_helper(tree, node->children[i], 
+        estimateGeneRate_helper(tree, node->children[i], 
                                 depths, sroots, recon, events, free);    
 }
 
 
-float estimateGenerate(Tree *tree, SpeciesTree *stree, 
+float estimateGeneRate(Tree *tree, SpeciesTree *stree, 
                        int *recon, int *events, SpidirParams *params)
 {
     float *depths = new float [tree->nnodes];
@@ -241,7 +240,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
     bool free = (recon[tree->root->name] == stree->root->name && 
                  events[tree->root->name] == EVENT_DUP);
     
-    estimateGenerate_helper(tree, tree->root, depths, sroots, 
+    estimateGeneRate_helper(tree, tree->root, depths, sroots, 
                             recon, events, free);
     
     //printFloatArray(depths, tree->nnodes);
@@ -287,7 +286,7 @@ float estimateGenerate(Tree *tree, SpeciesTree *stree,
     }
     
     
-    float generate = mleGenerate(count, dists, means, sdevs, 
+    float generate = mleGeneRate(count, dists, means, sdevs, 
                                  params->alpha, params->beta);
     
     delete [] depths;
@@ -605,6 +604,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             }
             
             prob += exp(sampleLogl);
+            printLog(LOG_HIGH, "sample_int: %d %f %f\n", i, sampleLogl, log(prob / (i+1.0)));
         }
         
         logl = log(prob  / nsamples);
@@ -755,6 +755,8 @@ public:
     {
         return exp(calc(generate));
     }
+    
+    
 
     Tree *tree;    
     SpeciesTree *stree;
@@ -785,10 +787,13 @@ float treelk(Tree *tree,
 {
     float logl = 0.0; // log likelihood
     
-    float epsabs = 1e6;
-    float epsrel = .60;
-    double result, abserr;
-    size_t workspaceSize = 40;
+    double maxprob = 0;
+    float argmax_generate = params->alpha / params->beta;
+    
+    //float epsabs = 1e6;
+    //float epsrel = .60;
+    //double result, abserr;
+    //size_t workspaceSize = 40;
 
     
     
@@ -796,14 +801,14 @@ float treelk(Tree *tree,
 
     // generate default gene rate
     if (generate == -1)
-        generate = estimateGenerate(tree, stree, recon, events, params);    
+        generate = estimateGeneRate(tree, stree, recon, events, params);    
 
     if (generate > 0) {
         // estimate with given generate
         logl = lkcalc.calc(generate);
     } else {
-        float est_generate = estimateGenerate(tree, stree, recon, events, params);
-        printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
+        //float est_generate = estimateGeneRate(tree, stree, recon, events, params);
+        //printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
         
         /*
         gsl_integration_workspace *workspace = 
@@ -825,15 +830,24 @@ float treelk(Tree *tree,
         */
         
         logl = 0.0;
-        float totprob = 0;
+        double totprob = 0;
         float maxg = params->alpha / params->beta * 2.0;
         float gstart = maxg * 0.05;
         float step = maxg / 50.0;
         for (float g=gstart; g<maxg; g+=step) {
-            float prob = lkfunction(g, (void*) &lkcalc);
+            double prob = lkcalc.calcprob(g);
+            //lkfunction(g, (void*) &lkcalc);
             totprob += prob * step;
+            //printLog(LOG_HIGH, "sample_int: %f\n", log(totprob));
+            
+            if (prob > maxprob) {
+                maxprob = prob;
+                argmax_generate = g;
+            }
         }
         logl = log(totprob);
+        
+        printLog(LOG_HIGH, "argmax gene rate: %f\n", argmax_generate);
         
         //gsl_integration_qng(&gfunc, a, b, epsabs, epsrel, 
         //                    &result, &abserr, &neval);
@@ -864,7 +878,7 @@ float treelk(Tree *tree,
 }
 
 
-// TODO: remove disterror and errorlogl
+
 // Calculate the likelihood of a tree
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
@@ -873,8 +887,6 @@ float treelk(int nnodes, int *ptree, float *dists,
              float predupprob, float dupprob,
              float alpha, float beta)
 {
-    // NOTE: disterror and errorlogl are ignored
-
     // create tree objects
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
@@ -885,12 +897,67 @@ float treelk(int nnodes, int *ptree, float *dists,
     stree.setDepths();    
 
     
-    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
+    SpidirParams params(nsnodes, NULL, mu, sigma, alpha, beta);
     
     return treelk(&tree, &stree,
                   recon, events, &params, 
                   generate, 
                   predupprob, dupprob);
+}
+
+
+//=============================================================================
+// Gene Rate estimation
+
+
+class GeneRateDerivative 
+{
+public:
+    GeneRateDerivative(Tree *tree, SpeciesTree *stree,
+                       int *recon, int *events, SpidirParams *params) :
+        lkcalc(tree, stree, recon, events, params)
+    {
+    }
+    
+    float operator()(float generate)
+    {
+        const float step = .01;
+        return lkcalc.calc(generate + step) - lkcalc.calc(generate);
+    }
+    
+    TreeLikelihoodCalculator lkcalc;
+};
+
+
+float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
+                           int *recon, int *events, SpidirParams *params)
+{    
+    float maxg = params->alpha / params->beta * 2.0;
+    float ming = maxg / 4.0;
+    
+    GeneRateDerivative df(tree, stree, recon, events, params);
+    return bisectRoot(df, ming, maxg, 10);
+}
+
+
+float maxPosteriorGeneRate(int nnodes, int *ptree, float *dists,
+                           int nsnodes, int *pstree, 
+                           int *recon, int *events,
+                           float *mu, float *sigma,
+                           float alpha, float beta)
+{
+    // create tree objects
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    tree.setDists(dists);
+    
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();    
+
+    SpidirParams params = SpidirParams(nsnodes, NULL, mu, sigma, alpha, beta);
+    
+    return maxPosteriorGeneRate(&tree, &stree, recon, events, &params);
 }
 
 

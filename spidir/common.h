@@ -48,6 +48,87 @@ float normalvariate(float mu, float sigma);
 float gammavariate(float alpha, float beta);
 
 
+
+// Find a root of a function func(x) using the secant method
+// x0 and x1 are initial estimates of the root
+template <class Func>
+float secantRoot(Func &f, float x0, float x1, int maxiter, 
+                 float minx=.000001, float esp=.002)
+{
+    float f0 = f(x0);
+    for (int i=0; i<maxiter; i++) {
+        if (fabs((x1 - x0)*2.0 / (x0+x1)) < esp)
+            return x0;
+        float f1 = f(x1);
+        float x2 = x1 - (x1 - x0) * f1 / (f1 - f0);
+        
+        x0 = x1;
+        x1 = (x2 > minx) ? x2 : minx;
+        f0 = f1;
+    }
+
+    return x1;
+}
+
+
+// Find a root of a function func(x) using the bisection method
+// This is less efficient but is more robust than Newton's or Secant
+// x0 and x1 are initial estimates of the root
+template <class Func>
+float bisectRoot(Func &f, float x0, float x1, const int maxiter, 
+                 const float minx=.0001, const float maxx=10.0, 
+                 const float esp=.02, const float err=.001)
+{
+    // we expect f(x0) > 0 and f(x1) < 0
+    //printf("\n");
+    
+    // move x0 left until f(x0) > 0
+    float f0 = f(x0);
+    while (f0 < 0) {
+        //printf("low: %f %f\n", x0, f0);
+        x1 = x0;
+        x0 /= 1.5;
+        f0 = f(x0);
+        if (x0 < minx)
+            return x0;
+    }
+    
+    // move x1 right until f(x1) < 0
+    float f1 = f(x1);
+    assert(x1 >= 0.0);
+    while (f1 > 0) {
+        //printf("hi:  %f %f\n", x1, f1);
+        x0 = x1;
+        f0 = f1;
+        x1 *= 1.5;
+        f1 = f(x1);
+        if (x1 > maxx)
+            return x1;
+    }
+    
+    for (int i=0; i<maxiter; i++) {
+        //printf("in:  %f %f; %f %f\n", x0, x1, f0, f1);
+        if (((x1 - x0)*2.0 / (x0+x1)) < esp || 
+            (x0 + x1)/2.0 < err)
+            return x0;
+        
+        float x2 = (x0 + x1) / 2.0;
+        float f2 = f(x2);
+        
+        if (f2 > 0) {
+            x0 = x2;
+            f0 = f2;
+        } else {
+            x1 = x2;
+            f1 = f2;
+        }
+    }
+
+    return x1;
+}
+
+
+
 inline float logadd(float lna, float lnb)
 {
     // can be improved. see python:rasmus.stats

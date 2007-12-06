@@ -794,7 +794,7 @@ void ptree2tree(int nnodes, int *ptree, Tree *tree)
 }
 
 
-// create a tree object from a parent tree array
+// create a parent tree from a tree object array
 void tree2ptree(Tree *tree, int *ptree)
 {
     Node **nodes = tree->nodes;

@@ -263,13 +263,13 @@ public:
     }
     
     
-    ValuePtrType &get()
+    ValuePtrType &get() const
     { return ptr; }
     
-    operator ValuePtrType()
+    operator ValuePtrType() const
     { return ptr; }
 
-    ValuePtrPtrType operator &()
+    ValuePtrPtrType operator &() const
     { return &ptr; }
         
     
@@ -303,13 +303,13 @@ public:
         return ret;
     }    
     
-    ValuePtrType &get()
+    ValuePtrType &get() const
     { return ptr; }
     
-    operator ValuePtrType()
+    operator ValuePtrType() const 
     { return ptr; }
 
-    ValuePtrPtrType operator &()
+    ValuePtrPtrType operator &() 
     { return &ptr; }
         
     

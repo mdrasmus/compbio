@@ -198,18 +198,6 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     }
     
     
-    /*
-    // display all information
-    printIntArray(ptree, nnodes);
-    printFloatArray(dists, nnodes);
-    printIntArray(pstree, nsnodes);
-    printIntArray(recon, nnodes);
-    printIntArray(events, nnodes);
-    printIntArray(gene2species, nnodes);
-    printFloatArray(mu, nnodes);
-    printFloatArray(sigma, nnodes);
-    */
-    
     // make tree object
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
@@ -234,6 +222,121 @@ pyspidir_treelk(PyObject *self, PyObject *args)
                   predupprob, dupprob, alpha, beta);
     
     return Py_BuildValue("f", logl);
+}
+
+
+
+
+// Calculate the likelihood of a tree
+static PyObject *
+pyspidir_est_generate(PyObject *self, PyObject *args)
+{
+    
+    // check number of args
+    if (PyTuple_GET_SIZE(args) < 8) {
+        printf("wrong number of args\n");
+        return NULL;
+    }
+    
+    // parse args
+    PyObject *pyptree = PyTuple_GET_ITEM(args, 0);
+    PyObject *pydists = PyTuple_GET_ITEM(args, 1);
+    PyObject *pypstree = PyTuple_GET_ITEM(args, 2);
+    PyObject *pygene2species = PyTuple_GET_ITEM(args, 3);
+    PyObject *pymu = PyTuple_GET_ITEM(args, 4);
+    PyObject *pysigma = PyTuple_GET_ITEM(args, 5);
+    PyObject *pyalpha = PyTuple_GET_ITEM(args, 6);
+    PyObject *pybeta = PyTuple_GET_ITEM(args, 7);
+    
+    // check arg types
+    if (!PyList_Check(pyptree) || 
+        !PyList_Check(pydists) ||
+        !PyList_Check(pypstree) ||
+        !PyList_Check(pygene2species) ||
+        !PyList_Check(pymu) ||
+        !PyList_Check(pysigma) ||
+        !PyFloat_Check(pyalpha) ||
+        !PyFloat_Check(pybeta)
+        )
+    {
+        printf("wrong argument types\n");
+        return NULL;
+    }
+    
+    
+    // gene tree
+    int nnodes;
+    StackArray<int> ptree;
+    StackArray<float> dists;
+    
+    // species tree
+    int nsnodes;
+    StackArray<int> pstree;
+    
+    // reconciliation
+    StackArray<int> gene2species;
+    
+    // params
+    StackArray<float> mu;
+    StackArray<float> sigma;
+    float alpha = PyFloat_AS_DOUBLE(pyalpha);
+    float beta = PyFloat_AS_DOUBLE(pybeta);    
+    
+    
+    // convert data
+    if (!makeIntArray(pyptree, &ptree, &nnodes)) {
+        printf("bad ptree\n");
+        return NULL;
+    }
+
+    if (!makeFloatArray(pydists, &dists, &nnodes)) {
+        printf("bad dists\n");
+        return NULL;
+    }
+    
+    if (!makeIntArray(pypstree, &pstree, &nsnodes)) {
+        printf("bad pstree\n");
+        return NULL;
+    }
+    
+    if (!makeIntArray(pygene2species, &gene2species, &nnodes)) {
+        printf("bad gene2species\n");
+        return NULL;
+    }
+    
+    if (!makeFloatArray(pymu, &mu, &nsnodes)) {
+        printf("bad mu\n");
+        return NULL;
+    }
+    
+    if (!makeFloatArray(pysigma, &sigma, &nsnodes)) {
+        printf("bad sigma\n");
+        return NULL;
+    }
+    
+    
+    // make tree object
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+    tree.setDists(dists);
+
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();
+
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(nnodes);
+    ExtendArray<int> events(nnodes);
+
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
+
+    SpidirParams params(nsnodes, NULL, mu, sigma, alpha, beta);
+
+    // find max a posteriori gene rate
+    float generate = maxPosteriorGeneRate(&tree, &stree, recon, events, &params);
+    
+    return Py_BuildValue("f", generate);
 }
 
 
@@ -285,10 +388,6 @@ pyspidir_parsimony(PyObject *self, PyObject *args)
         //goto cleanup;
     }
     
-    
-    // call C code
-    //for (int i=0; i<nseqs; i++)
-    //    printf("%s\n", seqs[i]);
 
 
     ExtendArray<float> dists(nnodes); // = new float [nnodes];
@@ -376,6 +475,8 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
 
 
 
+
+
 PyMODINIT_FUNC
 initpyspidir(void)
 {
@@ -384,6 +485,8 @@ initpyspidir(void)
     static PyMethodDef methods[] = {
         {"treelk",  pyspidir_treelk, METH_VARARGS,
          "Tree likelihood"},
+        {"est_generate", pyspidir_est_generate, METH_VARARGS,
+         "Estimates max a posteriori gene rate"},
         {"parsimony",  pyspidir_parsimony, METH_VARARGS,
          "Parsimony method"},
         {"mlhkydist", pyspidir_mlhkydist, METH_VARARGS,

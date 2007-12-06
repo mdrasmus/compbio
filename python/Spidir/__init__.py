@@ -202,7 +202,7 @@ def drawParamTree(tree, params, *args, **kargs):
                               *args, **kargs)
     
     # draw variance
-    coords = treesvg.layoutTree(tree, kargs["xscale"], kargs["yscale"],
+    coords = treelib.layoutTree(tree, kargs["xscale"], kargs["yscale"],
                                       kargs["minlen"], kargs["maxlen"])
     
     canvas.beginTransform(("translate", lmargin, tmargin))

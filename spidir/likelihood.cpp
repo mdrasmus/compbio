@@ -577,14 +577,16 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         }
         
         // choose number of samples based on number of nodes to integrate over
-        nsamples = int(500*logf(subnodes.size())) + 500;
+        nsamples = int(500*logf(subnodes.size())) + 200;
         if (nsamples > 2000) nsamples = 2000;
         //nsamples = int(100*log(nodesi)) + 50;
         //if (nsamples > 600) nsamples = 600;
-
+        
+        ExtendArray<double> samples(nsamples);
         
         // perform integration by sampling
         double prob = 0.0;
+        float sdev = 0.0;
         for (int i=0; i<nsamples; i++) {
             double sampleLogl = 0.0;
             
@@ -603,11 +605,17 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
                 }
             }
             
-            prob += exp(sampleLogl);
-            printLog(LOG_HIGH, "sample_int: %d %f %f\n", i, sampleLogl, log(prob / (i+1.0)));
+
+            prob += exp(sampleLogl) / nsamples;
+            //samples.append(prob * nsamples / (i+1));
+            //float sdev = stdev(samples.get(), samples.size()) / 
+            //             (prob * nsamples / (i+1));
+            
+            printLog(LOG_HIGH, "sample_int: %d %f %f %f\n", 
+                     i, sampleLogl, log(prob / (i+1.0)), sdev);
         }
         
-        logl = log(prob  / nsamples);
+        logl = log(prob);
     }
 
     assert(!isnan(logl));
@@ -921,7 +929,7 @@ public:
     
     float operator()(float generate)
     {
-        const float step = .01;
+        const float step = .05;
         return lkcalc.calc(generate + step) - lkcalc.calc(generate);
     }
     
@@ -931,12 +939,13 @@ public:
 
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
                            int *recon, int *events, SpidirParams *params)
-{    
-    float maxg = params->alpha / params->beta * 2.0;
-    float ming = maxg / 4.0;
+{
+    float est_generate = estimateGeneRate(tree, stree, recon, events, params);
+    float maxg = est_generate * 1.5; //params->alpha / params->beta * 2.0;
+    float ming = est_generate / 1.5;
     
     GeneRateDerivative df(tree, stree, recon, events, params);
-    return bisectRoot(df, ming, maxg, 10);
+    return bisectRoot(df, ming, maxg, 10, ming, maxg);
 }
 
 

@@ -55,7 +55,7 @@ def msqerr(vals1, vals2):
 def variance(vals):
     """Variance"""
     u = mean(vals)
-    return sum(map(lambda x: (x - u)**2, vals)) / float(len(vals)-1)
+    return sum((x - u)**2 for x in vals) / float(len(vals)-1)
 
 def sdev(vals):
     """Standard deviation"""

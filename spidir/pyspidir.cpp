@@ -474,6 +474,53 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *
+pyspidir_set_log(PyObject *self, PyObject *args)
+{
+    // check number of args
+    if (PyTuple_GET_SIZE(args) < 2) {
+        printf("wrong number of args\n");
+        return NULL;
+    }
+    
+    // parse args
+    PyObject *pylevel = PyTuple_GET_ITEM(args, 0);
+    PyObject *pyfile = PyTuple_GET_ITEM(args, 1);    
+    
+    // check arg types
+    if (!PyInt_Check(pylevel) || 
+        !PyString_Check(pyfile))
+    {
+        printf("wrong argument types\n");
+        return NULL;
+    }
+    
+
+    int level = PyInt_AS_LONG(pylevel);
+    char *filename = PyString_AS_STRING(pyfile);
+    
+
+    if (!strcmp(filename, "")) {
+        openLogFile(stdout);
+    } else{
+        if (!openLogFile(filename)) {
+            printf("could not open file\n");
+            return NULL;
+        }
+    }
+    
+    setLogLevel(level);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject *
+pyspidir_close_log(PyObject *self, PyObject *args)
+{
+    closeLogFile();
+    Py_RETURN_NONE;
+}
+
 
 
 
@@ -491,6 +538,10 @@ initpyspidir(void)
          "Parsimony method"},
         {"mlhkydist", pyspidir_mlhkydist, METH_VARARGS,
          "ML estimates of branch lengths by HKY"},
+        {"set_log", pyspidir_set_log, METH_VARARGS,
+         "Sets the log level and output file"},
+        {"close_log", pyspidir_close_log, METH_VARARGS,
+         "Closes a log file"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
     };
     

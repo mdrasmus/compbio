@@ -168,6 +168,27 @@ int findval(T *array, int size, const T &val)
     return -1;
 }
 
+template <class T>
+double variance(T *vals, int size)
+{
+    double mean = 0.0;
+    for (int i=0; i<size; i++)
+        mean += vals[i];
+    mean /= size;
+    
+    double tot = 0.0;
+    for (int i=0; i<size; i++)
+        tot += (vals[i] - mean) * (vals[i] - mean);
+    
+    return tot / size;
+}
+
+template <class T>
+double stdev(T* vals, int size)
+{
+    return sqrt(variance(vals, size));
+}
+
 
 //=============================================================================
 // sorting

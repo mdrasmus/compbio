@@ -58,7 +58,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     int g2slen;
     if (!getIntArray(prhs[2], &gene2species, &g2slen)) mexErrMsgTxt("bad gene2species");    
     if (g2slen != nnodes)
-        mexErrMsgTxt("gene2species is too short")
+        mexErrMsgTxt("gene2species is too short");
     
     // make tree object
     Tree tree(nnodes);

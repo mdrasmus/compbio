@@ -41,7 +41,19 @@ namespace spidir {
 
 
 // computes the log(normalPdf(x | u, s^2))
-float normallog(float x, float u, float s);
+inline float normallog(float x, float u, float s)
+{
+    const float log_sqrt_2_pi = 0.91893853320467267;
+    if (s == 0.0)
+        return -INFINITY;
+    else
+        return - logf(s) - log_sqrt_2_pi - (x-u)*(x-u) / (2.0*s*s);
+    
+    //return - log(s) - log(sqrt(2.0*M_PI)) - (x-u)*(x-u) / (2.0*s*s);
+    //return log(1.0/(s * sqrt(2.0*M_PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
+}
+
+
 double gammln(double xx);
 float gammalog(float x, float a, float b);
 float normalvariate(float mu, float sigma);

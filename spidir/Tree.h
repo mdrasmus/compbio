@@ -248,7 +248,7 @@ public:
 };
 
 
-
+// A hash function for a topology key to an integer
 struct HashTopology {
     static unsigned int hash(const ExtendArray<int> &key)
     {

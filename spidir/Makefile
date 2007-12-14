@@ -84,7 +84,8 @@ MATLAB_OBJS = matlab/spidir_treelk.$(MEX_EXT) \
               matlab/spidir_genbranches.$(MEX_EXT) \
               matlab/spidir_mlhkydist.$(MEX_EXT) \
               matlab/spidir_neighborjoin.$(MEX_EXT) \
-              matlab/spidir_reconcile.$(MEX_EXT)
+              matlab/spidir_reconcile.$(MEX_EXT) \
+              matlab/spidir_readtree.$(MEX_EXT)
 
 MATLAB_COMPILE = spidir_matlab_compile.m
 MATLAB_COMPILE_RULES = \
@@ -93,7 +94,8 @@ MATLAB_COMPILE_RULES = \
               matlab/spidir_genbranches.rule \
               matlab/spidir_mlhkydist.rule \
               matlab/spidir_neighborjoin.rule \
-              matlab/spidir_reconcile.rule
+              matlab/spidir_reconcile.rule \
+              matlab/spidir_readtree.rule
 
 MATLAB_SRC = $(SPIDIR_SRC) matlab_interface.cpp
 

@@ -818,25 +818,6 @@ float treelk(Tree *tree,
         //float est_generate = estimateGeneRate(tree, stree, recon, events, params);
         //printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
         
-        /*
-        gsl_integration_workspace *workspace = 
-            gsl_integration_workspace_alloc(workspaceSize);
-
-        double a = est_generate * .25;;
-        double b = est_generate * 2.0;
-        gsl_function gfunc;
-        gfunc.function = lkfunction;
-        gfunc.params = (void *) &lkcalc;
-        size_t neval = 0;
-        
-        
-        gsl_integration_qag(&gfunc, a, b, 
-                    epsabs, epsrel, 
-                    workspaceSize, GSL_INTEG_GAUSS15, //GSL_INTEG_GAUSS61, 
-                    workspace, 
-                    &result, &abserr);
-        */
-        
         logl = 0.0;
         double totprob = 0;
         float maxg = params->alpha / params->beta * 2.0;
@@ -856,25 +837,6 @@ float treelk(Tree *tree,
         logl = log(totprob);
         
         printLog(LOG_HIGH, "argmax gene rate: %f\n", argmax_generate);
-        
-        //gsl_integration_qng(&gfunc, a, b, epsabs, epsrel, 
-        //                    &result, &abserr, &neval);
-        
-        //logl = log(result);
-        //printLog(LOG_HIGH, "integrate: %f %f %f %f %d\n", 
-        //                    logl, log(result), log(abserr), abserr/result, neval);
-        
-        /*
-        // integrate over generates
-        float logl2 = 0.0;
-        for (generate = .01; generate < 6; generate += .1) {
-            logl = lkcalc.calcprob(generate);
-            logl2 += logl;
-        }
-        logl = log(logl2 / ((6 - .01) / .1));
-        */
-        
-        //gsl_integration_workspace_free(workspace);
     }
     
     // rare events
@@ -915,9 +877,10 @@ float treelk(int nnodes, int *ptree, float *dists,
 
 
 //=============================================================================
-// Gene Rate estimation
+// Gene rate estimation
 
 
+// functor of gene rate posterior derivative
 class GeneRateDerivative 
 {
 public:
@@ -940,10 +903,12 @@ public:
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
                            int *recon, int *events, SpidirParams *params)
 {
+    // get initial estimate of gene rate and a bound to search around
     float est_generate = estimateGeneRate(tree, stree, recon, events, params);
     float maxg = est_generate * 1.5; //params->alpha / params->beta * 2.0;
     float ming = est_generate / 1.5;
     
+    // find actual max posterior of gene rate
     GeneRateDerivative df(tree, stree, recon, events, params);
     return bisectRoot(df, ming, maxg, 10, ming, maxg);
 }

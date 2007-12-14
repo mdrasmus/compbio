@@ -30,15 +30,6 @@ static int g_loglevel = LOG_QUIET;
 //=============================================================================
 // Math
 
-// computes the log(normalPdf(x | u, s^2))
-float normallog(float x, float u, float s)
-{
-    if (s == 0.0)
-        return -INFINITY;
-    return - log(s) - log(sqrt(2.0*M_PI)) - (x-u)*(x-u) / (2.0*s*s);
-    //return log(1.0/(s * sqrt(2.0*M_PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
-}
-
 
 
 /* gammln as implemented in the
@@ -46,9 +37,9 @@ float normallog(float x, float u, float s)
 double gammln(double xx)
 {
     double x,tmp,ser;
-    static double cof[6]={76.18009172947146,    -86.50532032941677,
-                          24.01409824083091,    -1.231739572450155,
-                          0.1208650973866179e-2,-0.5395239384953e-5};
+    const static double cof[6]={76.18009172947146,    -86.50532032941677,
+                                24.01409824083091,    -1.231739572450155,
+                                0.1208650973866179e-2,-0.5395239384953e-5};
     int j;
 
     x=xx-1.0;

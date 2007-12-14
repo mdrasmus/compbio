@@ -226,6 +226,9 @@ void Tree::hashkey(int *key)
     getTreeSortedPostOrder(this, &sortpostnodes, ordering);
     
     // generate a unique key for this topology
+    // postfix notation for a tree
+    // ((A,B),C) is represented as
+    // A, B, -1, C, -1
     for (int i=0; i<sortpostnodes.size(); i++) {
         Node *node = sortpostnodes[i];
         

@@ -91,7 +91,7 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
         else:
             writeDenseMatrix(tmpfile, mat)
         
-        assert nclusters >= len(mat), "too many clusters requested"
+        assert nclusters <= len(mat), "too many clusters requested"
     
     partfile = tmpfile + ".clustering.%d" % nclusters
     
@@ -136,7 +136,7 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False,
         else:
             writeDenseMatrix(tmpfile, mat)
     
-        assert nclusters >= len(mat), "too many clusters requested"
+        assert nclusters <= len(mat), "too many clusters requested"
         
     # determine files
     partfile = matfile + ".clustering.%d" % nclusters

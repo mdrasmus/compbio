@@ -54,9 +54,12 @@ Table can also handle custom types.  Custom types must do the following
 
 """
 
-import sys
-import StringIO
 import copy
+import StringIO
+import sys
+import os
+
+
 
 # rasmus libs
 from rasmus import util

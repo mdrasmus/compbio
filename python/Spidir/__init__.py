@@ -563,7 +563,9 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     params[stree.root.name] = [0,0]
     this = util.Bundle(logl=0.0)
     
-    if baserate == None:
+    if conf.get("generate_int", False):
+        baserate = -99.0 # indicates in integration over gene rates is requested
+    elif baserate == None:
         baserate = Likelihood.getBaserate(tree, stree, params, recon=recon)
         
     
@@ -579,6 +581,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     # calc penality of error
     tree.data["errorlogl"] = tree.data.get("error", 0.0) * \
                              conf.get("errorcost", 0.0)
+    this.logl += tree.data["errorlogl"]
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl

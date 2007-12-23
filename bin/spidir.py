@@ -148,6 +148,8 @@ options = ["""\
  ["", "python_only", "python_only", ""],
  ["", "parsimony", "parsimony", ""],
  ["", "mlhkydist", "mlhkydist", ""],
+ ["g", "generate_int", "generate_int", "",
+    {"single": True}],
  ["", "bgfreq=", "bgfreq", "<background base frequencies>",
     {"parser": lambda x: map(float,x.split(',')),
      "default": [.25, .25, .25, .25],

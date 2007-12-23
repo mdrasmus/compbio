@@ -143,8 +143,11 @@ float bisectRoot(Func &f, float x0, float x1, const int maxiter,
 
 inline float logadd(float lna, float lnb)
 {
-    // can be improved. see python:rasmus.stats
-    return logf(expf(lna - lnb) + 1.0) + lnb;
+    float diff = lna - lnb;
+    if (diff < 40.0)
+        return logf(expf(diff) + 1.0) + lnb;
+    else
+        return lna;
 }
 
 void invertPerm(int *perm, int *inv, int size);

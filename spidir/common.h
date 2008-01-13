@@ -140,7 +140,7 @@ float bisectRoot(Func &f, float x0, float x1, const int maxiter,
 }
 
 
-
+// computes log(a + b) given log(a) and log(b)
 inline float logadd(float lna, float lnb)
 {
     float diff = lna - lnb;

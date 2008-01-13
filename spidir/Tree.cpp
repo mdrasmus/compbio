@@ -30,7 +30,7 @@ Tree *Tree::copy()
         nodes2[i]->setChildren(nodes[i]->nchildren);
         nodes2[i]->name = i;
         nodes2[i]->dist = nodes[i]->dist;
-        nodes2[i]->leafname = nodes[i]->leafname;
+        nodes2[i]->longname = nodes[i]->longname;
     }
     
     for (int i=0; i<nnodes; i++) {
@@ -386,7 +386,7 @@ Node *Tree::readNode(FILE *infile, Node *parent, int &depth)
         if (!(chr = readUntil(infile, token, ":),", depth)))
             return NULL;
         token = char1 + trim(token.c_str());
-        node->leafname = token;
+        node->longname = token;
         
         // read distance for this node
         if (chr == ':') {
@@ -487,7 +487,7 @@ void Tree::writeNewick(FILE *out, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) fprintf(out, "  ");
-            fprintf(out, "%s:%f", node->leafname.c_str(), node->dist);
+            fprintf(out, "%s:%f", node->longname.c_str(), node->dist);
         } else {
             // indent
             for (int i=0; i<depth; i++) fprintf(out, "  ");
@@ -626,7 +626,7 @@ void displayNode(Matrix<char> &matrix, Node *node, int *xpt, int* ypt)
 
         matrix[y][x] = '+';                    
     } else {
-        drawText(matrix, node->leafname.c_str(), x + leadSpacing, y);
+        drawText(matrix, node->longname.c_str(), x + leadSpacing, y);
     }
 }
 
@@ -670,7 +670,7 @@ void displayTree(Tree *tree, FILE *outfile, float xscale, int yscale)
         int extra = 0;
         
         if (tree->nodes[i]->isLeaf())
-            extra = labelSpacing + tree->nodes[i]->leafname.size();
+            extra = labelSpacing + tree->nodes[i]->longname.size();
     
         if (xpt[i] + extra > width) 
             width = xpt[i] + extra;
@@ -703,7 +703,7 @@ void displayTreeMatrix(Tree *tree, float xscale, int yscale,
         int extra = 0;
         
         if (tree->nodes[i]->isLeaf())
-            extra = labelSpacing + tree->nodes[i]->leafname.size();
+            extra = labelSpacing + tree->nodes[i]->longname.size();
     
         if (xpt[i] + extra > width) 
             width = xpt[i] + extra;
@@ -835,7 +835,7 @@ void printTree(Tree *tree, Node *node, int depth)
     } else {
         if (node->nchildren == 0) {
             for (int i=0; i<depth; i++) printf("  ");
-            printf("%d=%s:%f", node->name, node->leafname.c_str(), node->dist);
+            printf("%d=%s:%f", node->name, node->longname.c_str(), node->dist);
         } else {
             // indent
             for (int i=0; i<depth; i++) printf("  ");

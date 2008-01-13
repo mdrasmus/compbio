@@ -96,7 +96,7 @@ public:
     Node **children;    // array of child pointers (size = nchildren)
     int nchildren;      // number of children
     float dist;         // branch length above node
-    string leafname;    // node name (used mainly for leaves only)
+    string longname;    // node name (used mainly for leaves only)
 };
 
 
@@ -146,9 +146,9 @@ public:
     {
         for (int i=0; i<nnodes; i++) {
             if (leavesOnly && !nodes[i]->isLeaf())
-                nodes[i]->leafname = "";
+                nodes[i]->longname = "";
             else
-                nodes[i]->leafname = names[i];
+                nodes[i]->longname = names[i];
         }
     }
     
@@ -161,7 +161,7 @@ public:
     {
         for (int i=0; i<nnodes; i++)
             if (!leavesOnly || nodes[i]->isLeaf())
-                names[i] = nodes[i]->leafname;
+                names[i] = nodes[i]->longname;
     }
     
     
@@ -174,7 +174,7 @@ public:
     {
         for (int i=0; i<nnodes; i++) {
             if (nodes[i]->isLeaf())
-                names[i] = nodes[i]->leafname;
+                names[i] = nodes[i]->longname;
             else {
                 char numstr[21];
                 snprintf(numstr, 20, "%d", nodes[i]->name);

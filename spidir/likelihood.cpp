@@ -280,7 +280,7 @@ float estimateGeneRate(Tree *tree, SpeciesTree *stree,
                 dists[count] = depths[i];
                 means[count] = u;
                 sdevs[count] = sqrt(s2);
-                count ++;
+                count++;
             }
         }
     }
@@ -611,8 +611,8 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             //float sdev = stdev(samples.get(), samples.size()) / 
             //             (prob * nsamples / (i+1));
             
-            printLog(LOG_HIGH, "sample_int: %d %f %f %f\n", 
-                     i, sampleLogl, log(prob / (i+1.0)), sdev);
+            //printLog(LOG_HIGH, "sample_int: %d %f %f %f\n", 
+            //         i, sampleLogl, log(prob / (i+1.0)), sdev);
         }
         
         logl = log(prob);
@@ -731,26 +731,24 @@ public:
                 if (events[i] == EVENT_SPEC) {
                     for (int j=0; j<2; j++) {
                         int node = tree->nodes[i]->children[j]->name;
-                        double slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                        logl += subtreelk(tree->nnodes, ptree, ftree, dists, 
                                                 node,
                                                 stree->nnodes, pstree, 
                                                 recon, events, params,
                                                 generate,
                                                 &reconparams);
-                        logl += slogl;
                     }
                 } else {
-                    double slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                    logl += subtreelk(tree->nnodes, ptree, ftree, dists, 
                                             i,
                                             stree->nnodes, pstree, 
                                             recon, events, params,
                                             generate,
                                             &reconparams);
-                    logl += slogl;
                 }
             }
         }
-
+        
         // generate probability
         if (params->alpha > 0 && params->beta > 0)
             logl += gammalog(generate, params->alpha, params->beta);    
@@ -765,7 +763,7 @@ public:
     }
     
     
-
+protected:
     Tree *tree;    
     SpeciesTree *stree;
     int *recon;
@@ -802,7 +800,7 @@ float treelk(Tree *tree,
     TreeLikelihoodCalculator lkcalc(tree, stree, recon, events, params);
 
     // generate default gene rate
-    if (generate == -1)
+    if (generate == -1.0)
         generate = estimateGeneRate(tree, stree, recon, events, params);    
 
     if (generate > 0) {
@@ -810,23 +808,34 @@ float treelk(Tree *tree,
         logl = lkcalc.calc(generate);
     } else {
         float est_generate = estimateGeneRate(tree, stree, recon, events, params);
-        //printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
+        printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
         
         logl = -INFINITY;
-        float maxg = est_generate * 3; //params->alpha / params->beta * 3.0;
-        float gstart = est_generate * 0.05; //maxg * 0.05;
-        float step = (maxg - gstart) / 200.0;
-        for (float g=gstart; g<maxg; g+=step) {
-            float l = lkcalc.calc(g); // NOTE: this is logl
-            logl = logadd(logl, l - log(step));
-            //printLog(LOG_HIGH, "sample_int: %f\n", logl);
+        /*
+        float gend = est_generate * 3; //params->alpha / params->beta * 3.0;
+        float gstart = est_generate * .01; //maxg * 0.05;
+        float step = (gend - gstart) / 200.0;
+        */
+        
+        float gend = params->alpha / params->beta * 3.0;
+        float gstart = params->alpha / params->beta * 0.05;
+        float step = (gend - gstart) / 70.0;
+
+        for (float g=gstart; g<gend; g+=step) {
+            float l = lkcalc.calc(g);
+            logl = logadd(logl, l);
+            printLog(LOG_HIGH, "generate_int: %f %f\n", g, l);
             if (l > maxprob) {
                 maxprob = l;
                 argmax_generate = g;
             }
         }
         
+        // multiply probabilty by integration step
+        logl += log(step);
+        
         printLog(LOG_HIGH, "argmax gene rate: %f\n", argmax_generate);
+        printLog(LOG_HIGH, "treelk: %f %f %f\n", maxprob, logl, lkcalc.calc(est_generate));
     }
     
     // rare events

@@ -96,7 +96,7 @@ def main(conf):
 def simTree(conf, tree, stree, params, gene2species):
     if conf["famrate"] is None:
         baserate = random.gammavariate(params["baserate"][0],
-                                       1 / params["baserate"][1])
+                                       1.0 / params["baserate"][1])
     else:
         baserate = conf["famrate"]
 
@@ -180,7 +180,7 @@ def reconBranch(node, recon, events, stree, params, midpoints):
         snode = recon[node].parent
         snode2 = recon[node.parent]
         while snode != snode2:
-            fracs.append(1) # full branch
+            fracs.append(1.0) # full branch
             snodes.append(snode.name)
             snode = snode.parent
 
@@ -199,18 +199,17 @@ def setMidpointsRandom(node, events, recon, params, midpoints, wholeTree=True):
         if events[node] == "dup" and \
            node.parent != None:
             if recon[node] == recon[node.parent]:
-                # if im the same species branch as my parent 
+                # if i'm the same species branch as my parent 
                 # then he is my last midpoint
                 startpoint = midpoints[node.parent]
             else:
-                # im the first on this branch so the last midpoint is zero
+                # i'm the first on this branch, so the last midpoint is zero
                 startpoint = 0.0
-                
                 #startpoint = chooseStartpoint(node, recon, params)
             
             # pick a midpoint uniformly after the last one
             midpoints[node] = startpoint + \
-                        (random.random() * (1 - startpoint))
+                        (random.random() * (1.0 - startpoint))
         else:
             # genes or speciations reconcile exactly to the end of the branch
             # gene tree roots also reconcile exactly to the end of the branch
@@ -222,7 +221,7 @@ def setMidpointsRandom(node, events, recon, params, midpoints, wholeTree=True):
     
     walk(node)
 
-
+'''
 def chooseStartpoint(node, recon, params):
     originalLen = params[recon[node].name][0]
     child = filter(lambda x: recon[x] == recon[node], node.children)[0]
@@ -232,6 +231,7 @@ def chooseStartpoint(node, recon, params):
     startpoint = max(0, 1 - (minlen / originalLen))
     
     return startpoint
+'''
 
 
 def simBranchLen(conf, baserate, param):

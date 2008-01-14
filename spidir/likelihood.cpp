@@ -280,7 +280,7 @@ float estimateGeneRate(Tree *tree, SpeciesTree *stree,
                 dists[count] = depths[i];
                 means[count] = u;
                 sdevs[count] = sqrt(s2);
-                count ++;
+                count++;
             }
         }
     }
@@ -611,8 +611,8 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             //float sdev = stdev(samples.get(), samples.size()) / 
             //             (prob * nsamples / (i+1));
             
-            printLog(LOG_HIGH, "sample_int: %d %f %f %f\n", 
-                     i, sampleLogl, log(prob / (i+1.0)), sdev);
+            //printLog(LOG_HIGH, "sample_int: %d %f %f %f\n", 
+            //         i, sampleLogl, log(prob / (i+1.0)), sdev);
         }
         
         logl = log(prob);
@@ -713,9 +713,9 @@ public:
     }
     
     
-    float calc(float generate)
+    double calc(float generate)
     {
-        float logl = 0.0;
+        double logl = 0.0;
     
         // determine reconciliation parameters
         ReconParams reconparams = ReconParams(tree->nnodes);
@@ -731,26 +731,24 @@ public:
                 if (events[i] == EVENT_SPEC) {
                     for (int j=0; j<2; j++) {
                         int node = tree->nodes[i]->children[j]->name;
-                        float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                        logl += subtreelk(tree->nnodes, ptree, ftree, dists, 
                                                 node,
                                                 stree->nnodes, pstree, 
                                                 recon, events, params,
                                                 generate,
                                                 &reconparams);
-                        logl += slogl;
                     }
                 } else {
-                    float slogl = subtreelk(tree->nnodes, ptree, ftree, dists, 
+                    logl += subtreelk(tree->nnodes, ptree, ftree, dists, 
                                             i,
                                             stree->nnodes, pstree, 
                                             recon, events, params,
                                             generate,
                                             &reconparams);
-                    logl += slogl;
                 }
             }
         }
-
+        
         // generate probability
         if (params->alpha > 0 && params->beta > 0)
             logl += gammalog(generate, params->alpha, params->beta);    
@@ -759,13 +757,13 @@ public:
         return logl;
     }
     
-    inline float calcprob(float generate)
+    inline double calcprob(float generate)
     {
         return exp(calc(generate));
     }
     
     
-
+protected:
     Tree *tree;    
     SpeciesTree *stree;
     int *recon;
@@ -795,48 +793,49 @@ float treelk(Tree *tree,
 {
     float logl = 0.0; // log likelihood
     
-    double maxprob = 0;
+    double maxprob = -INFINITY;
     float argmax_generate = params->alpha / params->beta;
-    
-    //float epsabs = 1e6;
-    //float epsrel = .60;
-    //double result, abserr;
-    //size_t workspaceSize = 40;
-
     
     
     TreeLikelihoodCalculator lkcalc(tree, stree, recon, events, params);
 
     // generate default gene rate
-    if (generate == -1)
+    if (generate == -1.0)
         generate = estimateGeneRate(tree, stree, recon, events, params);    
 
     if (generate > 0) {
         // estimate with given generate
         logl = lkcalc.calc(generate);
     } else {
-        //float est_generate = estimateGeneRate(tree, stree, recon, events, params);
-        //printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
+        float est_generate = estimateGeneRate(tree, stree, recon, events, params);
+        printLog(LOG_HIGH, "est_generate: %f\n", est_generate);
         
-        logl = 0.0;
-        double totprob = 0;
-        float maxg = params->alpha / params->beta * 2.0;
-        float gstart = maxg * 0.05;
-        float step = maxg / 50.0;
-        for (float g=gstart; g<maxg; g+=step) {
-            double prob = lkcalc.calcprob(g);
-            //lkfunction(g, (void*) &lkcalc);
-            totprob += prob * step;
-            //printLog(LOG_HIGH, "sample_int: %f\n", log(totprob));
-            
-            if (prob > maxprob) {
-                maxprob = prob;
+        logl = -INFINITY;
+        /*
+        float gend = est_generate * 3; //params->alpha / params->beta * 3.0;
+        float gstart = est_generate * .01; //maxg * 0.05;
+        float step = (gend - gstart) / 200.0;
+        */
+        
+        float gend = params->alpha / params->beta * 3.0;
+        float gstart = params->alpha / params->beta * 0.05;
+        float step = (gend - gstart) / 70.0;
+
+        for (float g=gstart; g<gend; g+=step) {
+            float l = lkcalc.calc(g);
+            logl = logadd(logl, l);
+            printLog(LOG_HIGH, "generate_int: %f %f\n", g, l);
+            if (l > maxprob) {
+                maxprob = l;
                 argmax_generate = g;
             }
         }
-        logl = log(totprob);
+        
+        // multiply probabilty by integration step
+        logl += log(step);
         
         printLog(LOG_HIGH, "argmax gene rate: %f\n", argmax_generate);
+        printLog(LOG_HIGH, "treelk: %f %f %f\n", maxprob, logl, lkcalc.calc(est_generate));
     }
     
     // rare events

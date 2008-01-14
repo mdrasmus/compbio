@@ -235,8 +235,10 @@ def setTreeDistances(conf, tree, distmat, genes):
     
     elif pyspidir and "mlhkydist" in conf:
         # estimate branch lengths with ML
-        mlhkydist_C(conf["aln"], tree, conf["bgfreq"], conf["tsvratio"], 
-                    3*len(tree.nodes))  
+        logl = mlhkydist_C(conf["aln"], tree, conf["bgfreq"], conf["tsvratio"], 
+                           3*len(tree.nodes))
+        tree.data["distlogl"] = logl
+        tree.data["error"] = 0.0
     else:
         # perform LSE
         lse = phylo.leastSquareError(tree, distmat, genes)
@@ -462,10 +464,8 @@ def treeLikelihood_C(conf, tree, recon, events, stree, params, generate,
                            float(params["baserate"][0]), 
                            float(params["baserate"][1]),
                            generate,
-                           float(tree.data.get("error", 0.0)),
                            float(conf.get("predupprob", 1.0)),
-                           float(conf.get("dupprob", 1.0)),
-                           float(conf.get("errorcost", 0.0)))
+                           float(conf.get("dupprob", 1.0)))
     
     return ret
 
@@ -498,7 +498,7 @@ def mlhkydist_C(aln, tree, bgfreq, ratio, maxiter):
     for i in xrange(len(dists)):
         nodes[i].dist = dists[i]
     
-    tree.data["error"] = logl
+    return logl
 
 
 def estGeneRate(tree, stree, params, gene2species):
@@ -536,7 +536,7 @@ def estGeneRate(tree, stree, params, gene2species):
 def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     conf.setdefault("bestlogl", -util.INF)
     
-    if pyspidir == None or ("python_only" in conf and conf["python_only"]):
+    if pyspidir == None or conf.get("python_only", False):
         return Likelihood.treeLogLikelihood_python(conf, tree, stree, 
                                                    gene2species, params, 
                                                    baserate=baserate, 
@@ -563,7 +563,9 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     params[stree.root.name] = [0,0]
     this = util.Bundle(logl=0.0)
     
-    if baserate == None:
+    if conf.get("generate_int", False):
+        baserate = -99.0 # indicates in integration over gene rates is requested
+    elif baserate == None:
         baserate = Likelihood.getBaserate(tree, stree, params, recon=recon)
         
     
@@ -579,6 +581,13 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     # calc penality of error
     tree.data["errorlogl"] = tree.data.get("error", 0.0) * \
                              conf.get("errorcost", 0.0)
+    this.logl += tree.data["errorlogl"]
+    
+    # add logl of sequence evolution
+    this.logl += tree.data.get("distlogl", 0.0)
+    
+    if baserate == -99.0: # indicates in integration over gene rates is requested
+        baserate = Likelihood.getBaserate(tree, stree, params, recon=recon) 
     
     tree.data["baserate"] = baserate
     tree.data["logl"] = this.logl
@@ -601,6 +610,9 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
     
     setDebug(conf["debug"])
 
+    if isDebug(DEBUG_HIGH) and pyspidir:
+        pyspidir.set_log(3, "")
+        
     
     if "out" in conf:
         # create debug table

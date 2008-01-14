@@ -119,11 +119,16 @@ inline int countDuplications(int nnodes, int *events)
 }
 
 
-inline int reconcileNode(Node *node, SpeciesTree *stree, int *recon) {
-    Node *snode1 = stree->nodes[recon[node->children[0]->name]];
-    Node *snode2 = stree->nodes[recon[node->children[1]->name]];
-    Node *snode = treeLca(stree, snode1, snode2);
-    return snode->name;
+inline int reconcileNode(Node *node, SpeciesTree *stree, int *recon) 
+{
+    if (node->isLeaf()) {
+        return recon[node->name];
+    } else {
+        Node *snode1 = stree->nodes[recon[node->children[0]->name]];
+        Node *snode2 = stree->nodes[recon[node->children[1]->name]];
+        Node *snode = treeLca(stree, snode1, snode2);
+        return snode->name;
+    }
 }
 
 

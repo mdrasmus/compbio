@@ -171,12 +171,12 @@ void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species)
         // reroot
         tree->reroot(edge.first, edge.second);
         
-        // recompute recon and events
+        // Recompute recon and events
         recon[edge.second->name] = reconcileNode(edge.second, stree, recon);
         recon[tree->root->name] = reconcileNode(tree->root, stree, recon);
         events[edge.second->name] = labelEventsNode(edge.second, recon);
         events[tree->root->name] = labelEventsNode(tree->root, recon);
-        
+
         // count any new duplications
         if (events[tree->root->name] ==  EVENT_DUP)
             cost ++;        

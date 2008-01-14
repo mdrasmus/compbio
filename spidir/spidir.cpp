@@ -190,7 +190,7 @@ bool SpidirParams::order(SpeciesTree *stree)
         for (int i=0; i<stree->nnodes; i++) {
             if (stree->nodes[i]->isLeaf()) {
                 // if leaf, check if names match
-                if (names[j] == stree->nodes[i]->leafname) {
+                if (names[j] == stree->nodes[i]->longname) {
                     invperm.append(i);
                     break;
                 }

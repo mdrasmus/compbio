@@ -103,7 +103,7 @@ pyspidir_treelk(PyObject *self, PyObject *args)
 {
     
     // check number of args
-    if (PyTuple_GET_SIZE(args) < 13) {
+    if (PyTuple_GET_SIZE(args) < 11) {
         printf("wrong number of args\n");
         return NULL;
     }
@@ -118,10 +118,8 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     PyObject *pyalpha = PyTuple_GET_ITEM(args, 6);
     PyObject *pybeta = PyTuple_GET_ITEM(args, 7);
     PyObject *pygenerate = PyTuple_GET_ITEM(args, 8);
-    PyObject *pydisterror = PyTuple_GET_ITEM(args, 9);
-    PyObject *pypredupprob = PyTuple_GET_ITEM(args, 10);
-    PyObject *pydupprob = PyTuple_GET_ITEM(args, 11);
-    PyObject *pyerrorprob = PyTuple_GET_ITEM(args, 12);
+    PyObject *pypredupprob = PyTuple_GET_ITEM(args, 9);
+    PyObject *pydupprob = PyTuple_GET_ITEM(args, 10);
     
     // check arg types
     if (!PyList_Check(pyptree) || 
@@ -133,10 +131,8 @@ pyspidir_treelk(PyObject *self, PyObject *args)
         !PyFloat_Check(pyalpha) ||
         !PyFloat_Check(pybeta) ||        
         !PyFloat_Check(pygenerate) ||
-        !PyFloat_Check(pydisterror) ||
         !PyFloat_Check(pypredupprob) ||
-        !PyFloat_Check(pydupprob) ||
-        !PyFloat_Check(pyerrorprob)
+        !PyFloat_Check(pydupprob)
         )
     {
         printf("wrong argument types\n");

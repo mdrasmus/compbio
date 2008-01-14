@@ -595,7 +595,7 @@ def searchMCMC(conf, distmat, labels, stree, gene2species, params,
         visited = {}
     
     
-    this = util.Closure(
+    this = util.Bundle(
         nold=0,
         toplogl = -util.INF,
         toptree = None,

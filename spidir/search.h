@@ -25,14 +25,18 @@ public:
     virtual void propose(Tree *tree);
     virtual void revert(Tree *tree);
     virtual bool more();
-    
+
+protected:    
     Node *node1;
     Node *node2;
+    Node *nodea;
+    Node *nodeb;
     Node *node3;
     Node *node4;
-    Node *oldroot;
-    int change1;
-    int change2;
+    Node *nodec;
+    Node *noded;
+    Node *oldroot1;
+    Node *oldroot2;
     SpeciesTree *stree;
     int *gene2species;
     int niter;

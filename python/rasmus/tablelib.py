@@ -290,8 +290,9 @@ TableFloat = TableType(float, str)
 TableExpr = TableType(_eval2, str)
 
 _defaultTypeLookup = \
-    TableTypeLookup([["unknown", str], # backwards compatiable name                     
-                     ["str",    str],   # backwards compatiable name
+    TableTypeLookup([["string", unicode],
+                     ["unknown", str], # backwards compatiable name                     
+                     ["str",    str],  # backwards compatiable name
                      ["string", str],
                      ["int",    int],
                      ["float",  float],
@@ -1166,6 +1167,27 @@ def showtab(tab, name='table'):
     tab.writePretty(file(tmp, "w"))
     os.system("(xterm -T '%s' -n '%s' -e less -S %s; rm %s) &" %
               (name, name, tmp, tmp))
+
+
+def sqltab(dbfile, query, maxrows=None, headers=None):
+    from pysqlite2 import dbapi2 as sqlite
+
+    # open database
+    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+    cur = con.cursor()
+    
+    cur.execute(query)
+    
+    if maxrows != None:
+        lst = []
+        try:
+            for i in xrange(maxrows):
+                lst.append(cur.next())
+        except StopIteration:
+            pass
+        return Table(lst, headers=headers)
+    else:
+        return Table(list(cur), headers=headers)
 
 
 #===========================================================================

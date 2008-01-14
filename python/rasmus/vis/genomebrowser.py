@@ -191,10 +191,10 @@ class GenomeStackBrowser (Browser):
         # initialize view
         if species != None:
             viewChange = True
-            view.species = species
-            view.seqname = chrom
-            view.start = start
-            view.end = end
+            self.view.species = species
+            self.view.seqname = chrom
+            self.view.start = start
+            self.view.end = end
         
         
         # initialize root groups
@@ -329,7 +329,7 @@ class GenomeOverview (Browser):
                 self.win.set_size(*self.winsize)
                 
             self.win.set_bgcolor(1, 1, 1)
-            self.select = select.Select(self.win, self.onSelect, fillColor=(0,0,1,.3))
+            self.select = select.Select(self.win, self.onSelect, fill_color=(0,0,1,.3))
         
 
             # zooming
@@ -961,7 +961,7 @@ class RegionTrack (Track):
 class GenomeAlignTrack (Track):
     def __init__(self, galign, collapse=None, colorBases=False, 
                  height=1,
-                 seqtype=None, showColorBases=True, showBases=True, **options):
+                 seqtype="dna", showColorBases=True, showBases=True, **options):
         Track.__init__(self, **options)
         
         self.galign = galign

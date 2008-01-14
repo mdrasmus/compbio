@@ -217,7 +217,7 @@ Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2)
 
 
 // NOTE: assumes binary species tree
-void reconcile_helper(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
+void reconcile_recurse(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
 {
     // recurse
     for (int i=0; i<node->nchildren; i++)
@@ -245,7 +245,7 @@ void reconcile(Tree *tree, SpeciesTree *stree,
         if (tree->nodes[i]->isLeaf())
             recon[i] = gene2species[i];
     
-    reconcile_helper(tree, tree->root, stree, recon);    
+    reconcile_recurse(tree, tree->root, stree, recon);    
 }
 
 

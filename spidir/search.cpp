@@ -118,24 +118,18 @@ void proposeNni(Tree *tree, Node *node1, Node *node2, Node *child)
       nodeb    node1
                /  \
          nodea     * 
-          
-    I do not need to renumber nodes is if child[change] and uncle are 
-    both leaves or both all internal.    
-    Renumbering is simply a swap of the two nodes otherwise
+
 */
-void proposeNni(Tree *tree, Node *node1, Node *node2, Node *nodea, Node *nodeb)
+void proposeNni(Tree *tree, Node *nodea, Node *nodeb)
 {
-    int uncle = 0;
-
-    // ensure node1 is the child of node2
-    if (node1->parent != node2) {
-        Node *tmp = node1; node1 = node2; node2 = tmp;
-    }
-    assert(node1->parent == node2);
-    assert(nodea->parent == node1);
-    assert(nodeb->parent == node2);
+    Node *node1 = nodea->parent;
+    Node *node2 = nodeb->parent;
     
-
+    // assert that node1 and node2 are incident to the same branch
+    assert(node1->parent == node2 ||
+           node2->parent == node1);
+    
+    // find child indexes
     int a = (node1->children[0] == nodea) ? 0 : 1;
     assert(node1->children[a] == nodea);
 
@@ -172,12 +166,8 @@ void proposeRandomNni(Tree *tree, Node **node1, Node **node2,
 
 NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
                          int niter) :
-    node1(NULL),
-    node2(NULL),
     nodea(NULL),
     nodeb(NULL),
-    node3(NULL),
-    node4(NULL),
     nodec(NULL),
     noded(NULL),
     oldroot1(NULL),
@@ -197,17 +187,16 @@ void NniProposer::propose(Tree *tree)
     // increase iteration
     iter++;
     
-    node1 = NULL;
-    node3 = NULL;
-    
+    Node *node1, *node2, *node3, *node4;
+    nodea = nodeb = nodec = noded = NULL;
 
     // propose new tree
     proposeRandomNni(tree, &node1, &node2, &nodea, &nodeb);
-    proposeNni(tree, node1, node2, nodea, nodeb);
+    proposeNni(tree, nodea, nodeb);
 
     if (frand() < doubleNniProb) {
         proposeRandomNni(tree, &node3, &node4, &nodec, &noded);
-        proposeNni(tree, node3, node4, nodec, noded);
+        proposeNni(tree, nodec, noded);
     }
 
     // TODO: need random reroot or recon root.
@@ -252,10 +241,10 @@ void NniProposer::revert(Tree *tree)
     
     //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
     //       node2->name, node2->nchildren);
-    if (node3)
-        proposeNni(tree, node3, node3->parent, noded, nodec);
-    if (node1)
-        proposeNni(tree, node1, node1->parent, nodeb, nodea);
+    if (nodec)
+        proposeNni(tree, nodec, noded);
+    if (nodea)
+        proposeNni(tree, nodea, nodeb);
 }
 
 

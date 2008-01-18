@@ -193,8 +193,8 @@ class GenomeStackBrowser (Browser):
             viewChange = True
             self.view.species = species
             self.view.seqname = chrom
-            self.view.start = start
-            self.view.end = end
+            self.view.start = int(start)
+            self.view.end = int(end)
         
         
         # initialize root groups
@@ -570,6 +570,7 @@ class RulerTrack (Track):
                  textAlign="middle",
                  textColor=color(0, 0, 0),
                  show=True,
+                 fixedHeight=True,
                  **options):
         
         Track.__init__(self, **options)
@@ -581,6 +582,7 @@ class RulerTrack (Track):
         self.textColor = textColor
         self.show      = show
         self.shown     = show
+        self.fixedHeight = fixedHeight
         
         if align != None:
             self.coords = alignlib.CoordConverter(align)
@@ -596,7 +598,6 @@ class RulerTrack (Track):
         self.start = self.view.start-1
         self.end = self.view.end
         self.height = self.top
-        self.bottom = self.bottom
         
         self.gid = group()
         return group(self.gid)
@@ -629,8 +630,6 @@ class RulerTrack (Track):
     def drawRuler(self, pos, start, end):
         worldx1, worldy1, worldx2, worldy2 = self.win.get_visible()
         screenwidth, screenheight = self.win.get_size()
-        height = self.height
-        bottom = self.bottom
         
         worldwidth = worldx2 - worldx1
         worldx1 -= worldwidth / 2.0
@@ -651,7 +650,8 @@ class RulerTrack (Track):
             i = unit * (max(start, worldx1 - x + start) // unit)
             while x + i - start <= worldx2 and i < end:
                 if i >= start:
-                    vis.append(lines(x + i - start, y+bottom, x + i - start, y+height))
+                    vis.append(lines(x + i - start, y+self.bottom, 
+                                     x + i - start, y+self.top))
                 i += unit // 10
 
 
@@ -660,10 +660,10 @@ class RulerTrack (Track):
         while x + i - start <= worldx2 and i < end:
             if i >= start:
                 vis.append(self.maincolor)            
-                vis.append(lines(x + i - start, y, x + i - start, y + height))
+                vis.append(lines(x + i - start, y, x + i - start, y + self.top))
                 vis.append(self.textColor)
                 vis.append(text(str(int(i//unit2)) + unitstr, 
-                                x + i - start, y, x + i -start - unit, y + height, 
+                                x + i - start, y, x + i -start - unit, y + self.top, 
                                 self.textAlign, "right"))
             i += unit
 
@@ -867,7 +867,15 @@ class RegionTrack (Track):
         self.style = style
         self.height = height
         self.onClick = onClick
-        
+    
+    
+    def get_region_pos(self, reg):
+        if reg.seqname == self.view.seqname and \
+           util.overlap(self.view.start, self.view.end, reg.start, reg.end):
+            return (self.pos[0] + reg.start - self.view.start, self.pos[1])
+        else:
+            return None
+    
     
     def draw(self):
         assert self.view != None, "Track view not initialized"
@@ -1087,7 +1095,6 @@ class AlignTrack (Track):
             boxpts = []
             diagpts = []
             diagpts2 = []
-            diagpts3 = []
             
             for row, (key, val) in zip(self.rowspacing, self.aln.iteritems()):
                 lastbase = None
@@ -1110,8 +1117,9 @@ class AlignTrack (Track):
                     
                     if lastbase != None and lastclass == selectedClass:
                         boxpts.extend([lasti, -row, lasti, -row-1, i, -row-1, i, -row])
-                        diagpts.extend([lasti, -row, i, -row-1])
-                        diagpts2.extend([lasti, -row, lasti, -row-1])
+                        diagpts.extend([i, -row, i, -row-1])
+                        #diagpts.extend([lasti, -row, i, -row-1])
+                        #diagpts2.extend([lasti, -row, lasti, -row-1])
 
                     lasti = i
                     lastbase = base
@@ -1148,12 +1156,12 @@ class AlignTrack (Track):
                      color(.5, .5, .5), 
                      quads(* base_boxpts),
                      lines(* base_diagpts),
-                     lines(* base_diagpts2),
+                     #lines(* base_diagpts2),
                      
                      color(.7, .2, .2),
                      quads(* nobase_boxpts),
                      lines(* nobase_diagpts),
-                     lines(* nobase_diagpts2),
+                     #lines(* nobase_diagpts2),
                      group(self.textGroup)))
     
     def drawLeft(self):

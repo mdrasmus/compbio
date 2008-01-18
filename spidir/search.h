@@ -27,12 +27,8 @@ public:
     virtual bool more();
 
 protected:    
-    Node *node1;
-    Node *node2;
     Node *nodea;
     Node *nodeb;
-    Node *node3;
-    Node *node4;
     Node *nodec;
     Node *noded;
     Node *oldroot1;
@@ -113,8 +109,6 @@ protected:
     bool estGenerate;
 };
 
-
-void proposeNni(Tree *tree, Node *node1, Node *node2, int change=0);
 
 
 Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,

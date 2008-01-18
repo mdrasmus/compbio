@@ -221,7 +221,7 @@ void reconcile_recurse(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
 {
     // recurse
     for (int i=0; i<node->nchildren; i++)
-        reconcile_helper(tree, node->children[i], stree, recon);
+        reconcile_recurse(tree, node->children[i], stree, recon);
     
     if (node->nchildren > 0) {
         int sname1 = recon[node->children[0]->name];

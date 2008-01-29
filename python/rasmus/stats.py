@@ -212,7 +212,7 @@ def smooth(vals, radius):
     return vals2
 
 
-def smooth2(x, y, xradius):
+def smooth2(x, y, xradius, minsize=0):
     """
     return an averaging of x and y using xradius
     
@@ -253,8 +253,9 @@ def smooth2(x, y, xradius):
             ytot += y[high]
         
         denom = float(high - low + 1)
-        x2.append(xtot / denom)
-        y2.append(ytot / denom)
+        if denom >= minsize:
+            x2.append(xtot / denom)
+            y2.append(ytot / denom)
     
     return x2, y2
 

@@ -80,14 +80,20 @@ if "reroot" in conf:
     if conf["reroot"].isdigit():
         conf["reroot"] = int(conf["reroot"])
 
-
-for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
-    try:
-        tree = treelib.readTree(treefile)
-    except Exception, e:
-        print >>sys.stderr, "error reading '%s': %s" % (treefile, e)
-        continue
+def iterTrees(treefile):
+    infile = util.openStream(treefile)
     
+    while True:
+        try:
+            tree = treelib.readTree(infile)
+            yield tree
+        except:
+            break
+
+
+def processTree(tree):
+    global gene2species
+
     if "stree" in conf and \
        "smap" in conf and "rootby" in conf:
         phylo.reconRoot(tree, stree, gene2species, 
@@ -213,6 +219,18 @@ for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
                                 maxlen=conf["maxlen"])
 
 
+
+
+for treefile in (conf["REST"] + conf["tree"] + conf["trees"]):
+    #try:
+    #    tree = treelib.readTree(treefile)        
+    #except Exception, e:
+    #    print >>sys.stderr, "error reading '%s': %s" % (treefile, e)
+    #    continue
+    
+    for tree in iterTrees(treefile):
+        processTree(tree)
+    
 # display topology histogram
 if conf["hist"]:
     histogram = tablelib.histTable(hashes)

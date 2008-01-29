@@ -4,11 +4,16 @@
 import sys
 from rasmus import tablelib
 
+infile = sys.stdin
+output = "nice"
 
-if len(sys.argv) > 1:
-    infile = sys.argv[1]
-else:
-    infile = sys.stdin
+for arg in sys.argv[1:]:
+    if arg == "-t":
+        output = "table"
+    else:
+        infile = file(arg)
+        break
+    
 
 # read data
 lines = []
@@ -21,5 +26,8 @@ for row in hist:
     row['percent'] *= 100
 
 # display histogram
-print hist.__repr__()
+if output == "nice":
+    print hist.__repr__()
+elif output == "table":
+    hist.write()
 

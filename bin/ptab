@@ -1,4 +1,4 @@
-#!/usr/bin/python -i
+#!/usr/bin/env python-i
 
 import sys, os
 from rasmus.tablelib import *

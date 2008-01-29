@@ -902,13 +902,13 @@ class SyntenyVis:
         
         
         if shape == "box":
-            return group(col, shapes.boxStroke(x1, y1, x2, y2))
+            return group(col, shapes.box(x1, y1, x2, y2, fill=False))
         
         elif shape == "half_box":
             if direction == 1:
-                return group(col, shapes.boxStroke(x1, mid, x2, y2))
+                return group(col, shapes.box(x1, mid, x2, y2, fill=False))
             else:
-                return group(col, shapes.boxStroke(x1, y1, x2, mid))
+                return group(col, shapes.box(x1, y1, x2, mid, fill=False))
         
         elif shape == "fill":
             return group(col, quads(

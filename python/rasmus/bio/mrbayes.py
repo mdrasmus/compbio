@@ -103,7 +103,7 @@ matrix
     # write sequences
     while size < totalsize:
         for name, seq in zip(names, seqs):
-            print >>out, "%s\t%s" % (name, seq[size:size+seqwidth])
+            print >>out, "%s  %s" % (name, seq[size:size+seqwidth])
         size += seqwidth
     
     print >>out, """\

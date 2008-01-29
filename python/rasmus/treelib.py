@@ -1062,7 +1062,8 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
 #=============================================================================
 # Tree visualization
    
-def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF):
+def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
+               rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.
     
@@ -1098,7 +1099,7 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF):
             top = nodept[node.children[0]]
             bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
                   nodept[node.children[-1]]
-            nodept[node] = (top + bot) / 2
+            nodept[node] = (top + bot) / 2.0
         
         return sizes[node]
     walk(tree.root)
@@ -1113,12 +1114,12 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF):
             for child in node.children:
                 walk(child, xchildren, ychild)
                 ychild += sizes[child] * yscale
-    walk(tree.root, 0, 0)
+    walk(tree.root, rootx, rooty)
     
     return coords
 
 
-def layoutTreeHierarchical(tree, xscale, yscale):
+def layoutTreeHierarchical(tree, xscale, yscale, rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.
     
@@ -1156,7 +1157,7 @@ def layoutTreeHierarchical(tree, xscale, yscale):
             top = nodept[node.children[0]]
             bot = (sizes[node] - sizes[node.children[-1]])*yscale + \
                   nodept[node.children[-1]]
-            nodept[node] = (top + bot) / 2
+            nodept[node] = (top + bot) / 2.0
             depth[node] = max(depth[child] + 1 for child in node.children)
         
         return sizes[node]
@@ -1173,7 +1174,7 @@ def layoutTreeHierarchical(tree, xscale, yscale):
             for child in node.children:
                 walk(child, xchildren, ychild)
                 ychild += sizes[child] * yscale
-    walk(tree.root, 0, 0)
+    walk(tree.root, rootx, rooty)
     
     return coords
 

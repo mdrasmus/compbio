@@ -14,10 +14,8 @@ from rasmus.regionlib import Region
 from rasmus.bio import gff, fasta, alignlib, seqlib
 
 
+# TODO: refactor the concept of height
 
-
-# TODO: think about how tracks can initialize their size first, then
-# be drawn in stack browser.
 
 class Browser (visual.VisObject):
     """Base class for containing and managing multiple graphical elements"""
@@ -32,22 +30,27 @@ class Browser (visual.VisObject):
         self._tracks = []
         
     
-    def addTrack(self, track):
-        track.browser = self
-        self._tracks.append(track)
+    def addTrack(self, track, index=None):
+        track.setBrowser(self)
+        if index == None:
+            self._tracks.append(track)
+        else:
+            self._tracks.insert(index, track)
     
     
-    def removeTrack(self, elm):
-        track.browser = None
+    def removeTrack(self, track):
+        track.setBrowser(None)
         self._tracks.remove(track)
     
     def clearTracks(self):
         for track in self._tracks:
-            track.browser = None
+            track.setBrowser(None)
         self._tracks = []
     
     
     def update(self):
+    
+        # propogate updates to tracks
         for track in self._tracks:
             track.update()
     
@@ -69,13 +72,16 @@ class Browser (visual.VisObject):
             self.showTopWindow = top
         
         self.show()
+    
+    def getWindow(self):
+        return self.get_window()
 
-# NOTE: I probably don't need to subclass from VisObject
-class Track (visual.VisObject):
+
+
+class Track:
     def __init__(self, pos=[0.0, 0.0], size=[0.0, 1.0], 
                        posOffset=[0.0, 0.0],
                        view=None):
-        visual.VisObject.__init__(self)
         self.height = size[1]
         self.size = size
         self.pos = pos[:]
@@ -91,10 +97,19 @@ class Track (visual.VisObject):
     def setSize(self, w, h):
         self.size = [w, h]
     
+    def getSize(self):
+        return self.size
         
     def setView(self, species, chrom, start, end):
         self.view = Region(species, chrom, "", start, end)
-        
+        self.size[0] = end - start + 1
+
+    def getView(self):
+        return self.view
+    
+    def update(self):
+        """update graphics"""
+    
     def draw(self):
         """Returns initial graphics for track"""
         return group()
@@ -107,20 +122,20 @@ class Track (visual.VisObject):
         """Returns initial graphics for track that should appear in the top window"""
         return group()
     
-    def get_window(self):
+    def getWindow(self):
         """Gets the main browser window"""
         
         # get window from browser
-        return self.browser.get_window()
+        return self.browser.getWindow()
+
+    def setBrowser(self, browser):
+        self.browser = browser
+    
+    def getBrowser(self):
+        return self.browser
 
 
-    '''
-    def show(self, species, chrom, start, end):
-        """Draw the track for sequence from the given
-           'species' and 'chrom' from base 'start' to 'end'.
-        """
-        return group()
-    '''
+
 
 class GenomeStackBrowser (Browser):
     """A browser where tracks are stacked vertically"""
@@ -129,22 +144,25 @@ class GenomeStackBrowser (Browser):
                  **options):
         Browser.__init__(self, **options)
         
-        self.tracks = []
         self.win = None         # main window
         self.winsize = winsize
         self.winpos = winpos
-        self.view = view        # region of genome in view
         self.gid = None
         self.leftgid = None
         
+        # create stack track
+        self.stack = StackTrack()
+        if view != None:
+            self.stack.setView(view.species, view.seqname, view.start, view.end)
+        Browser.addTrack(self, self.stack)
+    
+    
+    def setView(self, species, chrom, start, end):
+        self.stack.setView(species, chrom, int(start), int(end))
+        
     
     def addTrack(self, track):
-        self.tracks.append(track)
-        if track.view == None:
-            track.view = self.view
-        
-        # also add track to master list
-        Browser.addTrack(self, track)
+        self.stack.addTrack(track)
 
     
     def show(self, species=None, chrom=None, start=None, end=None,
@@ -157,16 +175,16 @@ class GenomeStackBrowser (Browser):
         if self.win == None:
             self.win = summon.Window("StackBrowser", 
                                      size=self.winsize, position=self.winpos)
-            #self.win.set_size(width, height) 
+            self.win.set_bgcolor(1, 1, 1)
             
-            # zooming
+            # TODO: add binding query for zooming
             self.win.set_binding(input_click("right", "down"), "focus")
             self.win.set_binding(input_motion("right", "down"), "zoomx")
             self.win.set_binding(input_click("right", "down", "shift"), "focus")
             self.win.set_binding(input_motion("right", "down", "shift"), "zoomy")
             
-            # background color
-            self.win.set_bgcolor(1, 1, 1)
+            # initialize root group
+            self.gid = self.win.add_group(group())
             
             viewChange=True
         
@@ -175,13 +193,16 @@ class GenomeStackBrowser (Browser):
             if self.leftwin == None:
                 self.leftwin = summon.Window(" ", size=(150, height))
                 self.leftwin.set_bgcolor(1, 1, 1)
-                #self.leftwin.set_size(150, height)
+
+                # initialize root group                
+                self.leftgid = self.leftwin.add_group(group())
                 
                 self.leftEnsemble = multiwindow.WindowEnsemble(
                                      [self.leftwin, self.win], 
                                       stacky=True, sameh=True,
                                       tiey=True, piny=True,
                                       master=self.win)
+                self.leftwin.set_boundary(0, util.INF, -150, -util.INF)
         else:
             if self.leftwin:
                 self.leftwin.close()
@@ -191,63 +212,28 @@ class GenomeStackBrowser (Browser):
         # initialize view
         if species != None:
             viewChange = True
-            self.view.species = species
-            self.view.seqname = chrom
-            self.view.start = int(start)
-            self.view.end = int(end)
+            self.setView(species, chrom, start, end)
+                
         
-        
-        # initialize root groups
-        if self.gid == None:
-            self.gid = self.win.add_group(group())
-        else:
-            self.gid = self.win.replace_group(self.gid, group())
-        
+        # perform drawing 
+        self.gid = self.win.replace_group(self.gid, self.stack.draw())
         if self.leftwin:
-            if self.leftgid == None:
-                self.leftgid = self.leftwin.add_group(group())
-            else:
-                self.leftgid = self.leftwin.replace_group(self.leftgid, group())
-        else:
-            self.leftgid = None
+            self.leftid = self.leftwin.replace_group(self.leftgid, self.stack.drawLeft())
         
         
-        
-        # draw tracks
-        top = 2.0
-        y = 0.0
-        x = 0.0
-        maxend = 0.0
-        for track in self.tracks:
-            y -= track.size[1]
-            track.setPos(track.posOffset[0] + x, track.posOffset[1] + y)
-            track.setView(self.view.species, self.view.seqname, 
-                          self.view.start, self.view.end)
-            
-            if track.view != None:
-                maxend = max(maxend, track.pos[0] + track.view.end - track.view.start)
-            else:
-                maxend = max(maxend, track.pos[0] + track.size[0])
-            
-            
-            # perform drawing 
-            self.win.insert_group(self.gid, track.draw())
-            if self.leftwin:
-                self.leftwin.insert_group(self.leftgid, track.drawLeft())
-        
-        # setup left window
-        if viewChange and self.leftwin:
-            self.leftwin.home()
-        
-        # setup window
+        # center window view
         if viewChange:
+            stacksize = self.stack.getSize()
+            stackpos = self.stack.pos
+            
             w, h = self.win.get_size()
-            self.win.set_visible(0, y, maxend, top)
+            self.win.set_visible(stackpos[0], stackpos[1],
+                                 stackpos[0] + stacksize[0], stackpos[1]-stacksize[1])
             self.win.focus(w/2, h/2)
-            self.win.zoom(1, maxend / (5.0 * (top - y)))
+            self.win.zoom(1, stacksize[0] / (5.0 * stacksize[1]))
             self.win.zoom(.9, .9)
         
-        self.setVisible()
+        self.enable_updating()
         summon.begin_updating()
 
     
@@ -318,18 +304,10 @@ class GenomeOverview (Browser):
         # create window
         if self.win == None or not self.win.is_open():
             newwin = True
-            try:
-                raise
-                self.win = summon.Window(position=self.winpos, size=self.winsize)
-            except:
-                # this is for back compatiability to summon-1.8.2
-                self.win = summon.Window()
-                if self.winpos:
-                    self.win.set_position(*self.winpos)
-                self.win.set_size(*self.winsize)
+            self.win = summon.Window(position=self.winpos, size=self.winsize)
                 
             self.win.set_bgcolor(1, 1, 1)
-            self.select = select.Select(self.win, self.onSelect, fill_color=(0,0,1,.3))
+            self.win.select.set_callback(self.onSelect)
         
 
             # zooming
@@ -341,15 +319,8 @@ class GenomeOverview (Browser):
         
             # create left window
             pos = self.win.get_position()
-            try:
-                self.leftwin = summon.Window(" ", size=(150, self.win.get_size()[1]),
-                          position=(pos[0]-150-self.win.get_decoration()[0], pos[1]))
-            except:
-                # this is for back compatiability to summon-1.8.2
-                self.leftwin = summon.Window(" ")
-                
-                self.leftwin.set_size(150, self.win.get_size()[1])
-                self.leftwin.set_position(pos[0]-150-self.win.get_decoration()[0], pos[1])
+            self.leftwin = summon.Window(" ", size=(150, self.win.get_size()[1]),
+                      position=(pos[0]-150-self.win.get_decoration()[0], pos[1]))
                 
             self.leftwin.set_bgcolor(1, 1, 1)
         
@@ -433,10 +404,10 @@ class GenomeOverview (Browser):
     def addTrack(self, trackClass, offset, *args, **kargs):
         tracks = []
     
+        # make a track for each chromosome
         for chrom in self.chroms:
             x, y = self.chromPos[chrom]
-                                    
-            # build ruler for this chromosome
+            
             track = trackClass(*args, **kargs)
             track.setPos(x, y+offset)
             track.setView(chrom.species, 
@@ -524,6 +495,91 @@ class GenomeOverview (Browser):
             ruler.setVisible(self.showRuler)
 
 
+
+class StackTrack (Track):
+    """This track manages a stack of child tracks"""
+
+    def __init__(self, *args, **options):
+        Track.__init__(self, *args, **options)
+        self._tracks = []
+    
+    def setView(self, species, chrom, start, end):
+        # set personal view
+        Track.setView(self, species, chrom, start, end)
+        
+        # propogate view change to children tracks
+        for track in self._tracks:
+            track.setView(species, chrom, start, end)
+    
+    def addTrack(self, track, index=None):
+    
+        # propogate browser
+        track.setBrowser(self.getBrowser())
+        if index == None:
+            self._tracks.append(track)
+        else:
+            self._tracks.insert(index, track)
+    
+    def removeTrack(self, track):
+        track.setBrowser(None)
+        self._tracks.remove(track)
+    
+    def clearTracks(self):
+        for track in self._tracks:
+            track.browser = None
+        self._tracks = []
+        
+    def setBrowser(self, browser):
+        Track.setBrowser(self, browser)
+        
+        # propogate browser to children
+        for track in self._tracks:
+            track.setBrowser(browser)
+
+    def update(self):
+    
+         # propogate updates to child tracks
+        for track in self._tracks:
+            track.update()
+
+    def getSize(self):
+        self._layout()
+        return self.size
+        
+    
+    def _layout(self):
+        """Layout the child tracks vertically"""
+        top = 2.0
+        y = 0.0
+        x = 0.0
+        maxend = 0.0
+        for track in self._tracks:
+            track.setView(self.view.species, self.view.seqname, 
+                          self.view.start, self.view.end)
+            tracksize = track.getSize()
+            y -= tracksize[1]
+            track.setPos(track.posOffset[0] + x, track.posOffset[1] + y)
+        self.size = [self.view.end - self.view.start + 1, 0 - y]
+            
+    
+    def draw(self):
+        self._layout()
+        
+        vis = group()
+        for track in self._tracks:
+            vis.append(track.draw())
+        return vis
+        
+    
+    def drawLeft(self):
+        self._layout()
+        
+        vis = group()
+        for track in self._tracks:
+            vis.append(track.drawLeft())
+        return vis
+
+
 class DividerTrack (Track):
     """Track for visually separating other tracks
     
@@ -593,7 +649,7 @@ class RulerTrack (Track):
        
     
     def draw(self):
-        self.multiscale.init(self.get_window())
+        self.multiscale.init(self.getWindow())
 
         self.start = self.view.start-1
         self.end = self.view.end
@@ -604,7 +660,7 @@ class RulerTrack (Track):
         
     
     def update(self):
-        self.win = self.get_window()
+        self.win = self.getWindow()
         
         if not self.show:
             if self.shown:
@@ -613,7 +669,7 @@ class RulerTrack (Track):
         else:
             self.shown = True
             
-            if not self.multiscale.sameScale() or not self.shown:
+            if not self.multiscale.sameView():
                 if self.coords == None:
                     g = self.drawRuler(self.pos, 
                                        self.start, 
@@ -742,7 +798,7 @@ class SeqTrack (Track):
     
     def draw(self):
         self.shown = False
-        self.multiscale.init(self.get_window())
+        self.multiscale.init(self.getWindow())
         
         # return placeholder group
         self.gid = group()
@@ -753,14 +809,14 @@ class SeqTrack (Track):
         if self.view == None:
             raise Exception("Track view not initialized")
         
-        win = self.get_window()
+        win = self.getWindow()
         
         view = win.get_visible()
         x, y = self.pos
         
         if self.multiscale.atleast(4, .1, view=view):
             if not self.shown or \
-               not self.multiscale.sameScale(view):
+               not self.multiscale.sameView(view):
                 self.shown = True
                 start = max(int(self.multiscale.worldx1 - x + self.view.start), 
                             int(self.view.start))
@@ -799,7 +855,7 @@ class CurveTrack (Track):
         
     
     def draw(self):
-        self.multiscale.init(self.get_window())
+        self.multiscale.init(self.getWindow())
         self.shown = False
         
         # return placeholder group
@@ -810,9 +866,9 @@ class CurveTrack (Track):
     def update(self):
         assert self.view != None, "Track view not initialized"
         
-        win = self.get_window()
+        win = self.getWindow()
     
-        if not self.shown or not self.multiscale.sameScale():
+        if not self.shown or not self.multiscale.sameView():
             self.shown = True
             x, y = self.pos
             
@@ -979,13 +1035,32 @@ class GenomeAlignTrack (Track):
         self.showColorBases = showColorBases
         self.showBases = showBases
         
-        self.size = [0, height]
+        self.size = [None, None]
+        self.aligns = None
         self.tracks = []
-                
-    def draw(self):
-        self.aligns = self.galign.getAligns(self.view.species, self.view.seqname,
+
+    def setView(self, species, chrom, start, end):
+        Track.setView(self, species, chrom, start, end)
+        self.aligns = self.galign.getAligns(species, chrom, start, end,
+                                            collapse=self.collapse)
+    
+    def getSize(self):
+        assert self.view != None
+        
+        if self.aligns == None:
+            self.aligns = self.galign.getAligns(self.view.species, self.view.seqname,
                                             self.view.start, self.view.end,
                                             collapse=self.collapse)
+        x = 0           
+        for aln in self.aligns:
+            x += aln.alignlen()
+        self.size = [x, len(aln)]
+        return self.size
+                
+    
+    def draw(self):
+        if self.view == None:
+            raise Exception("view must be set before calling draw()")
         
         self.tracks = []
         vis = []
@@ -1008,8 +1083,6 @@ class GenomeAlignTrack (Track):
             
             # only the first track needs labels
             showLabels = False
-        
-        self.size = [x, height]
         
         return group(*vis)
     
@@ -1068,7 +1141,7 @@ class AlignTrack (Track):
         
     def draw(self):
         self.textShown = False
-        self.multiscale.init(self.get_window())
+        self.multiscale.init(self.getWindow())
     
         BASE    = 0
         GAP     = 1
@@ -1173,15 +1246,15 @@ class AlignTrack (Track):
                                     4, 12, "middle", "right"))
         return group(translate(self.pos[0], self.pos[1] + self.size[1],
                      color(0,0,0), 
-                     lines(0, 0, 0, -len(self.aln),
-                           -maxsize, 0, 0, 0,
-                           -maxsize, -len(self.aln), 0, -len(self.aln)),
+                     #lines(0, 0, 0, -len(self.aln),
+                     #      -maxsize, 0, 0, 0,
+                     #      -maxsize, -len(self.aln), 0, -len(self.aln)),
                      *labels))
         
         
     
     def update(self):
-        win = self.get_window()
+        win = self.getWindow()
         view = win.get_visible()
         size = win.get_size()
         x, y = self.pos
@@ -1193,7 +1266,7 @@ class AlignTrack (Track):
         
         if self.multiscale.atleast(minblockSize, .1, view=view, size=size):
             if not self.textShown or \
-               not self.multiscale.sameScale(view):
+               not self.multiscale.sameView(view):
                 self.textShown = True
                 
                 start = max(int(self.multiscale.worldx1 - x - 1), 
@@ -1238,7 +1311,7 @@ class AlignTrack (Track):
 
     def onClickCallback(self):
         # TODO: should not rely on get_mouse_pos("world")
-        win = self.get_window()
+        win = self.getWindow()
         x, y = win.get_mouse_pos('world')
         x -= self.pos[0]
         y = self.size[1] - (y - self.pos[1])
@@ -1261,12 +1334,23 @@ class TrackOverlay (Track):
         
         self.tracks = tracks
         
-        # process tracks
+
+    
+    
+    def setView(self, species, chroms, start, end):
+        for track in self.tracks:
+            track.setView(species, chroms, start, end)
+    
+    
+    def getSize(self):
         maxheight = 0
+        maxwidth = 0
         for track in tracks:
-            track.view = self.view
-            maxheight = max(maxheight, track.size[1])
-        self.size = [0, maxheight]
+            w, h = track.getSize()
+            maxwidth = max(maxwidth, h)            
+            maxheight = max(maxheight, h)
+        self.size = [maxwidth, maxheight]
+        return self.size
     
     
     def draw(self):

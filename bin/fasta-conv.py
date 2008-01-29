@@ -7,12 +7,15 @@ from rasmus.bio import phylip, fasta, mrbayes
 
 
 options = [
- ["f:", "fasta=", "fasta", "AUTO<fasta>"],
- ["l:", "label=", "label", "AUTO<output labels>"], 
- ["p:", "phylip=", "phylip", "AUTO<output phylip>"], 
- ["n:", "nexus=", "nexus", "AUTO<output nexus>"],
+ ["f:", "fasta=", "fasta", "<fasta>"],
+ ["l:", "label=", "label", "<output labels>"], 
+ ["p:", "phylip=", "phylip", "<output phylip>"], 
+ ["n:", "nexus=", "nexus", "<output nexus>"],
  ["", "nostrip", "nostrip", "",
-    {"single": True}]
+    {"single": True}],
+ ["t:", "seqtype=", "seqtype", "dna|pep",
+  {"default": "dna",
+   "single": True}],
 ]
 
 
@@ -29,7 +32,8 @@ if "phylip" in param:
 
 
 if "nexus" in param:
-    names, seqs = fasta.readFastaOrdered(param["fasta"][-1])
-    mrbayes.writeNexus(file(param["nexus"][-1], "w"), names, seqs)
+    seqs = fasta.readFasta(param["fasta"][-1])
+    mrbayes.writeNexus(file(param["nexus"][-1], "w"), seqs.keys(), seqs.values(),
+                       format=param["seqtype"], seqwidth=util.INF)
     
 

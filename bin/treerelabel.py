@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 
-from rasmus import util, algorithms, phylip, fasta
+from rasmus import util, treelib
+from rasmus.bio import phylip, fasta
 import sys
 
 options = [
@@ -18,7 +19,7 @@ if file(param["label"][-1]).read()[0] == ">":
 else:
     labels = util.readStrings(param["label"][-1])
     
-tree = algorithms.Tree()
+tree = treelib.Tree()
 tree.readNewick(param["tree"][-1])
 
 phylip.renameTreeWithNames(tree, labels)

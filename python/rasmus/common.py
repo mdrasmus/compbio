@@ -69,6 +69,7 @@ pd = printDict
 
 histtab = tablelib.histTable
 showtab = tablelib.showtab
+sqltab = tablelib.sqltab
 
 def pl(lines, out=sys.stdout):
     for line in lines:

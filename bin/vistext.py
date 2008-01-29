@@ -36,6 +36,6 @@ for line in lines:
     y -= height
     
 win.add_group(group(*vis))    
-win.add_group(group(shapes.boxStroke(0,0, width, y)))
+win.add_group(group(shapes.box(0,0, width, y, fill=False)))
 win.home()
 

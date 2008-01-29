@@ -26,12 +26,8 @@ class Multiscale (object):
         self.win    = None
         
     
-    def init(self, win=None, view=None):
-        if win != None:
-            self.win = win
-        elif self.win == None:
-            # backward compatibility
-            self.win = summon.get_summon_window()
+    def init(self, win, view=None):
+        self.win = win
         
         if view == None:
             view = win.get_visible()
@@ -49,7 +45,7 @@ class Multiscale (object):
         self.worldy2 += marginy
         
     
-    def sameScale(self, view=None):
+    def sameView(self, view=None):
         if view == None:
             view = self.win.get_visible()
         
@@ -60,7 +56,7 @@ class Multiscale (object):
            worldx2 > self.worldx2 or \
            worldy1 < self.worldy1 or \
            worldy2 > self.worldy2:
-            self.init(view=view)
+            self.init(self.win, view=view)
             return False
         
         worldwidth = worldx2 - worldx1
@@ -73,7 +69,7 @@ class Multiscale (object):
         # test for zooming
         if abs(math.log10(worldwidth / self.worldwidth)) > 1./self.scalex or \
            abs(math.log10(worldheight / self.worldheight)) > 1./self.scaley:
-            self.init(view=view)
+            self.init(self.win, view=view)
             return False
         
         return True
@@ -126,7 +122,7 @@ class Ruler (summon.VisObject):
         
     
     def update(self):
-        if not self.multiscale.sameScale():
+        if not self.multiscale.sameView():
             g = drawRuler(self.pos, 
                           self.start, 
                           self.end, 

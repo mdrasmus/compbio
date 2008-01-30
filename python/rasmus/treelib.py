@@ -157,7 +157,8 @@ class TreeNode:
             return {}
     
     def setBranchData(self, data):
-        self.data["boot"] = data["boot"]
+        if "boot" in data:
+            self.data["boot"] = data["boot"]
     
     def splitBranchData(self):
         if "boot" in self.data:
@@ -165,10 +166,10 @@ class TreeNode:
         else:
             return {}, {}
     
-    def mergeBranchData(self, data1, data2):
-        if "boot" in data1 and "boot" in data2:
-            assert data1["boot"] == data2["boot"]
-            self.data["boot"] = data1["boot"]
+    def mergeBranchData(self, data):
+        if "boot" in self.data and "boot" in data:
+            assert self.data["boot"] == data["boot"]
+            return {"boot": data["boot"]}
 
 
 class Tree:
@@ -1000,11 +1001,14 @@ def unroot(tree, newCopy = True):
     if len(tree.root.children) == 2:
         nodes = tree.root.children
         dist = nodes[0].dist + nodes[1].dist
+        data = nodes[0].mergeBranchData(nodes[1].data)
         if len(nodes[0].children) < 2:
             nodes.reverse()
         tree.addChild(nodes[0], nodes[1])
         nodes[1].dist = dist
+        nodes[1].setBranchData(data)
         nodes[0].dist = 0
+        nodes[0].setBranchData({})
         nodes[0].parent = None
         
         # replace root

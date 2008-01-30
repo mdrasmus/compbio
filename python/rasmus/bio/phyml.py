@@ -16,7 +16,7 @@ from rasmus import treelib
 
 def phyml(seqs, verbose=True, args=None, 
           usertree=None, seqtype="pep", saveOutput="", bootiter=0,
-          opttree=True, optbranches=True):
+          opttree=True, optbranches=True, nrates=4):
     
     phylip.validateSeq(seqs)
     cwd = phylip.createTempDir()
@@ -55,11 +55,11 @@ def phyml(seqs, verbose=True, args=None,
     
     if args == None:
         if seqtype == "dna":
-            args = "infile 0 s 1 %d HKY e e 8 e %s %s" % \
-                (bootiter, treefile, optimize)
+            args = "infile 0 s 1 %d HKY e e %d e %s %s" % \
+                (bootiter, nrates, treefile, optimize)
         elif seqtype == "pep":
-            args = "infile 1 s 1 %d JTT e 8 e %s %s" % \
-                (bootiter, treefile, optimize)
+            args = "infile 1 s 1 %d JTT e %d e %s %s" % \
+                (bootiter, nrates, treefile, optimize)
         else:
             assert False, "unknown sequence type '%s'" % seqtype
     

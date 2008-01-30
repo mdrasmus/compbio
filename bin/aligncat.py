@@ -2,7 +2,8 @@
 
 import os, sys
 
-from rasmus import env, util, fasta, genomeutil, alignlib
+from rasmus import env, util
+from rasmus.bio import fasta, genomeutil, alignlib
 
 
 options = [
@@ -24,7 +25,12 @@ env.addPaths(* conf["paths"])
 gene2species = genomeutil.readGene2species(* map(env.findFile, conf["smap"]))
 
 
-alns = map(fasta.readFasta, conf["REST"])
+if len(conf["REST"]) > 0:
+    alns = map(fasta.readFasta, conf["REST"])
+else:
+    alns = []
+    for line in sys.stdin:
+        alns.append(fasta.readFasta(line.rstrip()))
 
 fullaln = fasta.FastaDict()
 

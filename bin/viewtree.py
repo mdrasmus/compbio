@@ -30,6 +30,9 @@ options = [
   ["n", "names", "names", "",
     {"single": True,
      "help": "display internal node names"}],
+  ["N", "newick", "newick", "",
+    {"single": True,
+     "help": "write newick format"}],
   ["", "len", "len", "",
     {"single": True,
      "help": "display branch lengths"}],
@@ -212,6 +215,8 @@ def processTree(tree):
                                        colormap=colormap,
                                        stree=stree,
                                        gene2species=gene2species)
+        elif conf["newick"]:
+            tree.write()
         else:
             treelib.drawTree(tree, labels=labels,
                                 scale=conf["scale"],

@@ -2,7 +2,7 @@
 # Tree data structures 
 #
 # Contains special features for representing phylogeny.  
-# See rasmus.phylo for more.
+# See rasmus.bio.phylo for more.
 #
 #
 
@@ -150,37 +150,45 @@ class TreeNode:
     def writeData(self, out):
         out.write(str(self.dist))        
 
-    def getBranchData(self):
-        if "boot" in self.data:
-            return {"boot": self.data["boot"]}
+
+# class for managing branch data
+class BranchData:
+    def __init__(self):
+        pass
+
+    def getBranchData(self, node):
+        if "boot" in node.data:
+            return {"boot": node.data["boot"]}
         else:
             return {}
     
-    def setBranchData(self, data):
+    def setBranchData(self, node, data):
         if "boot" in data:
-            self.data["boot"] = data["boot"]
+            node.data["boot"] = data["boot"]
     
-    def splitBranchData(self):
-        if "boot" in self.data:
-            return {"boot": self.data["boot"]}, {"boot": self.data["boot"]}
+    def splitBranchData(self, node):
+        if "boot" in node.data:
+            return {"boot": node.data["boot"]}, {"boot": node.data["boot"]}
         else:
             return {}, {}
     
-    def mergeBranchData(self, data):
-        if "boot" in self.data and "boot" in data:
-            assert self.data["boot"] == data["boot"]
-            return {"boot": data["boot"]}
-
+    def mergeBranchData(self, data1, data2):
+        if "boot" in data1 and "boot" in data2:
+            assert data1["boot"] == data2["boot"]
+            return {"boot": data1["boot"]}
+    
+    
 
 class Tree:
     """Basic rooted tree"""
 
-    def __init__(self, nextname = 1):
+    def __init__(self, nextname = 1, branchData=BranchData()):
         self.nodes = {}
         self.root = None
         self.nextname = nextname
         self.defaultData = {}
         self.data = {}
+        self.branchData = branchData
     
     
     def __iter__(self):
@@ -326,6 +334,8 @@ class Tree:
     def copy(self):
         """Returns a copy of the tree"""
         tree = Tree(nextname = self.nextname)
+        
+        # copy structure
         if self.root != None:
             # copy all nodes
             tree.root = self.root.copy()
@@ -346,6 +356,7 @@ class Tree:
     
     def copyData(self, tree):
         """Copy tree data to another"""
+        self.branchData = tree.branchData
         self.defaultData = copy.copy(tree.defaultData)
         self.data = copy.copy(tree.data)
     
@@ -374,6 +385,22 @@ class Tree:
                 for key in keys:
                     if key in node.data:
                         del node.data[key]
+    
+    #====================================
+    # branch data functions
+    # forward branch data calles to branch data manager
+    
+    def getBranchData(self, node):
+        return self.branchData.getBranchData(node)
+    
+    def setBranchData(self, node, data):
+        return self.branchData.setBranchData(node, data)
+    
+    def splitBranchData(self, node):
+        return self.branchData.splitBranchData(node)
+    
+    def mergeBranchData(self, data1, data2):
+        return self.branchData.mergeBranchData(data1, data2)
     
     
     #=======================================================================
@@ -1001,14 +1028,14 @@ def unroot(tree, newCopy = True):
     if len(tree.root.children) == 2:
         nodes = tree.root.children
         dist = nodes[0].dist + nodes[1].dist
-        data = nodes[0].mergeBranchData(nodes[1].data)
+        data = tree.mergeBranchData(nodes[0].data, nodes[1].data)
         if len(nodes[0].children) < 2:
             nodes.reverse()
         tree.addChild(nodes[0], nodes[1])
         nodes[1].dist = dist
-        nodes[1].setBranchData(data)
+        tree.setBranchData(nodes[1], data)
         nodes[0].dist = 0
-        nodes[0].setBranchData({})
+        tree.setBranchData(nodes[0], {})
         nodes[0].parent = None
         
         # replace root
@@ -1041,11 +1068,11 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
         newNode = TreeNode(tree.newName())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
-        rootdata1, rootdata2 = node1.splitBranchData()
+        rootdata1, rootdata2 = tree.splitBranchData(node1)
         node1.dist = rootdist / 2.0
-        node1.setBranchData(rootdata1)
+        tree.setBranchData(node1, rootdata1)
         newNode.dist = rootdist / 2.0
-        newNode.setBranchData(rootdata2)
+        tree.setBranchData(newNode, rootdata2)
         
         node2 = node1.parent
         node2.children.remove(node1)
@@ -1066,7 +1093,7 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     # reverse parent child relationship of all nodes on path node1 to root
     oldroot = tree.root    
     nextDist = ptr2.dist
-    nextData = ptr2.getBranchData()
+    nextData = tree.getBranchData(ptr2)
     ptr2.dist = 0
     while True:
         nextPtr = ptr.parent
@@ -1074,9 +1101,9 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
         tree.addChild(ptr2, ptr)
         
         tmp = ptr.dist
-        tmpData = ptr.getBranchData()
+        tmpData = tree.getBranchData(ptr)
         ptr.dist = nextDist
-        ptr.setBranchData(nextData)
+        tree.setBranchData(ptr, nextData)
         nextDist = tmp
         nextData = tmpData
         

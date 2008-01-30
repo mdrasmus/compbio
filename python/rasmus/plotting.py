@@ -601,7 +601,7 @@ def plothist(array, ndivs=None, low=None, width=None, **options):
     """Plot a histogram of array"""
     h = hist(array, ndivs, low, width)
     p = options.setdefault("plot", Gnuplot())
-    options.setdefault("style", "boxes")
+    options.setdefault("style", "boxes fill solid")
     
     p.plot(histbins(h[0]), h[1], **options)
     return p

@@ -233,7 +233,7 @@ class PhyloViewer (object):
             self.visalign = alignvis.AlignViewer(self.currentAlign, 
                                                  winsize=self.alignWinSize,
                                                  winpos=winpos,
-                                                 title=self.alignNames[0])
+                                                 title=self.alignNames[0])                                                 
         else:
             self.visalign = None
     
@@ -281,7 +281,11 @@ class PhyloViewer (object):
             self.visalign.show()        
             self.windows.append(self.visalign.vis.win)
             self.coords.append(-1.5)        
-        
+
+            # add additional key binding
+            self.visalign.win.set_binding(input_key("n"), self.nextAlign)
+            self.visalign.win.set_binding(input_key("p"), self.prevAlign)
+                
         
         # tie all windows by their y-coordinate
         if len(self.windows) > 1:
@@ -349,7 +353,23 @@ class PhyloViewer (object):
         self.visdist.win.set_name(self.distmatNames[matindex])
         self.visdist.redraw()
 
+    #=============================================
+    # allow easy switching between alignments
+    def nextAlign(self):
+        alnindex = self.aligns.index(self.currentAlign)
+        alnindex = (alnindex + 1) % len(self.aligns)
+        self.currentAlign = self.aligns[alnindex]
+        self.visalign.setAlign(self.currentAlign)
+        self.visalign.win.set_name(self.alignNames[alnindex])
+        self.visalign.show()
 
+    def prevAlign(self):
+        alnindex = self.aligns.index(self.currentAlign)
+        alnindex = (alnindex - 1) % len(self.aligns)
+        self.currentAlign = self.aligns[alnindex]
+        self.visalign.setAlign(self.currentAlign)
+        self.visalign.win.set_name(self.alignNames[alnindex])
+        self.visalign.show()
 
         
 

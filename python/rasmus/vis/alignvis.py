@@ -20,9 +20,9 @@ from summon import hud
 
 
 class AlignViewer (object):
-    def __init__(self, aln, colorBases=True, title="alignviewer",
+    def __init__(self, aln, title="alignviewer",
                  winsize=[580, 500], winpos=None, 
-                 showColorBases=True, showBases=True,
+                 showColorBases=True, colorBases=True, showBases=True,
                  **options):
         
         self.aln = aln
@@ -30,16 +30,30 @@ class AlignViewer (object):
         self.winsize = winsize
         self.winpos = winpos
         
+        # config options
+        self.showColorBases = showColorBases
+        self.colorBases = colorBases
+        self.showBases = showBases
+        
         view = gb.Region("", "", "", 1, aln.alignlen())
         self.vis = gb.GenomeStackBrowser(view=view, winsize=winsize, 
                                          winpos=winpos,
                                          **options)
         self.vis.addTrack(gb.RulerTrack(bottom=-len(aln)))
-        self.alntrack = gb.AlignTrack(aln, colorBases=colorBases,
-                                        showColorBases=showColorBases,
-                                        showBases=showBases)
-        self.vis.addTrack(self.alntrack)
+        self.alntrack = None
+        self.setAlign(aln)
         self.bar = None
+        
+
+    def setAlign(self, aln):
+        if self.alntrack != None:
+            self.vis.removeTrack(self.alntrack)
+        
+        self.aln = aln        
+        self.alntrack = gb.AlignTrack(aln, colorBases=self.colorBases,
+                                      showColorBases=self.showColorBases,
+                                      showBases=self.showBases)
+        self.vis.addTrack(self.alntrack)
         
         
     
@@ -74,3 +88,6 @@ class AlignViewer (object):
     
     def toggleLeftWindow(self):
         self.vis.enableSideWindows(left=not self.vis.showLeftWindow)
+
+
+

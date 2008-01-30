@@ -24,6 +24,7 @@ class Multiscale (object):
         self.scalex = scalex
         self.scaley = scaley      
         self.win    = None
+        self.reseted = False
         
     
     def init(self, win, view=None):
@@ -43,9 +44,17 @@ class Multiscale (object):
         self.worldx2 += marginx
         self.worldy1 -= marginy
         self.worldy2 += marginy
-        
+
+    
+    def reset(self):
+        self.reseted = True
+                
     
     def sameView(self, view=None):
+        if self.reseted:
+            self.reseted = False
+            return False
+    
         if view == None:
             view = self.win.get_visible()
         
@@ -75,7 +84,7 @@ class Multiscale (object):
         return True
 
 
-    def atleast(self, xminres, yminres, view=None, size=None):
+    def atleast(self, xminres, yminres, view=None, size=None):       
         if view == None:
             view = self.win.get_visible()
         if size == None:

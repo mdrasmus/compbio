@@ -125,8 +125,7 @@ class TreeNode:
                 node.children.append(child.copy(node))
         
         return node
-    
-    
+        
     def isLeaf(self):
         return len(self.children) == 0
     
@@ -151,8 +150,25 @@ class TreeNode:
     def writeData(self, out):
         out.write(str(self.dist))        
 
-
+    def getBranchData(self):
+        if "boot" in self.data:
+            return {"boot": self.data["boot"]}
+        else:
+            return {}
     
+    def setBranchData(self, data):
+        self.data["boot"] = data["boot"]
+    
+    def splitBranchData(self):
+        if "boot" in self.data:
+            return {"boot": self.data["boot"]}, {"boot": self.data["boot"]}
+        else:
+            return {}, {}
+    
+    def mergeBranchData(self, data1, data2):
+        if "boot" in data1 and "boot" in data2:
+            assert data1["boot"] == data2["boot"]
+            self.data["boot"] = data1["boot"]
 
 
 class Tree:
@@ -170,64 +186,9 @@ class Tree:
         """Iterate through nodes of tree"""
         return self.nodes.itervalues()
         
-
-    def hasData(self, dataname):
-        """Does the tree contain 'dataname' in its extra data"""
-        return dataname in self.defaultData
-
-    
-    def copy(self):
-        """Returns a copy of the tree"""
-        tree = Tree(nextname = self.nextname)
-        if self.root != None:
-            # copy all nodes
-            tree.root = self.root.copy()
-            
-            # set all names
-            def walk(node):
-                tree.nodes[node.name] = node
-                for child in node.children:
-                    walk(child)
-            walk(tree.root)
-        
-        # copy extra data
-        tree.copyData(self)
-        tree.copyNodeData(self)
-        
-        return tree
-    
-    
-    def copyData(self, tree):
-        """Copy tree data to another"""
-        self.defaultData = copy.copy(tree.defaultData)
-        self.data = copy.copy(tree.data)
-    
-    
-    def copyNodeData(self, tree):
-        """Copy node data to another tree"""
-        for name, node in self.nodes.iteritems():
-            if name in tree.nodes:
-                node.data = copy.copy(tree.nodes[name].data)
-        self.setDefaultData()
-    
-    
-    def setDefaultData(self):
-        """Set default values in each node's data"""
-        for node in self.nodes.itervalues():
-            for key, val in self.defaultData.iteritems():
-                node.data.setdefault(key, val)
-    
-    
-    def clearData(self, *keys):
-        """Clear tree data"""
-        for node in self.nodes.itervalues():
-            if len(keys) == 0:
-                node.data = {}
-            else:
-                for key in keys:
-                    if key in node.data:
-                        del node.data[key]    
-    
+  
+    #=============================
+    # structure functions
 
     def makeRoot(self, name = None):
         """Create a new root node"""
@@ -351,6 +312,67 @@ class Tree:
     def leafNames(self, node = None):
         """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
+    
+    
+    #===============================
+    # data functions
+
+    def hasData(self, dataname):
+        """Does the tree contain 'dataname' in its extra data"""
+        return dataname in self.defaultData
+
+    
+    def copy(self):
+        """Returns a copy of the tree"""
+        tree = Tree(nextname = self.nextname)
+        if self.root != None:
+            # copy all nodes
+            tree.root = self.root.copy()
+            
+            # set all names
+            def walk(node):
+                tree.nodes[node.name] = node
+                for child in node.children:
+                    walk(child)
+            walk(tree.root)
+        
+        # copy extra data
+        tree.copyData(self)
+        tree.copyNodeData(self)
+        
+        return tree
+    
+    
+    def copyData(self, tree):
+        """Copy tree data to another"""
+        self.defaultData = copy.copy(tree.defaultData)
+        self.data = copy.copy(tree.data)
+    
+    
+    def copyNodeData(self, tree):
+        """Copy node data to another tree"""
+        for name, node in self.nodes.iteritems():
+            if name in tree.nodes:
+                node.data = copy.copy(tree.nodes[name].data)
+        self.setDefaultData()
+    
+    
+    def setDefaultData(self):
+        """Set default values in each node's data"""
+        for node in self.nodes.itervalues():
+            for key, val in self.defaultData.iteritems():
+                node.data.setdefault(key, val)
+    
+    
+    def clearData(self, *keys):
+        """Clear tree data"""
+        for node in self.nodes.itervalues():
+            if len(keys) == 0:
+                node.data = {}
+            else:
+                for key in keys:
+                    if key in node.data:
+                        del node.data[key]
     
     
     #=======================================================================
@@ -991,13 +1013,10 @@ def unroot(tree, newCopy = True):
     return tree
 
 
-def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
+def reroot(tree, newroot, onBranch=True, newCopy=True):
     """
     Change the rooting of a tree
     """
-
-    # mat is a DEPRECATED parameter.    
-    assert mat == None
     
     # TODO: remove newCopy (or assert newCopy=False)
     if newCopy:
@@ -1018,8 +1037,12 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
         newNode = TreeNode(tree.newName())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
+        rootdata1, rootdata2 = node1.splitBranchData()
         node1.dist = rootdist / 2.0
+        node1.setBranchData(rootdata1)
         newNode.dist = rootdist / 2.0
+        newNode.setBranchData(rootdata2)
+        
         node2 = node1.parent
         node2.children.remove(node1)
         tree.addChild(newNode, node1)
@@ -1039,6 +1062,7 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
     # reverse parent child relationship of all nodes on path node1 to root
     oldroot = tree.root    
     nextDist = ptr2.dist
+    nextData = ptr2.getBranchData()
     ptr2.dist = 0
     while True:
         nextPtr = ptr.parent
@@ -1046,8 +1070,11 @@ def reroot(tree, newroot, mat=None, onBranch=True, newCopy=True):
         tree.addChild(ptr2, ptr)
         
         tmp = ptr.dist
+        tmpData = ptr.getBranchData()
         ptr.dist = nextDist
+        ptr.setBranchData(nextData)
         nextDist = tmp
+        nextData = tmpData
         
         ptr2 = ptr
         ptr = nextPtr

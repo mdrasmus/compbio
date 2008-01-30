@@ -161,9 +161,16 @@ class GenomeStackBrowser (Browser):
         self.stack.setView(species, chrom, int(start), int(end))
         
     
-    def addTrack(self, track):
-        self.stack.addTrack(track)
+    def addTrack(self, track, index=None):
+        self.stack.addTrack(track, index)
 
+    def removeTrack(self, track):
+        self.stack.removeTrack(track)
+        
+    
+    def clearTracks(self):
+        self.stack.clearTracks()
+    
     
     def show(self, species=None, chrom=None, start=None, end=None,
                    width=800, height=400):
@@ -654,6 +661,7 @@ class RulerTrack (Track):
         self.start = self.view.start-1
         self.end = self.view.end
         self.height = self.top
+        self.multiscale.reset()
         
         self.gid = group()
         return group(self.gid)

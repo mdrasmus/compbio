@@ -90,7 +90,8 @@ def iterTrees(treefile):
         try:
             tree = treelib.readTree(infile)
             yield tree
-        except:
+        except Exception, e:
+            print e
             break
 
 

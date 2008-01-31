@@ -20,7 +20,7 @@ from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
 from regionlib import *
-#from rasmus.vis.treesvg import showTree
+
 
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib
@@ -34,7 +34,11 @@ from rasmus.bio import gff, genomeio
 
 
 
-
+def ipy():
+    """start an ipython shell"""
+    from IPython.Shell import IPShellEmbed
+    ipshell = IPShellEmbed()
+    ipshell()
 
 
 

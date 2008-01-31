@@ -309,10 +309,11 @@ def translate(dna):
     assert len(dna) % 3 == 0, "dna sequence length is not a multiple of 3"
     
     for i in xrange(0, len(dna), 3):
-        if "N" in dna[i:i+3]:
+        codon = dna[i:i+3].upper()
+        if "N" in codon:
             aa.append("X")     # unkown aa
         else:
-            aa.append(CODON_TABLE[dna[i:i+3].upper()])
+            aa.append(CODON_TABLE[codon])
     return "".join(aa)
 
 

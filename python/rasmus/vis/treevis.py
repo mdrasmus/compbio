@@ -116,7 +116,12 @@ class TreeViewer (sumtree.SumTree):
         
         if self.mode == "gene":
             # print gene names
-            sumtree.SumTree.nodeClick(self, node)
+            #sumtree.SumTree.nodeClick(self, node)
+            print "node: %s\t%f" % (str(node.name), node.dist)
+            for key, val in node.data.iteritems():
+                print "%s:\t%s" % (key, str(val))
+            print
+            
         elif self.mode == "events":
             self.printEvents(node)
         elif self.mode == "reroot":

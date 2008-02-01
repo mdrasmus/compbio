@@ -334,12 +334,12 @@ findAlignCodons = findAlignedCodons
 
 
 
-def filterAlignCodons(aln, ref=None):
+def filterAlignedCodons(aln, ref=None):
     """filters an alignment for only aligned codons"""
 
     ind = findAlignCodons(aln, ref=ref)
     return subalign(aln, ind)
-
+filterAlignCodons = filterAlignedCodons
 
 
 def findFourFold(aln):

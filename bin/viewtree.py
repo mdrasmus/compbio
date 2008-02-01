@@ -84,16 +84,18 @@ if "reroot" in conf:
         conf["reroot"] = int(conf["reroot"])
 
 def iterTrees(treefile):
+    ntrees = 0
     infile = util.openStream(treefile)
     
     while True:
         try:
             tree = treelib.readTree(infile)
+            ntrees += 1
             yield tree
         except Exception, e:
-            print e
+            if ntrees < 1:
+                print >>sys.stderr, e
             break
-
 
 def processTree(tree):
     global gene2species

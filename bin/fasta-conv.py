@@ -34,6 +34,6 @@ if "phylip" in param:
 if "nexus" in param:
     seqs = fasta.readFasta(param["fasta"][-1])
     mrbayes.writeNexus(file(param["nexus"][-1], "w"), seqs.keys(), seqs.values(),
-                       format=param["seqtype"], seqwidth=util.INF)
+                       format=param["seqtype"])
     
 

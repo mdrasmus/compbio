@@ -111,7 +111,7 @@ matrix
 end;
 """
     # write options
-    writeMrbayesOptions(out, options)
+    writeMrbayesOptions(out, options, format)
 
 
 
@@ -182,7 +182,7 @@ def setDefaultOptions(options):
     return options
     
     
-def writeMrbayesOptions(out, options=None):
+def writeMrbayesOptions(out, options=None, seqtype="pep"):
     if not options: options = {}
     setDefaultOptions(options)
 
@@ -190,10 +190,21 @@ def writeMrbayesOptions(out, options=None):
 begin mrbayes;
     [ batch mode ]
     set autoclose=yes nowarn=yes;
+    """
     
-    [ amino acid mutation prior ]
-    prset aamodelpr = %(aamodelpr)s;
+    if seqtype == "pep":
+        print >>out, """\
+        [ amino acid mutation prior ]
+        prset aamodelpr = %(aamodelpr)s;
+        """ % options
+    elif seqtype == "dna":
+        print >>out, """\
+        lset Nst = 2;
+        """
+    else:
+        raise Exception("unknown seqtype '%s'" % seqtype)
     
+    print >>out, """\
     [ begin MCMC run ]
     mcmc ngen=%(ngen)d samplefreq=%(samplefreq)d stoprule=%(stoprule)s
          relburnin=%(relburnin)s burninfrac=%(burninfrac)f;
@@ -233,7 +244,7 @@ def readNexusConTree(infile):
             count += 1
             
             # only read the second tree
-            if count == 2:
+            if count == 1:
                 line = line.replace("   tree con_all_compat =", "")
                 tree = treelib.Tree()
                 tree.readNewick(StringIO.StringIO(line))

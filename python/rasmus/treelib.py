@@ -98,6 +98,11 @@ if pyparsing:
 
 
 class TreeNode:
+    """A class for nodes in a rooted Tree
+    
+    Contains fields for branch length 'dist' and custom data 'data'
+    """
+
     def __init__(self, name):
         self.name = name
         self.children = []
@@ -112,7 +117,7 @@ class TreeNode:
     
     
     def copy(self, parent=None, copyChildren=True):
-        """ Returns a copy of a TreeNode and all of its children"""
+        """Returns a copy of a TreeNode and all of its children"""
         
         node = TreeNode(self.name)
         node.name = self.name
@@ -127,32 +132,40 @@ class TreeNode:
         return node
         
     def isLeaf(self):
+        """Returns True if the node is a leaf (no children)"""
         return len(self.children) == 0
     
     def recurse(self, func, *args):
+        """Applies a function 'func' to the children of a node"""
         for child in self.children:
             func(child, *args)
     
     def leaves(self):
+        """Returns the leaves beneath the node in traversal order"""
         leaves = []
 
         def walk(node):
             if node.isLeaf():
                 leaves.append(node)
-            node.recurse(walk)
+            for child in node.children:
+                walk(child)
         walk(self)
           
         return leaves
     
     def leafNames(self):
-        return map(lambda x: x.name, self.leaves())
+        """Returns the leaf names beneath the node in traversal order"""
+        return [x.name for name in self.leaves()]
     
     def writeData(self, out):
+        """Writes the data of the node to the file stream 'out'"""
         out.write(str(self.dist))        
 
 
 # class for managing branch data
 class BranchData:
+    """A class for managing branch specific data for a Tree"""
+
     def __init__(self):
         pass
 
@@ -176,11 +189,16 @@ class BranchData:
         if "boot" in data1 and "boot" in data2:
             assert data1["boot"] == data2["boot"]
             return {"boot": data1["boot"]}
+        else:
+            return {}
     
     
 
 class Tree:
-    """Basic rooted tree"""
+    """Basic rooted tree
+    
+    Well suited for phylogenetic trees
+    """
 
     def __init__(self, nextname = 1, branchData=BranchData()):
         self.nodes = {}
@@ -991,23 +1009,174 @@ def removeSingleChildren(tree):
     return map(lambda x: x.name, removed)
 
 
-def removeExposedInternalNodes(tree):
+def removeExposedInternalNodes(tree, leaves=None):
     """
-    Remove all leaves that were internal nodes (e.g. node.name is an int)
+    Remove all leaves that were originally internal nodes
+    
+    leaves -- a list of original leaves that should stay
+    
+    if leaves is not specified, only leaves with strings as names will be kept
     """
     
+    if leaves != None:
+        stay = set(leaves)
+    else:
+        # use the fact that the leaf name is a string to determine
+        # wether to keep it
+        stay = set()
+        for leaf in tree.leaves():
+            if isinstance(leaf.name, str):
+                stay.add(leaf)
+    
+    # post order traverse tree
     def walk(node):
+        # keep a list of children to visit, since they may remove themselves
         children = copy.copy(node.children)
         for child in children:
             walk(child)
 
-        if len(node.children) == 0 and \
-           isinstance(node.name, int):
+        if node.isLeaf() and node not in stay:
             tree.remove(node)
     walk(tree.root)
     
 
+def subtreeByLeafNames(tree, leafNames, newCopy=False):
+    """Returns a subtree with only the leaves specified"""
+    
+    if newCopy:
+        tree = tree.copy()
+    
+    remove_set = set(tree.leafNames()) - set(leafNames)
+    for sp in remove_set:
+    	tree.remove(tree.nodes[sp])
+    removeExposedInternalNodes(tree)
+    removeSingleChildren(tree)
+    
+    return tree
 
+
+#=============================================================================
+# parent tables
+
+def tree2parentTable(tree, leafNames=None):
+    """Converts tree to a parent table
+    
+    parent table is a standard format of the Compbio Lab as of 02/01/2007.
+    It is a list of triples (node_name, parent_name, dist)
+    
+    * If the node is a leaf node_name is the leaf name (a string)
+    * If the node is internal node_name is an int representing which row
+      (0-based) the node is in the table.
+    
+    * parent_name indicates the parent of the node.  If the parent is root, a 
+      -1 is used as the parent_name.
+    
+    * dist is the distance between the node and its parent.
+    
+    Arguments:
+    leafNames -- specifies that a tree with only a subset of the leaves 
+                 should be used
+    
+    NOTE: root is not given a row, because root does not have a distance
+    the nodeid of the root is -1
+    """
+    
+    if leafNames != None:
+        tree = subtreeByLeafNames(tree, leafNames, newCopy=True)
+    else:
+        leafNames = tree.leafNames()
+
+    # assign a numbering to the leaves as specified
+    nodeid = 0
+    nodeids = {}
+    nodes = []
+    for leaf in leafNames:
+        nodeids[tree.nodes[leaf]] = leaf
+        nodes.append(tree.nodes[leaf])
+        nodeid += 1
+    
+    # assign a numbering to the internal nodes
+    for node in tree:
+        if node.isLeaf():
+            continue
+        if node == tree.root:
+            nodeids[node] = -1
+        else:
+            nodeids[node] = nodeid
+            nodeid += 1
+            nodes.append(node)
+
+    # make parent table
+    parentTable = []
+    for node in nodes:
+        parentTable.append([nodeids[node], nodeids[node.parent], node.dist])
+    
+    return parentTable
+    
+
+def parentTable2tree(parentTable):
+    """Converts a parent table to a Tree
+    
+    See tree2parentTable for details
+    """
+    
+    tree = Tree()
+    
+    # create nodes
+    maxint = 0
+    for name, parent_name, dist in parentTable:
+        node = TreeNode(name)
+        node.dist = dist
+        tree.add(node)
+        
+        if isinstance(name, int):
+            maxint = max(name, maxint)
+    
+    # make a root node
+    tree.nextname = maxint + 1
+    tree.makeRoot()
+
+    # link up parents
+    for name, parent_name, dist in parentTable:
+        if parent_name == -1:
+            parent = tree.root
+        else:
+            parent = tree.nodes[parent_name]
+        tree.addChild(parent, tree.nodes[name])
+    
+    return tree
+    
+
+def writeParentTable(parentTable, out=sys.stdout):
+    """Writes a parent table to out
+    
+    out can be a filename or file stream
+    """
+    
+    out = util.openStream(out, "w")
+    
+    for name, parent, dist in parentTable:
+        print >>out, "%s\t%d\t%f" % (str(name), parent, dist)
+
+def readParentTable(filename):
+    """Reads a parent table from the file 'filename'
+    
+    filename can also be an open file stream
+    """
+    
+    infile = util.openStream(filename)    
+    parentTable = []
+    
+    for line in infile:
+        name, parent, dist = line.split("\t")
+        
+        if name.is_digit():
+            name = int(name)
+        parentTable.append([name, int(parent), float(dist)])
+    
+    return parentTable
+        
+    
 
 #=============================================================================
 # Rerooting functions

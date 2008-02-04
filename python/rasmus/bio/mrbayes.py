@@ -82,9 +82,9 @@ def writeNexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
     
     # determine sequence format
     if format == "pep":
-        format = "protein"
+        format2 = "protein"
     elif format == "dna":
-        format = "dna"
+        format2 = "dna"
     else:
         raise Exception("unknown sequence format")
     
@@ -95,7 +95,7 @@ begin data;
 dimensions ntax=%d nchar=%d;
 format datatype=%s interleave=yes gap=-;
 matrix
-""" % (len(seqs), len(seqs[0]), format)
+""" % (len(seqs), len(seqs[0]), format2)
     
     totalsize = len(seqs[0])
     size = 0
@@ -111,7 +111,7 @@ matrix
 end;
 """
     # write options
-    writeMrbayesOptions(out, options, format)
+    writeMrbayesOptions(out, options, seqtype=format)
 
 
 

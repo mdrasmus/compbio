@@ -92,7 +92,7 @@ util.toc()
 # draw dotplot
 util.tic("drawing")
 conf = dotplot.initConf()
-vis = dotplot.Dotplot(conf, m, genomes)
+vis = dotplot.Dotplot2(conf, m, genomes)
 vis.setSeqs(seqs)
 vis.show()
 util.toc()

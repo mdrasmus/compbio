@@ -252,7 +252,7 @@ class PhyloViewer (object):
         
             # add additional menu options
             self.vistree.bar.addItem(hud.MenuItem("next tree (n)", self.nextTree))
-            self.vistree.bar.addItem(hud.MenuItem("next tree (p)", self.prevTree))
+            self.vistree.bar.addItem(hud.MenuItem("prev tree (p)", self.prevTree))
             
             # add additional key binding
             self.vistree.win.set_binding(input_key("n"), self.nextTree)
@@ -269,7 +269,7 @@ class PhyloViewer (object):
             
             # add additional menu options
             self.visdist.bar.addItem(hud.MenuItem("next matrix (n)", self.nextMatrix))
-            self.visdist.bar.addItem(hud.MenuItem("next matrix (p)", self.prevMatrix))
+            self.visdist.bar.addItem(hud.MenuItem("prev matrix (p)", self.prevMatrix))
             
             # add additional key binding
             self.visdist.win.set_binding(input_key("n"), self.nextMatrix)

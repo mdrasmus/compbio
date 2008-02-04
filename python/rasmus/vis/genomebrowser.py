@@ -174,7 +174,7 @@ class GenomeStackBrowser (Browser):
     
     def show(self, species=None, chrom=None, start=None, end=None,
                    width=800, height=400):
-        summon.stop_updating()
+        self.enable_updating(False)
         
         viewChange = False
         
@@ -241,7 +241,6 @@ class GenomeStackBrowser (Browser):
             self.win.zoom(.9, .9)
         
         self.enable_updating()
-        summon.begin_updating()
 
     
 
@@ -306,7 +305,7 @@ class GenomeOverview (Browser):
     
     def show(self):
         """Display browser"""
-        self.enableUpdating(False)
+        self.enable_updating(False)
         
         # create window
         if self.win == None or not self.win.is_open():
@@ -382,8 +381,7 @@ class GenomeOverview (Browser):
             self.win.zoom(1, maxchrom / abs(-2*self.chromStep - bottom))
             self.win.zoom(.9, .9)
 
-        self.enableUpdating(True)
-        summon.begin_updating()
+        self.enable_updating(True)
     
     
     def drawChromLabels(self):

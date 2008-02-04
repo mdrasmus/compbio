@@ -164,28 +164,41 @@ class TreeNode:
 
 # class for managing branch data
 class BranchData:
-    """A class for managing branch specific data for a Tree"""
+    """A class for managing branch specific data for a Tree
+    
+    By default, this class implements bootstrap data for TreeNode's.  
+    
+    To incorporate new kinds of branch data, do the following.  Subclass this
+    class (say, MyBranchData).  Create Tree's with
+    Tree(branchData=MyBranchData()).  This will ensure your new branch data
+    manager is used for manipulations to the tree.  Any tree's copied from the
+    tree (via tree.copy()) will also use the same branch manager.
+    """
 
     def __init__(self):
         pass
 
     def getBranchData(self, node):
+        """Returns branch specific data from a node"""
         if "boot" in node.data:
             return {"boot": node.data["boot"]}
         else:
             return {}
     
     def setBranchData(self, node, data):
+        """Set the branch specific data from 'data' to node.data"""
         if "boot" in data:
             node.data["boot"] = data["boot"]
     
     def splitBranchData(self, node):
+        """Split a branch's data into two copies"""
         if "boot" in node.data:
             return {"boot": node.data["boot"]}, {"boot": node.data["boot"]}
         else:
             return {}, {}
     
     def mergeBranchData(self, data1, data2):
+        """Merges the branch data from two neighboring branches into one"""
         if "boot" in data1 and "boot" in data2:
             assert data1["boot"] == data2["boot"]
             return {"boot": data1["boot"]}
@@ -404,26 +417,32 @@ class Tree:
                     if key in node.data:
                         del node.data[key]
     
-    #====================================
+    
+    #======================================================================
     # branch data functions
-    # forward branch data calles to branch data manager
+    # forward branch data calles to branch data manager        
     
     def getBranchData(self, node):
+        """Returns branch specific data from a node"""
         return self.branchData.getBranchData(node)
     
     def setBranchData(self, node, data):
+        """Set the branch specific data from 'data' to node.data"""
         return self.branchData.setBranchData(node, data)
     
     def splitBranchData(self, node):
+        """Split a branch's data into two copies"""
         return self.branchData.splitBranchData(node)
     
     def mergeBranchData(self, data1, data2):
+        """Merges the branch data from two neighboring branches into one"""    
         return self.branchData.mergeBranchData(data1, data2)
     
     
     #=======================================================================
     # input and output
     #
+    
     def write(self, out = sys.stdout, writeData=None, oneline=False):
         """Write the tree in newick notation"""
         self.writeNewick(util.openStream(out, "w"), writeData=writeData, 
@@ -469,6 +488,8 @@ class Tree:
     
     def writeNewickNode(self, node, out = sys.stdout, 
                               depth = 0, writeData=None, oneline=False):
+        """Write the node in newick format to the out file stream"""
+        
         # default data writer
         if writeData == None:
             writeData = self.writeData
@@ -510,6 +531,11 @@ class Tree:
     
     
     def readNewick(self, filename, readData=None):
+        """Reads newick tree format from a file stream
+        
+        You can specify a specialized node data reader with 'readData'
+        """
+    
         # use simple parsing if pyparsing is not available
         if pyparsing == None:
             return self.readBigNewick(filename)
@@ -561,6 +587,8 @@ class Tree:
     
     
     def readBigNewick(self, filename):
+        """Reads a big newick file with a custom parser"""
+    
         infile = file(filename)    
         closure = {"opens": 0}
 
@@ -631,6 +659,8 @@ class Tree:
     
 
     def readParentTree(self, treeFile, labelFile=None, labels=None):
+        """Reads a parent array from a file"""
+    
         if labelFile:
             labels = util.readStrings(labelFile)
         elif labels == None:
@@ -675,7 +705,8 @@ class Tree:
             self.root.parent = None
     
     
-    def writeParentTree(self, treeFile, labels):        
+    def writeParentTree(self, treeFile, labels):
+        """Writes tree to the  parent array format"""
         ids = {}
         
         # assign ids to leaves
@@ -701,6 +732,7 @@ class Tree:
     
     
     def getOnelineNewick(self):
+        """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
         self.write(stream, oneline=True)
         return stream.getvalue()
@@ -838,6 +870,7 @@ def findDist(tree, name1, name2):
         
 
 def countDescendents(node, sizes=None):
+    """Returns a dict with number of leaves beneath each node"""
     if sizes == None:
         sizes = {}
     
@@ -853,6 +886,7 @@ def countDescendents(node, sizes=None):
 
 
 def descendents(node, lst=None):
+    """Return a list of all the descendents benath a node"""
     if lst == None:
         lst = []
     for child in node.children:
@@ -902,7 +936,7 @@ def maxDisjointSubtrees(tree, subroots):
     """
     
     marks = {}
-
+    
     # mark the path from each subroot to the root
     for subroot in subroots:
         ptr = subroot

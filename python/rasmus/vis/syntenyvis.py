@@ -219,7 +219,7 @@ class SyntenyVis:
             self.win = summon.Window("synteny")
         
         if self.rootid == None:
-            self.rootid = self.win.get_root_id()
+            self.rootid = self.win.get_root()
         
         if self.visid == None:
             self.win.set_size(* self.winsize)

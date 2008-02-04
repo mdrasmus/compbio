@@ -132,7 +132,8 @@ class Ruler (summon.VisObject):
     
     def update(self):
         if not self.multiscale.sameView():
-            g = drawRuler(self.pos, 
+            g = drawRuler(self.win,
+                          self.pos, 
                           self.start, 
                           self.end, 
                           height=self.height, 
@@ -238,13 +239,9 @@ def getUnitSuffix(unit):
     return unit2, unitstr
     
 
-def drawRuler(pos, start, end, height=20, bottom=0, unit=None, unitstr="", 
-              minicolor=color(.8,.8,.8), maincolor=color(0,0,0),
-              win=None):
-    if win == None:
-        # backwards compat.
-        win = summon.get_summon_window()
-    
+def drawRuler(win, pos, start, end, height=20, bottom=0, unit=None, unitstr="", 
+              minicolor=color(.8,.8,.8), maincolor=color(0,0,0)):
+
     worldx1, worldy1, worldx2, worldy2 = win.get_visible()
     screenwidth, screenheight = win.get_size()
     

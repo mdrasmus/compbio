@@ -1120,6 +1120,8 @@ class AlignTrack (Track):
         self.showBases = showBases
         self.showLabels = showLabels
         self.rowspacing = rowspacing
+        self.alwaysColor = False
+        self.colorBasesVis = None
         
         if seqtype == None:
             self.seqtype = guessAlign(aln)
@@ -1270,7 +1272,8 @@ class AlignTrack (Track):
         
         colorBases = self.colorBases
         
-        if self.multiscale.atleast(minblockSize, .1, view=view, size=size):
+        if self.multiscale.atleast(minblockSize, .1, 
+                                   view=view, size=size):
             if not self.textShown or \
                not self.multiscale.sameView(view):
                 self.textShown = True

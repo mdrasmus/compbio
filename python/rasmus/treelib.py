@@ -155,7 +155,7 @@ class TreeNode:
     
     def leafNames(self):
         """Returns the leaf names beneath the node in traversal order"""
-        return [x.name for name in self.leaves()]
+        return [x.name for x in self.leaves()]
     
     def writeData(self, out):
         """Writes the data of the node to the file stream 'out'"""

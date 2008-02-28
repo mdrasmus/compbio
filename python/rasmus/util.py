@@ -924,8 +924,8 @@ def readDict(filename, delim="\t", keytype=str, valtype=str):
     dct = {}
     
     for line in infile:
-        tokens = line.rstrip().split("\t")
-        assert len(tokens) >= 2
+        tokens = line.rstrip().split(delim)
+        assert len(tokens) >= 2, line
         dct[keytype(tokens[0])] = valtype(tokens[1])
     
     return dct

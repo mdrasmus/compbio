@@ -85,8 +85,15 @@ class TreeViewer (sumtree.SumTree):
         dups = [color(*self.dupColor)]        
         for node in self.tree:
             if self.events[node] == "dup":
-                dups.append(shapes.box(node.x - .01*self.xscale, node.y - .2,
-                                      node.x + .01*self.xscale, node.y + .2))
+                dups.append(
+                    zoom_clamp(
+                        shapes.box(node.x - .5, node.y - .5,
+                                   node.x + .5, node.y + .5),
+                        link=True, link_type="smaller",
+                        maxx=8, minx=1,
+                        maxy=8, miny=1,
+                        origin=(node.x, node.y),
+                        prezoom=(self.xscale, 1.0)))
         
         # draw losses
         losses_per_branch = util.histDict([node for node, schild in self.losses])

@@ -8,6 +8,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include <string>
 #include <vector>
 
@@ -46,6 +47,9 @@ int main(int argc, char **argv)
     string streefile;
     string paramsfile;
     string outprefix;
+    string search;
+    string correctFile;
+    string lkfuncopt;
     int niter = 0;
     string lenfitter;
     float tsvratio;
@@ -92,6 +96,9 @@ int main(int argc, char **argv)
 
     
     config.add(new ConfigParamComment("Miscellaneous"));
+    config.add(new ConfigParam<string>(
+        "", "--search", "mcmc|nni", &search, "mcmc", 
+        "search algorithm"));
     config.add(new ConfigParam<int>(
         "-i", "--niter", "<# iterations>", &niter, 100, 
         "number of iterations"));
@@ -103,6 +110,12 @@ int main(int argc, char **argv)
         "probability of a node being a pre-duplication (default=0.01)"));
     config.add(new ConfigSwitch(
         "-g", "--generate", &estGenerate, "estimate generate"));
+    config.add(new ConfigParam<string>(
+        "-c", "--correct", "<correct tree file>", &correctFile, ""
+        "check if correct tree is visited in search"));
+    config.add(new ConfigParam<string>(
+        "", "--lkfunc", "spidir|duploss|none", &lkfuncopt, "spidir",
+        "function for branch length likelihood"));
 
     config.add(new ConfigParam<int>(
         "-V", "--verbose", "<verbosity level>", &verbose, LOG_LOW, 
@@ -229,12 +242,41 @@ int main(int argc, char **argv)
     
     //=====================================================
     // init likelihood function
-    SpidirBranchLikelihoodFunc lkfunc(nnodes, &stree, params, gene2species,
-                                      predupprob, dupprob, estGenerate);
+    BranchLikelihoodFunc *lkfunc;
+    
+    if (lkfuncopt == "none")
+        lkfunc = new BranchLikelihoodFunc();
+    else if (lkfuncopt == "spidir")
+        lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
+                                                gene2species,
+                                                predupprob, dupprob, 
+                                                estGenerate);
+    else if (lkfuncopt == "duploss")
+        lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
+                                                gene2species,
+                                                predupprob, dupprob, 
+                                                estGenerate,
+                                                true);
+    else {
+        printError("unknown lkfunc '%s'", lkfuncopt.c_str());
+        return 1;
+    }
+    
     
     // init topology proposer
     NniProposer nniProposer(&stree, gene2species, niter);
     
+    // load correct tree
+    Tree correctTree;    
+    if (correctFile != "") {
+        if (!correctTree.readNewick(correctFile.c_str())) {
+            printError("cannot read correct tree '%s'", correctFile.c_str());
+            return 1;
+        }
+        // TODO: aborts if leaves mismatch, should catch error
+        correctTree.reorderLeaves(genes);
+        nniProposer.setCorrect(&correctTree);
+    }
     
     // determine branch length algorithm
     BranchLengthFitter *fitter = NULL;
@@ -257,19 +299,51 @@ int main(int argc, char **argv)
 
     
     // search
-    Tree *toptree = searchMCMC(tree, 
-                               genes, aln->nseqs, aln->seqlen, aln->seqs,
-                               &lkfunc,
-                               &nniProposer,
-                               fitter);
+    time_t startTime = time(NULL);
+    Tree *toptree;
+    if (search == "mcmc") {
+        toptree = searchMCMC(tree, 
+                             genes, aln->nseqs, aln->seqlen, aln->seqs,
+                             lkfunc,
+                             &nniProposer,
+                             fitter);
+    } else if (search == "nni") {
+        toptree = searchNni(tree, 
+                            genes, aln->nseqs, aln->seqlen, aln->seqs,
+                            lkfunc,
+                            &nniProposer,
+                            fitter);
+    } else {
+        printError("unknown search '%s'", search.c_str());
+        return 1;
+    }
     
     toptree->setLeafNames(genes);
     toptree->writeNewick(outtreeFilename.c_str());
     
+    if (correctFile != "") {
+        if (nniProposer.seenCorrect()) {
+            printLog(LOG_LOW, "SEARCH: correct visited\n");
+        } else {
+            printLog(LOG_LOW, "SEARCH: correct NEVER visited\n");
+        }
+        
+        if (toptree->sameTopology(&correctTree)) {
+            printLog(LOG_LOW, "RESULT: correct\n");
+        } else {
+            printLog(LOG_LOW, "RESULT: wrong\n");
+        }
+    }
+    
     delete toptree;
     delete params;
     delete fitter;
+    delete lkfunc;
     
+    time_t runtime = time(NULL) - startTime;
+    printLog(LOG_LOW, "runtime seconds: %d\n", runtime);
+    printLog(LOG_LOW, "runtime minutes: %.1f\n", float(runtime / 60.0));
+    printLog(LOG_LOW, "runtime hours: %.1f\n", float(runtime / 3600.0));
     closeLogFile();
 }
 

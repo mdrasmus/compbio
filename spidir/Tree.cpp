@@ -240,6 +240,56 @@ void Tree::hashkey(int *key)
 }
 
 
+bool Tree::sameTopology(Tree *other)
+{
+    if (other->nnodes != nnodes)
+        return false;
+
+    typedef ExtendArray<int> TopologyKey;
+    TopologyKey key1(nnodes);
+    TopologyKey key2(other->nnodes);
+    
+    hashkey(key1);
+    other->hashkey(key2);
+    
+    for (int i=0; i<nnodes; i++) {        
+        if (key1[i] != key2[i])
+            return false;
+    }
+    return true;
+}
+
+
+void Tree::reorderLeaves(string *order)
+{   
+    // count the leaves in the tree
+    int nleaves = 0;    
+    for (int i=0; i<nnodes; i++)
+        if (nodes[i]->isLeaf())
+            nleaves++;
+    
+    ExtendArray<Node*> tmp(nleaves);
+    
+    // rename leaves
+    for (int i=0; i<nleaves; i++) {
+        bool found = false;
+        for (int j=0; j<nleaves; j++) { 
+            if (nodes[i]->longname == order[j]) {
+                found = true;
+                nodes[i]->name = j;
+                tmp[j] = nodes[i];
+                break;
+            }
+        }
+        assert(found);
+    }
+    
+    // reorder leaves by name
+    for (int i=0; i<nleaves; i++)
+        nodes[i] = tmp[i];
+}
+
+
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()
 {
@@ -478,30 +528,42 @@ bool Tree::readNewick(const char *filename)
 
 
 // write out the newick notation of a tree
-void Tree::writeNewick(FILE *out, Node *node, int depth)
+void Tree::writeNewick(FILE *out, Node *node, int depth, bool oneline)
 {
     if (node == NULL) {
         assert(root != NULL);
-        writeNewick(out, root, 0);
-        fprintf(out, ";\n");
+        writeNewick(out, root, 0, oneline);
+        if (oneline)
+            fprintf(out, ";");
+        else
+            fprintf(out, ";\n");
     } else {
         if (node->nchildren == 0) {
-            for (int i=0; i<depth; i++) fprintf(out, "  ");
+            if (!oneline)
+                for (int i=0; i<depth; i++) fprintf(out, "  ");
             fprintf(out, "%s:%f", node->longname.c_str(), node->dist);
         } else {
             // indent
-            for (int i=0; i<depth; i++) fprintf(out, "  ");
-            fprintf(out, "(\n");
-            
-            for (int i=0; i<node->nchildren - 1; i++) {
-                writeNewick(out, node->children[i], depth+1);
-                fprintf(out, ",\n");
+            if (oneline) {
+                fprintf(out, "(");
+            } else {
+                for (int i=0; i<depth; i++) fprintf(out, "  ");
+                fprintf(out, "(\n");
             }
             
-            writeNewick(out, node->children[node->nchildren-1], depth+1);
-            fprintf(out, "\n");
+            for (int i=0; i<node->nchildren - 1; i++) {
+                writeNewick(out, node->children[i], depth+1, oneline);
+                if (oneline)
+                    fprintf(out, ",");
+                else
+                    fprintf(out, ",\n");
+            }
             
-            for (int i=0; i<depth; i++) fprintf(out, "  ");
+            writeNewick(out, node->children[node->nchildren-1], depth+1, oneline);
+            if (!oneline) {
+                fprintf(out, "\n");            
+                for (int i=0; i<depth; i++) fprintf(out, "  ");
+            }
             fprintf(out, ")");
             
             if (depth > 0)
@@ -511,7 +573,7 @@ void Tree::writeNewick(FILE *out, Node *node, int depth)
 }
 
 
-bool Tree::writeNewick(const char *filename)
+bool Tree::writeNewick(const char *filename, bool oneline)
 {
     FILE *out = NULL;
     
@@ -520,7 +582,7 @@ bool Tree::writeNewick(const char *filename)
         return false;
     }
 
-    writeNewick(out);
+    writeNewick(out, NULL, 0, oneline);
     return true;
 }
 

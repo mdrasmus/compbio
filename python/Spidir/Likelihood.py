@@ -1,4 +1,6 @@
 
+import random
+
 from rasmus.bio import phylo
 
 import Spidir

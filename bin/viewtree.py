@@ -25,6 +25,9 @@ options = [
   ["i", "hist", "hist", "",  
     {"single": True,
      "help": "output histogram of tree topologies"}],
+  ["", "histsplit", "histsplit", "",  
+    {"single": True,
+     "help": "output histogram of tree splits"}],
   ["", "hashes", "hashes", "",
     {"single": True}], 
   ["n", "names", "names", "",
@@ -78,6 +81,8 @@ else:
 
 
 hashes = []
+splits = []
+ntrees = 0
 
 if "reroot" in conf:
     if conf["reroot"].isdigit():
@@ -98,7 +103,8 @@ def iterTrees(treefile):
             break
 
 def processTree(tree):
-    global gene2species
+    global gene2species, ntrees
+    ntrees += 1
 
     if "stree" in conf and \
        "smap" in conf and "rootby" in conf:
@@ -115,6 +121,12 @@ def processTree(tree):
     
         thash = phylo.hashTree(tree, gene2species)
         hashes.append(thash)
+    
+    
+    elif conf["histsplit"]:
+        for leaf in tree.leaves():
+            tree.rename(leaf.name, gene2species(leaf.name))
+        splits.extend(phylo.findSplits(tree))
     
     
     elif conf["dump"]:
@@ -244,6 +256,19 @@ if conf["hist"]:
     histogram = tablelib.histTable(hashes)
     histogram.write(sys.stdout)
 
+# display splits histogram
+if conf["histsplit"]:
+    s2 = []
+    for set1, set2 in splits:
+        s2.append(" ".join(set1) + "  |  " + " ".join(set2))
+    histogram = tablelib.histTable(s2)
+    
+    # modify percentages to total number of trees
+    splits_per_tree = len(splits) / ntrees
+    for row in histogram:
+        row["percent"] *= splits_per_tree
+    
+    histogram.write(sys.stdout)
 
 if conf["hashes"]:
     for thash in hashes:

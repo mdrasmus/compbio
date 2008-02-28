@@ -301,20 +301,30 @@ float estimateGeneRate(Tree *tree, SpeciesTree *stree,
 
 //=============================================================================
 // calculate the likelihood of rare events such as gene duplication
-float rareEventsLikelihood(int nnodes, int *recon, int *events, int nsnodes,
+float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon, 
+                           int *events,
                            float predupprob, float dupprob)
 {
     float logl = 0.0;
-    int sroot = nsnodes - 1;
+    int sroot = stree->nnodes - 1;
     
-    for (int i=0; i<nnodes; i++) {
+    int predups = 0;
+    int dups = 0;
+    int losses = countLoss(tree, stree, recon);
+    
+    // count dups
+    for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_DUP) {
             if (recon[i] == sroot)
-                logl += logf(predupprob);
+                predups += 1;
             else
-                logl += logf(dupprob);
+                dups += 1;
         }
     }
+    
+    logl += log(poisson(dups, dupprob));
+    logl += log(poisson(predups, predupprob));
+    logl += log(poisson(losses, dupprob)); // assume same rate for loss
 
     return logl;
 }
@@ -789,12 +799,19 @@ float treelk(Tree *tree,
              SpeciesTree *stree,
              int *recon, int *events, SpidirParams *params,
              float generate,
-             float predupprob, float dupprob)
+             float predupprob, float dupprob, bool onlyduploss)
 {
     float logl = 0.0; // log likelihood
     
     double maxprob = -INFINITY;
     float argmax_generate = params->alpha / params->beta;
+    
+    
+    // rare events
+    float rareevents = rareEventsLikelihood(tree, stree, recon, events,
+                                            predupprob, dupprob);
+    if (onlyduploss)
+        return rareevents;
     
     
     TreeLikelihoodCalculator lkcalc(tree, stree, recon, events, params);
@@ -819,7 +836,7 @@ float treelk(Tree *tree,
         
         float gend = params->alpha / params->beta * 3.0;
         float gstart = params->alpha / params->beta * 0.05;
-        float step = (gend - gstart) / 70.0;
+        float step = (gend - gstart) / 20.0;
 
         for (float g=gstart; g<gend; g+=step) {
             float l = lkcalc.calc(g);
@@ -839,9 +856,7 @@ float treelk(Tree *tree,
     }
     
     // rare events
-    logl += rareEventsLikelihood(tree->nnodes, recon, events, stree->nnodes,
-                                 predupprob, dupprob);
-
+    logl += rareevents;
     
     return logl;
 }
@@ -854,7 +869,7 @@ float treelk(int nnodes, int *ptree, float *dists,
              int *recon, int *events,
              float *mu, float *sigma, float generate,
              float predupprob, float dupprob,
-             float alpha, float beta)
+             float alpha, float beta, bool onlyduploss)
 {
     // create tree objects
     Tree tree(nnodes);
@@ -871,7 +886,7 @@ float treelk(int nnodes, int *ptree, float *dists,
     return treelk(&tree, &stree,
                   recon, events, &params, 
                   generate, 
-                  predupprob, dupprob);
+                  predupprob, dupprob, onlyduploss);
 }
 
 

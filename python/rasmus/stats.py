@@ -424,7 +424,7 @@ def rhyper(m, n, M, N, report=0):
 
 def cdf(vals):
     """Computes the CDF of a list of values"""
-    
+   
     vals = sort(vals)
     tot = float(len(vals))
     x = []
@@ -461,7 +461,7 @@ def enrichItems(in_items, out_items):
                 pval_under=rhyper(a, a+b, M, N, 1))
     tab.sort(col='pval')
     return tab
-    
+
 
 #=============================================================================
 # Distributions

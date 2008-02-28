@@ -14,6 +14,8 @@ public:
     virtual void propose(Tree *tree) {}
     virtual void revert(Tree *tree) {}
     virtual bool more() { return false; }
+    virtual void setCorrect(Tree *tree) {}
+    virtual bool seenCorrect() { return false; }
 };
 
 
@@ -25,6 +27,8 @@ public:
     virtual void propose(Tree *tree);
     virtual void revert(Tree *tree);
     virtual bool more();
+    virtual void setCorrect(Tree *tree) { correctTree = tree; }
+    virtual bool seenCorrect() { return correctSeen; }
 
 protected:    
     Node *nodea;
@@ -37,6 +41,8 @@ protected:
     int *gene2species;
     int niter;
     int iter;
+    Tree *correctTree;
+    bool correctSeen;
 };
 
 class BranchLengthFitter
@@ -84,6 +90,9 @@ public:
     virtual ~BranchLikelihoodFunc() {}
     
     virtual float likelihood(Tree *tree) { return 0.0; }
+    virtual float likelihood2(Tree *tree) { return 0.0; }
+    virtual SpeciesTree *getSpeciesTree() { return NULL; }
+    virtual int *getGene2species() { return NULL; }    
 };
 
 
@@ -94,8 +103,12 @@ public:
                                SpidirParams *params, 
                                int *gene2species,
                                float predupprob, float dupprob,
-                               bool estGenerate);
+                               bool estGenerate, bool onlyduploss=false);
     virtual float likelihood(Tree *tree);
+
+    virtual SpeciesTree *getSpeciesTree() { return stree; }
+    virtual int *getGene2species() { return gene2species; }
+    virtual float likelihood2(Tree *tree);
     
 protected:
     int nnodes;
@@ -107,6 +120,8 @@ protected:
     float predupprob;
     float dupprob;  
     bool estGenerate;
+    bool onlyduploss;
+    float eventslk;
 };
 
 
@@ -126,6 +141,11 @@ Tree *searchMCMC(Tree *initTree,
                  TopologyProposer *proposer,
                  BranchLengthFitter *fitter);
 
+Tree *searchNni(Tree *initTree, 
+                string *genes, int nseqs, int seqlen, char **seqs,
+                BranchLikelihoodFunc *lkfunc,
+                TopologyProposer *proposer,
+                BranchLengthFitter *fitter);
 
 } // namespace spidir
 

@@ -7,7 +7,7 @@ import os
 # rasmus libs
 from rasmus import util
 from rasmus import algorithms
-
+from rasmus import tablelib
 
 
 
@@ -323,7 +323,12 @@ def logfactorial(x, k=1):
 
 
 def choose(n, k):
-    return factorial(n, n - k) / factorial(k)
+    t = 1
+    
+    for i in xrange(1,k+1):
+        t *= (n - i + 1) / i
+    return t
+    #return factorial(n, n - k) / factorial(k)
 
 
 
@@ -417,7 +422,47 @@ def rhyper(m, n, M, N, report=0):
     else:
         raise "unknown option"
 
+def cdf(vals):
+    """Computes the CDF of a list of values"""
     
+    vals = sort(vals)
+    tot = float(len(vals))
+    x = []
+    y = []
+
+    for i, x2 in enumerate(vals):
+        x.append(x2)
+        y.append(i / tot)
+
+    return x, y
+    
+    
+def enrichItems(in_items, out_items):
+    """Calculates enrichment for items within an in-set vs and out-set.
+       Returns a sorted table.
+    """
+
+    counts = util.Dict(default=[0, 0])
+    for item in in_items:
+        counts[item][0] += 1
+    for item in out_items:
+        counts[item][1] += 1
+
+    N = len(in_items) + len(out_items)
+    M = len(in_items)
+
+    tab = tablelib.Table(headers=["item", "in_count", "out_count", "pval", "pval_under"])
+    
+    for item, (a, b) in counts.iteritems():
+        tab.add(item=item,
+                in_count=a,
+                out_count=b,
+                pval=rhyper(a, a+b, M, N),
+                pval_under=rhyper(a, a+b, M, N, 1))
+    tab.sort(col='pval')
+    return tab
+    
+
 #=============================================================================
 # Distributions
 #
@@ -489,6 +534,26 @@ def poissonvariate(lambd):
         if p < l:
             return k - 1
 
+def exponentialPdf(x, params):
+    lambd = params[0]
+    
+    if x < 0 or lambd < 0:
+        return 0.0
+    else:
+        return lambd * exp(-lambd * x)
+
+
+def exponentialCdf(x, params):
+    lambd = params[0]
+    
+    if x < 0 or lambd < 0:
+        return 0.0
+    else:
+        return 1.0 - exp(-lambd * x)
+
+
+def exponentialvariate(lambd):
+    return -log(random.random()) / lambd
 
 def gammaPdf(x, params):
     alpha, beta = params

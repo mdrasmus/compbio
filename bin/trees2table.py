@@ -7,6 +7,7 @@ from rasmus.bio import genomeutil, phylo
 #from rasmus.vis import treesvg
 
 import Spidir
+import Spidir.Likelihood
 
 
 options = [
@@ -102,8 +103,9 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         
         # add family rate
         if params:
-            row['famrate'] = Spidir.getBaserate(tree, stree, params, \
-                                                gene2species=gene2species)
+            row['famrate'] = Spidir.Likelihood.getBaserate(
+                                    tree, stree, params, \
+                                    gene2species=gene2species)
         
         tab.append(row)
     util.toc()

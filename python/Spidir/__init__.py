@@ -678,6 +678,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
             tree, logl = Search.searchHillClimb(conf, distmat, labels, stree, 
                                          gene2species, params, initTree=tree,
                                          visited=visited)
+        
         elif search == "none":
             break
         else:

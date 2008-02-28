@@ -152,6 +152,8 @@ public:
         }
     }
     
+    void reorderLeaves(string *names);
+    
     // Gets leaf names of the nodes of a tree
     // Internal nodes are often named "" (empty string)
     //  Arguments:
@@ -211,6 +213,8 @@ public:
     //           integers for the tree
     void hashkey(int *key);
     
+    bool sameTopology(Tree *other);
+    
     // Roots the tree on branch 'newroot'
     void reroot(Node *newroot, bool onBranch=true);
     
@@ -229,10 +233,10 @@ public:
     bool readNewick(const char *filename);
     
     // Writes a tree structure to an output stream 'out'
-    void writeNewick(FILE *out=stdout, Node *node=NULL, int depth=0);
+    void writeNewick(FILE *out=stdout, Node *node=NULL, int depth=0, bool oneline=false);
     
     // Writes a tree structure to a file 'filename'
-    bool writeNewick(const char *filename);
+    bool writeNewick(const char *filename, bool oneline=false);
     
     // Returns whether the tree is self consistent
     bool assertTree();

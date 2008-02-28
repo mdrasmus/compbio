@@ -32,6 +32,19 @@ static int g_loglevel = LOG_QUIET;
 
 
 
+// probability density distribution of the Poisson
+float poisson(int x, float lambda)
+{
+    if (x < 0 || lambda <= 0)
+        return 0.0;
+    
+    float a = 0.0;
+    for (float i=1.0; i<x+1; i+=1.0)
+        a += log(lambda / i);
+    return exp(-lambda + a);
+}
+
+
 /* gammln as implemented in the
  * first edition of Numerical Recipes in C */
 double gammln(double xx)

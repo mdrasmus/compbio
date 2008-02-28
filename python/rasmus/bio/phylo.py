@@ -1217,6 +1217,38 @@ def findBranchSplits(tree):
     
     return splits2
 
+def findSplits(tree):
+    """Faster branch splits for a tree"""
+    allLeaves = set(tree.leafNames())
+
+    descendants = []
+
+    def walk(node):
+        if node.isLeaf():
+            descendants.append(set([node.name]))
+        else:
+            s = set()
+            for child in node.children:
+                s.update(walk(child))
+            descendants.append(s)
+        return descendants[-1]
+    for child in tree.root.children:
+        walk(child)
+    if len(tree.root.children) == 2:
+        descendants.pop()
+    
+    splits = []
+    for leaves in descendants:
+        if len(leaves) > 1:
+            set1 = tuple(sorted(leaves))
+            set2 = tuple(sorted(allLeaves - leaves))
+            if len(set1) > len(set2):
+                set1, set2 = set2, set1
+                
+            splits.append((set1, set2))
+    
+    return splits
+
 
 def robinsonFouldsError(tree1, tree2):
     splits1 = findBranchSplits(tree1)

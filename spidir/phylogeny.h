@@ -107,6 +107,12 @@ void reconRoot(Tree *tree, SpeciesTree *stree, int *gene2species);
 void reconcile(Tree *tree, SpeciesTree *stree,
                int *gene2species, int *recon);
 void labelEvents(Tree *tree, int *recon, int *events);
+
+int countLoss_recurse(Node *node, SpeciesTree *stree, int *recon);
+int countLoss(Tree *tree, SpeciesTree *stree, int *recon);
+int countLossNode(Node *node, SpeciesTree *stree, int *recon);
+
+
 Node *treeLca(SpeciesTree *stree, Node *node1, Node *node2);
 
 inline int countDuplications(int nnodes, int *events)

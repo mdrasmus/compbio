@@ -268,6 +268,60 @@ void labelEvents(Tree *tree, int *recon, int *events)
 }
 
 
+int countLoss_recurse(Node *node, SpeciesTree *stree, int *recon)
+{
+    int loss = countLossNode(node, stree, recon);
+
+    // recurse
+    for (int i=0; i<node->nchildren; i++)
+        loss += countLoss_recurse(node->children[i], stree, recon);
+
+    return loss;
+}
+
+
+int countLoss(Tree *tree, SpeciesTree *stree, int *recon)
+{
+    return countLoss_recurse(tree->root, stree, recon);
+}
+
+
+// assumes binary tree
+int countLossNode(Node *node, SpeciesTree *stree, int *recon)
+{
+    int loss = 0;
+    
+    // if not parent, then no losses
+    if (node->parent == NULL)
+        return 0;
+    
+    // determine starting and ending species
+    Node *sstart = stree->nodes[recon[node->name]];
+    Node *send = stree->nodes[recon[node->parent->name]];
+    
+    // the species path is too short to have losses
+    if (sstart == send)
+        return 0;
+    
+    // determine species path of this gene branch (node, node->parent)
+    Node *ptr = sstart;
+    while (ptr != send) {
+        // process ptr
+        if (ptr != sstart)
+            loss += ptr->nchildren - 1;
+        
+        // go up species tree
+        ptr = ptr->parent;
+    }
+    
+    // determine whether node->parent is a dup
+    // if so, send (species end) is part of species path
+    if (send->name == recon[node->parent->children[0]->name] ||
+        send->name == recon[node->parent->children[1]->name])
+         loss += send->nchildren - 1;
+        
+    return loss;
+}
 
 //=============================================================================
 // Gene2species

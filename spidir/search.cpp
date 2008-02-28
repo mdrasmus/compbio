@@ -175,14 +175,16 @@ NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
     stree(stree),
     gene2species(gene2species),
     niter(niter),
-    iter(0)
+    iter(0),
+    correctTree(NULL),
+    correctSeen(false)
 {}
     
     
 void NniProposer::propose(Tree *tree)
 {
     const float rerootProb = 1.0;
-    const float doubleNniProb = 0.3;
+    const float doubleNniProb = 0.1;
     
     // increase iteration
     iter++;
@@ -195,6 +197,7 @@ void NniProposer::propose(Tree *tree)
     proposeNni(tree, nodea, nodeb);
 
     if (frand() < doubleNniProb) {
+        printLog(LOG_MEDIUM, "search: double NNI\n");
         proposeRandomNni(tree, &node3, &node4, &nodec, &noded);
         proposeNni(tree, nodec, noded);
     }
@@ -223,6 +226,11 @@ void NniProposer::propose(Tree *tree)
     } else {
         oldroot1 = NULL;
         oldroot2 = NULL;
+    }
+    
+    if (correctTree) {
+        if (tree->sameTopology(correctTree))
+            correctSeen = true;
     }
 
     assert(tree->assertTree());
@@ -302,7 +310,7 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     int nnodes, SpeciesTree *stree, 
     SpidirParams *params, 
     int *gene2species,
-    float predupprob, float dupprob, bool estGenerate) :
+    float predupprob, float dupprob, bool estGenerate, bool onlyduploss) :
     
     nnodes(nnodes),
     stree(stree),
@@ -312,7 +320,8 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     events(nnodes),
     predupprob(predupprob),
     dupprob(dupprob),
-    estGenerate(estGenerate)
+    estGenerate(estGenerate),
+    onlyduploss(onlyduploss)
 {}
 
 
@@ -327,9 +336,24 @@ float SpidirBranchLikelihoodFunc::likelihood(Tree *tree) {
     else
         generate = -99;
     
+    eventslk = rareEventsLikelihood(tree, stree, recon, 
+                                    events, predupprob, dupprob);
+
+    
     return treelk(tree, stree,
                   recon, events, params,
-                  generate, predupprob, dupprob);
+                  generate, predupprob, dupprob, onlyduploss);
+}
+
+
+
+float SpidirBranchLikelihoodFunc::likelihood2(Tree *tree) {
+    // reconcile tree to species tree
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+    
+    return rareEventsLikelihood(tree, stree, recon, 
+                                events, predupprob, dupprob);
 }
 
 
@@ -372,7 +396,7 @@ Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
 // MCMC search
 
 // NOTE: not used any more
-// DEPRECATED, 
+// DEPRECATED,
 Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                 SpidirParams *params, int *gene2species,
                 string *genes, int nseqs, int seqlen, char **seqs,
@@ -392,7 +416,55 @@ Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
                       &nniProposer,
                       &parsFitter);
 }
-                
+
+
+
+void printSearchStatus(Tree *tree, SpeciesTree *stree, int *gene2species,
+                       int *recon=NULL, int *events=NULL)
+{
+    if (stree) {
+        bool cleanupRecon = false;
+        if (!recon) {
+            recon = new int [tree->nnodes];
+            cleanupRecon = true;
+        }
+
+        bool cleanupEvents = false;    
+        if (!events) {
+            events = new int [tree->nnodes];
+            cleanupEvents = true;
+        }    
+
+    
+    
+        reconcile(tree, stree, gene2species, recon);
+        labelEvents(tree, recon, events);
+        int losses = countLoss(tree, stree, recon);        
+        
+        // count dups
+        int dups = 0;
+        for (int i=0; i<tree->nnodes; i++)
+            if (events[i] == EVENT_DUP)
+                dups++;
+        
+        printLog(LOG_LOW, "search: dups = %d\n", dups);
+        printLog(LOG_LOW, "search: loss = %d\n", losses);
+        
+        if (cleanupRecon)
+            delete [] recon;
+        if (cleanupEvents)
+            delete [] events;        
+    }                
+    
+    if (isLogLevel(LOG_LOW))
+        displayTree(tree, getLogFile());
+    
+    if (isLogLevel(LOG_MEDIUM)) {
+        printLog(LOG_MEDIUM, "tree: ");
+        tree->writeNewick(getLogFile(), NULL, 0, true);
+        printLog(LOG_MEDIUM, "\n\n");
+    }
+}
 
 
 Tree *searchMCMC(Tree *initTree, 
@@ -411,6 +483,8 @@ Tree *searchMCMC(Tree *initTree,
     if (initTree == NULL)
         tree = getInitialTree(genes, nseqs, seqlen, seqs);
     
+    ExtendArray<int> recon(tree->nnodes);
+    ExtendArray<int> events(tree->nnodes);
     
     // init likelihood score
     parsimony(tree, nseqs, seqs); // get initial branch lengths TODO: replace?
@@ -437,22 +511,23 @@ Tree *searchMCMC(Tree *initTree,
         proposer->propose(tree);
         
         // hash topology
-        tree->hashkey(key);
+        //tree->hashkey(key);
         
         // TURN OFF hashing
         // have we seen this topology before?
-        TreeLogl &tmp = hashtrees[key];
-        if (0 && tmp.first != NULL) {
-            // retrieve previously seen tree and logl
-            nextlogl = tmp.second;
-        } else {    
+        //TreeLogl &tmp = hashtrees[key];
+        //if (0 && tmp.first != NULL) {
+        //    // retrieve previously seen tree and logl
+        //    nextlogl = tmp.second;
+        //} else {    
             // calculate likelihood
-            nextlogl = fitter->findLengths(tree);
-            nextlogl += lkfunc->likelihood(tree);
+            float seqlk = fitter->findLengths(tree);
+            float branchlk = lkfunc->likelihood(tree);
+            nextlogl = seqlk + branchlk;
             
             // hash result
-            tmp = TreeLogl(tree->copy(), nextlogl);
-        }
+            //tmp = TreeLogl(tree->copy(), nextlogl);
+        //}
         
         
         // acceptance rule
@@ -466,10 +541,15 @@ Tree *searchMCMC(Tree *initTree,
 
             // keep track of toptree            
             if (logl > toplogl) {
-                printLog(LOG_LOW, "search: logl = %f\n", logl);            
-                if (isLogLevel(LOG_LOW))
-                    displayTree(toptree, getLogFile());
+                float logl2 = lkfunc->likelihood2(tree);
             
+                printLog(LOG_LOW, "search: lnl   = %f\n", logl);
+                printLog(LOG_LOW, "search: seqlk = %f\n", seqlk);
+                printLog(LOG_LOW, "search: lenlk = %f\n", branchlk);
+                printLog(LOG_LOW, "search: lnl2  = %f\n", logl2);
+                printSearchStatus(tree, lkfunc->getSpeciesTree(), 
+                                  lkfunc->getGene2species(), recon, events);
+                
                 delete toptree;
                 speed = 0.0;
                 toptree = tree->copy();
@@ -494,5 +574,72 @@ Tree *searchMCMC(Tree *initTree,
     return toptree;
 }
 
+
+Tree *searchNni(Tree *initTree, 
+                string *genes, int nseqs, int seqlen, char **seqs,
+                BranchLikelihoodFunc *lkfunc,
+                TopologyProposer *proposer,
+                BranchLengthFitter *fitter)
+{
+    Tree *toptree = NULL;
+    float toplogl = -1e10, nextlogl;
+    Tree *tree = initTree;
+    //int nnodes = nseqs * 2 - 1;
+        
+    
+    // determine initial tree
+    if (initTree == NULL)
+        tree = getInitialTree(genes, nseqs, seqlen, seqs);
+    
+    ExtendArray<int> recon(tree->nnodes);
+    ExtendArray<int> events(tree->nnodes);
+    
+    // init likelihood score
+    parsimony(tree, nseqs, seqs); // get initial branch lengths TODO: replace?
+    toplogl = fitter->findLengths(tree);
+    toplogl += lkfunc->likelihood(tree);
+    toptree = tree->copy();
+    
+    
+    // MCMC loop
+    for (int i=0; proposer->more(); i++) {
+        printLog(LOG_LOW, "search: iter %d\n", i);
+    
+        // propose new tree 
+        proposer->propose(tree);
+        
+        // calculate likelihood
+        float seqlk = fitter->findLengths(tree);
+        float branchlk = lkfunc->likelihood(tree);
+        nextlogl = seqlk + branchlk;
+        
+        
+        // acceptance rule
+        if (nextlogl > toplogl)
+        {
+            float logl2 = lkfunc->likelihood2(tree);
+        
+            printLog(LOG_MEDIUM, "search: accept %f\n", nextlogl);
+            printLog(LOG_LOW, "search: lnl   = %f\n", nextlogl);
+            printLog(LOG_LOW, "search: seqlk = %f\n", seqlk);
+            printLog(LOG_LOW, "search: lenlk = %f\n", branchlk);          
+            printLog(LOG_LOW, "search: lnl2  = %f\n", logl2);
+                        
+            // accept
+            toplogl = nextlogl;
+            
+            printSearchStatus(tree, lkfunc->getSpeciesTree(), 
+                  lkfunc->getGene2species(), recon, events);
+            delete toptree;
+            toptree = tree->copy();
+        } else {
+            // reject, undo topology change
+            proposer->revert(tree);
+        }
+    }
+    
+    
+    return toptree;
+}
 
 } // namespace spidir

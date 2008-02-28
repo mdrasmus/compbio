@@ -16,7 +16,7 @@ CXX = g++
 MEX = mex
 
 CFLAGS = \
-    -Wall \
+    -Wall -fPIC \
     -I/usr/include/python2.4 \
     -I/util/include/python2.4
 
@@ -181,6 +181,10 @@ installpy:
 myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
 	cp $(SPIDIR_PROG) test_spidir maxml ../bin
 	cp $(PYTHON_MODULE) ../python
+
+myinstall64: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
+	cp $(SPIDIR_PROG) test_spidir maxml ../bin64
+	cp $(PYTHON_MODULE) ../python64
 
 clean:
 	rm -f $(PROG_OBJS) $(SPIDIR_PROG) $(LIBSPIDIR) \

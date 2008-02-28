@@ -53,7 +53,7 @@ inline float normallog(float x, float u, float s)
     //return log(1.0/(s * sqrt(2.0*M_PI)) * exp(- (x-u)*(x-u) / (2.0 * s*s)));
 }
 
-
+float poisson(int x, float lambda);
 double gammln(double xx);
 float gammalog(float x, float a, float b);
 float normalvariate(float mu, float sigma);

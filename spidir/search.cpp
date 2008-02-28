@@ -146,21 +146,20 @@ void proposeNni(Tree *tree, Node *nodea, Node *nodeb)
 }
 
 
-void proposeRandomNni(Tree *tree, Node **node1, Node **node2, 
-                      Node **a, Node **b)
+void proposeRandomNni(Tree *tree, Node **a, Node **b)
 {
     // find edges for NNI
-    int choice = tree->root->name;
+    int choice;
     do {
         choice = irand(tree->nnodes);
     } while (tree->nodes[choice]->isLeaf() || 
              tree->nodes[choice]->parent == NULL);
     
-    *node1 = tree->nodes[choice];
-    *node2 = tree->nodes[choice]->parent;
-    *a = (*node1)->children[irand(2)];
-    *b = ((*node2)->children[0] == *node1) ? (*node2)->children[1] :
-                                             (*node2)->children[0];
+    Node *node1 = tree->nodes[choice];
+    Node *node2 = tree->nodes[choice]->parent;
+    *a = node1->children[irand(2)];
+    *b = (node2->children[0] == node1) ? node2->children[1] :
+                                         node2->children[0];
 }
 
 
@@ -187,38 +186,24 @@ void NniProposer::propose(Tree *tree)
     // increase iteration
     iter++;
     
-    Node *node1, *node2, *node3, *node4;
     nodea = nodeb = nodec = noded = NULL;
 
     // propose new tree
-    proposeRandomNni(tree, &node1, &node2, &nodea, &nodeb);
+    proposeRandomNni(tree, &nodea, &nodeb);
     proposeNni(tree, nodea, nodeb);
 
     if (frand() < doubleNniProb) {
-        proposeRandomNni(tree, &node3, &node4, &nodec, &noded);
+        proposeRandomNni(tree, &nodec, &noded);
         proposeNni(tree, nodec, noded);
     }
-
-    // TODO: need random reroot or recon root.
+    
+    // reroot tree if stree is given
     if (frand() < rerootProb) {
         oldroot1 = tree->root->children[0];
         oldroot2 = tree->root->children[1];
         
         if (stree != NULL) {
             reconRoot(tree, stree, gene2species);
-        } else {
-            /*
-            // do random reroot if species tree is not given
-            int choice = irand(tree->nnodes);
-            tree->reroot(tree->nodes[choice]);
-
-            int choice1 = irand(2);
-            int choice2 = irand(2);
-            if (tree->root->children[choice1]->nchildren == 2)
-                tree->reroot(tree->root->children[choice1]->children[choice2]);
-            else
-                tree->reroot(tree->root->children[!choice1]->children[choice2]);
-            */
         }
     } else {
         oldroot1 = NULL;
@@ -252,6 +237,158 @@ bool NniProposer::more()
 {
     return iter < niter;
 }
+
+//=============================================================================
+// Subtree pruning and regrafting (SPR)
+
+
+/*
+    a = subtree
+    e = newpos
+    
+    BEFORE
+            ....
+        f         d
+       /           \
+      c             e
+     / \           ...
+    a   b
+   ... ...
+
+    AFTER
+
+        f         d
+       /           \
+      b             c
+     ...           / \
+                  a   e
+                 ... ...
+
+    Requirements:
+    1. a (subtree) is not root or children of root
+    2. e (newpos) is not root, a, descendant of a, c (parent of a), or 
+       b (sibling of a)
+    3. tree is binary
+
+*/
+void proposeSpr(Tree *tree, Node *subtree, Node *newpos)
+{
+    Node *a = subtree;
+    Node *e = newpos;
+    
+    Node *c = a->parent;
+    Node *f = c->parent;
+    const int bi = (c->children[0] == a) ? 1 : 0;
+    Node *b = c->children[bi];
+    const int ci = (f->children[0] == c) ? 0 : 1;
+    Node *d = e->parent;
+    const int ei = (d->children[0] == e) ? 0 : 1;
+
+    d->children[ei] = c;
+    c->children[bi] = e;
+    f->children[ci] = b;
+    b->parent = f;
+    c->parent = d;
+    e->parent = c;
+}
+
+/*
+    What if e == f  (also equivalent to NNI) this is OK
+
+    BEFORE
+    
+          d
+         / \
+        e  ...
+       / \
+      c  ...         
+     / \           
+    a   b
+   ... ...
+
+    AFTER
+          d
+         / \
+        c
+       / \
+      a   e
+     ... / \
+        b  ...
+       ...
+       
+  What if d == f  (also equivalent to NNI) this is OK
+  
+    BEFORE
+          
+        f
+       / \
+      c   e
+     / \  ...
+    a   b
+   ... ...
+
+    AFTER
+          
+        f
+       / \
+      b   c  
+     ... / \ 
+        a   e
+       ... ...  
+*/
+
+
+
+/*
+    Requirements:
+    1. a (subtree) is not root or children of root
+    2. e (newpos) is not root, a, descendant of a, c (parent of a), or 
+       b (sibling of a)
+    3. tree is binary
+*/
+void proposeRandomSpr(Tree *tree, Node **subtree, Node **newpos)
+{
+    assert(tree->nnodes >= 5);
+
+    // find subtree (a) to cut off (any node that is not root or child of root)
+    int choice;
+    do {
+        choice = irand(tree->nnodes);
+    } while (tree->nodes[choice]->parent == NULL ||
+             tree->nodes[choice]->parent->parent == NULL);
+    *subtree = tree->nodes[choice];
+    Node *a = *subtree;
+    
+    // find sibling (b) of a
+    Node *c = a->parent;
+    const int bi = (c->children[0] == a) ? 1 : 0;
+    Node *b = c->children[bi];
+    
+    // choose newpos (e)
+    Node *e = NULL;
+    do {
+        choice = irand(tree->nnodes);
+        Node *e = tree->nodes[choice];
+        
+        // test if e is a valid choice
+        if (e->parent == NULL || e == a || e == c || e == b)
+            continue;
+        
+        // also test if e is a descendent of a
+        bool under_a = false;
+        for (Node *ptr = e->parent; ptr != NULL; ptr = ptr->parent) {
+            if (ptr == a) {
+                under_a = true;
+                break;
+            }
+        }            
+        
+        if (under_a)
+            continue;
+    } while (false);
+    *newpos = e;
+}
+
 
 //=============================================================================
 // Fitting branch lengths

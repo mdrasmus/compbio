@@ -29,92 +29,6 @@ namespace spidir {
 
          node2
         /     \
-      uncle    node1
-               /  \
-         child[0]  child[1]
-    
-    special case with rooted branch:
-    
-              node2
-             /     \
-        node2'      node1
-       /     \     /     \
-      uncle   * child[0] child[1]
-    
-      
-    I do not need to renumber nodes is if child[change] and uncle are 
-    both leaves or both all internal.    
-    Renumbering is simply a swap of the two nodes otherwise
-*/
-void proposeNni(Tree *tree, Node *node1, Node *node2, Node *child)
-{
-    int uncle = 0;
-
-    // ensure node1 is the child of node2
-    if (node1->parent != node2) {
-        Node *tmp = node1; node1 = node2; node2 = tmp;
-    }
-    assert(node1->parent == node2);
-    
-    
-    // try to see if edge is one branch (not root edge)
-    if (tree->isRooted() && node2 == tree->root) {
-        // special case of specifying root edge
-        if (node2->children[0] == node1)
-            node2 = node2->children[1];
-        else
-            node2 = node2->children[0];
-        
-        // if edge is not an internal edge, give up
-        if (node2->nchildren < 2)
-            return;
-    }
-    
-    if (node1->parent == tree->root &&
-        node2->parent == tree->root)
-    {
-        uncle = 0;
-        
-        if (node2->children[0]->nchildren < 2 && 
-            node2->children[1]->nchildren < 2) {
-            // can't do NNI on this branch
-            return;
-        }
-    } else {
-        // find uncle
-        uncle = 0;
-        if (node2->children[uncle] == node1)
-            uncle = 1;
-    }
-    
-    int change = (node1->children[0] == child) ? 0 : 1;
-    assert(node1->children[change] == child);
-    
-    // swap parent pointers
-    //node1->children[change]->parent = node2;
-    child->parent = node2;
-    node2->children[uncle]->parent = node1;
-    
-    // swap child pointers
-    Node *tmp = node2->children[uncle];
-    node2->children[uncle] = child;
-    node1->children[change] = tmp;    
-    
-    //node2->children[uncle] = node1->children[change];
-    //node1->children[change] = tmp;
-}
-
-
-/*
-
-    Proposes a new tree using Nearest Neighbor Interchange
-       
-       Branch for NNI is specified by giving its two incident nodes (node1 and 
-       node2).  Change specifies which  subtree of node1 will be swapped with
-       the uncle.  See figure below.
-
-         node2
-        /     \
       nodeb    node1
                /  \
          nodea     * 
@@ -162,89 +76,6 @@ void proposeRandomNni(Tree *tree, Node **a, Node **b)
                                          node2->children[0];
 }
 
-
-NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
-                         int niter) :
-    nodea(NULL),
-    nodeb(NULL),
-    nodec(NULL),
-    noded(NULL),
-    oldroot1(NULL),
-    oldroot2(NULL),
-    stree(stree),
-    gene2species(gene2species),
-    niter(niter),
-    iter(0),
-    correctTree(NULL),
-    correctSeen(false)
-{}
-    
-    
-void NniProposer::propose(Tree *tree)
-{
-    const float rerootProb = 1.0;
-    const float doubleNniProb = 0.1;
-    
-    // increase iteration
-    iter++;
-    
-    nodea = nodeb = nodec = noded = NULL;
-
-    // propose new tree
-    proposeRandomNni(tree, &nodea, &nodeb);
-    proposeNni(tree, nodea, nodeb);
-
-    if (frand() < doubleNniProb) {
-        printLog(LOG_MEDIUM, "search: double NNI\n");
-        proposeRandomNni(tree, &node3, &node4, &nodec, &noded);
-        proposeNni(tree, nodec, noded);
-    }
-    
-    // reroot tree if stree is given
-    if (frand() < rerootProb) {
-        oldroot1 = tree->root->children[0];
-        oldroot2 = tree->root->children[1];
-        
-        if (stree != NULL) {
-            reconRoot(tree, stree, gene2species);
-        }
-    } else {
-        oldroot1 = NULL;
-        oldroot2 = NULL;
-    }
-    
-    if (correctTree) {
-        if (tree->sameTopology(correctTree))
-            correctSeen = true;
-    }
-
-    assert(tree->assertTree());
-}
-
-void NniProposer::revert(Tree *tree)
-{
-    // reject, undo topology change
-
-    if (oldroot1) {
-        if (oldroot1->parent == oldroot2)
-            tree->reroot(oldroot1);
-        else
-            tree->reroot(oldroot2);
-    }
-    
-    //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
-    //       node2->name, node2->nchildren);
-    if (nodec)
-        proposeNni(tree, nodec, noded);
-    if (nodea)
-        proposeNni(tree, nodea, nodeb);
-}
-
-
-bool NniProposer::more()
-{
-    return iter < niter;
-}
 
 //=============================================================================
 // Subtree pruning and regrafting (SPR)
@@ -364,8 +195,8 @@ void proposeRandomSpr(Tree *tree, Node **subtree, Node **newpos)
         choice = irand(tree->nnodes);
     } while (tree->nodes[choice]->parent == NULL ||
              tree->nodes[choice]->parent->parent == NULL);
-    *subtree = tree->nodes[choice];
-    Node *a = *subtree;
+    Node *a = tree->nodes[choice];
+    *subtree = a;
     
     // find sibling (b) of a
     Node *c = a->parent;
@@ -376,7 +207,7 @@ void proposeRandomSpr(Tree *tree, Node **subtree, Node **newpos)
     Node *e = NULL;
     do {
         choice = irand(tree->nnodes);
-        Node *e = tree->nodes[choice];
+        e = tree->nodes[choice];
         
         // test if e is a valid choice
         if (e->parent == NULL || e == a || e == c || e == b)
@@ -393,9 +224,147 @@ void proposeRandomSpr(Tree *tree, Node **subtree, Node **newpos)
         
         if (under_a)
             continue;
-    } while (false);
+        
+        // NOTE: make sure loop doesn't get optimized away
+        break;
+    } while (true);
     *newpos = e;
 }
+
+
+
+//=============================================================================
+// NNI Proposer
+
+NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
+                         int niter) :
+    nodea(NULL),
+    nodeb(NULL),
+    nodec(NULL),
+    noded(NULL),
+    oldroot1(NULL),
+    oldroot2(NULL),
+    stree(stree),
+    gene2species(gene2species),
+    niter(niter),
+    iter(0),
+    correctTree(NULL),
+    correctSeen(false)
+{}
+    
+    
+void NniProposer::propose(Tree *tree)
+{
+    const float rerootProb = 1.0;
+    const float doubleNniProb = 0.1;
+    
+    // increase iteration
+    iter++;
+    
+    nodea = nodeb = nodec = noded = NULL;
+
+    // propose new tree
+    proposeRandomNni(tree, &nodea, &nodeb);
+    proposeNni(tree, nodea, nodeb);
+
+    if (frand() < doubleNniProb) {
+        printLog(LOG_MEDIUM, "search: double NNI\n");
+        proposeRandomNni(tree, &nodec, &noded);
+        proposeNni(tree, nodec, noded);
+    }
+    
+    // reroot tree if stree is given
+    if (frand() < rerootProb) {
+        oldroot1 = tree->root->children[0];
+        oldroot2 = tree->root->children[1];
+        
+        if (stree != NULL) {
+            reconRoot(tree, stree, gene2species);
+        }
+    } else {
+        oldroot1 = NULL;
+        oldroot2 = NULL;
+    }
+    
+    if (correctTree) {
+        if (tree->sameTopology(correctTree))
+            correctSeen = true;
+    }
+
+    assert(tree->assertTree());
+}
+
+void NniProposer::revert(Tree *tree)
+{
+    // reject, undo topology change
+
+    if (oldroot1) {
+        if (oldroot1->parent == oldroot2)
+            tree->reroot(oldroot1);
+        else
+            tree->reroot(oldroot2);
+    }
+    
+    //printf("NNI %d %d %d %d\n", node1->name, node1->parent->name, 
+    //       node2->name, node2->nchildren);
+    if (nodec)
+        proposeNni(tree, nodec, noded);
+    if (nodea)
+        proposeNni(tree, nodea, nodeb);
+}
+
+
+bool NniProposer::more()
+{
+    return iter < niter;
+}
+
+
+
+//=============================================================================
+// SPR + NNI Proposer
+
+SprNniProposer::SprNniProposer(SpeciesTree *stree, int *gene2species,
+                         int niter, float sprRatio) :
+    NniProposer(stree, gene2species, niter),
+    sprRatio(sprRatio)
+{
+}
+    
+    
+void SprNniProposer::propose(Tree *tree)
+{
+    if (frand() < sprRatio) {
+        lastPropose = PROPOSE_SPR;
+        
+        // increase iteration
+        iter++;
+        
+        proposeRandomSpr(tree, &nodea, &nodeb);
+        
+        // remember sibling of nodea
+        const Node *p = nodea->parent;
+        nodec = (p->children[0] == nodea) ? p->children[1] : p->children[0];
+        
+        proposeSpr(tree, nodea, nodeb);
+    } else {
+        lastPropose = PROPOSE_NNI;
+        NniProposer::propose(tree);
+    }
+}
+
+void SprNniProposer::revert(Tree *tree)
+{
+    if (lastPropose == PROPOSE_SPR) {
+        proposeSpr(tree, nodea, nodec);
+    
+    } else if (lastPropose == PROPOSE_NNI) {
+        NniProposer::revert(tree);
+    } else {
+        assert(false);
+    }
+}
+
 
 
 //=============================================================================

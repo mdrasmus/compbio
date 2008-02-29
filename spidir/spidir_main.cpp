@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     
     config.add(new ConfigParamComment("Miscellaneous"));
     config.add(new ConfigParam<string>(
-        "", "--search", "mcmc|nni", &search, "mcmc", 
+        "", "--search", "mcmc|climb", &search, "mcmc", 
         "search algorithm"));
     config.add(new ConfigParam<int>(
         "-i", "--niter", "<# iterations>", &niter, 100, 
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
     
     
     // init topology proposer
-    NniProposer nniProposer(&stree, gene2species, niter);
+    SprNniProposer proposer(&stree, gene2species, niter);
     
     // load correct tree
     Tree correctTree;    
@@ -275,7 +275,7 @@ int main(int argc, char **argv)
         }
         // TODO: aborts if leaves mismatch, should catch error
         correctTree.reorderLeaves(genes);
-        nniProposer.setCorrect(&correctTree);
+        proposer.setCorrect(&correctTree);
     }
     
     // determine branch length algorithm
@@ -305,13 +305,13 @@ int main(int argc, char **argv)
         toptree = searchMCMC(tree, 
                              genes, aln->nseqs, aln->seqlen, aln->seqs,
                              lkfunc,
-                             &nniProposer,
+                             &proposer,
                              fitter);
-    } else if (search == "nni") {
+    } else if (search == "climb") {
         toptree = searchNni(tree, 
                             genes, aln->nseqs, aln->seqlen, aln->seqs,
                             lkfunc,
-                            &nniProposer,
+                            &proposer,
                             fitter);
     } else {
         printError("unknown search '%s'", search.c_str());
@@ -322,7 +322,7 @@ int main(int argc, char **argv)
     toptree->writeNewick(outtreeFilename.c_str());
     
     if (correctFile != "") {
-        if (nniProposer.seenCorrect()) {
+        if (proposer.seenCorrect()) {
             printLog(LOG_LOW, "SEARCH: correct visited\n");
         } else {
             printLog(LOG_LOW, "SEARCH: correct NEVER visited\n");

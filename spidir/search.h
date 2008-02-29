@@ -45,6 +45,27 @@ protected:
     bool correctSeen;
 };
 
+
+class SprNniProposer: public NniProposer
+{
+public:
+    SprNniProposer(SpeciesTree *stree=NULL, int *gene2species=NULL, 
+                   int niter=500, float sprRatio=0.5);
+
+    virtual void propose(Tree *tree);
+    virtual void revert(Tree *tree);
+    
+protected:
+    typedef enum {
+        PROPOSE_NNI,
+        PROPOSE_SPR
+    } ProposeType;
+    
+    float sprRatio;
+    ProposeType lastPropose;
+};
+
+
 class BranchLengthFitter
 {
 public:

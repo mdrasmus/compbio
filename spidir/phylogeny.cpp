@@ -223,6 +223,7 @@ void reconcile_recurse(Tree *tree, Node *node, SpeciesTree *stree, int *recon)
     for (int i=0; i<node->nchildren; i++)
         reconcile_recurse(tree, node->children[i], stree, recon);
     
+    // post process
     if (node->nchildren > 0) {
         int sname1 = recon[node->children[0]->name];
         int sname2 = recon[node->children[1]->name];
@@ -304,23 +305,125 @@ int countLossNode(Node *node, SpeciesTree *stree, int *recon)
         return 0;
     
     // determine species path of this gene branch (node, node->parent)
-    Node *ptr = sstart;
+    Node *ptr = sstart->parent;
     while (ptr != send) {
         // process ptr
-        if (ptr != sstart)
-            loss += ptr->nchildren - 1;
+        loss += ptr->nchildren - 1;
         
         // go up species tree
         ptr = ptr->parent;
     }
     
     // determine whether node->parent is a dup
-    // if so, send (species end) is part of species path
+    // if so, send (a.k.a. species end) is part of species path
     if (send->name == recon[node->parent->children[0]->name] ||
         send->name == recon[node->parent->children[1]->name])
          loss += send->nchildren - 1;
         
     return loss;
+}
+
+
+void addSpecNode(Node *node, Node *snode, Tree *tree, 
+                 ExtendArray<int> &recon, ExtendArray<int> &events)
+{
+    //printf("node: %d %d\n", node->name, snode->name);
+    
+    Node *newnode = tree->addNode(new Node(1));
+    Node *parent = node->parent;
+    
+    // find index of node in parent's children
+    int nodei=0;
+    for (; nodei<parent->nchildren; nodei++)
+        if (parent->children[nodei] == node)
+            break;
+    
+    // insert new node into tree
+    parent->children[nodei] = newnode;
+    newnode->parent = parent;
+    newnode->children[0] = node;
+    node->parent = newnode;
+    
+    // add recon and events info
+    recon.append(snode->name);
+    events.append(EVENT_SPEC);
+}
+
+void addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree, 
+    ExtendArray<int> &recon, ExtendArray<int> &events)
+{
+    // recurse
+    for (int i=0; i<node->nchildren; i++)
+        addImpliedSpecNodes_recurse(node->children[i], tree, stree, recon, events);
+
+    // process this node and the branch above it
+    
+    // if not parent, then no implied speciation nodes above us
+    if (node->parent == NULL)
+        return;
+    
+    // determine starting and ending species
+    Node *sstart = stree->nodes[recon[node->name]];
+    Node *send = stree->nodes[recon[node->parent->name]];
+    
+    // the species path is too short to have implied speciations
+    if (sstart == send)
+        return;
+    
+    Node *parent = node->parent;
+    
+    // determine species path of this gene branch (node, node->parent)
+    Node *ptr = sstart->parent;
+    while (ptr != send) {
+        // process ptr
+        addSpecNode(node, ptr, tree, recon, events);
+        
+        // go up species tree
+        ptr = ptr->parent;
+    }
+    
+    // determine whether node->parent is a dup
+    // if so, send (a.k.a. species end) is part of species path
+    if (events[parent->name] == EVENT_DUP)
+         addSpecNode(node, send, tree, recon, events);
+}
+
+
+
+void addImpliedSpecNodes(Tree *tree, SpeciesTree *stree, 
+                         ExtendArray<int> &recon, ExtendArray<int> &events)
+{
+    addImpliedSpecNodes_recurse(tree->root, tree, stree, recon, events);
+}
+
+
+void removeImpliedSpecNodes(Tree *tree, int addedNodes)
+{
+    int nnodes = tree->nnodes;
+
+    // remove nodes from end of node list
+    for (int i=nnodes-1; i>=nnodes-addedNodes; i--)
+    {
+        Node *oldnode = tree->nodes[i];
+        Node *parent = oldnode->parent;
+        Node *child = oldnode->children[0];
+        
+        assert(oldnode->nchildren == 1);
+        
+        // find index of oldnode in parent's children
+        int nodei=0;
+        for (; nodei<parent->nchildren; nodei++)
+            if (parent->children[nodei] == oldnode)
+                break;        
+    
+        // remove old node from tree
+        parent->children[nodei] = child;
+        child->parent = parent;
+        tree->nodes.pop();
+        tree->nnodes--;
+        
+        delete oldnode;
+    }
 }
 
 //=============================================================================

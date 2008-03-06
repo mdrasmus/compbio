@@ -45,6 +45,13 @@ void generateBranchLengths(Tree *tree,
                            int *recon, int *events,
                            SpidirParams *params);
 
+
+float birthDeathDensity(float *times, int ntimes, float maxtime, 
+                        float birthRate, float deathRate);
+
+float birthDeathTreePrior(Tree *tree, SpeciesTree *stree, int *recon, 
+                          int *events, float birthRate, float deathRate);
+
 } // namespace spidir
 
 #endif // SPIDIR_LIKELIHOOD_H

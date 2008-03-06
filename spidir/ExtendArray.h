@@ -51,11 +51,11 @@ public:
         datasize(size),
         minsize(_minsize)
     {
-        // makesure capacity is atleast length of data
+        // make sure capacity is atleast length of data
         if (datasize < len)
             datasize = len;
         
-        // makesure min allocate size is atleast capacity
+        // make sure min allocate size is atleast capacity
         // useful for multiple detachment
         if (minsize < datasize)
             minsize = datasize;

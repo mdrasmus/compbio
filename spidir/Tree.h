@@ -56,7 +56,7 @@ public:
         dist(0.0)
     {
         if (nchildren != 0)
-            setChildren(nchildren);
+            allocChildren(nchildren);
     }
     
     ~Node()

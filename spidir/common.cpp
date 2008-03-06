@@ -243,8 +243,10 @@ vector<string> split(const char *str, const char *delim, bool multiDelim)
 string trim(const char *word)
 {
     char buf[101];
-    sscanf(word, "%100s", buf);
-    return string(buf);
+    if (sscanf(word, "%100s", buf) == 1)
+        return string(buf);
+    else
+        return string("");
 }
 
 

@@ -409,6 +409,79 @@ int test_genbranches(int argc, char **argv)
 }
 
 
+int test_subtrees(int argc, char **argv)
+{
+    string treefile;
+    string streefile;
+    string smapfile;
+
+    // parse arguments
+    ConfigParser config;
+    config.add(new ConfigParam<string>(
+        "-t", "--tree", "<tree topology file>", &treefile, 
+        "tree"));
+    config.add(new ConfigParam<string>(
+        "-S", "--smap", "<species map>", &smapfile, 
+        "gene to species map"));
+    config.add(new ConfigParam<string>(
+        "-s", "--stree", "<species tree>", &streefile, 
+        "species tree file in newick format"));    
+    
+    if (!config.parse(argc, (const char**) argv)) {
+        if (argc < 2)
+            config.printHelp();
+        return 1;
+    }
+
+
+    Tree tree;
+    tree.readNewick(treefile.c_str());
+    
+    displayTree(&tree, stdout, 20);
+    
+    SpeciesTree stree;
+    stree.readNewick(streefile.c_str());
+    stree.setDepths();
+    
+    displayTree(&stree, stdout, 20);
+    
+    // read gene2species map
+    Gene2species g;
+    g.read(smapfile.c_str());
+        
+    // produce mapping array
+    ExtendArray<string> genes(tree.nnodes);
+    tree.getLeafNames(genes);    
+
+    ExtendArray<string> species(stree.nnodes);
+    stree.getLeafNames(species);
+    
+    ExtendArray<int> gene2species(tree.nnodes);
+    g.getMap(genes, (tree.nnodes+1)/2, species, stree.nnodes, gene2species);
+    
+    
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(tree.nnodes);
+    ExtendArray<int> events(tree.nnodes);
+
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
+    
+        
+    printf("%f\n", birthDeathTreePrior(&tree, &stree, recon, events, 3.0, 2.0));
+    
+    displayTree(&tree, stdout, 20);
+    
+    printIntArray(recon, recon.size());
+    printIntArray(events, events.size());
+
+    
+    //for (int i=0; i<10000; i++)
+    //    printf("%f\n", gammavariate(10, 2));
+        //printf("%f\n", normalvariate(10, 1));
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -421,7 +494,8 @@ int main(int argc, char **argv)
                "  mledist\n"
                "  reroot\n"
                "  reconroot\n"
-               "  genbranches\n");
+               "  genbranches\n"
+               "  subtrees\n");
         return 1;
     }
 
@@ -443,6 +517,8 @@ int main(int argc, char **argv)
         test_reconroot(argc-1, &argv[1]);
     } else if (testname == "genbranches") {
         test_genbranches(argc-1, &argv[1]);
+    } else if (testname == "subtrees") {
+        test_subtrees(argc-1, &argv[1]);
     } else {
         printf("unknown test\n");
         return 1;

@@ -40,6 +40,7 @@ SPIDIR_SRC = \
     mldist.cpp \
     common.cpp \
     likelihood.cpp \
+    likelihood2.cpp \
     parsimony.cpp \
     phylogeny.cpp \
     search.cpp \
@@ -50,6 +51,7 @@ SPIDIR_OBJS = \
     mldist.o \
     common.o \
     likelihood.o \
+    likelihood2.o \
     parsimony.o \
     phylogeny.o \
     search.o \

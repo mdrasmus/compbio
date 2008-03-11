@@ -475,8 +475,8 @@ class Gnuplot:
             except ZeroDivisionError:
                 pass
             start += step
-        
-        self.plot(x, y, style="lines", **options)
+        options.setdefault("style", "lines")
+        self.plot(x, y, **options)
     
     
     def plotdiag(self, start=None, end=None, **options):

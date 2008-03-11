@@ -29,113 +29,6 @@ using namespace spidir;
 
 
 
-int test_reconstruct(int argc, char **argv)
-{    
-    // parameters
-    string alignfile;    
-    string smapfile;
-    string streefile;
-    string paramsfile;
-    int niter = 0;
-    bool help = false;
-    
-    
-    // parse arguments
-    ConfigParser config;
-    config.add(new ConfigParam<string>(
-        "-a", "--align", "<alignment fasta>", &alignfile, 
-        "sequence alignment in fasta format"));
-    config.add(new ConfigParam<string>(
-        "-S", "--smap", "<species map>", &smapfile, 
-        "gene to species map"));
-    config.add(new ConfigParam<string>(
-        "-s", "--stree", "<species tree>", &streefile, 
-        "species tree file in newick format"));
-    config.add(new ConfigParam<string>(
-        "-p", "--param", "<spidir params file>", &paramsfile, 
-        "SPIDIR branch length parameters file"));
-    
-    
-    config.add(new ConfigParamComment("Miscellaneous options"));
-    config.add(new ConfigParam<int>(
-        "-i", "--niter", "<# iterations>", &niter, 100, 
-        "number of iterations"));
-    config.add(new ConfigSwitch(
-        "-h", "--help", &help, "display help information"));
-
-    
-    
-    if (!config.parse(argc, (const char**) argv)) {
-        if (argc < 2)
-            config.printHelp();
-        return 1;
-    }
-    
-    if (help) {
-        config.printHelp();
-        return 0;
-    }
-
-    
-    //============================================================
-    // read species tree
-    SpeciesTree stree;
-    stree.readNewick(streefile.c_str());
-    stree.setDepths();
-    
-    // read gene2species map
-    Gene2species g;
-    g.read(smapfile.c_str());
-    
-
-    // read sequences
-    Sequences *aln;
-    
-    if ((aln = readAlignFasta(alignfile.c_str())) == NULL ||
-        !checkSequences(aln->nseqs, aln->seqlen, aln->seqs)) {
-        printError("bad alignment file");
-        return 1;
-    }
-
-    // read SPIDIR parameters
-    SpidirParams *params;
-    if ((params = readSpidirParams(paramsfile.c_str())) == NULL)
-    {
-        printError("bad parameters file");
-        return 1;
-    }
-    
-    if (!params->order(&stree)) {
-        printError("parameters do not correspond to the given species tree");
-        return 1;
-    }
-    
-    
-    int nnodes = aln->nseqs * 2 - 1;
-
-    // produce mapping array
-    ExtendArray<string> genes(0, nnodes);
-    genes.extend(aln->names, aln->nseqs);
-    
-    ExtendArray<string> species(stree.nnodes);
-    stree.getLeafNames(species);
-    
-    ExtendArray<int> gene2species(nnodes);
-    g.getMap(genes, aln->nseqs, species, stree.nnodes, gene2species);
-    
-    // search
-    Tree *toptree = searchMCMC(NULL, &stree,
-                               params, gene2species,
-                               genes, aln->nseqs, aln->seqlen, aln->seqs,
-                               niter, 0.01, 1.0);
-    
-    toptree->setLeafNames(genes);
-    toptree->writeNewick();
-    
-    delete toptree;
-    
-    return 0;
-}
 
 
 int test_mledist(int argc, char **argv)
@@ -463,15 +356,21 @@ int test_subtrees(int argc, char **argv)
     // reconcile gene tree to species tree
     ExtendArray<int> recon(tree.nnodes);
     ExtendArray<int> events(tree.nnodes);
-
     reconcile(&tree, &stree, gene2species, recon);
     labelEvents(&tree, recon, events);
     
-        
-    printf("%f\n", birthDeathTreePrior(&tree, &stree, recon, events, 3.0, 2.0));
+    
+    addImpliedSpecNodes(&tree, &stree, recon, events);
+    sampleDupTimes(&tree, &stree, recon, events, 3.0, 2.0);
     
     displayTree(&tree, stdout, 20);
+        
     
+    float bd = birthDeathTreePrior(&tree, &stree, recon, events, 3.0, 2.0);
+    
+    printf("fl = %f\n", bd);
+    
+
     printIntArray(recon, recon.size());
     printIntArray(events, events.size());
 
@@ -489,7 +388,6 @@ int main(int argc, char **argv)
     
     if (argc < 2) {
         printf("choose a test:\n"
-               "  reconstruct\n"
                "  gene2species\n"
                "  mledist\n"
                "  reroot\n"
@@ -501,10 +399,7 @@ int main(int argc, char **argv)
 
     string testname = argv[1];
     
-    if (testname == "reconstruct") {
-        test_reconstruct(argc-1, &argv[1]);
-        
-    } else if (testname == "gene2species") {
+    if (testname == "gene2species") {
         test_gene2species(argc-1, &argv[1]);
         
     } else if (testname == "mledist") {

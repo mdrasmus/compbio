@@ -12,9 +12,12 @@ from rasmus import tablelib
 
 
 
-
+def prod(lst):
+    """Computes the product of a list of numbers"""
+    return exp(sum(log(i) for i in lst))
 
 def mean(vals):
+    """Computes the mean of a list of numbers"""
     n = 0
     s = 0.0
     for i in vals:
@@ -23,6 +26,7 @@ def mean(vals):
     return s / float(n)
 
 def median(vals):
+    """Computes the median of a list of numbers"""
     lenvals = len(vals)
     sortvals = util.sort(vals)
     
@@ -32,6 +36,7 @@ def median(vals):
         return sortvals[lenvals / 2]
 
 def mode(vals):
+    """Computes the mode of a list of numbers"""
     top = 0
     topkey = None
     for key, val in util.histDict(vals).iteritems():
@@ -323,13 +328,18 @@ def logfactorial(x, k=1):
 
 
 def choose(n, k):
-    t = 1
+    if n <= 0 or k <= 0 or k > n:
+        return 0
     
-    for i in xrange(1,k+1):
-        t *= (n - i + 1) / i
-    return t
+    # optimization for speed
+    if k > n/2:
+        k = n - k
+    
+    t = 1.0
+    for i in xrange(1, k+1):
+        t = t * (n - i + 1) / i
+    return int(t + 0.5)
     #return factorial(n, n - k) / factorial(k)
-
 
 
 def sample(weights):
@@ -467,9 +477,17 @@ def enrichItems(in_items, out_items):
 # Distributions
 #
 
-def bionomialPdf(n, params):
-    p, k = params
-    return choose(n, k) * (p ** k) * ((1-p) ** (n - k))
+def uniformPdf(x, params):
+    a, b = params
+    if x < a or x > b:
+        return 0.0
+    else:
+        return 1.0 / (b - a)
+
+
+def binomialPdf(k, params):
+    p, n = params
+    return choose(n, k) * (p ** k) * ((1.0-p) ** (n - k))
 
 def gaussianPdf(x, params):
     return 1/sqrt(2*pi) * exp(- x**2 / 2.0)

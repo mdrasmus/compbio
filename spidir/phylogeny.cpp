@@ -349,18 +349,21 @@ void addSpecNode(Node *node, Node *snode, Tree *tree,
     events.append(EVENT_SPEC);
 }
 
-void addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree, 
+int addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree, 
     ExtendArray<int> &recon, ExtendArray<int> &events)
 {
+    int addedNodes = 0;
+
     // recurse
     for (int i=0; i<node->nchildren; i++)
-        addImpliedSpecNodes_recurse(node->children[i], tree, stree, recon, events);
+        addedNodes += addImpliedSpecNodes_recurse(node->children[i], 
+                                                  tree, stree, recon, events);
 
     // process this node and the branch above it
     
     // if not parent, then no implied speciation nodes above us
     if (node->parent == NULL)
-        return;
+        return addedNodes;
     
     // determine starting and ending species
     Node *sstart = stree->nodes[recon[node->name]];
@@ -368,7 +371,7 @@ void addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree,
     
     // the species path is too short to have implied speciations
     if (sstart == send)
-        return;
+        return addedNodes;
     
     Node *parent = node->parent;
     
@@ -377,6 +380,7 @@ void addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree,
     while (ptr != send) {
         // process ptr
         addSpecNode(node, ptr, tree, recon, events);
+        addedNodes++;
         
         // go up species tree
         ptr = ptr->parent;
@@ -384,16 +388,20 @@ void addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree,
     
     // determine whether node->parent is a dup
     // if so, send (a.k.a. species end) is part of species path
-    if (events[parent->name] == EVENT_DUP)
+    if (events[parent->name] == EVENT_DUP) {
          addSpecNode(node, send, tree, recon, events);
+         addedNodes++;
+    }
+    
+    return addedNodes;
 }
 
 
 
-void addImpliedSpecNodes(Tree *tree, SpeciesTree *stree, 
+int addImpliedSpecNodes(Tree *tree, SpeciesTree *stree, 
                          ExtendArray<int> &recon, ExtendArray<int> &events)
 {
-    addImpliedSpecNodes_recurse(tree->root, tree, stree, recon, events);
+    return addImpliedSpecNodes_recurse(tree->root, tree, stree, recon, events);
 }
 
 
@@ -419,6 +427,7 @@ void removeImpliedSpecNodes(Tree *tree, int addedNodes)
         // remove old node from tree
         parent->children[nodei] = child;
         child->parent = parent;
+        child->dist += oldnode->dist;
         tree->nodes.pop();
         tree->nnodes--;
         

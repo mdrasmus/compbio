@@ -150,8 +150,8 @@ inline int labelEventsNode(Node *node, int *recon)
     }
 }
 
-void addImpliedSpecNodes(Tree *tree, SpeciesTree *stree, 
-                         ExtendArray<int> &recon, ExtendArray<int> &events);
+int addImpliedSpecNodes(Tree *tree, SpeciesTree *stree, 
+                        ExtendArray<int> &recon, ExtendArray<int> &events);
 void removeImpliedSpecNodes(Tree *tree, int addedNodes);
 
 

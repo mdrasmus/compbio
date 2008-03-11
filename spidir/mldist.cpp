@@ -59,10 +59,11 @@ namespace spidir {
         int delta_ij =  int(i == j);
         int e_ij = int(dnatype[i] == dnatype[j]);    
 
-    prob(j | i, t, pi, R) = 
-        exp(-(alpha_i + beta)*t) * delta_ij + 
-        exp(-beta*t) * (1 - exp(-alpha_i*t)) * (pi_j*e_ij/pi_ry) + 
-        (1 - exp(-beta*t)) * pi_j
+    Formula:
+        prob(j | i, t, pi, R) = 
+            exp(-(alpha_i + beta)*t) * delta_ij + 
+            exp(-beta*t) * (1 - exp(-alpha_i*t)) * (pi_j*e_ij/pi_ry) + 
+            (1 - exp(-beta*t)) * pi_j
 
 */
 class HkyModel
@@ -486,6 +487,39 @@ void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
     }
 }
 
+template <class Model>
+float calcSeqProb(Tree *tree, int nseqs, char **seqs, 
+                  const float *bgfreq, Model &model)
+{
+    int seqlen = strlen(seqs[0]);
+    
+    // allocate conditional likelihood dynamic programming table
+    ExtendArray<float*> lktable(tree->nnodes);
+    for (int i=0; i<tree->nnodes; i++) {
+        lktable[i] = new float [4 * seqlen];
+        for (int j=0; j<4*seqlen; j++)
+            lktable[i][j] = 0.0; //-INFINITY;
+    }
+    
+    // initialize the condition likelihood table
+    initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
+    float logl = getTotalLikelihood(lktable, tree, seqlen, model, bgfreq);
+    
+    // cleanup
+    for (int i=0; i<tree->nnodes; i++)
+        delete [] lktable[i];
+    
+    return logl;
+}
+
+
+float calcHkySeqProb(Tree *tree, int nseqs, char **seqs, 
+                     const float *bgfreq, float ratio)
+{
+    HkyModel hky(bgfreq, ratio);
+    return calcSeqProb(tree, nseqs, seqs, bgfreq, hky);
+}
+
 
 // NOTE: assumes binary Tree
 template <class Model>
@@ -644,7 +678,7 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
                              float *dists, const float *bgfreq, float ratio, 
                              int maxiter, bool parsinit)
 {
-    int seqlen = strlen(seqs[0]);
+    //int seqlen = strlen(seqs[0]);
         
     // create tree objects
     Tree tree(nnodes);

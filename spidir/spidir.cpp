@@ -68,10 +68,13 @@ void calcDistMatrix(int nseqs, int seqlen, char **seqs, float **distmat)
                 }
             }
             
-            assert(len > 0);
-            
-            distmat[i][j] = changes / len;
-            distmat[j][i] = changes / len;
+            if (len > 0) {
+                distmat[i][j] = changes / len;
+                distmat[j][i] = changes / len;
+            } else {
+                distmat[i][j] = 1.0;
+                distmat[j][i] = 1.0;
+            }
         }
     }
 }

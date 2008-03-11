@@ -104,6 +104,28 @@ public:
 };
 
 
+class BirthDeathFitter : public BranchLengthFitter
+{
+public:
+    BirthDeathFitter(int nseqs, int seqlen, char **seqs, 
+                     float *bgfreq, float tsvratio,
+                     SpeciesTree *stree, int *gene2species,
+                     float birthRate, float deathRate);
+    virtual float findLengths(Tree *tree);
+    
+    int nseqs;
+    int seqlen;
+    char **seqs;    
+    float *bgfreq;
+    float tsvratio;    
+    SpeciesTree *stree;
+    int *gene2species;
+    float birthRate;
+    float deathRate;
+};
+
+
+
 class BranchLikelihoodFunc
 {
 public:
@@ -150,23 +172,17 @@ protected:
 Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
                      SpeciesTree *stree, int *gene2species);
 
-Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
-                SpidirParams *params, int *gene2species,
-                string *genes, int nseqs, int seqlen, char **seqs,
-                int niter=500, float predupprob=0.01, float dupprob=1.0);
-
-
 Tree *searchMCMC(Tree *initTree, 
                  string *genes, int nseqs, int seqlen, char **seqs,
                  BranchLikelihoodFunc *lkfunc,
                  TopologyProposer *proposer,
                  BranchLengthFitter *fitter);
 
-Tree *searchNni(Tree *initTree, 
-                string *genes, int nseqs, int seqlen, char **seqs,
-                BranchLikelihoodFunc *lkfunc,
-                TopologyProposer *proposer,
-                BranchLengthFitter *fitter);
+Tree *searchClimb(Tree *initTree, 
+                  string *genes, int nseqs, int seqlen, char **seqs,
+                  BranchLikelihoodFunc *lkfunc,
+                  TopologyProposer *proposer,
+                  BranchLengthFitter *fitter);
 
 } // namespace spidir
 

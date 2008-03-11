@@ -225,7 +225,6 @@ void proposeRandomSpr(Tree *tree, Node **subtree, Node **newpos)
         if (under_a)
             continue;
         
-        // NOTE: make sure loop doesn't get optimized away
         break;
     } while (true);
     *newpos = e;
@@ -395,8 +394,7 @@ HkyFitter::HkyFitter(int nseqs, int seqlen, char **seqs,
     tsvratio(tsvratio),
     maxiter(maxiter),
     useLogl(useLogl)
-{
-}
+{}
 
 float HkyFitter::findLengths(Tree *tree)
 { 
@@ -406,6 +404,58 @@ float HkyFitter::findLengths(Tree *tree)
         return logl;
     else
         return 0.0;
+}
+
+
+BirthDeathFitter::BirthDeathFitter(int nseqs, int seqlen, char **seqs, 
+                                   float *bgfreq, float tsvratio,
+                                   SpeciesTree *stree, int *gene2species, 
+                                   float birthRate, float deathRate) :
+    nseqs(nseqs),
+    seqlen(seqlen), 
+    seqs(seqs), 
+    bgfreq(bgfreq), 
+    tsvratio(tsvratio),
+    stree(stree),
+    gene2species(gene2species),
+    birthRate(birthRate),
+    deathRate(deathRate)
+{}
+
+
+float BirthDeathFitter::findLengths(Tree *tree)
+{
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(tree->nnodes);
+    ExtendArray<int> events(tree->nnodes);
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+    
+    int addedNodes = addImpliedSpecNodes(tree, stree, recon, events);
+    
+    float qbdlogl = birthDeathTreeQuickPrior(tree, stree, recon, events, 
+                                             birthRate, deathRate);  
+    
+    sampleDupTimes(tree, stree, recon, events, birthRate, deathRate);
+    
+    //displayTree(tree, stdout, 100);
+    
+    // TODO: I could add multiple samples here
+    
+    float bdlogl = birthDeathTreePrior(tree, stree, recon, events, 
+                                       birthRate, deathRate);
+    
+    removeImpliedSpecNodes(tree, addedNodes);
+    
+    float logl = findMLBranchLengthsHky(tree, nseqs, seqs, bgfreq, 
+                                        tsvratio, 10);
+    
+    //float logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, tsvratio) + bdlogl;
+    
+    printLog(LOG_MEDIUM, "search logl (total, bd, qbd): %f %f %f\n", 
+             logl, bdlogl, qbdlogl);
+    
+    return logl;
 }
 
 
@@ -501,28 +551,6 @@ Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
 //=============================================================================
 // MCMC search
 
-// NOTE: not used any more
-// DEPRECATED,
-Tree *searchMCMC(Tree *initTree, SpeciesTree *stree,
-                SpidirParams *params, int *gene2species,
-                string *genes, int nseqs, int seqlen, char **seqs,
-                int niter, float predupprob, float dupprob)
-{
-        
-    NniProposer nniProposer(stree, gene2species, niter);
-    ParsimonyFitter parsFitter(nseqs, seqlen, seqs);
-    
-    int nnodes = nseqs * 2 - 1;
-    SpidirBranchLikelihoodFunc lkfunc(nnodes, stree, params, gene2species,
-                                      predupprob, dupprob, -99);
-    
-    return searchMCMC(initTree, 
-                      genes, nseqs, seqlen, seqs,
-                      &lkfunc,
-                      &nniProposer,
-                      &parsFitter);
-}
-
 
 
 void printSearchStatus(Tree *tree, SpeciesTree *stree, int *gene2species,
@@ -580,15 +608,15 @@ Tree *searchMCMC(Tree *initTree,
                  BranchLengthFitter *fitter)
 {
     Tree *toptree = NULL;
-    float toplogl = -1e10, logl=-1e10, nextlogl;
+    float toplogl = -INFINITY, logl=-INFINITY, nextlogl;
     Tree *tree = initTree;
-    //int nnodes = nseqs * 2 - 1;
-        
+    
     
     // determine initial tree
     if (initTree == NULL)
         tree = getInitialTree(genes, nseqs, seqlen, seqs);
     
+    // used for printSearchStatus
     ExtendArray<int> recon(tree->nnodes);
     ExtendArray<int> events(tree->nnodes);
     
@@ -599,16 +627,7 @@ Tree *searchMCMC(Tree *initTree,
     toplogl = logl;
     toptree = tree->copy();
     
-    float speed = 0;
-    
-    typedef ExtendArray<int> TopologyKey;
-    typedef pair<Tree*,float> TreeLogl;
-    TopologyKey key(tree->nnodes);
-
-    HashTable<TopologyKey, TreeLogl, HashTopology> hashtrees(2000, 
-                                                   TreeLogl(NULL, 0));
-
-    
+        
     // MCMC loop
     for (int i=0; proposer->more(); i++) {
         printLog(LOG_LOW, "search: iter %d\n", i);
@@ -616,34 +635,17 @@ Tree *searchMCMC(Tree *initTree,
         // propose new tree 
         proposer->propose(tree);
         
-        // hash topology
-        //tree->hashkey(key);
-        
-        // TURN OFF hashing
-        // have we seen this topology before?
-        //TreeLogl &tmp = hashtrees[key];
-        //if (0 && tmp.first != NULL) {
-        //    // retrieve previously seen tree and logl
-        //    nextlogl = tmp.second;
-        //} else {    
-            // calculate likelihood
-            float seqlk = fitter->findLengths(tree);
-            float branchlk = lkfunc->likelihood(tree);
-            nextlogl = seqlk + branchlk;
-            
-            // hash result
-            //tmp = TreeLogl(tree->copy(), nextlogl);
-        //}
-        
+        float seqlk = fitter->findLengths(tree);
+        float branchlk = lkfunc->likelihood(tree);
+        nextlogl = seqlk + branchlk;       
         
         // acceptance rule
         if (nextlogl > logl ||
-            nextlogl - logl + speed > log(frand()))
+            nextlogl - logl > log(frand()))
         {
             printLog(LOG_MEDIUM, "search: accept %f  %f\n", nextlogl, logl);
             // accept
             logl = nextlogl;
-            speed /= 2.0;
 
             // keep track of toptree            
             if (logl > toplogl) {
@@ -657,7 +659,6 @@ Tree *searchMCMC(Tree *initTree,
                                   lkfunc->getGene2species(), recon, events);
                 
                 delete toptree;
-                speed = 0.0;
                 toptree = tree->copy();
                 toplogl = logl;
             } else {
@@ -665,15 +666,12 @@ Tree *searchMCMC(Tree *initTree,
                     displayTree(toptree, getLogFile());
             }
         } else {
+            // reject, undo topology change        
             printLog(LOG_MEDIUM, "search: reject %f < %f\n", nextlogl, toplogl);
-            if (isLogLevel(LOG_MEDIUM))
-                displayTree(tree, getLogFile());
-            
-            //speed = (speed + 1) * 1.3;
-            
-            // reject, undo topology change
             proposer->revert(tree);
         }
+        
+        
     }
     
     
@@ -681,16 +679,16 @@ Tree *searchMCMC(Tree *initTree,
 }
 
 
-Tree *searchNni(Tree *initTree, 
-                string *genes, int nseqs, int seqlen, char **seqs,
-                BranchLikelihoodFunc *lkfunc,
-                TopologyProposer *proposer,
-                BranchLengthFitter *fitter)
+
+Tree *searchClimb(Tree *initTree, 
+                  string *genes, int nseqs, int seqlen, char **seqs,
+                  BranchLikelihoodFunc *lkfunc,
+                  TopologyProposer *proposer,
+                  BranchLengthFitter *fitter)
 {
     Tree *toptree = NULL;
-    float toplogl = -1e10, nextlogl;
+    float toplogl = -INFINITY, nextlogl;
     Tree *tree = initTree;
-    //int nnodes = nseqs * 2 - 1;
         
     
     // determine initial tree
@@ -707,7 +705,7 @@ Tree *searchNni(Tree *initTree,
     toptree = tree->copy();
     
     
-    // MCMC loop
+    // search loop
     for (int i=0; proposer->more(); i++) {
         printLog(LOG_LOW, "search: iter %d\n", i);
     
@@ -718,7 +716,6 @@ Tree *searchNni(Tree *initTree,
         float seqlk = fitter->findLengths(tree);
         float branchlk = lkfunc->likelihood(tree);
         nextlogl = seqlk + branchlk;
-        
         
         // acceptance rule
         if (nextlogl > toplogl)

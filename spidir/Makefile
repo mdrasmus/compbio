@@ -18,7 +18,8 @@ MEX = mex
 CFLAGS = \
     -Wall -fPIC \
     -I/usr/include/python2.4 \
-    -I/util/include/python2.4
+    -I/util/include/python2.4 \
+    -I.
 
 
 # matlab options
@@ -121,7 +122,7 @@ endif
 #=============================================================================
 # targets
 
-all: $(SPIDIR_PROG) $(LIBSPIDIR) $(PYTHON_MODULE) test_spidir
+all: $(SPIDIR_PROG) $(LIBSPIDIR) $(PYTHON_MODULE)
 
 # stand-alone program
 $(SPIDIR_PROG): $(PROG_OBJS)
@@ -141,9 +142,6 @@ $(LIBSPIDIR_SHARED): $(LIBSPIDIR_OBJS)
 	mkdir -p lib
 	$(CXX) -o $(LIBSPIDIR_SHARED) -shared $(LIBSPIDIR_OBJS)
 
-# testing program
-test_spidir: $(SPIDIR_OBJS) test.o
-	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test.o $(PROG_LIBS) -o test_spidir
 
 # python module
 #pyspidir: $(PYTHON_MODULE)
@@ -165,6 +163,10 @@ $(MATLAB_COMPILE_RULES): %.rule: %.cpp
 	echo "display('compiling $<...');" >> $(MATLAB_COMPILE)
 	echo $(MEX) $(MATLAB_SRC) $< -o $(@:%.rule=%) >> $(MATLAB_COMPILE)
 	touch $@
+
+# testing
+export CFLAGS SPIDIR_OBJS PROG_LIBS CXX
+include Makefile.test
 
 #=============================================================================
 # basic rules
@@ -194,3 +196,4 @@ clean:
               $(MATLAB_OBJS) maxml maxml.o \
               $(MATLAB_COMPILE) $(MATLAB_COMPILE_RULES) \
 	      test.o test_spidir
+

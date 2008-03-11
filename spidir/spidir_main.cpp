@@ -54,8 +54,9 @@ int main(int argc, char **argv)
     string lenfitter;
     float tsvratio;
     string bgfreqstr;
-    float predupprob=0.01;
-    float dupprob=1.0;
+    float predupprob = 0.01;
+    float dupprob = 1.0;
+    float lossprob = 1.0;
     string logfile;
     int verbose = LOG_QUIET;
     bool help = false;
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
     
     config.add(new ConfigParamComment("Sequence model evolution"));
     config.add(new ConfigParam<string>(
-        "-l", "--lengths", "(hky|parsimony)", &lenfitter, "hky",
+        "-l", "--lengths", "(hky|parsimony|birthdeath)", &lenfitter, "hky",
         "algorithm for determining branch lengths (default: hky)"));    
     config.add(new ConfigParam<float>(
         "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
@@ -106,6 +107,9 @@ int main(int argc, char **argv)
         "-D", "--dupprob", "<duplication probability>", &dupprob, 1.0,
         "probability of a node being a duplication (default=1.0)"));
     config.add(new ConfigParam<float>(
+        "-L", "--lossprob", "<loss probability>", &lossprob, 1.0,
+        "probability of loss (default=1.0)"));
+    config.add(new ConfigParam<float>(
         "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
         "probability of a node being a pre-duplication (default=0.01)"));
     config.add(new ConfigSwitch(
@@ -114,7 +118,7 @@ int main(int argc, char **argv)
         "-c", "--correct", "<correct tree file>", &correctFile, ""
         "check if correct tree is visited in search"));
     config.add(new ConfigParam<string>(
-        "", "--lkfunc", "spidir|duploss|none", &lkfuncopt, "spidir",
+        "", "--lkfunc", "spidir|duploss|birthdeath|none", &lkfuncopt, "spidir",
         "function for branch length likelihood"));
 
     config.add(new ConfigParam<int>(
@@ -257,6 +261,8 @@ int main(int argc, char **argv)
                                                 predupprob, dupprob, 
                                                 estGenerate,
                                                 true);
+    else if (lkfuncopt == "birthdeath") 
+        lkfunc = new BranchLikelihoodFunc();
     else {
         printError("unknown lkfunc '%s'", lkfuncopt.c_str());
         return 1;
@@ -287,6 +293,11 @@ int main(int argc, char **argv)
         const int maxiter = 5;
         fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                bgfreq, tsvratio, maxiter);
+    } else if (lenfitter == "birthdeath") {
+        fitter = new BirthDeathFitter(aln->nseqs, aln->seqlen, aln->seqs, 
+                                      bgfreq, tsvratio, 
+                                      &stree, gene2species,
+                                      dupprob, lossprob);
     } else {
         printError("unknown branch length fitting algorithm: '%s'", 
                    lenfitter.c_str());
@@ -308,11 +319,11 @@ int main(int argc, char **argv)
                              &proposer,
                              fitter);
     } else if (search == "climb") {
-        toptree = searchNni(tree, 
-                            genes, aln->nseqs, aln->seqlen, aln->seqs,
-                            lkfunc,
-                            &proposer,
-                            fitter);
+        toptree = searchClimb(tree, 
+                              genes, aln->nseqs, aln->seqlen, aln->seqs,
+                              lkfunc,
+                              &proposer,
+                              fitter);
     } else {
         printError("unknown search '%s'", search.c_str());
         return 1;

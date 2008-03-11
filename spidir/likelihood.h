@@ -52,6 +52,12 @@ float birthDeathDensity(float *times, int ntimes, float maxtime,
 float birthDeathTreePrior(Tree *tree, SpeciesTree *stree, int *recon, 
                           int *events, float birthRate, float deathRate);
 
+float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon, 
+                               int *events, float birthRate, float deathRate);
+
+void sampleDupTimes(Tree *tree, SpeciesTree *stree, int *recon, int *events,
+                    float birthRate, float deathRate);
+
 } // namespace spidir
 
 #endif // SPIDIR_LIKELIHOOD_H

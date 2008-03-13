@@ -43,7 +43,8 @@ void generateBranchLengths(int nnodes, int *ptree,
 void generateBranchLengths(Tree *tree,
                            SpeciesTree *stree,
                            int *recon, int *events,
-                           SpidirParams *params);
+                           SpidirParams *params,
+                           float generate=-1.0);
 
 
 float birthDeathDensity(float *times, int ntimes, float maxtime, 

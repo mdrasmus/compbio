@@ -182,12 +182,12 @@ installpy:
 	cp $(PYTHON_MODULE) $(prefix_python)
 	
 
-myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
-	cp $(SPIDIR_PROG) test_spidir maxml ../bin
+myinstall: $(SPIDIR_PROG) $(PYTHON_MODULE) maxml
+	cp $(SPIDIR_PROG) maxml ../bin
 	cp $(PYTHON_MODULE) ../python
 
-myinstall64: $(SPIDIR_PROG) $(PYTHON_MODULE) test_spidir maxml
-	cp $(SPIDIR_PROG) test_spidir maxml ../bin64
+myinstall64: $(SPIDIR_PROG) $(PYTHON_MODULE) maxml
+	cp $(SPIDIR_PROG) maxml ../bin64
 	cp $(PYTHON_MODULE) ../python64
 
 clean:
@@ -197,3 +197,15 @@ clean:
               $(MATLAB_COMPILE) $(MATLAB_COMPILE_RULES) \
 	      test.o test_spidir
 
+#=============================================================================
+# dependencies
+
+dep:
+	touch Makefile.dep
+	makedepend -f Makefile.dep *.cpp *.h
+
+Makefile.dep:
+	touch Makefile.dep
+	makedepend -f Makefile.dep *.cpp *.h
+
+include Makefile.dep

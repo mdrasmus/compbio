@@ -195,7 +195,7 @@ def logadd(lna, lnb):
     if diff < 500:
         return log(exp(diff) + 1.0) + lnb
     else:
-        return diff + lnb
+        return lna
 
 
 

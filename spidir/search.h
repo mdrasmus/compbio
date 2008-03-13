@@ -57,6 +57,7 @@ public:
     
 protected:
     typedef enum {
+        PROPOSE_NONE,
         PROPOSE_NNI,
         PROPOSE_SPR
     } ProposeType;
@@ -101,6 +102,52 @@ public:
     float tsvratio;
     int maxiter;
     bool useLogl;
+};
+
+
+class SpidirSample : public BranchLengthFitter
+{
+public:
+    SpidirSample(SpeciesTree *stree, SpidirParams *params, int *gene2species) :
+        stree(stree),
+        params(params),
+        gene2species(gene2species)
+    {}
+    virtual float findLengths(Tree *tree);
+    
+    SpeciesTree *stree;
+    SpidirParams *params;
+    int *gene2species;
+};
+
+
+class HkySpidirSample : public BranchLengthFitter
+{
+public:
+    HkySpidirSample(SpeciesTree *stree, SpidirParams *params, int *gene2species,
+                    int nseqs, int seqlen, char **seqs, 
+                    float *bgfreq, float tsvratio, int maxiter) :
+        stree(stree),
+        params(params),
+        gene2species(gene2species),
+        nseqs(nseqs),
+        seqlen(seqlen),
+        seqs(seqs),
+        bgfreq(bgfreq),
+        maxiter(maxiter)
+        
+    {}
+    virtual float findLengths(Tree *tree);
+    
+    SpeciesTree *stree;
+    SpidirParams *params;
+    int *gene2species;
+    int nseqs;
+    int seqlen;
+    char **seqs;    
+    float *bgfreq;
+    float tsvratio;
+    int maxiter;
 };
 
 
@@ -168,21 +215,77 @@ protected:
 };
 
 
+class HkyBranchLikelihoodFunc : public BranchLikelihoodFunc
+{
+public:
+    HkyBranchLikelihoodFunc(int nseqs, int seqlen, char **seqs, 
+                         float *bgfreq, float tsvratio) :
+        nseqs(nseqs),
+        seqlen(seqlen),
+        seqs(seqs),
+        bgfreq(bgfreq),
+        tsvratio(tsvratio)
+    {}
+    
+    virtual float likelihood(Tree *tree);
+    virtual float likelihood2(Tree *tree) { return 0.0; }
+    virtual SpeciesTree *getSpeciesTree() { return NULL; }
+    virtual int *getGene2species() { return NULL; }
+
+    int nseqs;
+    int seqlen;
+    char **seqs;    
+    float *bgfreq;
+    float tsvratio; 
+};
+
+
+
+class SampleFunc
+{
+public:
+    SampleFunc(FILE *output) :
+        output(output)
+    {
+    }
+    
+    virtual ~SampleFunc()
+    {
+        fclose(output);
+    }
+
+    void operator()(Tree *tree)
+    {
+        tree->writeNewick(output, NULL, 0, true);
+        fprintf(output, "\n");
+    }
+    
+protected:
+    FILE *output;
+};
+
+
 
 Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs,
                      SpeciesTree *stree, int *gene2species);
+Tree *getInitialTree(string *genes, int nseqs, int seqlen, char **seqs);
 
-Tree *searchMCMC(Tree *initTree, 
-                 string *genes, int nseqs, int seqlen, char **seqs,
-                 BranchLikelihoodFunc *lkfunc,
-                 TopologyProposer *proposer,
-                 BranchLengthFitter *fitter);
 
 Tree *searchClimb(Tree *initTree, 
                   string *genes, int nseqs, int seqlen, char **seqs,
                   BranchLikelihoodFunc *lkfunc,
                   TopologyProposer *proposer,
                   BranchLengthFitter *fitter);
+
+
+
+Tree *searchMCMC(Tree *initTree, 
+                 string *genes, int nseqs, int seqlen, char **seqs,
+                 SampleFunc *samples,
+                 BranchLikelihoodFunc *lkfunc,
+                 TopologyProposer *proposer,
+                 BranchLengthFitter *fitter);
+
 
 } // namespace spidir
 

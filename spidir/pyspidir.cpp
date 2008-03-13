@@ -96,6 +96,106 @@ void freeStringArray(char **array, int size)
 }
 
 
+bool ParsePy(PyObject *args, const char *fmt, ...)
+{
+    va_list ap;   
+    
+    bool status = true;
+    int *d;
+    int **dl;
+    float *f;
+    float **fl;
+    string *str;
+    bool *b;
+    
+    va_start(ap, fmt);
+
+    if (PyTuple_GET_SIZE(args) < (int) strlen(fmt))
+    {
+        printf("wrong number of arguments\n");
+        return false;
+    }
+    
+    // loop through format string
+    int i=0;
+    for (const char *argtype = fmt; *argtype && status; argtype++, i++) {        
+        // get next arg in lst
+        PyObject *arg = PyTuple_GET_ITEM(args, i);
+        
+        switch (*argtype) {
+            case 'd':
+                if (!PyInt_Check(arg)) {
+                    printf("expected integer for argument %d", i);
+                    status = false;
+                    break;
+                }
+                
+                d = va_arg(ap, int *);
+                *d = PyInt_AS_LONG(arg);
+                break;
+            case 'f':
+                if (!PyFloat_Check(arg)) {
+                    printf("expected float for argument %d", i);
+                    status = false;
+                    break;
+                }
+                
+                f = va_arg(ap, float *);
+                *f = float(PyFloat_AS_DOUBLE(arg));
+                break;
+            case 'D':
+                if (!PyList_Check(arg)) {
+                    printf("expected list for argument %d", i);
+                    status = false;
+                    break;
+                }
+                
+                dl = va_arg(ap, int **); 
+                d = va_arg(ap, int *); 
+                if (!makeIntArray(arg, dl, d)) {
+                    printf("error parsing int list\n");
+                    status = false;
+                }
+                break;
+            case 'F':
+                if (!PyList_Check(arg)) {
+                    printf("expected list for argument %d", i);
+                    status = false;
+                    break;
+                }
+                
+                fl = va_arg(ap, float **); 
+                d = va_arg(ap, int *); 
+                if (!makeFloatArray(arg, fl, d)) {
+                    printf("error parsing float list\n");
+                    status = false;
+                }
+                break;
+            case 's':
+                if (!PyString_Check(arg)) {
+                    printf("expected string for argument %d", i);
+                    status = false;
+                    break;
+                }
+                
+                str = va_arg(ap, string *);
+                *str = PyString_AS_STRING(arg);
+                break;
+            case 'b':
+                b = va_arg(ap, bool *);
+                *b = (arg != Py_False);
+                break;
+        }
+    }
+    
+    va_end(ap);
+    
+    return status;
+}
+
+
+//=============================================================================
+
 
 // Calculate the likelihood of a tree
 static PyObject *
@@ -221,6 +321,66 @@ pyspidir_treelk(PyObject *self, PyObject *args)
 }
 
 
+// Calculate the likelihood of a tree
+static PyObject *
+pyspidir_genbranches(PyObject *self, PyObject *args)
+{
+    // gene tree
+    int nnodes;
+    StackArray<int> ptree;
+
+    // species tree
+    int nsnodes;
+    StackArray<int> pstree;
+    
+    // reconciliation
+    StackArray<int> gene2species;
+    
+    // params
+    StackArray<float> mu;
+    StackArray<float> sigma;
+    float alpha;
+    float beta;
+        
+
+    if (!ParsePy(args, "DDDFFff", 
+                 &ptree, &nnodes,
+                 &pstree, &nsnodes,
+                 &gene2species, &nnodes,
+                 &mu, &nsnodes,
+                 &sigma, &nsnodes,
+                 &alpha, &beta))
+        return NULL;    
+    
+    // make tree object
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();
+
+    // reconcile gene tree to species tree
+    ExtendArray<int> recon(nnodes);
+    ExtendArray<int> events(nnodes);
+
+    reconcile(&tree, &stree, gene2species, recon);
+    labelEvents(&tree, recon, events);
+
+    // generate branch lengths
+    ExtendArray<float> dists(nnodes);
+    for (int i=0; i<nnodes; i++) 
+        dists[i] = 0.0;
+    generateBranchLengths(nnodes, ptree, 
+                          nsnodes, pstree,
+                          recon, events,
+                          mu, sigma,
+                          alpha, beta,
+                          dists);
+    
+    PyObject *ret = makeFloatListPy(dists, nnodes);
+    return ret;
+}
 
 
 // Calculate the likelihood of a tree
@@ -528,6 +688,8 @@ initpyspidir(void)
     static PyMethodDef methods[] = {
         {"treelk",  pyspidir_treelk, METH_VARARGS,
          "Tree likelihood"},
+        {"genbranches",  pyspidir_genbranches, METH_VARARGS,
+         "Generate branch lengths"},
         {"est_generate", pyspidir_est_generate, METH_VARARGS,
          "Estimates max a posteriori gene rate"},
         {"parsimony",  pyspidir_parsimony, METH_VARARGS,

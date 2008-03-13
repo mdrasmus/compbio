@@ -103,7 +103,7 @@ def iterTrees(treefile):
             break
 
 def processTree(tree):
-    global gene2species, ntrees
+    global gene2species, ntrees, stree
     ntrees += 1
 
     if "stree" in conf and \

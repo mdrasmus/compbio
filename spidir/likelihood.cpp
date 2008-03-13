@@ -955,11 +955,12 @@ float maxPosteriorGeneRate(int nnodes, int *ptree, float *dists,
 float genBranch(float generate, float mean, float sdev)
 {
     float blen = 0;
+    const float maxlen = mean + sdev * 3.0;
     
-    while (blen <= 0)
-        blen = generate * normalvariate(mean, sdev);
+    while (blen <= 0 || blen > maxlen)
+        blen = normalvariate(mean, sdev);
     
-    return blen;
+    return generate * blen;
 }
 
 
@@ -972,7 +973,7 @@ void genSubtree(Tree *tree, Node *root,
                 float generate,
                 ReconParams *reconparams)
 {
-    int sroot = stree->root->name;
+    const int sroot = stree->root->name;
 
     
     if (events[root->name] != EVENT_DUP) {
@@ -984,13 +985,18 @@ void genSubtree(Tree *tree, Node *root,
                         reconparams);
             BranchParams bparam = getBranchParams(root->name, ptree, reconparams);            
             root->dist = genBranch(generate, bparam.mu, bparam.sigma);
+        } else {
+            // set branch length above sroot by exponential
+            const float preratio = 0.05;
+            root->dist = expovariate(1.0 / (generate * preratio));
         }
+        
     } else {
         // multiple branches
                 
         // set reconparams by traversing subtree
         ExtendArray<Node*> subnodes(0, tree->nnodes);
-        getSubtree(tree->root, events, &subnodes);
+        getSubtree(root, events, &subnodes);
         
         ExtendArray<int> subnames(subnodes.size());
         for (int i=0; i<subnodes.size(); i++)
@@ -1015,6 +1021,10 @@ void genSubtree(Tree *tree, Node *root,
             if (recon[node->name] != sroot) {
                 BranchParams bparam = getBranchParams(node->name, ptree, reconparams);
                 node->dist = genBranch(generate, bparam.mu, bparam.sigma);
+            } else {
+                // set branch length above sroot by exponential
+                const float preratio = 0.05;
+                node->dist = expovariate(1.0 / (generate * preratio));
             }
         }
     }
@@ -1024,10 +1034,12 @@ void genSubtree(Tree *tree, Node *root,
 void generateBranchLengths(Tree *tree,
                            SpeciesTree *stree,
                            int *recon, int *events,
-                           SpidirParams *params)
+                           SpidirParams *params,
+                           float generate)
 {
-    // generate a generate
-    float generate = gammavariate(params->alpha, params->beta);
+    // generate a gene rate if it is requested (i.e. generate < 0)
+    if (generate < 0.0)
+        generate = gammavariate(params->alpha, params->beta);
     
     
     // determine reconciliation parameters

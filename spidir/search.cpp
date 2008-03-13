@@ -333,7 +333,19 @@ SprNniProposer::SprNniProposer(SpeciesTree *stree, int *gene2species,
     
 void SprNniProposer::propose(Tree *tree)
 {
-    if (frand() < sprRatio) {
+    const float noChange = 0.01;
+    float choice = frand();
+    
+    if (correctTree) {
+        if (tree->sameTopology(correctTree))
+            correctSeen = true;
+    }
+    
+    if (choice < noChange) {
+        lastPropose = PROPOSE_NONE;
+        iter++; // increase iteration
+        
+    } if (choice < noChange + (1.0 - noChange) * sprRatio) {
         lastPropose = PROPOSE_SPR;
         
         // increase iteration
@@ -346,6 +358,7 @@ void SprNniProposer::propose(Tree *tree)
         nodec = (p->children[0] == nodea) ? p->children[1] : p->children[0];
         
         proposeSpr(tree, nodea, nodeb);
+        
     } else {
         lastPropose = PROPOSE_NNI;
         NniProposer::propose(tree);
@@ -354,7 +367,9 @@ void SprNniProposer::propose(Tree *tree)
 
 void SprNniProposer::revert(Tree *tree)
 {
-    if (lastPropose == PROPOSE_SPR) {
+    if (lastPropose == PROPOSE_NONE)
+        return;
+    else if (lastPropose == PROPOSE_SPR) {
         proposeSpr(tree, nodea, nodec);
     
     } else if (lastPropose == PROPOSE_NNI) {
@@ -404,6 +419,42 @@ float HkyFitter::findLengths(Tree *tree)
         return logl;
     else
         return 0.0;
+}
+
+
+
+float SpidirSample::findLengths(Tree *tree)
+{
+    // reconcile gene tree to species tree
+    int recon[tree->nnodes];
+    int events[tree->nnodes];
+
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+    
+    generateBranchLengths(tree, stree, recon, events, params);
+    return 0.0;
+}
+
+
+float HkySpidirSample::findLengths(Tree *tree)
+{ 
+    // reconcile gene tree to species tree
+    int recon[tree->nnodes];
+    int events[tree->nnodes];
+
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+    
+    float logl = -INFINITY;
+    
+    for (int i=0; i<maxiter; i++) {
+        generateBranchLengths(tree, stree, recon, events, params);
+        logl = logadd(logl, calcHkySeqProb(tree, nseqs, seqs, bgfreq, tsvratio));
+    }
+    logl -= log(maxiter);
+    
+    return logl;
 }
 
 
@@ -513,6 +564,12 @@ float SpidirBranchLikelihoodFunc::likelihood2(Tree *tree) {
 }
 
 
+float HkyBranchLikelihoodFunc::likelihood(Tree *tree)
+{
+    return calcHkySeqProb(tree, nseqs, seqs, bgfreq, tsvratio);
+}
+
+
 //=============================================================================
 
 
@@ -603,6 +660,7 @@ void printSearchStatus(Tree *tree, SpeciesTree *stree, int *gene2species,
 
 Tree *searchMCMC(Tree *initTree, 
                  string *genes, int nseqs, int seqlen, char **seqs,
+                 SampleFunc *samples,
                  BranchLikelihoodFunc *lkfunc,
                  TopologyProposer *proposer,
                  BranchLengthFitter *fitter)
@@ -627,6 +685,9 @@ Tree *searchMCMC(Tree *initTree,
     toplogl = logl;
     toptree = tree->copy();
     
+    int accept = 0;
+    int reject = 0;
+    
         
     // MCMC loop
     for (int i=0; proposer->more(); i++) {
@@ -639,41 +700,43 @@ Tree *searchMCMC(Tree *initTree,
         float branchlk = lkfunc->likelihood(tree);
         nextlogl = seqlk + branchlk;       
         
+        
         // acceptance rule
         if (nextlogl > logl ||
             nextlogl - logl > log(frand()))
         {
-            printLog(LOG_MEDIUM, "search: accept %f  %f\n", nextlogl, logl);
             // accept
+            printLog(LOG_MEDIUM, "search: accept %f (%f)\n", nextlogl, logl);
+            if (isLogLevel(LOG_MEDIUM))
+                printSearchStatus(tree, lkfunc->getSpeciesTree(), 
+                                 lkfunc->getGene2species(), recon, events);            
+            
+            accept++;
             logl = nextlogl;
 
             // keep track of toptree            
             if (logl > toplogl) {
-                float logl2 = lkfunc->likelihood2(tree);
-            
-                printLog(LOG_LOW, "search: lnl   = %f\n", logl);
-                printLog(LOG_LOW, "search: seqlk = %f\n", seqlk);
-                printLog(LOG_LOW, "search: lenlk = %f\n", branchlk);
-                printLog(LOG_LOW, "search: lnl2  = %f\n", logl2);
-                printSearchStatus(tree, lkfunc->getSpeciesTree(), 
-                                  lkfunc->getGene2species(), recon, events);
-                
                 delete toptree;
                 toptree = tree->copy();
                 toplogl = logl;
-            } else {
-                if (isLogLevel(LOG_MEDIUM))
-                    displayTree(toptree, getLogFile());
             }
-        } else {
-            // reject, undo topology change        
-            printLog(LOG_MEDIUM, "search: reject %f < %f\n", nextlogl, toplogl);
+            
+        } else {                
+            // reject, undo topology change
+            printLog(LOG_MEDIUM, "search: reject %f (%f)\n", nextlogl, logl);
+            if (isLogLevel(LOG_MEDIUM))
+                printSearchStatus(tree, lkfunc->getSpeciesTree(), 
+                                 lkfunc->getGene2species(), recon, events);
+            
+            reject++;
             proposer->revert(tree);
         }
         
-        
+        // return a tree sample
+        (*samples)(tree);
     }
     
+    printLog(LOG_LOW, "accept rate: %f\n", accept / float(accept+reject));
     
     return toptree;
 }
@@ -699,7 +762,7 @@ Tree *searchClimb(Tree *initTree,
     ExtendArray<int> events(tree->nnodes);
     
     // init likelihood score
-    parsimony(tree, nseqs, seqs); // get initial branch lengths TODO: replace?
+    //parsimony(tree, nseqs, seqs); // get initial branch lengths TODO: replace?
     toplogl = fitter->findLengths(tree);
     toplogl += lkfunc->likelihood(tree);
     toptree = tree->copy();
@@ -727,7 +790,7 @@ Tree *searchClimb(Tree *initTree,
             printLog(LOG_LOW, "search: seqlk = %f\n", seqlk);
             printLog(LOG_LOW, "search: lenlk = %f\n", branchlk);          
             printLog(LOG_LOW, "search: lnl2  = %f\n", logl2);
-                        
+            
             // accept
             toplogl = nextlogl;
             
@@ -735,7 +798,7 @@ Tree *searchClimb(Tree *initTree,
                   lkfunc->getGene2species(), recon, events);
             delete toptree;
             toptree = tree->copy();
-        } else {
+        } else {           
             // reject, undo topology change
             proposer->revert(tree);
         }

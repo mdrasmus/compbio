@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     
     config.add(new ConfigParamComment("Sequence model evolution"));
     config.add(new ConfigParam<string>(
-        "-l", "--lengths", "(hky|parsimony|birthdeath)", &lenfitter, "hky",
+        "-l", "--lengths", "(hky|spidir|hky_spidir|parsimony|birthdeath)", &lenfitter, "hky",
         "algorithm for determining branch lengths (default: hky)"));    
     config.add(new ConfigParam<float>(
         "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
         "-c", "--correct", "<correct tree file>", &correctFile, ""
         "check if correct tree is visited in search"));
     config.add(new ConfigParam<string>(
-        "", "--lkfunc", "spidir|duploss|birthdeath|none", &lkfuncopt, "spidir",
+        "", "--lkfunc", "hky|spidir|duploss|birthdeath|none", &lkfuncopt, "spidir",
         "function for branch length likelihood"));
 
     config.add(new ConfigParam<int>(
@@ -261,6 +261,9 @@ int main(int argc, char **argv)
                                                 predupprob, dupprob, 
                                                 estGenerate,
                                                 true);
+    else if (lkfuncopt == "hky") 
+        lkfunc = new HkyBranchLikelihoodFunc(aln->nseqs, aln->seqlen, aln->seqs, 
+                                             bgfreq, tsvratio);
     else if (lkfuncopt == "birthdeath") 
         lkfunc = new BranchLikelihoodFunc();
     else {
@@ -268,21 +271,9 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    
-    // init topology proposer
-    SprNniProposer proposer(&stree, gene2species, niter);
-    
-    // load correct tree
-    Tree correctTree;    
-    if (correctFile != "") {
-        if (!correctTree.readNewick(correctFile.c_str())) {
-            printError("cannot read correct tree '%s'", correctFile.c_str());
-            return 1;
-        }
-        // TODO: aborts if leaves mismatch, should catch error
-        correctTree.reorderLeaves(genes);
-        proposer.setCorrect(&correctTree);
-    }
+
+    //=============================================================================
+    // branch lengths
     
     // determine branch length algorithm
     BranchLengthFitter *fitter = NULL;
@@ -293,6 +284,13 @@ int main(int argc, char **argv)
         const int maxiter = 5;
         fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                bgfreq, tsvratio, maxiter);
+    } else if (lenfitter == "spidir") {
+        fitter = new SpidirSample(&stree, params, gene2species);
+    } else if (lenfitter == "hky_spidir") {
+        const int maxiter = 1000;
+        fitter = new HkySpidirSample(&stree, params, gene2species,
+                                     aln->nseqs, aln->seqlen, aln->seqs, 
+                                     bgfreq, tsvratio, maxiter);
     } else if (lenfitter == "birthdeath") {
         fitter = new BirthDeathFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                       bgfreq, tsvratio, 
@@ -304,6 +302,23 @@ int main(int argc, char **argv)
         return 1;
     }
     
+    //=============================================================================
+    // start search
+    
+    // init topology proposer
+    SprNniProposer proposer(&stree, gene2species, niter, .2);
+    
+    // load correct tree
+    Tree correctTree;    
+    if (correctFile != "") {
+        if (!correctTree.readNewick(correctFile.c_str())) {
+            printError("cannot read correct tree '%s'", correctFile.c_str());
+            return 1;
+        }
+        // TODO: aborts if leaves mismatch, should catch error
+        correctTree.reorderLeaves(genes);
+        proposer.setCorrect(&correctTree);
+    }    
     
     Tree *tree = getInitialTree(genes, aln->nseqs, aln->seqlen, aln->seqs,
                                 &stree, gene2species);
@@ -313,8 +328,18 @@ int main(int argc, char **argv)
     time_t startTime = time(NULL);
     Tree *toptree;
     if (search == "mcmc") {
+        string mcmcfilename = outprefix + ".mcmc";
+        FILE *mcmcfile = NULL;
+        
+        if (!(mcmcfile = fopen(mcmcfilename.c_str(), "w"))) {
+            printError("cannot open mcmc file '%s'", mcmcfilename.c_str());
+            return 1;
+        }
+        SampleFunc samples(mcmcfile);
+    
         toptree = searchMCMC(tree, 
                              genes, aln->nseqs, aln->seqlen, aln->seqs,
+                             &samples,
                              lkfunc,
                              &proposer,
                              fitter);

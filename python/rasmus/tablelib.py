@@ -1170,7 +1170,10 @@ def showtab(tab, name='table'):
 
 
 def sqltab(dbfile, query, maxrows=None, headers=None):
-    from pysqlite2 import dbapi2 as sqlite
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
 
     # open database
     con = sqlite.connect(dbfile, isolation_level="DEFERRED")

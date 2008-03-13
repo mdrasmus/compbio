@@ -43,8 +43,14 @@ namespace spidir {
 inline float frand(float max=1.0)
 { return rand() / float(RAND_MAX) * max; }
 
+inline float frand(float min, float max)
+{ return min + (rand() / float(RAND_MAX) * (max-min)); }
+
 inline int irand(int max)
 { return int(rand() / float(RAND_MAX) * max); }
+
+inline int irand(int min, int max)
+{ return min + int(rand() / float(RAND_MAX) * (max - min)); }
 
 
 // computes the log(normalPdf(x | u, s^2))
@@ -65,8 +71,8 @@ double gammln(double xx);
 float gammalog(float x, float a, float b);
 float normalvariate(float mu, float sigma);
 float gammavariate(float alpha, float beta);
-inline float expovariate(float lambd)
-{ return -log(frand()) / lambd; }
+inline float expovariate(float lambda)
+{ return -log(frand()) / lambda; }
 
 
 

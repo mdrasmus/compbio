@@ -200,7 +200,7 @@ int main(int argc, char **argv)
     
     
     // search
-    Tree *toptree = searchMCMC(NULL, 
+    Tree *toptree = searchClimb(NULL, 
                                genes, aln->nseqs, aln->seqlen, aln->seqs,
                                &lkfunc,
                                &nniProposer,

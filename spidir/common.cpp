@@ -166,6 +166,7 @@ float gammavariate(float alpha, float beta)
 }
 
 
+
 // Invert a permutation
 void invertPerm(int *perm, int *inv, int size)
 {

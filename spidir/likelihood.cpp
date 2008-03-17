@@ -305,6 +305,15 @@ float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon,
                            int *events,
                            float predupprob, float dupprob)
 {
+    float lossprob = dupprob * .9;
+    return birthDeathTreePrior(tree, stree, recon, events, dupprob, lossprob);
+}
+
+
+float rareEventsLikelihood_old(Tree *tree, SpeciesTree *stree, int *recon, 
+                           int *events,
+                           float predupprob, float dupprob)
+{
     float logl = 0.0;
     int sroot = stree->nnodes - 1;
     

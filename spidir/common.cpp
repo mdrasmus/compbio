@@ -30,7 +30,20 @@ static int g_loglevel = LOG_QUIET;
 //=============================================================================
 // Math
 
-
+int choose(int n, int k)
+{   
+    if (n <= 0 || k <= 0 || k > n)
+        return 0;
+    
+    // optimization for speed
+    if (k > n/2)
+        k = n - k;
+    
+    double t = 1.0;
+    for (int i=0; i<k+1; i++)
+        t = t * (n - i + 1) / i;
+    return int(t + 0.5);
+}
 
 // probability density distribution of the Poisson
 float poisson(int x, float lambda)

@@ -7,6 +7,8 @@ namespace spidir
 {
 
 
+
+
 // returns the probability of 1 gene giving rise to ngenes after time 'time'
 float birthDeathCount(int ngenes, float time, float birthRate, float deathRate)
 {
@@ -21,13 +23,44 @@ float birthDeathCount(int ngenes, float time, float birthRate, float deathRate)
     if (ngenes == 0)
         return p0;
     
-    float p = (1.0 - p0)*(1.0 - ut);
+    // (1.0 - p0)*(1.0 - ut) * ut^{ngenes-1}
+    return (1.0 - p0)*(1.0 - ut) * ipow(ut, ngenes-1);
+}
+
+
+
+
+
+// returns the probability of 'start' genes giving rise to 'end' genes after 
+// time 'time'
+float birthDeathCount(int start, int end, float time, float birthRate, float deathRate)
+{
+    const float l = birthRate;
+    const float u = deathRate;
+    const float r = l - u;
+    const float a = u / l;
+
+    const float ut = (1.0 - exp(-r*time)) / (1.0 - a * exp(-r*time));
+    const float p0 = a*ut;
     
-    // ut^{ngenes-1}
-    for (int i=0; i<ngenes-1; i++)
-        p *= ut;
+    // all 'start' genes die out
+    if (end == 0) {
+        return ipow(p0, start);
+    }
+    
+    const int iter = (start < end) ? start : end;
+    float p = 0.0;
+    for (int j=0; j<iter; j++) {
+        p += choose(start, j) *
+             choose(start + end - j - 1, start - 1) *
+             ipow(p0, start-j) *
+             ipow(ut, end-j) *
+             ipow(1 - p0 - ut, j);
+    }
+        
     return p;
 }
+
 
 
 

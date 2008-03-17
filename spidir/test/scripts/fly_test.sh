@@ -7,5 +7,6 @@
     -s ../data/flies.stree \
     -a ../data/0.nt.align \
     -o ../output/fly \
+    --search climb \
     -V 2 \
     --correct ../data/0.nt.tree $*

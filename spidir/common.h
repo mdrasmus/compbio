@@ -75,6 +75,28 @@ inline float expovariate(float lambda)
 { return -log(frand()) / lambda; }
 
 
+template <class T>
+double variance(T *vals, int size)
+{
+    double mean = 0.0;
+    for (int i=0; i<size; i++)
+        mean += vals[i];
+    mean /= size;
+    
+    double tot = 0.0;
+    for (int i=0; i<size; i++)
+        tot += (vals[i] - mean) * (vals[i] - mean);
+    
+    return tot / size;
+}
+
+template <class T>
+double stdev(T* vals, int size)
+{
+    return sqrt(variance(vals, size));
+}
+
+
 
 // Find a root of a function func(x) using the secant method
 // x0 and x1 are initial estimates of the root
@@ -181,6 +203,18 @@ void permute(T* array, int *perm, int size)
         array[i] = tmp[i];
 }
 
+template <class T>
+T ipow(T val, int expo)
+{
+    T result = val;
+    for (int i=1; i<expo; i++)
+        result *= val;
+    return result;
+}
+
+
+int choose(int n, int k);
+
 
 
 template <class T>
@@ -190,27 +224,6 @@ int findval(T *array, int size, const T &val)
         if (array[i] == val)
             return i;
     return -1;
-}
-
-template <class T>
-double variance(T *vals, int size)
-{
-    double mean = 0.0;
-    for (int i=0; i<size; i++)
-        mean += vals[i];
-    mean /= size;
-    
-    double tot = 0.0;
-    for (int i=0; i<size; i++)
-        tot += (vals[i] - mean) * (vals[i] - mean);
-    
-    return tot / size;
-}
-
-template <class T>
-double stdev(T* vals, int size)
-{
-    return sqrt(variance(vals, size));
 }
 
 

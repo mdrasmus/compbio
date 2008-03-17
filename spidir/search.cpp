@@ -542,11 +542,7 @@ float SpidirBranchLikelihoodFunc::likelihood(Tree *tree) {
         generate = -1;
     else
         generate = -99;
-    
-    eventslk = rareEventsLikelihood(tree, stree, recon, 
-                                    events, predupprob, dupprob);
-
-    
+        
     return treelk(tree, stree,
                   recon, events, params,
                   generate, predupprob, dupprob, onlyduploss);

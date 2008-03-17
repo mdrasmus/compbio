@@ -24,7 +24,7 @@
 
 
 #define VERSION_INFO  "\
-   ___    SPIDIR v0.8 (beta) July 2007 \n\
+   ___    SPIDIR v0.9 (beta) 2008 \n\
   /0 0\\   SPecies Informed DIstanced-base Reconstruction \n\
   \\___/   Matt Rasmussen \n\
  /// \\\\\\  CSAIL, MIT \n\
@@ -181,6 +181,7 @@ int main(int argc, char **argv)
         printLog(LOG_LOW, "\n\n");
     }
     
+    
     //============================================================
     // read species tree
     SpeciesTree stree;
@@ -189,13 +190,6 @@ int main(int argc, char **argv)
         return 1;
     }
     stree.setDepths();
-    
-    // read gene2species map
-    Gene2species mapping;
-    if (!mapping.read(smapfile.c_str())) {
-        printError("error reading gene2species mapping '%s'", smapfile.c_str());
-        return 1;
-    }
     
     
     // read sequences
@@ -227,11 +221,22 @@ int main(int argc, char **argv)
         printError("bgfreq requires four base frequencies e.g .25,.25,.25,.25");
         return 1;
     }
-    for (unsigned int i=0; i<tokens.size(); i++)
-        bgfreq[i] = atof(tokens[i].c_str());
+    for (unsigned int i=0; i<tokens.size(); i++) {
+        if (sscanf(tokens[i].c_str(), "%f", &bgfreq[i]) != 1) {
+            printError("bgfreq must be floats");
+            return 1;
+        }
+    }
     
     
     int nnodes = aln->nseqs * 2 - 1;
+
+    // read gene2species map
+    Gene2species mapping;
+    if (!mapping.read(smapfile.c_str())) {
+        printError("error reading gene2species mapping '%s'", smapfile.c_str());
+        return 1;
+    }
 
     // produce mapping array
     ExtendArray<string> genes(0, aln->nseqs);
@@ -272,7 +277,7 @@ int main(int argc, char **argv)
     }
     
 
-    //=============================================================================
+    //========================================================
     // branch lengths
     
     // determine branch length algorithm
@@ -302,8 +307,9 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    //=============================================================================
-    // start search
+    
+    //========================================================
+    // initialize search
     
     // init topology proposer
     SprNniProposer proposer(&stree, gene2species, niter, .2);
@@ -324,6 +330,7 @@ int main(int argc, char **argv)
                                 &stree, gene2species);
 
     
+    //=======================================================
     // search
     time_t startTime = time(NULL);
     Tree *toptree;
@@ -354,9 +361,13 @@ int main(int argc, char **argv)
         return 1;
     }
     
+    //========================================================
+    // output final tree
     toptree->setLeafNames(genes);
     toptree->writeNewick(outtreeFilename.c_str());
     
+    
+    // log tree correctness
     if (correctFile != "") {
         if (proposer.seenCorrect()) {
             printLog(LOG_LOW, "SEARCH: correct visited\n");
@@ -371,11 +382,15 @@ int main(int argc, char **argv)
         }
     }
     
+    
+    // clean up
     delete toptree;
     delete params;
     delete fitter;
     delete lkfunc;
     
+    
+    // log runtime
     time_t runtime = time(NULL) - startTime;
     printLog(LOG_LOW, "runtime seconds: %d\n", runtime);
     printLog(LOG_LOW, "runtime minutes: %.1f\n", float(runtime / 60.0));

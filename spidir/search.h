@@ -211,7 +211,6 @@ protected:
     float dupprob;  
     bool estGenerate;
     bool onlyduploss;
-    float eventslk;
 };
 
 

@@ -302,17 +302,33 @@ float estimateGeneRate(Tree *tree, SpeciesTree *stree,
 //=============================================================================
 // calculate the likelihood of rare events such as gene duplication
 float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon, 
-                           int *events,
-                           float predupprob, float dupprob)
+                           int *events, float predupprob, float dupprob, 
+                           float lossprob)
 {
-    float lossprob = dupprob * .9;
-    return birthDeathTreePrior(tree, stree, recon, events, dupprob, lossprob);
+    if (dupprob < 0.0 || lossprob < 0.0)
+        return 0.0;
+
+    if (dupprob == lossprob)
+        lossprob = .99 * dupprob;
+
+    ExtendArray<int> recon2(0, tree->nnodes);
+    ExtendArray<int> events2(0, tree->nnodes);
+    recon2.extend(recon, tree->nnodes);
+    events2.extend(events, tree->nnodes);
+
+    int addedNodes = addImpliedSpecNodes(tree, stree, recon2, events2);
+    //float logl = birthDeathTreePrior(tree, stree, recon2, events2, 
+    //                                 dupprob, lossprob);
+    float logl = birthDeathTreeQuickPrior(tree, stree, recon2, events2, 
+                                          dupprob, lossprob);
+    removeImpliedSpecNodes(tree, addedNodes);
+    
+    return logl;
 }
 
 
 float rareEventsLikelihood_old(Tree *tree, SpeciesTree *stree, int *recon, 
-                           int *events,
-                           float predupprob, float dupprob)
+                           int *events, float predupprob, float dupprob)
 {
     float logl = 0.0;
     int sroot = stree->nnodes - 1;
@@ -808,7 +824,7 @@ float treelk(Tree *tree,
              SpeciesTree *stree,
              int *recon, int *events, SpidirParams *params,
              float generate,
-             float predupprob, float dupprob, bool onlyduploss)
+             float predupprob, float dupprob, float lossprob, bool onlyduploss)
 {
     float logl = 0.0; // log likelihood
     
@@ -818,7 +834,7 @@ float treelk(Tree *tree,
     
     // rare events
     float rareevents = rareEventsLikelihood(tree, stree, recon, events,
-                                            predupprob, dupprob);
+                                            predupprob, dupprob, lossprob);
     if (onlyduploss)
         return rareevents;
     
@@ -877,7 +893,7 @@ float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
              int *recon, int *events,
              float *mu, float *sigma, float generate,
-             float predupprob, float dupprob,
+             float predupprob, float dupprob, float lossprob,
              float alpha, float beta, bool onlyduploss)
 {
     // create tree objects
@@ -895,7 +911,7 @@ float treelk(int nnodes, int *ptree, float *dists,
     return treelk(&tree, &stree,
                   recon, events, &params, 
                   generate, 
-                  predupprob, dupprob, onlyduploss);
+                  predupprob, dupprob, lossprob, onlyduploss);
 }
 
 

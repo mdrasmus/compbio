@@ -192,7 +192,7 @@ public:
     SpidirBranchLikelihoodFunc(int nnodes, SpeciesTree *stree, 
                                SpidirParams *params, 
                                int *gene2species,
-                               float predupprob, float dupprob,
+                               float predupprob, float dupprob, float lossprob,
                                bool estGenerate, bool onlyduploss=false);
     virtual float likelihood(Tree *tree);
 
@@ -208,7 +208,8 @@ protected:
     ExtendArray<int> recon;
     ExtendArray<int> events;
     float predupprob;
-    float dupprob;  
+    float dupprob;
+    float lossprob;
     bool estGenerate;
     bool onlyduploss;
 };

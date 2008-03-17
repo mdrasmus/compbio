@@ -10,18 +10,19 @@ float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
              int *recon, int *events,
              float *mu, float *sigma, float generate, 
-             float predupprob=1.0, float dupprob=1.0, 
+             float predupprob=1.0, float dupprob=1.0, float lossprob=1.0,
              float alpha=0, float beta=0, bool onlyduploss=false);
 
 float treelk(Tree *tree,
              SpeciesTree *stree,
              int *recon, int *events, SpidirParams *params,
              float generate, 
-             float predupprob, float dupprob, bool onlyduploss=false);
+             float predupprob, float dupprob, float lossprob,
+             bool onlyduploss=false);
 
 float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon, 
                            int *events,
-                           float predupprob, float dupprob);
+                           float predupprob, float dupprob, float lossprob);
 
 
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,

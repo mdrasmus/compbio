@@ -310,12 +310,14 @@ pyspidir_treelk(PyObject *self, PyObject *args)
     reconcile(&tree, &stree, gene2species, recon);
     labelEvents(&tree, recon, events);
 
+    float lossprob = dupprob;
+
     // calculate likelihood
     float logl = treelk(nnodes, ptree, dists,
                   nsnodes, pstree, 
                   recon, events,
                   mu, sigma, generate, 
-                  predupprob, dupprob, alpha, beta);
+                  predupprob, dupprob, lossprob, alpha, beta);
     
     return Py_BuildValue("f", logl);
 }

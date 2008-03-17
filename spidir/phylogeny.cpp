@@ -324,6 +324,7 @@ int countLossNode(Node *node, SpeciesTree *stree, int *recon)
 }
 
 
+// insert new speciation node above node
 void addSpecNode(Node *node, Node *snode, Tree *tree, 
                  ExtendArray<int> &recon, ExtendArray<int> &events)
 {
@@ -361,7 +362,7 @@ int addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree,
 
     // process this node and the branch above it
     
-    // if not parent, then no implied speciation nodes above us
+    // if no parent, then no implied speciation nodes above us
     if (node->parent == NULL)
         return addedNodes;
     
@@ -381,6 +382,7 @@ int addImpliedSpecNodes_recurse(Node *node, Tree *tree, SpeciesTree *stree,
         // process ptr
         addSpecNode(node, ptr, tree, recon, events);
         addedNodes++;
+        node = node->parent;
         
         // go up species tree
         ptr = ptr->parent;

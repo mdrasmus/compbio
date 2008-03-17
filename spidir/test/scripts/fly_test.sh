@@ -8,5 +8,7 @@
     -a ../data/0.nt.align \
     -o ../output/fly \
     --search climb \
+    -D 0.2 \
+    -L 0.19 \
     -V 2 \
     --correct ../data/0.nt.tree $*

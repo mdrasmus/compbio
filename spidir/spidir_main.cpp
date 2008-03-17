@@ -104,11 +104,11 @@ int main(int argc, char **argv)
         "-i", "--niter", "<# iterations>", &niter, 100, 
         "number of iterations"));
     config.add(new ConfigParam<float>(
-        "-D", "--dupprob", "<duplication probability>", &dupprob, 1.0,
-        "probability of a node being a duplication (default=1.0)"));
+        "-D", "--dupprob", "<duplication probability>", &dupprob, -1.0,
+        "probability of a node being a duplication (default=-1.0, do not use)"));
     config.add(new ConfigParam<float>(
-        "-L", "--lossprob", "<loss probability>", &lossprob, 1.0,
-        "probability of loss (default=1.0)"));
+        "-L", "--lossprob", "<loss probability>", &lossprob, -1.0,
+        "probability of loss (default=-1.0, do not use)"));
     config.add(new ConfigParam<float>(
         "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
         "probability of a node being a pre-duplication (default=0.01)"));
@@ -214,6 +214,12 @@ int main(int argc, char **argv)
         return 1;
     }
     
+    // initialize species tree branch lengths
+    float generate = params->alpha / params->beta;
+    for (int i=0; i<stree.nnodes; i++)
+        stree.nodes[i]->dist = params->mu[i] * generate;
+    
+    
     // determine background base frequency
     float bgfreq[4];
     vector<string> tokens = split(bgfreqstr.c_str(), ",");
@@ -258,12 +264,12 @@ int main(int argc, char **argv)
     else if (lkfuncopt == "spidir")
         lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
                                                 gene2species,
-                                                predupprob, dupprob, 
+                                                predupprob, dupprob, lossprob,
                                                 estGenerate);
     else if (lkfuncopt == "duploss")
         lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
                                                 gene2species,
-                                                predupprob, dupprob, 
+                                                predupprob, dupprob, lossprob, 
                                                 estGenerate,
                                                 true);
     else if (lkfuncopt == "hky") 
@@ -312,7 +318,7 @@ int main(int argc, char **argv)
     // initialize search
     
     // init topology proposer
-    SprNniProposer proposer(&stree, gene2species, niter, .2);
+    SprNniProposer proposer(&stree, gene2species, niter, .3);
     
     // load correct tree
     Tree correctTree;    

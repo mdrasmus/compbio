@@ -269,7 +269,8 @@ float birthDeathTreePrior(Tree *tree, SpeciesTree *stree, int *recon,
 // branch lengths are ignored, only counts are used
 float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon, 
                                int *events, float birthRate, float deathRate)
-{
+{   
+
     float prob = 0.0;
     
     // preroot duplications
@@ -295,13 +296,14 @@ float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon,
                     maxtime = snode->children[1]->dist; 
                 else
                     maxtime = snode->children[0]->dist;
+                assert(maxtime > 0.0);
                 prob += log(birthDeathCount(0, maxtime, birthRate, deathRate));
-                
             }
             
             for (int j=0; j<node->nchildren; j++) {
                 const float maxtime =
                     stree->nodes[recon[node->children[j]->name]]->dist;
+                assert(maxtime > 0.0);
             
                 if (events[node->children[j]->name] != EVENT_DUP) {
                     // no apparent dup/loss  1->1

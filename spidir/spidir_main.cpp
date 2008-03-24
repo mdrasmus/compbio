@@ -318,7 +318,10 @@ int main(int argc, char **argv)
     // initialize search
     
     // init topology proposer
-    SprNniProposer proposer(&stree, gene2species, niter, .3);
+    const int quickiter = 50;
+    const float sprRatio = .3;
+    SprNniProposer proposer2(&stree, gene2species, niter, sprRatio);
+    DupLossProposer proposer(&proposer2, quickiter, niter);
     
     // load correct tree
     Tree correctTree;    
@@ -334,7 +337,7 @@ int main(int argc, char **argv)
     
     Tree *tree = getInitialTree(genes, aln->nseqs, aln->seqlen, aln->seqs,
                                 &stree, gene2species);
-
+    
     
     //=======================================================
     // search

@@ -67,6 +67,30 @@ protected:
 };
 
 
+class DupLossProposer: public TopologyProposer
+{
+public:
+    DupLossProposer(TopologyProposer *proposer, int quickiter=100, int niter=500);
+
+    virtual void propose(Tree *tree);
+    virtual void revert(Tree *tree);
+    virtual void setCorrect(Tree *tree) { correctTree = tree; }
+    virtual bool seenCorrect() { return correctSeen; }    
+    virtual bool more() { return iter < niter; }
+    
+protected:
+    TopologyProposer *proposer;
+    int quickiter;
+    int niter;
+    int iter;
+    Tree *correctTree;
+    bool correctSeen;
+
+    ExtendArray<int> recon;
+    ExtendArray<int> events;
+};
+
+
 class BranchLengthFitter
 {
 public:

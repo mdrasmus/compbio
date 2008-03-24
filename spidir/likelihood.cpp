@@ -861,15 +861,16 @@ float treelk(Tree *tree,
         
         float gend = params->alpha / params->beta * 3.0;
         float gstart = params->alpha / params->beta * 0.05;
-        float step = (gend - gstart) / 20.0;
+        float step = (gend - gstart) / 5.0;
 
         for (float g=gstart; g<gend; g+=step) {
-            float l = lkcalc.calc(g);
+            float gi = g + step / 2.0;
+            float l = lkcalc.calc(gi);
             logl = logadd(logl, l);
-            printLog(LOG_HIGH, "generate_int: %f %f\n", g, l);
+            printLog(LOG_HIGH, "generate_int: %f %f\n", gi, l);
             if (l > maxprob) {
                 maxprob = l;
-                argmax_generate = g;
+                argmax_generate = gi;
             }
         }
         

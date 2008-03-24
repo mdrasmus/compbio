@@ -324,7 +324,7 @@ bool NniProposer::more()
 // SPR + NNI Proposer
 
 SprNniProposer::SprNniProposer(SpeciesTree *stree, int *gene2species,
-                         int niter, float sprRatio) :
+                               int niter, float sprRatio) :
     NniProposer(stree, gene2species, niter),
     sprRatio(sprRatio)
 {
@@ -379,6 +379,29 @@ void SprNniProposer::revert(Tree *tree)
     }
 }
 
+//=============================================================================
+// Dup/Loss proposer
+
+DupLossProposer::DupLossProposer(TopologyProposer *proposer, 
+                                 int quickiter, int niter) :
+    proposer(proposer),
+    quickiter(quickiter),
+    niter(niter),
+    iter(0)                            
+{
+}
+
+void DupLossProposer::propose(Tree *tree)
+{
+    iter++;
+    
+    proposer->propose(tree);
+}
+
+void DupLossProposer::revert(Tree *tree)
+{
+    proposer->revert(tree);
+}
 
 
 //=============================================================================

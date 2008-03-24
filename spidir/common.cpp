@@ -58,7 +58,8 @@ float poisson(int x, float lambda)
 }
 
 
-/* gammln as implemented in the
+/* natural log of the gamma function
+   gammln as implemented in the
  * first edition of Numerical Recipes in C */
 double gammln(double xx)
 {
@@ -80,7 +81,7 @@ double gammln(double xx)
 }
 
 
-
+// natural log of the gamma distribution PDF
 float gammalog(float x, float a, float b)
 {
     if (x <= 0 || a <= 0 || b <= 0)

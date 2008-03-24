@@ -632,6 +632,48 @@ pyspidir_mlhkydist(PyObject *self, PyObject *args)
 }
 
 
+// Calculate the likelihood of a tree
+static PyObject *
+pyspidir_hkymatrix(PyObject *self, PyObject *args)
+{
+    // args
+    int nbgfreq;
+    StackArray<float> bgfreq;
+    float tsvratio;
+    float time;
+    
+    // parse args
+    if (!ParsePy(args, "Fff", 
+                 &bgfreq, &nbgfreq,
+                 &tsvratio, &time))
+        return NULL;    
+
+    if (nbgfreq != 4) {
+        printError("expected 4 base frequencies");
+    }
+    
+    // compute matrix
+    float matrix[16];
+    makeHkyMatrix(bgfreq, tsvratio, time, matrix);
+    
+    // create matrix of floats
+    PyObject *pymatrix = PyList_New(4);
+    
+    for (int i=0; i<4; i++) {
+        PyObject *row = PyList_New(4);
+        PyList_SET_ITEM(pymatrix, i, row);
+    
+        for (int j=-0; j<4; j++) {            
+            PyObject *val = PyFloat_FromDouble(matrix[matind(4, i, j)]);
+            PyList_SET_ITEM(row, j, val);
+        }
+    }
+    
+    return pymatrix;
+}
+    
+
+
 static PyObject *
 pyspidir_set_log(PyObject *self, PyObject *args)
 {
@@ -698,6 +740,8 @@ initpyspidir(void)
          "Parsimony method"},
         {"mlhkydist", pyspidir_mlhkydist, METH_VARARGS,
          "ML estimates of branch lengths by HKY"},
+        {"hkymatrix", pyspidir_hkymatrix, METH_VARARGS,
+         "compute the transition matrix for the HKY model"},
         {"set_log", pyspidir_set_log, METH_VARARGS,
          "Sets the log level and output file"},
         {"close_log", pyspidir_close_log, METH_VARARGS,

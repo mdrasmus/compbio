@@ -36,7 +36,10 @@ namespace spidir {
 //=============================================================================
 // Math
 
-// indexing a matrix stored as a single array
+// indexing a matrix stored as a single array (row-major)
+// m: number of columns
+// i: row index
+// j: column index
 #define matind(m, i, j) ((m)*(i) + (j))
 
 

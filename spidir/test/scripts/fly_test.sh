@@ -11,4 +11,5 @@
     -D 0.2 \
     -L 0.19 \
     -V 2 \
+    -i 1000 \
     --correct ../data/0.nt.tree $*

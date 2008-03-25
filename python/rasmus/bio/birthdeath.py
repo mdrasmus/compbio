@@ -126,7 +126,7 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None):
 
 
 def sample_birth_death_gene_tree(stree, birth, death, 
-                                 genename=lambda sp, x: sp + str(x),
+                                 genename=lambda sp, x: sp + "_" + str(x),
                                  removeloss=True):
     """Simulate a gene tree within a species tree with birth and death rates"""
     

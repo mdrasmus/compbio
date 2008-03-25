@@ -88,8 +88,8 @@ int main(int argc, char **argv)
         "-l", "--lengths", "(hky|spidir|hky_spidir|parsimony|birthdeath)", &lenfitter, "hky",
         "algorithm for determining branch lengths (default: hky)"));    
     config.add(new ConfigParam<float>(
-        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 0.5,
-        "used for HKY model (default=0.5)"));
+        "-r", "--tsvratio", "<transition/transversion ratio>", &tsvratio, 1.0,
+        "used for HKY model (default=1.0)"));
     config.add(new ConfigParam<string>(
         "-f", "--bgfreq", "<A freq>,<C ferq>,<G freq>,<T freq>", 
         &bgfreqstr, ".25,.25,.25,.25",

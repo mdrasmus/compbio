@@ -308,9 +308,6 @@ float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon,
     if (dupprob < 0.0 || lossprob < 0.0)
         return 0.0;
 
-    if (dupprob == lossprob)
-        lossprob = .99 * dupprob;
-
     ExtendArray<int> recon2(0, tree->nnodes);
     ExtendArray<int> events2(0, tree->nnodes);
     recon2.extend(recon, tree->nnodes);

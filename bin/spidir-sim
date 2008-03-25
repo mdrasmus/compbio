@@ -37,10 +37,30 @@ options = [
         {"single": True,
          "default": 1000,
          "parser": int}],
+    ["r:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
+        {"single": True,
+         "default": 1.0,
+         "parser": float}],
     ["b:", "bgfreq=", "bgfreq", "<A>,<C>,<G>,<T>",
         {"single": True,
          "default": [.25,.25,.25,.25],
          "parser": parseBgFreq}],
+    ["i:", "insfreq=", "insfreq", "<insertion frequency>",
+        {"single": True,
+         "parser": float,
+         "default": 0.0}],
+    ["d:", "delfreq=", "delfreq", "<deletion frequency>",
+        {"single": True,
+         "parser": float,
+         "default": 0.0}],
+    ["", "insprobs=", "insprobs", "<insertion length distribution>",
+        {"single": True,
+         "parser": util.readFloats,
+         "default": [.2, .2, .2, .2, .1, .1]}],
+    ["", "delprobs=", "delprobs", "<deletion length distribution>",
+        {"single": True,
+         "parser": util.readFloats,
+         "default": [.2, .2, .2, .2, .1, .1]}],
          
     ["D:", "duprate=", "duprate", "<duplication rate>",
         {"single": True,
@@ -74,8 +94,12 @@ options = [
     ["A:", "outalignext=", "outalignext", "<output align extension>",
         {"single": True,
          "default": ".align"}],
-
-
+    ["I:", "outinfoext=", "outinfoext", "<output information extenstion>",
+        {"single": True,
+         "default": ".info.txt"}],
+    ["", "nodir", "nodir", "",
+        {"single": True,
+         "help": "do not create sub-directories"}],
 ]
 
 
@@ -104,25 +128,46 @@ def main(conf):
     else:
         generate = None
     
+    
     # simulate
     util.tic("simulating %d trees" % conf["ntrees"])
     for i in range(conf["start"], conf["ntrees"]):
-        util.log("simulating", i)
+        util.logger("simulating", i)
+        
+        # setup output directory
+        if conf["nodir"]:
+            dirname = conf["outtree"]
+        else:
+            dirname = os.path.join(conf["outtree"], str(i))
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
+        
+        # open information file
+        infofilename = os.path.join(dirname, str(i) + conf["outinfoext"])
+        infofile = open(infofilename, "w")                    
         
         # create tree and write it
         pretree, tree = simTree(stree, params, conf["duprate"], conf["lossrate"], 
-                       generate, not conf["nospecrates"])
-        pretree.write(os.path.join(conf["outtree"], str(i) + ".times" + conf["outtreeext"]))
-        tree.write(os.path.join(conf["outtree"], str(i) + conf["outtreeext"]))
+                       generate, not conf["nospecrates"], infofile=infofile)
+        pretree.write(os.path.join(dirname, str(i) + ".times" + conf["outtreeext"]))
+        tree.write(os.path.join(dirname, str(i) + conf["outtreeext"]))
         
-        outfile = os.path.join(conf["outtree"], str(i))
+        outfile = os.path.join(dirname, str(i))
         simSeq(tree, outfile, seqlen=conf["genelen"], 
-               bgfreq=conf["bgfreq"])
-        
+               tsvratio=conf["tsvratio"], bgfreq=conf["bgfreq"],
+               insfreq=conf["insfreq"], delfreq=conf["delfreq"],
+               insprobs=conf["insprobs"], delprobs=conf["delprobs"])
+
+        infofile.close()
     util.toc()
+    
+
+def gene2species(gene):
+    return gene.split("_")[0]
 
 
-def simTree(stree, params, duprate, lossrate, generate, use_spec):
+def simTree(stree, params, duprate, lossrate, generate, use_spec,
+            infofile=sys.stdout):
     """simulate one tree"""
 
     if generate is None:
@@ -152,18 +197,39 @@ def simTree(stree, params, duprate, lossrate, generate, use_spec):
     
     # trim recon and events structures to only remaining nodes
     doomed = removeLosses(tree, recon, events)
-    print "doomed", doomed
+    
+    # try again if there is total extinction
+    if len(tree.nodes) < 3:
+        infofile.write("extinction\n")
+        return simTree(stree, params, duprate, lossrate, generate, use_spec,
+                       infofile=infofile)
+    
+    infofile.write("doomed: %d\n" % doomed)
+    
+    recon2 = phylo.reconcile(tree, stree, gene2species)
+    infofile.write("parsimonious reconciliation: %s\n" % str(recon2 == recon))
+    
+    def walk(node):
+        if isinstance(node.name, int):
+            node.name = "doom_%d" % node.name
+        for child in node.children:
+            walk(child)
+    walk(pretree.root)
     
     return pretree, tree
 
 
 
 def simSeq(tree, outfile, seqlen=999, mutaterate=[1.0],
-           bgfreq=[.25, .25, .25, .25]):
-    print "simulating %s..." % outfile
-    
+           tsvratio=1.0, bgfreq=[.25, .25, .25, .25],
+           insfreq=0.0,
+           delfreq=0.0,
+           insprobs=[.2, .2, .2, .2, .1, .1],
+           delprobs=[.2, .2, .2, .2, .1, .1]):
     # remove trailing ';'
-    top = tree.getOnelineNewick()[:-1]
+    tree2 = tree.copy()
+    flipTree(tree2)
+    top = tree2.getOnelineNewick()[:-1]
 
     # mutation rates across bases
     mutateratestr = ",".join(map(str, mutaterate))
@@ -172,18 +238,14 @@ def simSeq(tree, outfile, seqlen=999, mutaterate=[1.0],
         mutate.append(mutateratestr)
     mutate = "[" + ",".join(mutate) + "]"
 
-    bgfreqstr = "[" + ",".join(map(str, bgfreq)) + "]"
+    bgfreqstr = list2str(bgfreq)
+
+    insstr = list2str("%.4f" % x for x in insprobs)
+    delstr = list2str("%.4f" % x for x in delprobs)
 
     rosecmd = """
 InputType = 4 // DNA
 TheAlphabet = "ACGT"
-
-TheInsertThreshold = 0.05
-TheDeleteThreshold = 0.05
-
-TheInsFunc = [.2,.2,.2,.1,.1,.1,.1] // distribution of lengths
-TheDelFunc = [.2,.2,.2,.1,.1,.1,.1] // distribution of lengths
-
 MeanSubstitution = 1.0
 TTratio = 0.0 // reduces F84 to JC
 
@@ -193,21 +255,25 @@ AlignmentFormat = "FASTA"
 SequenceSuffix = ".fasta"
 AlignmentSuffix = ".align"
 StdOut = False
-    
+
 TheFreq = %s
 SequenceNum = %d
 SequenceLen = %d
 TheTree = %s
 
 TheDNAmodel = "HKY"
-TransitionBias = 3.18
+TransitionBias = %f
 TheMutationProbability = %s
 
 ChooseFromLeaves = True
-TheInsertThreshold = 0.0 // do not model insertions
-TheDeleteThreshold = 0.0 // do not model deletions
 
-""" % (outfile, bgfreqstr, len(tree.leaves()), seqlen, top, mutate)
+TheInsertThreshold = %f // do not model insertions
+TheDeleteThreshold = %f // do not model deletions
+TheInsFunc = %s // distribution of lengths
+TheDelFunc = %s // distribution of lengths
+
+""" % (outfile, bgfreqstr, len(tree.leaves()), 
+       seqlen, top, tsvratio, mutate, insfreq, delfreq, insstr, delstr)
 
     rose = os.popen("rose -", "w")
     rose.write(rosecmd)
@@ -226,7 +292,7 @@ def removeLosses(tree, recon, events):
     
     delnodes = set()
     for node in recon:
-        if node not in tree.nodes:
+        if node.name not in tree.nodes:
             delnodes.add(node)
     for node in delnodes:
         del recon[node]
@@ -246,5 +312,16 @@ def simBranchLen(blen, generate, mu, sigma):
     
     return blen2
 
+
+def flipTree(tree, node=None):
+    if node == None:
+        flipTree(tree, node=tree.root)
+    else:    
+        node.children.reverse()
+        for child in node.children:
+            flipTree(tree, child)
+
+def list2str(lst):
+    return "[" + ",".join(map(str, lst)) + "]"
 
 main(conf)

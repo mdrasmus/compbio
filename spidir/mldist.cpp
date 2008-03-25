@@ -38,7 +38,7 @@ namespace spidir {
         j    = source base
         t    = time
         pi_i = background/prior distribution of base i
-        R    = Transtition/Transversion ratio
+        R    = Transition/Transversion ratio
 
     Parameterization:
         beta = 1 / (2.0 * pi_r * pi_y * (1+R))
@@ -69,8 +69,9 @@ namespace spidir {
 class HkyModel
 {
 public:
-    HkyModel(const float *bgfreq, float ratio) :
-        ratio(ratio)
+    HkyModel(const float *bgfreq, float _ratio) :
+        // convert the usual ratio definition to Felsenstein's definition
+        ratio(_ratio / 2.0) 
     {
         // set background base frequencies
         for (int i=0; i<4; i++)
@@ -115,7 +116,7 @@ public:
         }
         int delta_ij = int(i == j);
         int e_ij = int(dnatype[i] == dnatype[j]);
-
+        
         // return transition probability
         float ait = expf(-a_i*t);
         float ebt = expf(-b*t);

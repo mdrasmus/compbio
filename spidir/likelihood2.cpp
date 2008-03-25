@@ -194,6 +194,10 @@ float birthDeathTreePrior(Tree *tree, SpeciesTree *stree, int *recon,
     float _times[tree->nnodes];
     ExtendArray<float> times(0, tree->nnodes, _times);
     
+    // catch undefined params
+    if (birthRate == deathRate)
+        deathRate = .99 * birthRate;    
+    
     // preroot duplications
     if (events[tree->root->name] == EVENT_DUP) {
         times.clear();
@@ -272,6 +276,10 @@ float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon,
 {   
 
     float prob = 0.0;
+    
+    // catch undefined params
+    if (birthRate == deathRate)
+        deathRate = .99 * birthRate;    
     
     // preroot duplications
     if (events[tree->root->name] == EVENT_DUP) {

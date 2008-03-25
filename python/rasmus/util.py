@@ -634,7 +634,22 @@ def islands(lst):
     return counting
 """
 
-
+def islands(lst):
+    
+    counts = {}
+    NULL = Bundle() # unique NULL
+    last = NULL
+    start = 0
+    
+    for i, x in enumerate(lst):
+        if x != last and last != NULL:
+            counts.setdefault(last, []).append((start, i))
+            start = i
+        last = x
+    if last != NULL:
+        counts.setdefault(last, []).append((start, i+1))
+    
+    return counts
 
 
 

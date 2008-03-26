@@ -400,6 +400,17 @@ def mapapply(funcs, lst):
 def cumsum(vals):
     """Returns a cumalative sum of vals (as an iterator)"""
     
+    lst = []
+    tot = 0
+    for v in vals:
+        tot += v
+        lst.append(tot)
+    return lst
+
+def icumsum(vals):
+    """Returns a cumalative sum of vals (as an iterator)"""
+    
+    lst = []
     tot = 0
     for v in vals:
         tot += v
@@ -596,45 +607,19 @@ def findge(a, lst): return find(gefunc(a), lst)
 def findgt(a, lst): return find(gtfunc(a), lst)
 
 
-"""
 def islands(lst):
-    '''
-      takes a list, or a string, and gather islands of identical elements.
-      it returns a dictionary counting where
-      counting = {element: [(start,end), (start,end), ...],
-                  element: [(start,end), (start,end), ...],
-                  ...}
-      counting.keys() is the list of unique elements of the input list
-      counting[element] is the list of all islands of occurence of element
-      counting[element][i] = (start,end)
-       is such that list[start-1:end] only contains element
-       
-       note: this comes from Manolis's code
-    '''
+    """Takes a iterable and returns islands of equal consequtive items 
     
-    if not lst: return {}
-
-    counting = {}
-
-    i,current_char, current_start = 0,lst[0], 0
+    Return value is a dict with the following format
     
-    while i < len(lst):
-
-        if current_char == lst[i]:
-            i = i+1
-        else:
-            if not counting.has_key(current_char): counting[current_char] = []
-            counting[current_char].append((current_start, i))
-            current_char = lst[i]
-            current_start = i
-
-    if not counting.has_key(current_char): counting[current_char] = []
-    counting[current_char].append((current_start, i))
-
-    return counting
-"""
-
-def islands(lst):
+    counts = {elm1: [(start,end), (start,end), ...],
+              elm2: [(start,end), (start,end), ...]
+              ...}
+    
+    where for each (start,end) in counts[elm1] we have lst[start:end] only 
+    containing elm1
+    
+    """
     
     counts = {}
     NULL = Bundle() # unique NULL

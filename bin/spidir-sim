@@ -37,6 +37,9 @@ options = [
         {"single": True,
          "default": 1000,
          "parser": int}],
+    ["", "genelenprobs=", "genelenprobs", "<gene length distribution>",
+        {"single": True,
+         "parser": util.readFloats}],
     ["r:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
         {"single": True,
          "default": 1.0,
@@ -140,7 +143,7 @@ def main(conf):
         else:
             dirname = os.path.join(conf["outtree"], str(i))
             if not os.path.exists(dirname):
-                os.mkdir(dirname)
+                os.makedirs(dirname)
         
         # open information file
         infofilename = os.path.join(dirname, str(i) + conf["outinfoext"])
@@ -152,8 +155,14 @@ def main(conf):
         pretree.write(os.path.join(dirname, str(i) + ".times" + conf["outtreeext"]))
         tree.write(os.path.join(dirname, str(i) + conf["outtreeext"]))
         
+        # create sequence for tree
+        if "genelenprobs" in conf:
+            genelen = stats.sample(conf["genelenprobs"])
+        else:
+            genelen = conf["genelen"]
+        
         outfile = os.path.join(dirname, str(i))
-        simSeq(tree, outfile, seqlen=conf["genelen"], 
+        simSeq(tree, outfile, seqlen=genelen, 
                tsvratio=conf["tsvratio"], bgfreq=conf["bgfreq"],
                insfreq=conf["insfreq"], delfreq=conf["delfreq"],
                insprobs=conf["insprobs"], delprobs=conf["delprobs"])

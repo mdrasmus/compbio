@@ -73,12 +73,12 @@ elif action == "report":
     rf_errors = []
     
     for name in names:
-        print name
+        print "checking", name
 
         datatreefile = os.path.join(datadir, name, name+dataext)        
         evaltreefile = os.path.join(evaldir, name, name+evalext)
         resultfile = os.path.join(evaldir, name, name+resultext)
-    
+        
         if os.path.exists(evaltreefile):
             datatree = treelib.readTree(datatreefile)
             evaltree = treelib.readTree(evaltreefile)
@@ -97,14 +97,16 @@ elif action == "report":
             print >>out, "correct topology:", correct
             print >>out, "RF error:", rf
             out.close()
+        else:
+            print "  no tree exists"
         
-        # write summary
-        out = open(evaldir+summaryext, "w")
-        print >>out, "percent correct: %.2f" % (100 * top_correct / ntrees)
-        print >>out, "number correct:", top_correct
-        print >>out, "number wrong:", ntrees - top_correct
-        print >>out, "mean RF error:", stats.mean(rf_errors)
-        out.close()
+    # write summary
+    out = open(evaldir+summaryext, "w")
+    print >>out, "percent correct: %.2f" % (100 * top_correct / ntrees)
+    print >>out, "number correct:", top_correct
+    print >>out, "number wrong:", ntrees - top_correct
+    print >>out, "mean RF error:", stats.mean(rf_errors)
+    out.close()
         
     
 else:

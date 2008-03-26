@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     bool help = false;
     bool version = false;
     bool estGenerate = false;
+    int bootiter = 1;
     
     
     // parse arguments
@@ -120,6 +121,9 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<string>(
         "", "--lkfunc", "hky|spidir|duploss|birthdeath|none", &lkfuncopt, "spidir",
         "function for branch length likelihood"));
+    config.add(new ConfigParam<int>(
+        "-b", "--boot", "<# bootstraps>", &bootiter,
+        "number of bootstraps to perform (default: 1)"));
 
     config.add(new ConfigParam<int>(
         "-V", "--verbose", "<verbosity level>", &verbose, LOG_LOW, 

@@ -14,6 +14,7 @@ public:
     virtual void propose(Tree *tree) {}
     virtual void revert(Tree *tree) {}
     virtual bool more() { return false; }
+    virtual void reset() {}
     virtual void setCorrect(Tree *tree) {}
     virtual bool seenCorrect() { return false; }
 };
@@ -29,6 +30,7 @@ public:
     virtual bool more();
     virtual void setCorrect(Tree *tree) { correctTree = tree; }
     virtual bool seenCorrect() { return correctSeen; }
+    virtual void reset() { iter = 0; }
 
 protected:    
     Node *nodea;
@@ -53,7 +55,7 @@ public:
                    int niter=500, float sprRatio=0.5);
 
     virtual void propose(Tree *tree);
-    virtual void revert(Tree *tree);
+    virtual void revert(Tree *tree);    
     
 protected:
     typedef enum {
@@ -77,6 +79,7 @@ public:
     virtual void setCorrect(Tree *tree) { correctTree = tree; }
     virtual bool seenCorrect() { return correctSeen; }    
     virtual bool more() { return iter < niter; }
+    virtual void reset() { iter = 0; }    
     
 protected:
     TopologyProposer *proposer;

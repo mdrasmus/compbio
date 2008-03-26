@@ -383,7 +383,7 @@ int main(int argc, char **argv)
         if (bootiter > 1) {  
             Tree *boottree;
     
-            string bootFilename = outprefix + ".boot";
+            string bootFilename = outprefix + ".boot.trees";
             string bootAlignFilename = outprefix + ".boot.align";
             FILE *bootfile = NULL;
             FILE *bootAlignfile = NULL;
@@ -410,9 +410,10 @@ int main(int argc, char **argv)
                 aln2.names[i] = aln->names[i];
 
             for (int i=1; i<bootiter; i++) {
-                printLog(LOG_LOW, "bootstrap %d of %d", i, bootiter);
+                printLog(LOG_LOW, "bootstrap %d of %d\n", i, bootiter);
                 resampleAlign(aln, &aln2);
-
+                proposer.reset();
+                
                 boottree = searchClimb(tree, 
                                        genes, aln2.nseqs, aln2.seqlen, aln2.seqs,
                                        lkfunc,

@@ -1258,7 +1258,12 @@ def robinsonFouldsError(tree1, tree2):
     
     #assert len(splits1) == len(splits2)
 
-    return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))
+    denom = float(max(len(splits1), len(splits2)))
+    
+    if denom == 0.0:
+        return 0.0
+    else:
+        return 1 - (len(overlap) / denom)
 
 
 

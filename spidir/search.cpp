@@ -387,13 +387,20 @@ DupLossProposer::DupLossProposer(TopologyProposer *proposer,
     proposer(proposer),
     quickiter(quickiter),
     niter(niter),
-    iter(0)                            
+    iter(0),
+    correctTree(NULL),
+    correctSeen(false)
 {
 }
 
 void DupLossProposer::propose(Tree *tree)
 {
     iter++;
+    
+    if (correctTree) {
+        if (tree->sameTopology(correctTree))
+            correctSeen = true;
+    }
     
     proposer->propose(tree);
 }

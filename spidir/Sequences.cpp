@@ -70,13 +70,18 @@ bool writeFasta(const char *filename, Sequences *seqs)
         return false;
     }
 
+    writeFasta(stream, seqs);
+    
+    fclose(stream);
+    return true;
+}
+
+void writeFasta(FILE *stream, Sequences *seqs)
+{
     for (int i=0; i<seqs->nseqs; i++) {
         fprintf(stream, ">%s\n", seqs->names[i].c_str());
         fprintf(stream, "%s\n", seqs->seqs[i]);
     }
-    
-    fclose(stream);
-    return true;
 }
 
 
@@ -104,6 +109,23 @@ bool checkSequences(int nseqs, int seqlen, char **seqs)
     return true;
 }
 
+
+void resampleAlign(Sequences *aln, Sequences *aln2)
+{
+    assert(aln->nseqs == aln2->nseqs);
+    char **seqs = aln->seqs;
+    char **seqs2 = aln2->seqs;
+
+    for (int j=0; j<aln2->seqlen; j++) {
+        // randomly choose a column (with replacement)
+        int col = irand(aln->seqlen);
+        
+        // copy column
+        for (int i=0; i<aln2->nseqs; i++) {
+            seqs2[i][j] = seqs[i][col];
+        }
+    }
+}
 
 
 } // namespace spidir

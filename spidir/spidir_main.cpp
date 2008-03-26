@@ -343,10 +343,14 @@ int main(int argc, char **argv)
                                 &stree, gene2species);
     
     
+    time_t startTime = time(NULL);
+    
     //=======================================================
     // search
-    time_t startTime = time(NULL);
     Tree *toptree;
+    
+    
+    
     if (search == "mcmc") {
         string mcmcfilename = outprefix + ".mcmc";
         FILE *mcmcfile = NULL;
@@ -356,6 +360,11 @@ int main(int argc, char **argv)
             return 1;
         }
         SampleFunc samples(mcmcfile);
+        
+        if (bootiter != 1) {
+            printError("Cannot use bootstrap with MCMC");
+            return 1;
+        }
     
         toptree = searchMCMC(tree, 
                              genes, aln->nseqs, aln->seqlen, aln->seqs,
@@ -369,6 +378,58 @@ int main(int argc, char **argv)
                               lkfunc,
                               &proposer,
                               fitter);
+        
+        // bootstrap
+        if (bootiter > 1) {  
+            Tree *boottree;
+    
+            string bootFilename = outprefix + ".boot";
+            string bootAlignFilename = outprefix + ".boot.align";
+            FILE *bootfile = NULL;
+            FILE *bootAlignfile = NULL;
+            
+            if (! (bootfile = fopen(bootFilename.c_str(), "w"))) {
+                printError("cannot open '%s' for writing", bootFilename.c_str());
+                return 1;
+            }
+            
+            if (! (bootAlignfile = fopen(bootAlignFilename.c_str(), "w"))) {
+                printError("cannot open '%s' for writing", bootAlignFilename.c_str());
+                return 1;
+            }
+            
+            // write first tree to boot file
+            toptree->setLeafNames(genes);
+            toptree->writeNewick(bootfile, NULL, 0, true);
+            fprintf(bootfile, "\n");
+
+            // create blank alignment for bootstrapping
+            Sequences aln2;
+            aln2.alloc(aln->nseqs, aln->seqlen);
+            for (int i=0; i<aln->nseqs; i++)
+                aln2.names[i] = aln->names[i];
+
+            for (int i=1; i<bootiter; i++) {
+                printLog(LOG_LOW, "bootstrap %d of %d", i, bootiter);
+                resampleAlign(aln, &aln2);
+
+                boottree = searchClimb(tree, 
+                                       genes, aln2.nseqs, aln2.seqlen, aln2.seqs,
+                                       lkfunc,
+                                       &proposer,
+                                       fitter);
+                boottree->setLeafNames(genes);
+                boottree->writeNewick(bootfile, NULL, 0, true);
+                fprintf(bootfile, "\n");
+                delete boottree;            
+
+                // DEBUG
+                writeFasta(bootAlignfile, &aln2);
+            }
+
+            fclose(bootfile);
+            fclose(bootAlignfile);
+        }
     } else {
         printError("unknown search '%s'", search.c_str());
         return 1;

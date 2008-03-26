@@ -286,8 +286,9 @@ float estimateGeneRate(Tree *tree, SpeciesTree *stree,
     }
     
     
-    float generate = mleGeneRate(count, dists, means, sdevs, 
-                                 params->alpha, params->beta);
+    float generate = (count > 0) ? mleGeneRate(count, dists, means, sdevs, 
+                                   params->alpha, params->beta) :
+                                   0.0; // catch unusual case
     
     delete [] depths;
     delete [] sroots;

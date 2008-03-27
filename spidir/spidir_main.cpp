@@ -414,7 +414,7 @@ int main(int argc, char **argv)
                 resampleAlign(aln, &aln2);
                 proposer.reset();
                 
-                boottree = searchClimb(tree, 
+                boottree = searchClimb(NULL, 
                                        genes, aln2.nseqs, aln2.seqlen, aln2.seqs,
                                        lkfunc,
                                        &proposer,
@@ -422,6 +422,7 @@ int main(int argc, char **argv)
                 boottree->setLeafNames(genes);
                 boottree->writeNewick(bootfile, NULL, 0, true);
                 fprintf(bootfile, "\n");
+                flush(bootfile);
                 delete boottree;            
 
                 // DEBUG

@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+"""
+
+    Build a consensus tree
+
+"""
+
+# python libs
+import sys, os
+
+# rasmus libs
+from rasmus import env, treelib
+from rasmus import util
+from rasmus import stats
+
+import pyspidir
+from rasmus.bio import phylip, phyml, fasta, phylo
+
+def parseBgFreq(txt):
+    return map(float, txt.split(","))
+
+options = [
+    ["r", "rooted", "rooted", "",
+     {"single": True,
+      "help": "treat trees as rooted"}],
+    ["a:", "align=", "align", "<fasta alignment>",
+     {"single": True}],
+    ["b:", "bgfreq=", "bgfreq", "<A>,<C>,<G>,<T>",
+     {"single": True,
+      "parser": parseBgFreq,
+      "default": [.25,.25,.25,.25]}],
+    ["t:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
+     {"single": True,
+      "parser": float,
+      "default": 1.0}],
+    ["i:", "maxiter=", "maxiter", "<max iterations for ML>",
+     {"single": True,
+      "parser": int,
+      "default": 20}],
+    ["v", "verbose", "verbose", "",
+     {"help": "verbose output"}]
+]
+
+conf = util.parseOptions(sys.argv, options)
+
+
+
+def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
+    ptree, nodes, nodelookup = treelib.makePtree(tree)
+    leaves = [x.name for x in nodes if isinstance(x.name, str)]
+    seqs = util.mget(aln, leaves)
+    
+    dists, logl = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
+    
+    for i in xrange(len(dists)):
+        nodes[i].dist = dists[i]
+    
+    return logl
+
+
+
+for filename in conf["REST"]:
+    args = "y"
+
+    if conf["rooted"]:
+        args = "r\n" + args
+    
+    tree = phylip.consenseFromFile(filename, False, args)
+    
+    if "align" in conf:
+        aln = fasta.readFasta(conf["align"])
+        
+        # copy bootstrap from dist field
+        for node in tree:
+            node.data["boot"] = node.dist / 100.0
+        
+        # find actual branch lengths
+        mlhkydist(aln, tree, conf["bgfreq"], conf["tsvratio"], conf["maxiter"])
+
+    else:
+        for node in tree:
+            node.data["boot"] = node.dist / 100.0    
+            node.dist = 0
+    
+    if conf["rooted"]:
+        b = (tree.root.children[0].data["boot"] + \
+             tree.root.children[1].data["boot"]) / 2.0
+        tree.root.children[0].data["boot"] =  b
+        tree.root.children[1].data["boot"] =  b
+    
+    tree.write()
+
+
+
+
+
+
+"""
+# PHYML
+        #tree2 = phyml.phyml(aln, seqtype="dna", usertree=tree, 
+        #                    verbose=conf["verbose"],
+        #                    opttree=False, optbranches=True)
+        #
+        #phylo.reconRoot(tree2, tree, lambda x:x, newCopy=False)
+        #recon = phylo.reconcile(tree2, tree, lambda x:x)
+        #
+        #for node2, node in recon.iteritems():
+        #    node.data["boot"] = node.dist / 100.0        
+        #    node.dist = node2.dist
+"""

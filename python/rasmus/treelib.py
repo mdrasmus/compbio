@@ -200,7 +200,7 @@ class BranchData:
     def mergeBranchData(self, data1, data2):
         """Merges the branch data from two neighboring branches into one"""
         if "boot" in data1 and "boot" in data2:
-            assert data1["boot"] == data2["boot"]
+            assert data1["boot"] == data2["boot"], (data1, data2)
             return {"boot": data1["boot"]}
         else:
             return {}
@@ -1318,6 +1318,46 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     tree.root = newRoot
     
     return tree
+
+
+def makePtree(tree):
+    """Make parent tree array from tree"""
+    
+    nodes = []
+    nodelookup = {}
+    ptree = []
+    
+    def walk(node):
+        for child in node.children:
+            walk(child)
+        nodes.append(node)
+    walk(tree.root)
+    
+    def leafsort(a, b):
+        if a.isLeaf():
+            if b.isLeaf():
+                return 0
+            else:
+                return -1
+        else:
+            if b.isLeaf():
+                return 1
+            else:
+                return 0
+    
+    # bring leaves to front
+    nodes.sort(cmp=leafsort)
+    nodelookup = util.list2lookup(nodes)
+    
+    for node in nodes:
+        if node == tree.root:
+            ptree.append(-1)
+        else:
+            ptree.append(nodelookup[node.parent])
+    
+    assert nodes[-1] == tree.root
+    
+    return ptree, nodes, nodelookup
 
 
 #=============================================================================

@@ -783,7 +783,9 @@ Tree *searchClimb(Tree *initTree,
     
     // determine initial tree
     if (initTree == NULL)
-        tree = getInitialTree(genes, nseqs, seqlen, seqs);
+        tree = getInitialTree(genes, nseqs, seqlen, seqs,
+                              lkfunc->getSpeciesTree(), 
+                              lkfunc->getGene2species());
     
     ExtendArray<int> recon(tree->nnodes);
     ExtendArray<int> events(tree->nnodes);

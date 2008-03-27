@@ -84,10 +84,15 @@ for filename in conf["REST"]:
             node.dist = 0
     
     if conf["rooted"]:
-        b = (tree.root.children[0].data["boot"] + \
-             tree.root.children[1].data["boot"]) / 2.0
-        tree.root.children[0].data["boot"] =  b
-        tree.root.children[1].data["boot"] =  b
+        if tree.root.children[0].isLeaf() or \
+           tree.root.children[1].isLeaf():
+            tree.root.children[0].data["boot"] =  0
+            tree.root.children[1].data["boot"] =  0
+        else:
+            b = (tree.root.children[0].data["boot"] + \
+                 tree.root.children[1].data["boot"]) / 2.0
+            tree.root.children[0].data["boot"] =  b
+            tree.root.children[1].data["boot"] =  b
     
     tree.write()
 

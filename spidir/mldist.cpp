@@ -10,6 +10,7 @@
 
 // c++ headers
 #include <math.h>
+#include <time.h>
 
 // spidir headers
 #include "common.h"
@@ -532,6 +533,8 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     const int samples = 0; // fixed for now  
     //int convergenum = 1000; //2* tree->nnodes;
 
+    clock_t startTime = clock();
+
     int seqlen = strlen(seqs[0]);
     float lastLogl = -INFINITY, logl = -INFINITY;
     
@@ -662,6 +665,9 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
     // cleanup
     for (int i=0; i<tree->nnodes; i++)
         delete [] lktable[i];
+    
+    printLog(LOG_MEDIUM, "mldist time: %f\n", (clock() - startTime) /
+             float(CLOCKS_PER_SEC));    
     
     return logl;
 }

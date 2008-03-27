@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+#include <time.h>
 
 // spidir headers
 #include "common.h"
@@ -542,6 +543,10 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
             dist = totmean;
     }
     
+    // TODO: should skip this branch in the first place
+    if (totsigma == 0.0)
+        return 0.0;
+    
     float logl = normallog(dist, totmean, totsigma);
     assert(!isnan(logl));
     return logl;
@@ -624,7 +629,8 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
             double sampleLogl = 0.0;
             
             // propose a setting of midpoints
-            reconparams->midpoints[root] = 1.0; // TODO: need to understand why this is here
+            if (ptree[root] != -1)
+                reconparams->midpoints[ptree[root]] = 1.0; // TODO: need to understand why this is here
             setRandomMidpoints(root, ptree, subnodes, subnodes.size(),
                                recon, events, reconparams);
             
@@ -650,6 +656,7 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         
         logl = log(prob);
     }
+    
 
     assert(!isnan(logl));
     return logl;
@@ -780,6 +787,7 @@ public:
                                             &reconparams);
                 }
             }
+
         }
         
         // generate probability
@@ -829,6 +837,7 @@ float treelk(Tree *tree,
     double maxprob = -INFINITY;
     float argmax_generate = params->alpha / params->beta;
     
+    clock_t startTime = clock();
     
     // rare events
     float rareevents = rareEventsLikelihood(tree, stree, recon, events,
@@ -881,6 +890,9 @@ float treelk(Tree *tree,
     
     // rare events
     logl += rareevents;
+    
+    printLog(LOG_MEDIUM, "lenlk time: %f\n", (clock() - startTime) /
+             float(CLOCKS_PER_SEC));
     
     return logl;
 }

@@ -422,7 +422,7 @@ int main(int argc, char **argv)
                 boottree->setLeafNames(genes);
                 boottree->writeNewick(bootfile, NULL, 0, true);
                 fprintf(bootfile, "\n");
-                flush(bootfile);
+                fflush(bootfile);
                 delete boottree;            
 
                 // DEBUG

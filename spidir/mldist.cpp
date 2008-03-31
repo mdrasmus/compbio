@@ -527,10 +527,10 @@ float calcHkySeqProb(Tree *tree, int nseqs, char **seqs,
 template <class Model>
 float findMLBranchLengths(Tree *tree, int nseqs, char **seqs, 
                           const float *bgfreq, Model &model,
-                          int maxiter=10)
+                          int maxiter=10, int samples=0)
 {
     const float converge = logf(2.0);
-    const int samples = 0; // fixed for now  
+    //const int samples = 0; // fixed for now  
     //int convergenum = 1000; //2* tree->nnodes;
 
     clock_t startTime = clock();
@@ -674,10 +674,11 @@ float findMLBranchLengths(Tree *tree, int nseqs, char **seqs,
 
 
 float findMLBranchLengthsHky(Tree *tree, int nseqs, char **seqs, 
-                             const float *bgfreq, float ratio, int maxiter)
+                             const float *bgfreq, float ratio, int maxiter,
+                             int samples)
 {
     HkyModel hky(bgfreq, ratio);
-    return findMLBranchLengths(tree, nseqs, seqs, bgfreq, hky, maxiter);
+    return findMLBranchLengths(tree, nseqs, seqs, bgfreq, hky, maxiter, samples);
 }
 
 

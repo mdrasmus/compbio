@@ -547,7 +547,8 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     int nnodes, SpeciesTree *stree, 
     SpidirParams *params, 
     int *gene2species,
-    float predupprob, float dupprob, float lossprob, bool estGenerate, bool onlyduploss) :
+    float predupprob, float dupprob, float lossprob, bool estGenerate, 
+    bool onlyduploss, bool oldduploss) :
     
     nnodes(nnodes),
     stree(stree),
@@ -559,7 +560,8 @@ SpidirBranchLikelihoodFunc::SpidirBranchLikelihoodFunc(
     dupprob(dupprob),
     lossprob(lossprob),
     estGenerate(estGenerate),
-    onlyduploss(onlyduploss)
+    onlyduploss(onlyduploss),
+    oldduploss(oldduploss)
 {}
 
 
@@ -576,7 +578,8 @@ float SpidirBranchLikelihoodFunc::likelihood(Tree *tree) {
         
     return treelk(tree, stree,
                   recon, events, params,
-                  generate, predupprob, dupprob, lossprob, onlyduploss);
+                  generate, predupprob, dupprob, lossprob, onlyduploss,
+                  oldduploss);
 }
 
 

@@ -15,7 +15,8 @@ float findMLBranchLengthsHky(int nnodes, int *ptree, int nseqs, char **seqs,
                              int maxiter, bool parsinit=false);
 
 float findMLBranchLengthsHky(Tree *tree, int nseqs, char **seqs, 
-                            const float *bgfreq, float ratio, int maxiter=100);
+                            const float *bgfreq, float ratio, 
+                            int maxiter=100, int samples=0);
 
 template <class Model>
 float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree, 

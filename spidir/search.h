@@ -220,7 +220,8 @@ public:
                                SpidirParams *params, 
                                int *gene2species,
                                float predupprob, float dupprob, float lossprob,
-                               bool estGenerate, bool onlyduploss=false);
+                               bool estGenerate, bool onlyduploss=false,
+                               bool oldduploss=false);
     virtual float likelihood(Tree *tree);
 
     virtual SpeciesTree *getSpeciesTree() { return stree; }
@@ -239,6 +240,7 @@ protected:
     float lossprob;
     bool estGenerate;
     bool onlyduploss;
+    bool oldduploss;
 };
 
 

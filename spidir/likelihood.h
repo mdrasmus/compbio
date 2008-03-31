@@ -18,7 +18,8 @@ float treelk(Tree *tree,
              int *recon, int *events, SpidirParams *params,
              float generate, 
              float predupprob, float dupprob, float lossprob,
-             bool onlyduploss=false);
+             bool onlyduploss=false, bool oldduploss=false);
+
 
 float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon, 
                            int *events,

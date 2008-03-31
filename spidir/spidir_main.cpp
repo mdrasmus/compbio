@@ -63,6 +63,7 @@ int main(int argc, char **argv)
     bool version = false;
     bool estGenerate = false;
     int bootiter = 1;
+    bool oldduploss = false;
     
     
     // parse arguments
@@ -113,6 +114,8 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<float>(
         "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
         "probability of a node being a pre-duplication (default=0.01)"));
+    config.add(new ConfigSwitch(
+        "", "--oldduploss", &oldduploss, "old-style dup/loss"));
     config.add(new ConfigSwitch(
         "-g", "--generate", &estGenerate, "estimate generate"));
     config.add(new ConfigParam<string>(
@@ -269,7 +272,9 @@ int main(int argc, char **argv)
         lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
                                                 gene2species,
                                                 predupprob, dupprob, lossprob,
-                                                estGenerate);
+                                                estGenerate,
+                                                false,
+                                                oldduploss);
     else if (lkfuncopt == "duploss")
         lkfunc = new SpidirBranchLikelihoodFunc(nnodes, &stree, params, 
                                                 gene2species,
@@ -296,7 +301,7 @@ int main(int argc, char **argv)
         fitter = new ParsimonyFitter(aln->nseqs, aln->seqlen, aln->seqs);
     }
     else if (lenfitter == "hky") {
-        const int maxiter = 5;
+        const int maxiter = 2;
         fitter = new HkyFitter(aln->nseqs, aln->seqlen, aln->seqs, 
                                bgfreq, tsvratio, maxiter);
     } else if (lenfitter == "spidir") {

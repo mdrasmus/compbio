@@ -830,7 +830,8 @@ float treelk(Tree *tree,
              SpeciesTree *stree,
              int *recon, int *events, SpidirParams *params,
              float generate,
-             float predupprob, float dupprob, float lossprob, bool onlyduploss)
+             float predupprob, float dupprob, float lossprob, 
+             bool onlyduploss, bool oldduploss)
 {
     float logl = 0.0; // log likelihood
     
@@ -840,8 +841,12 @@ float treelk(Tree *tree,
     clock_t startTime = clock();
     
     // rare events
-    float rareevents = rareEventsLikelihood(tree, stree, recon, events,
-                                            predupprob, dupprob, lossprob);
+    float rareevents = (!oldduploss) ? 
+        rareEventsLikelihood(tree, stree, recon, events,
+                             predupprob, dupprob, lossprob) :
+        rareEventsLikelihood_old(tree, stree, recon, events,
+                                 predupprob, dupprob);
+    
     if (onlyduploss)
         return rareevents;
     
@@ -885,7 +890,8 @@ float treelk(Tree *tree,
         logl += log(step);
         
         printLog(LOG_HIGH, "argmax gene rate: %f\n", argmax_generate);
-        printLog(LOG_HIGH, "treelk: %f %f %f\n", maxprob, logl, lkcalc.calc(est_generate));
+        if (est_generate > 0.0)
+            printLog(LOG_HIGH, "treelk: %f %f %f\n", maxprob, logl, lkcalc.calc(est_generate));
     }
     
     // rare events

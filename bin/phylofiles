@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+
+import os
+import sys
+
+if len(sys.argv) < 2:
+    print >>sys.stderr, "usage: phylofiles [-e] <base dir> <file suffix>"
+    sys.exit(1)
+
+
+if sys.argv[1] == "-e":
+    exists = True
+    path = sys.argv[2]
+    ext = sys.argv[3]
+else:
+    exists = False
+    path = sys.argv[1]
+    ext = sys.argv[2]
+
+
+for name in os.listdir(path):
+    fn = os.path.join(path, name, name + ext)
+    
+    if not exists or os.path.exists(fn):
+        print fn

@@ -16,59 +16,31 @@
 using namespace spidir;
 
 
-//=============================================================================
-// Python interface
-extern "C" {
 
-
-bool makeIntArray(PyObject *obj, int **array, int *size)
-{
-    *size = PyList_GET_SIZE(obj);
-    *array = new int[*size];
-    
-    for (int i=0; i<*size; i++) {
-        PyObject *item = PyList_GET_ITEM(obj, i);
-        if (!PyInt_Check(item)) {
-            delete [] array;
-            return false;
-        }
-        (*array)[i] = PyInt_AS_LONG(item);
-    }
-    
-    return true;
+#define def_py2array(func_name, T, checkType, convertType) \
+bool func_name(PyObject *obj, T **array, int *size) \
+{ \
+    *size = PyList_GET_SIZE(obj); \
+    *array = new T[*size]; \
+    \
+    for (int i=0; i<*size; i++) { \
+        PyObject *item = PyList_GET_ITEM(obj, i); \
+        if (!checkType(item)) { \
+            delete [] array; \
+            return false; \
+        } \
+        (*array)[i] = convertType(item); \
+    } \
+    \
+    return true; \
 }
 
-bool makeFloatArray(PyObject *obj, float **array, int *size)
-{
-    *size = PyList_GET_SIZE(obj);
-    *array = new float[*size];
-    
-    for (int i=0; i<*size; i++) {
-        PyObject *item = PyList_GET_ITEM(obj, i);
-        if (!PyFloat_Check(item))
-            return false;
-        (*array)[i] = PyFloat_AS_DOUBLE(item);
-    }
-    
-    return true;
-}
+def_py2array(makeIntArray, int, PyInt_Check, PyInt_AS_LONG);
+def_py2array(makeFloatArray, float, PyFloat_Check, PyFloat_AS_DOUBLE);
+def_py2array(py2array, int, PyInt_Check, PyInt_AS_LONG);
+def_py2array(py2array, float, PyFloat_Check, PyFloat_AS_DOUBLE);
 
-
-// returns a new reference
-PyObject *makeFloatListPy(float *array, int size)
-{
-    PyObject *list = PyList_New(size);
-    
-    for (int i=0; i<size; i++) {
-        PyObject *item = PyFloat_FromDouble(array[i]);
-        PyList_SET_ITEM(list, i, item);
-    }
-    
-    return list;
-}
-
-
-bool makeStringArray(PyObject *obj, char ***array, int *size)
+bool py2array(PyObject *obj, char ***array, int *size)
 {
     *size = PyList_GET_SIZE(obj);
     *array = new char*[*size];
@@ -86,6 +58,27 @@ bool makeStringArray(PyObject *obj, char ***array, int *size)
     
     return true;    
 }
+
+#define makeStringArray py2array
+
+
+
+// returns a new reference
+#define def_array2py(func_name, T, convertType) \
+PyObject *func_name(T *array, int size) \
+{ \
+    PyObject *list = PyList_New(size); \
+    for (int i=0; i<size; i++) { \
+        PyObject *item = convertType(array[i]); \
+        PyList_SET_ITEM(list, i, item); \
+    } \
+    return list; \
+}
+
+def_array2py(makeFloatListPy, float, PyFloat_FromDouble);
+def_array2py(array2py, float, PyFloat_FromDouble);
+def_array2py(array2py, int, PyInt_FromLong);
+
 
 
 void freeStringArray(char **array, int size)
@@ -195,6 +188,8 @@ bool ParsePy(PyObject *args, const char *fmt, ...)
 
 
 //=============================================================================
+// Python interface
+extern "C" {
 
 
 // Calculate the likelihood of a tree

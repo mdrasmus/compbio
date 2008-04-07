@@ -473,6 +473,13 @@ def enrichItems(in_items, out_items):
     return tab
 
 
+def qvalues(pvals):
+    import rpy
+    rpy.r.library('qvalue')
+    ret = rpy.r.qvalue(pvals)
+    return ret['qvalues']
+
+
 #=============================================================================
 # Distributions
 #

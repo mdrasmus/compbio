@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     bool estGenerate = false;
     int bootiter = 1;
     bool oldduploss = false;
+    int quickiter;
     
     
     // parse arguments
@@ -114,6 +115,9 @@ int main(int argc, char **argv)
     config.add(new ConfigParam<float>(
         "-P", "--predupprob", "<pre-duplication probability>", &predupprob, 0.01,
         "probability of a node being a pre-duplication (default=0.01)"));
+    config.add(new ConfigParam<int>(
+        "", "--quickiter", "<quick iterations>", &quickiter, 50,
+        "number of subproposals (default=50)"));
     config.add(new ConfigSwitch(
         "", "--oldduploss", &oldduploss, "old-style dup/loss"));
     config.add(new ConfigSwitch(
@@ -327,10 +331,10 @@ int main(int argc, char **argv)
     // initialize search
     
     // init topology proposer
-    const int quickiter = 50;
     const float sprRatio = .3;
     SprNniProposer proposer2(&stree, gene2species, niter, sprRatio);
-    DupLossProposer proposer(&proposer2, quickiter, niter);
+    DupLossProposer proposer(&proposer2, &stree, gene2species, dupprob, lossprob,
+                             quickiter, niter);
     
     // load correct tree
     Tree correctTree;    

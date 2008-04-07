@@ -54,6 +54,36 @@ Tree *Tree::copy()
 }
 
 
+// assumes both trees have same number of nodes
+// and have same leaves
+void Tree::setTopology(Tree *other)
+{
+    assert(nnodes == other->nnodes);
+    Node **onodes = other->nodes;
+    
+    for (int i=0; i<nnodes; i++) {
+        Node *node = nodes[i];
+        Node *onode = onodes[i];    
+        
+        if (onode->parent)
+            node->parent = nodes[onode->parent->name];
+        else
+            node->parent = NULL;
+        
+        
+        if (node->isLeaf()) {
+            assert(onode->isLeaf());
+        } else {
+            // copy child structure        
+            nodes[i]->setChildren(onodes[i]->nchildren);
+            for (int j=0; j<onodes[i]->nchildren; j++) {
+                node->children[j] = nodes[onode->children[j]->name];
+            }
+        }
+    }
+}
+
+
 // root tree by a new branch/node 
 void Tree::reroot(Node *newroot, bool onBranch)
 {

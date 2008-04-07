@@ -432,7 +432,6 @@ void removeImpliedSpecNodes(Tree *tree, int addedNodes)
         child->dist += oldnode->dist;
         tree->nodes.pop();
         tree->nnodes--;
-        
         delete oldnode;
     }
 }

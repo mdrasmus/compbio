@@ -334,21 +334,24 @@ float rareEventsLikelihood_old(Tree *tree, SpeciesTree *stree, int *recon,
     
     int predups = 0;
     int dups = 0;
-    int losses = countLoss(tree, stree, recon);
+    //int losses = countLoss(tree, stree, recon);
     
     // count dups
     for (int i=0; i<tree->nnodes; i++) {
         if (events[i] == EVENT_DUP) {
-            if (recon[i] == sroot)
+            if (recon[i] == sroot) {
                 predups += 1;
-            else
+                logl += logf(predupprob);
+            } else {
                 dups += 1;
+                logl += logf(dupprob);
+            }            
         }
     }
     
-    logl += log(poisson(dups, dupprob));
-    logl += log(poisson(predups, predupprob));
-    logl += log(poisson(losses, dupprob)); // assume same rate for loss
+    //logl += log(poisson(dups, dupprob));
+    //logl += log(poisson(predups, predupprob));
+    //logl += log(poisson(losses, dupprob)); // assume same rate for loss
 
     return logl;
 }

@@ -301,6 +301,16 @@ INT2BASE = ["A", "C", "G", "T"]
 # Sequence functions
 #
 
+class TranslateError (Exception):
+    def __init__(self, msg, aa, dna, a, codon):
+        Exception.__init__(self, msg)
+        self.aa = aa
+        self.dna = dna
+        self.a = a
+        self.codon = codon
+        
+
+
 def translate(dna):
     """Translates DNA (with gaps) into amino-acids"""
     
@@ -317,7 +327,7 @@ def translate(dna):
     return "".join(aa)
 
 
-def revtranslate(aa, dna):
+def revtranslate(aa, dna, check=False):
     """Reverse translates aminoacids (with gaps) into DNA
     
        Must supply original ungapped DNA.
@@ -329,7 +339,10 @@ def revtranslate(aa, dna):
         if a == "-":
             seq.append("---")
         else:
-            seq.append(dna[i:i+3])
+            codon = dna[i:i+3]
+            if check and a != CODON_TABLE.get(codon, "X"):
+                raise TranslateError("bad translate", aa, dna, a, codon)
+            seq.append(codon)
             i += 3
     return "".join(seq)
 

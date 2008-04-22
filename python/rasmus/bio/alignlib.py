@@ -166,7 +166,7 @@ def printAlign(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(),
         print >>out
 
 
-def revtranslateAlign(aaseqs, dnaseqs):
+def revtranslateAlign(aaseqs, dnaseqs, check=False):
     """Reverse translates aminoacid alignment into DNA alignment
     
        Must supply original ungapped DNA.
@@ -175,7 +175,7 @@ def revtranslateAlign(aaseqs, dnaseqs):
     align = newAlign(aaseqs)
     
     for name, seq in aaseqs.iteritems():
-        align[name] = revtranslate(seq, dnaseqs[name])
+        align[name] = revtranslate(seq, dnaseqs[name], check=check)
     align.orderNames(aaseqs)
     
     return align

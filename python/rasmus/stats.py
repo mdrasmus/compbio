@@ -217,7 +217,45 @@ def smooth(vals, radius):
     return vals2
 
 
-def smooth2(x, y, xradius, minsize=0):
+
+
+def iter_window(x, xradius):
+    """
+    iterates a sliding window over x with radius xradius
+    
+    x must be sorted least to greatest
+    """
+
+    vlen = len(x)
+    
+    # simple case
+    if vlen == 0:
+        return
+    
+    start = min(x)
+    end = max(x)
+    window = [0]
+    
+    low = 0
+    high = 0
+    
+    for i in xrange(vlen):
+        xi = x[i]
+        xradius2 = min(xi - start, end - xi, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            window.remove(low)
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            window.append(high)
+        
+        yield xi, window[:]
+
+
+
+def smooth2(x, y, xradius, minsize=0, sort=False):
     """
     return an averaging of x and y using xradius
     
@@ -230,6 +268,9 @@ def smooth2(x, y, xradius, minsize=0):
     # simple case
     if vlen == 0:
         return [], []
+    
+    if sort:
+        x, y = util.sortTogether(cmp, x, y)
     
     x2 = []
     y2 = []
@@ -263,7 +304,6 @@ def smooth2(x, y, xradius, minsize=0):
             y2.append(ytot / denom)
     
     return x2, y2
-
 
 
 def smooth_old(x, radius):

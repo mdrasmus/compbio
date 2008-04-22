@@ -12,6 +12,26 @@ from rasmus.util import *
 from rasmus import svg
 
 
+def rplot_start(filename, *args, **kargs):
+    from rpy import r as rp
+    rp.pdf(file=filename, *args, **kargs)
+    
+
+def rplot(func, *args, **kargs):
+    from rpy import r as rp
+    kargs.setdefault("xlab", "")
+    kargs.setdefault("ylab", "")
+    kargs.setdefault("main", "")
+            
+    rp.__getattr__(func)(*args, **kargs)
+    
+
+def rplot_end():
+    from rpy import r as rp
+    rp.dev_off()
+
+
+
 class Gnuplot:
     class Plot:
         def __init__(self, xlist, ylist, zlist, options):

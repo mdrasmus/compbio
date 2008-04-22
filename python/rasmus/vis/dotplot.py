@@ -49,25 +49,27 @@ def readSyntenyBlocks(filename, feature="synteny"):
 
 class Plot (object):
     def __init__(self, regions1, regions2, hits, hitnames=True, 
-                 style="line", color=color(0, 0, 0)):
+                 style="line", color=color(0, 0, 0),
+                 selfhits=True):
         self.regions1 = regions1
         self.regions2 = regions2
         self.style = style
         self.color = color
+        self.selfhits = selfhits
         
         if hitnames:
             self.hits = []
         
             # resolve hits to regions
-            name2region = {}
+            name2region = util.Dict(default=[])
             for region in itertools.chain(self.regions1, self.regions2):
-                name2region[region.data["ID"]] = region
+                name2region[region.data["ID"]].append(region)
             
             for hit in hits:
                 newhit = []
                 for name in hit:
                     if name in name2region:
-                        newhit.append(name2region[name])
+                        newhit.extend(name2region[name])
                 if len(newhit) > 0:
                     self.hits.append(newhit)
                 
@@ -150,9 +152,12 @@ class Dotplot (object):
         self.plotSize = [0, 0]
 
         # create chrom lookup
-        self.chromLookup = {}
-        for chrom in itertools.chain(self.chroms1, self.chroms2):
-            self.chromLookup[(chrom.species, chrom.seqname)] = chrom
+        self.chrom1Lookup = {}
+        self.chrom2Lookup = {}        
+        for chrom in self.chroms1:
+            self.chrom1Lookup[(chrom.species, chrom.seqname)] = chrom
+        for chrom in self.chroms2:
+            self.chrom2Lookup[(chrom.species, chrom.seqname)] = chrom
         
 
 
@@ -210,13 +215,13 @@ class Dotplot (object):
     
     
     def layoutPlot(self, plot):
-        self.layoutRegions(self.layout1, plot.regions1, self.chrom1Layout)
-        self.layoutRegions(self.layout2, plot.regions2, self.chrom2Layout)
+        self.layoutRegions(self.layout1, self.chrom1Lookup, plot.regions1, self.chrom1Layout)
+        self.layoutRegions(self.layout2, self.chrom2Lookup, plot.regions2, self.chrom2Layout)
         
 
-    def layoutRegions(self, layout, regions, chromLayout):
+    def layoutRegions(self, layout, chromLookup, regions, chromLayout):
         for region in regions:
-            chrom = self.chromLookup.get((region.species, region.seqname), None)
+            chrom = chromLookup.get((region.species, region.seqname), None)
             
             if chrom in chromLayout and \
                util.overlap(chrom.start, chrom.end, region.start, region.end):
@@ -252,14 +257,19 @@ class Dotplot (object):
                     if region in self.layout2:
                         set2.append(region)
                 
+                
                 # draw all pairs of hits
                 for region1 in set1:
-                    chrom1 = self.chromLookup[(region1.species, 
-                                               region1.seqname)]
+                    chrom1 = self.chrom1Lookup[(region1.species, 
+                                                region1.seqname)]
                     
                     for region2 in set2:
-                        chrom2 = self.chromLookup[(region2.species, 
-                                                   region2.seqname)]
+                        if not plot.selfhits and \
+                           region1.data["ID"] == region2.data["ID"]:
+                            continue
+                    
+                        chrom2 = self.chrom2Lookup[(region2.species, 
+                                                    region2.seqname)]
                         
                         s1 = max(self.chrom1Layout[chrom1], 
                                  self.layout1[region1])

@@ -421,7 +421,7 @@ void removeImpliedSpecNodes(Tree *tree, int addedNodes)
         assert(oldnode->nchildren == 1);
         
         // find index of oldnode in parent's children
-        int nodei=0;
+        int nodei = 0;
         for (; nodei<parent->nchildren; nodei++)
             if (parent->children[nodei] == oldnode)
                 break;        

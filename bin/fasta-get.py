@@ -2,25 +2,15 @@
 
 import os, sys
 
-from rasmus import fasta, util
+from rasmus.bio import fasta
 
 
-if len(sys.args) < 5:
-    print "fasta-get.py <fasta> <key> <start> <end> [<strand>]"
+if len(sys.argv) < 3:
+    print "fasta-get.py <fasta> <key>"
     sys.exit(1)
 
-
-if len(sys.args) == 6:
-    fafile, key, start, end, strand = sys.argv[1:6]
-    strand = int(strand)
-else:
-    fafile, key, start, end = sys.argv[1:5]
-    strand = 1
-
-start = int(start)
-end = int(end)
+seqs = fasta.readFasta(sys.argv[1])
+print seqs[sys.argv[2]]
 
 
-faindex = fasta.FastaIndex(fafile)
-print faindex.get(key, start, end, strand)
 

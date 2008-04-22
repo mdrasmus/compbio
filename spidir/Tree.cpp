@@ -323,32 +323,58 @@ void Tree::reorderLeaves(string *order)
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()
 {
-    if (root == NULL) return false;
-    if (nnodes != nodes.size()) return false;
-    if (root->parent != NULL) return false;
-    if (root->name != nnodes - 1) return false;
+    if (root == NULL) { 
+        fprintf(stderr, "root == NULL\n"); 
+        return false;
+    }
+    if (nnodes != nodes.size()) {
+        fprintf(stderr, "nnodes != nodes.size()\n");
+        return false;
+    }
+    if (root->parent != NULL) {
+        fprintf(stderr, "root->parent != NULL\n");
+        return false;
+    }
+    if (root->name != nnodes - 1) {
+        fprintf(stderr, "root->name != nnodes - 1\n");
+        return false;
+    }
     
     bool leaves = true;
     for (int i=0; i<nnodes; i++) {
         //printf("assert %d\n", i);
-        if (nodes[i] == NULL) return false;
+        if (nodes[i] == NULL) {
+            fprintf(stderr, "nodes[i] == NULL\n");
+            return false;
+        }
         
         // names are correct
-        if (nodes[i]->name != i) return false;
+        if (nodes[i]->name != i) {
+            fprintf(stderr, "nodes[i]->name != i\n");
+            return false;
+        }
         
         // do leaves come first 
         if (nodes[i]->isLeaf()) {
-            if (!leaves)
+            if (!leaves) {
+                fprintf(stderr, "!leaves\n");
                 return false;
+            }
         } else
             leaves = false;
         
         // check parent child pointers
         for (int j=0; j<nodes[i]->nchildren; j++) {
             //printf("assert %d %d\n", i, j);
-            if (nodes[i]->children[j] == NULL) return false;
+            if (nodes[i]->children[j] == NULL) {
+                fprintf(stderr, "nodes[i]->children[j] == NULL\n");
+                return false;
+            }
             //printf("assert %d %d parent\n", i, j);
-            if (nodes[i]->children[j]->parent != nodes[i]) return false;
+            if (nodes[i]->children[j]->parent != nodes[i]) {
+                fprintf(stderr, "nodes[i]->children[j]->parent != nodes[i]\n");
+                return false;
+            }
         }
     }
     

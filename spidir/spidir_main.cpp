@@ -211,6 +211,12 @@ int main(int argc, char **argv)
         printError("bad alignment file");
         return 1;
     }
+    
+    if (aln->nseqs < 3) {
+        printError("too few sequences");
+        return 1;
+    }
+    
 
     // read SPIDIR parameters
     SpidirParams *params;

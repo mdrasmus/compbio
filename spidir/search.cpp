@@ -290,7 +290,7 @@ void NniProposer::propose(Tree *tree)
             correctSeen = true;
     }
 
-    assert(tree->assertTree());
+    //assert(tree->assertTree());
 }
 
 void NniProposer::revert(Tree *tree)
@@ -414,7 +414,7 @@ void DupLossProposer::propose(Tree *tree)
     
     
     // do simple proposal if dup/loss probs are disabled
-    if (dupprob < 0.0 || lossprob < 0.0) {
+    if (dupprob < 0.0 || lossprob < 0.0 || quickiter <= 1) {
         proposer->propose(tree);
         return;
     }
@@ -479,7 +479,7 @@ void DupLossProposer::propose(Tree *tree)
     for (int i=0; i<quickiter; i++) {
         partsum = logadd(partsum, logls[i]);
     
-        printf("part %d %f (%f)\n", i, expf(partsum - sum), choice);
+        //printf("part %d %f (%f)\n", i, expf(partsum - sum), choice);
         
         if (choice < expf(partsum - sum)) {
             // propose tree i
@@ -507,7 +507,7 @@ void DupLossProposer::propose(Tree *tree)
 void DupLossProposer::revert(Tree *tree)
 {
     // do simple proposal if dup/loss probs are disabled
-    if (dupprob < 0.0 || lossprob < 0.0) {
+    if (dupprob < 0.0 || lossprob < 0.0 || quickiter <= 1) {
         proposer->revert(tree);
         return;
     }
@@ -767,7 +767,7 @@ void printSearchStatus(Tree *tree, SpeciesTree *stree, int *gene2species,
             cleanupEvents = true;
         }    
 
-    
+        //assert(tree->assertTree());
     
         reconcile(tree, stree, gene2species, recon);
         labelEvents(tree, recon, events);
@@ -836,6 +836,7 @@ Tree *searchMCMC(Tree *initTree,
     
         // propose new tree 
         proposer->propose(tree);
+        //assert(tree->assertTree());
         
         float seqlk = fitter->findLengths(tree);
         float branchlk = lkfunc->likelihood(tree);
@@ -867,7 +868,7 @@ Tree *searchMCMC(Tree *initTree,
             printLog(LOG_MEDIUM, "search: reject %f (%f)\n", nextlogl, logl);
             if (isLogLevel(LOG_MEDIUM))
                 printSearchStatus(tree, lkfunc->getSpeciesTree(), 
-                                 lkfunc->getGene2species(), recon, events);
+                                  lkfunc->getGene2species(), recon, events);
             
             reject++;
             proposer->revert(tree);
@@ -933,11 +934,13 @@ Tree *searchClimb(Tree *initTree,
     
         // propose new tree 
         proposer->propose(tree);
+        //assert(tree->assertTree());
         
         // calculate likelihood
         seqlk = fitter->findLengths(tree);
         branchlk = lkfunc->likelihood(tree);
         nextlogl = seqlk + branchlk;
+        //assert(tree->assertTree());
         
         // acceptance rule
         if (nextlogl > toplogl)

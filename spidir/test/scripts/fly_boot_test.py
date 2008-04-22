@@ -11,6 +11,7 @@
     -D 0.2 \
     -L 0.19 \
     -V 2 \
-    -i 100 \
+    -i 50 \
+    --quickiter 1000 \
     -b 100 \
     --correct ../data/0.nt.tree $*

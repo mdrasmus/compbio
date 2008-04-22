@@ -215,6 +215,9 @@ public:
     
     bool sameTopology(Tree *other);
     
+    // set the topology to match another tree
+    void setTopology(Tree *other);
+    
     // Roots the tree on branch 'newroot'
     void reroot(Node *newroot, bool onBranch=true);
     
@@ -223,6 +226,7 @@ public:
     
     // Returns a new copy of the tree
     Tree *copy();
+   
     
     // Reads a tree structure from an input stream 'infile'
     // Returns true on success

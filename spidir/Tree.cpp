@@ -54,6 +54,36 @@ Tree *Tree::copy()
 }
 
 
+// assumes both trees have same number of nodes
+// and have same leaves
+void Tree::setTopology(Tree *other)
+{
+    assert(nnodes == other->nnodes);
+    Node **onodes = other->nodes;
+    
+    for (int i=0; i<nnodes; i++) {
+        Node *node = nodes[i];
+        Node *onode = onodes[i];    
+        
+        if (onode->parent)
+            node->parent = nodes[onode->parent->name];
+        else
+            node->parent = NULL;
+        
+        
+        if (node->isLeaf()) {
+            assert(onode->isLeaf());
+        } else {
+            // copy child structure        
+            nodes[i]->setChildren(onodes[i]->nchildren);
+            for (int j=0; j<onodes[i]->nchildren; j++) {
+                node->children[j] = nodes[onode->children[j]->name];
+            }
+        }
+    }
+}
+
+
 // root tree by a new branch/node 
 void Tree::reroot(Node *newroot, bool onBranch)
 {
@@ -293,32 +323,58 @@ void Tree::reorderLeaves(string *order)
 // assert that the tree datastructure is self-consistent
 bool Tree::assertTree()
 {
-    if (root == NULL) return false;
-    if (nnodes != nodes.size()) return false;
-    if (root->parent != NULL) return false;
-    if (root->name != nnodes - 1) return false;
+    if (root == NULL) { 
+        fprintf(stderr, "root == NULL\n"); 
+        return false;
+    }
+    if (nnodes != nodes.size()) {
+        fprintf(stderr, "nnodes != nodes.size()\n");
+        return false;
+    }
+    if (root->parent != NULL) {
+        fprintf(stderr, "root->parent != NULL\n");
+        return false;
+    }
+    if (root->name != nnodes - 1) {
+        fprintf(stderr, "root->name != nnodes - 1\n");
+        return false;
+    }
     
     bool leaves = true;
     for (int i=0; i<nnodes; i++) {
         //printf("assert %d\n", i);
-        if (nodes[i] == NULL) return false;
+        if (nodes[i] == NULL) {
+            fprintf(stderr, "nodes[i] == NULL\n");
+            return false;
+        }
         
         // names are correct
-        if (nodes[i]->name != i) return false;
+        if (nodes[i]->name != i) {
+            fprintf(stderr, "nodes[i]->name != i\n");
+            return false;
+        }
         
         // do leaves come first 
         if (nodes[i]->isLeaf()) {
-            if (!leaves)
+            if (!leaves) {
+                fprintf(stderr, "!leaves\n");
                 return false;
+            }
         } else
             leaves = false;
         
         // check parent child pointers
         for (int j=0; j<nodes[i]->nchildren; j++) {
             //printf("assert %d %d\n", i, j);
-            if (nodes[i]->children[j] == NULL) return false;
+            if (nodes[i]->children[j] == NULL) {
+                fprintf(stderr, "nodes[i]->children[j] == NULL\n");
+                return false;
+            }
             //printf("assert %d %d parent\n", i, j);
-            if (nodes[i]->children[j]->parent != nodes[i]) return false;
+            if (nodes[i]->children[j]->parent != nodes[i]) {
+                fprintf(stderr, "nodes[i]->children[j]->parent != nodes[i]\n");
+                return false;
+            }
         }
     }
     

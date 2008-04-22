@@ -72,7 +72,12 @@ protected:
 class DupLossProposer: public TopologyProposer
 {
 public:
-    DupLossProposer(TopologyProposer *proposer, int quickiter=100, int niter=500);
+    DupLossProposer(TopologyProposer *proposer, 
+                    SpeciesTree *stree,
+                    int *gene2species,
+                    float dupprob,
+                    float lossprob,
+                    int quickiter=100, int niter=500);
 
     virtual void propose(Tree *tree);
     virtual void revert(Tree *tree);
@@ -88,9 +93,14 @@ protected:
     int iter;
     Tree *correctTree;
     bool correctSeen;
+    SpeciesTree *stree;
+    int *gene2species;
+    float dupprob;
+    float lossprob;
 
     ExtendArray<int> recon;
     ExtendArray<int> events;
+    Tree *oldtop;
 };
 
 

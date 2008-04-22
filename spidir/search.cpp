@@ -255,7 +255,7 @@ NniProposer::NniProposer(SpeciesTree *stree, int *gene2species,
 void NniProposer::propose(Tree *tree)
 {
     const float rerootProb = 1.0;
-    const float doubleNniProb = 0.1;
+    const float doubleNniProb = 0.0; // NO double NNI
     
     // increase iteration
     iter++;
@@ -267,7 +267,7 @@ void NniProposer::propose(Tree *tree)
     proposeNni(tree, nodea, nodeb);
 
     if (frand() < doubleNniProb) {
-        printLog(LOG_MEDIUM, "search: double NNI\n");
+        //printLog(LOG_MEDIUM, "search: double NNI\n");
         proposeRandomNni(tree, &nodec, &noded);
         proposeNni(tree, nodec, noded);
     }
@@ -290,7 +290,7 @@ void NniProposer::propose(Tree *tree)
             correctSeen = true;
     }
 
-    assert(tree->assertTree());
+    //assert(tree->assertTree());
 }
 
 void NniProposer::revert(Tree *tree)
@@ -383,13 +383,22 @@ void SprNniProposer::revert(Tree *tree)
 // Dup/Loss proposer
 
 DupLossProposer::DupLossProposer(TopologyProposer *proposer, 
+                                 SpeciesTree *stree, int *gene2species,
+                                 float dupprob, float lossprob,
                                  int quickiter, int niter) :
     proposer(proposer),
     quickiter(quickiter),
     niter(niter),
     iter(0),
     correctTree(NULL),
-    correctSeen(false)
+    correctSeen(false),
+    stree(stree),
+    gene2species(gene2species),
+    dupprob(dupprob),
+    lossprob(lossprob),
+    recon(0),
+    events(0),
+    oldtop(NULL)
 {
 }
 
@@ -397,17 +406,115 @@ void DupLossProposer::propose(Tree *tree)
 {
     iter++;
     
+    // record correct tree if we visit it
     if (correctTree) {
         if (tree->sameTopology(correctTree))
             correctSeen = true;
     }
     
-    proposer->propose(tree);
+    
+    // do simple proposal if dup/loss probs are disabled
+    if (dupprob < 0.0 || lossprob < 0.0 || quickiter <= 1) {
+        proposer->propose(tree);
+        return;
+    }
+    
+    // save old topology
+    oldtop = tree->copy();
+    
+    // do simple proposal
+    if (frand() < .2) {
+        proposer->propose(tree);
+        return;
+    }
+    
+    // recon tree to species tree
+    recon.ensureSize(tree->nnodes);
+    events.ensureSize(tree->nnodes);
+    recon.setSize(tree->nnodes);
+    events.setSize(tree->nnodes);
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+
+    
+    ExtendArray<Tree*> trees(0, quickiter);
+    ExtendArray<float> logls(0, quickiter);
+    
+    float sum = -INFINITY;
+    
+    // make many subproposals
+    for (int i=0; i<quickiter; i++) {
+        proposer->propose(tree);
+        
+        reconcile(tree, stree, gene2species, recon);
+        labelEvents(tree, recon, events);
+    
+        int addedNodes = addImpliedSpecNodes(tree, stree, recon, events);
+        float logl = birthDeathTreeQuickPrior(tree, stree, recon, events, 
+                                              dupprob, lossprob);
+        sum = logadd(sum, logl);
+        //printf("qiter %d %f\n", i, logl);
+        removeImpliedSpecNodes(tree, addedNodes);
+        recon.setSize(tree->nnodes);
+        events.setSize(tree->nnodes);
+        
+        Tree *tree2 = tree->copy();
+        
+        // save tree and logl
+        trees.append(tree2);
+        logls.append(logl);
+        
+        //if (isLogLevel(LOG_MEDIUM)) {
+        //    printLog(LOG_MEDIUM, "qiter %d %f\n", i, logl);
+        //    displayTree(tree2, getLogFile());
+        //}
+        
+        proposer->revert(tree);
+    }    
+    
+    // propose one of the subproposals 
+    float choice = frand();
+    float partsum = -INFINITY;
+    
+    for (int i=0; i<quickiter; i++) {
+        partsum = logadd(partsum, logls[i]);
+    
+        //printf("part %d %f (%f)\n", i, expf(partsum - sum), choice);
+        
+        if (choice < expf(partsum - sum)) {
+            // propose tree i
+            // trees[i];
+            //printLog(LOG_MEDIUM, "choose %d\n", i);
+            tree->setTopology(trees[i]);
+            
+            //displayTree(trees[i]);
+            //displayTree(tree);
+            
+            break;
+        }
+        
+        
+    }
+
+    
+    // clean up subproposals
+    for (int i=0; i<quickiter; i++)
+        delete trees[i];
+    
+    //proposer->propose(tree);
 }
 
 void DupLossProposer::revert(Tree *tree)
 {
-    proposer->revert(tree);
+    // do simple proposal if dup/loss probs are disabled
+    if (dupprob < 0.0 || lossprob < 0.0 || quickiter <= 1) {
+        proposer->revert(tree);
+        return;
+    }
+    
+    //printf("set oldtop\n");
+    tree->setTopology(oldtop);
+    delete oldtop;
 }
 
 
@@ -589,8 +696,12 @@ float SpidirBranchLikelihoodFunc::likelihood2(Tree *tree) {
     reconcile(tree, stree, gene2species, recon);
     labelEvents(tree, recon, events);
     
-    return rareEventsLikelihood(tree, stree, recon, 
+    if (!oldduploss)
+        return rareEventsLikelihood(tree, stree, recon, 
                                 events, predupprob, dupprob, lossprob);
+    else
+        return rareEventsLikelihood_old(tree, stree, recon, 
+                                        events, predupprob, dupprob);
 }
 
 
@@ -656,7 +767,7 @@ void printSearchStatus(Tree *tree, SpeciesTree *stree, int *gene2species,
             cleanupEvents = true;
         }    
 
-    
+        //assert(tree->assertTree());
     
         reconcile(tree, stree, gene2species, recon);
         labelEvents(tree, recon, events);
@@ -725,6 +836,7 @@ Tree *searchMCMC(Tree *initTree,
     
         // propose new tree 
         proposer->propose(tree);
+        //assert(tree->assertTree());
         
         float seqlk = fitter->findLengths(tree);
         float branchlk = lkfunc->likelihood(tree);
@@ -756,7 +868,7 @@ Tree *searchMCMC(Tree *initTree,
             printLog(LOG_MEDIUM, "search: reject %f (%f)\n", nextlogl, logl);
             if (isLogLevel(LOG_MEDIUM))
                 printSearchStatus(tree, lkfunc->getSpeciesTree(), 
-                                 lkfunc->getGene2species(), recon, events);
+                                  lkfunc->getGene2species(), recon, events);
             
             reject++;
             proposer->revert(tree);
@@ -795,10 +907,26 @@ Tree *searchClimb(Tree *initTree,
     
     // init likelihood score
     parsimony(tree, nseqs, seqs); // get initial branch lengths
-    toplogl = fitter->findLengths(tree);
-    toplogl += lkfunc->likelihood(tree);
+    float seqlk = fitter->findLengths(tree);
+    float branchlk = lkfunc->likelihood(tree);
+    float logl2 = lkfunc->likelihood2(tree);
+    toplogl = seqlk + branchlk;
     toptree = tree->copy();
     
+    
+    // log initial tree
+    printLog(LOG_LOW, "search: initial %f\n", toplogl);
+    printLog(LOG_LOW, "search: lnl   = %f\n", toplogl);
+    printLog(LOG_LOW, "search: seqlk = %f\n", seqlk);
+    printLog(LOG_LOW, "search: lenlk = %f\n", branchlk);          
+    printLog(LOG_LOW, "search: lnl2  = %f\n", logl2);
+                        
+    printSearchStatus(tree, lkfunc->getSpeciesTree(), 
+                      lkfunc->getGene2species(), recon, events);
+    
+    
+    int accept = 0;
+    int reject = 0;
     
     // search loop
     for (int i=0; proposer->more(); i++) {
@@ -806,15 +934,18 @@ Tree *searchClimb(Tree *initTree,
     
         // propose new tree 
         proposer->propose(tree);
+        //assert(tree->assertTree());
         
         // calculate likelihood
-        float seqlk = fitter->findLengths(tree);
-        float branchlk = lkfunc->likelihood(tree);
+        seqlk = fitter->findLengths(tree);
+        branchlk = lkfunc->likelihood(tree);
         nextlogl = seqlk + branchlk;
+        //assert(tree->assertTree());
         
         // acceptance rule
         if (nextlogl > toplogl)
         {
+            accept++;
             float logl2 = lkfunc->likelihood2(tree);
         
             printLog(LOG_LOW, "search: accept %f\n", nextlogl);
@@ -832,6 +963,7 @@ Tree *searchClimb(Tree *initTree,
             toptree = tree->copy();
         } else {           
             // reject, undo topology change
+            reject++;
             
             float logl2 = lkfunc->likelihood2(tree);
             
@@ -849,6 +981,7 @@ Tree *searchClimb(Tree *initTree,
         }
     }
     
+    printLog(LOG_LOW, "accept rate: %f\n", accept / float(accept+reject));
     
     return toptree;
 }

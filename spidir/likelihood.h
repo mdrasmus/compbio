@@ -25,6 +25,9 @@ float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon,
                            int *events,
                            float predupprob, float dupprob, float lossprob);
 
+float rareEventsLikelihood_old(Tree *tree, SpeciesTree *stree, int *recon, 
+                               int *events,
+                               float predupprob, float dupprob);
 
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
                            int *recon, int *events, SpidirParams *params);

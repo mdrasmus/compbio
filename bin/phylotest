@@ -36,17 +36,35 @@ if len(sys.argv) < 2:
 action = sys.argv[1]
 
 
+def create_basedir(path):
+    a, b = os.path.split(path)
+    
+    if a == "":
+        return ".."
+    else:
+        return os.path.join("..", create_basedir(a))
+    
+
 
 if action == "prepare":
     # prepare input files
 
     if len(sys.argv) < 5:
-        raise "arguments must be: prepare <datadir> <evaldir> <file extension>"
+        raise "arguments must be: prepare [-c] <datadir> <evaldir> <file extension>"
     
-    datadir, evaldir, ext = sys.argv[2:5]
+    if sys.argv[2] == "-c":
+        docopy = True    
+        datadir, evaldir, ext = sys.argv[3:6]
+    else:
+        docopy = False
+        datadir, evaldir, ext = sys.argv[2:5]
+    
     
     if not os.path.exists(evaldir):
         os.makedirs(evaldir)
+    
+    basedir = create_basedir(evaldir)
+    
     
     names = os.listdir(datadir)
     for name in names:
@@ -54,8 +72,14 @@ if action == "prepare":
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         
-        shutil.copy(os.path.join(datadir, name, name+ext),
-                    os.path.join(evaldir, name, name+ext))
+        
+        if docopy:
+            shutil.copy(os.path.join(datadir, name, name+ext),
+                        os.path.join(evaldir, name, name+ext))
+        else:
+            os.symlink(os.path.join(basedir, "..", datadir, name, name+ext),
+                       os.path.join(evaldir, name, name+ext))
+            
 
 elif action == "report":
 

@@ -284,7 +284,10 @@ float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon,
     // preroot duplications
     if (events[tree->root->name] == EVENT_DUP) {
         // ignore root right now
-        //int rootdups = countRootDups(tree->root, events);
+        const float predupprob = 0.02;
+        int rootdups = countDups(tree->root, events);
+        
+        prob += log(predupprob) * rootdups + log(1.0 - predupprob);
         //prob += log(birthDeathCount(rootdups+1, pretime, birthRate, deathRate));
     }
  

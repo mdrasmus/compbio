@@ -38,6 +38,9 @@ options = [
      {"single": True,
       "parser": int,
       "default": 20}],
+    ["", "binary", "binary", "",
+     {"single": True,
+      "help": "ensure consensus tree is binary"}],
     ["v", "verbose", "verbose", "",
      {"help": "verbose output"}]
 ]
@@ -59,6 +62,36 @@ def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
     return logl
 
 
+def ensure_binary(tree):
+    
+    multibranches = [node for node in tree
+                     if len(node.children) > 2]
+
+    for node in multibranches:
+        children = list(node.children)
+        
+        # remove children
+        for child in children:
+            tree.remove(child)
+        
+        # add back in binary
+        while len(children) > 2:
+            left = children.pop()
+            right = children.pop()
+            newnode = treelib.TreeNode(tree.newName())
+            newnode.data['boot'] = 0
+            tree.addChild(newnode, left)
+            tree.addChild(newnode, right)
+            children.append(newnode)
+        
+        # add last two to original node
+        tree.addChild(node, children.pop())
+        tree.addChild(node, children.pop())
+            
+                
+            
+            
+
 
 for filename in conf["REST"]:
     args = "y"
@@ -67,20 +100,26 @@ for filename in conf["REST"]:
         args = "r\n" + args
     
     tree = phylip.consenseFromFile(filename, False, args)
+    ntrees = len(open(filename).readlines())
     
     if "align" in conf:
         aln = fasta.readFasta(conf["align"])
+
+        ensure_binary(tree)
         
         # copy bootstrap from dist field
         for node in tree:
-            node.data["boot"] = node.dist / 100.0
+            node.data["boot"] = node.dist / ntrees
         
         # find actual branch lengths
         mlhkydist(aln, tree, conf["bgfreq"], conf["tsvratio"], conf["maxiter"])
 
     else:
+        if conf["binary"]:
+            ensure_binary(tree)
+    
         for node in tree:
-            node.data["boot"] = node.dist / 100.0    
+            node.data["boot"] = node.dist / ntrees
             node.dist = 0
     
     if conf["rooted"]:

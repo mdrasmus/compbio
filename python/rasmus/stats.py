@@ -487,23 +487,27 @@ def cdf(vals):
     return x, y
     
     
-def enrichItems(in_items, out_items, useq=True):
+def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
     """Calculates enrichment for items within an in-set vs and out-set.
        Returns a sorted table.
     """
-
+    
+    # count items
     counts = util.Dict(default=[0, 0])
     for item in in_items:
         counts[item][0] += 1
     for item in out_items:
         counts[item][1] += 1
-
-    N = len(in_items) + len(out_items)
-    M = len(in_items)
+    
+    if N is None:
+        N = len(in_items) + len(out_items)
+    if M is None:
+        M = len(in_items)
     
     tab = tablelib.Table(headers=["item", "in_count", "out_count", 
                                   "pval", "pval_under"])
-
+    
+    # do hypergeometric
     for item, (a, b) in counts.iteritems():
         tab.add(item=item,
                 in_count=a,
@@ -511,12 +515,23 @@ def enrichItems(in_items, out_items, useq=True):
                 pval=rhyper(a, a+b, M, N),
                 pval_under=rhyper(a, a+b, M, N, 1))
 
+    # add qvalues
     if useq:
         qval = qvalues(tab.cget("pval"))
         qval_under = qvalues(tab.cget("pval_under"))
         
         tab.addCol("qval", data=qval)
         tab.addCol("qval_under", data=qval_under)
+    
+    if extra:
+        tab.addCol("in_size", data=[M]*len(tab))
+        tab.addCol("out_size", data=[N-M]*len(tab))
+        tab.addCol("item_ratio", data=[
+            row["in_count"] / float(row["in_count"] + row["out_count"])
+            for row in tab])
+        tab.addCol("size_ratio", data=[
+            M / float(N) for row in tab])
+            
     
     tab.sort(col='pval')
     return tab

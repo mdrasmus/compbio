@@ -22,8 +22,18 @@ def rplot(func, *args, **kargs):
     kargs.setdefault("xlab", "")
     kargs.setdefault("ylab", "")
     kargs.setdefault("main", "")
+    
+    if "pdf" in kargs:
+        pdf = kargs["pdf"]
+        del kargs["pdf"]
+        rp.pdf(file=pdf)
+    else:
+        pdf = None
             
     rp.__getattr__(func)(*args, **kargs)
+    
+    if pdf is not None:
+        rp.dev_off()
     
 
 def rplot_end():

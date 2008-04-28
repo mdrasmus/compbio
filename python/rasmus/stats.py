@@ -487,7 +487,7 @@ def cdf(vals):
     return x, y
     
     
-def enrichItems(in_items, out_items):
+def enrichItems(in_items, out_items, useq=True):
     """Calculates enrichment for items within an in-set vs and out-set.
        Returns a sorted table.
     """
@@ -500,15 +500,24 @@ def enrichItems(in_items, out_items):
 
     N = len(in_items) + len(out_items)
     M = len(in_items)
-
-    tab = tablelib.Table(headers=["item", "in_count", "out_count", "pval", "pval_under"])
     
+    tab = tablelib.Table(headers=["item", "in_count", "out_count", 
+                                  "pval", "pval_under"])
+
     for item, (a, b) in counts.iteritems():
         tab.add(item=item,
                 in_count=a,
                 out_count=b,
                 pval=rhyper(a, a+b, M, N),
                 pval_under=rhyper(a, a+b, M, N, 1))
+
+    if useq:
+        qval = qvalues(tab.cget("pval"))
+        qval_under = qvalues(tab.cget("pval_under"))
+        
+        tab.addCol("qval", data=qval)
+        tab.addCol("qval_under", data=qval_under)
+    
     tab.sort(col='pval')
     return tab
 

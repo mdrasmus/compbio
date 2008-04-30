@@ -536,7 +536,7 @@ def stree2gtree(stree, genes, gene2species):
 
 
 
-def findOrthologs(gtree, stree, recon):
+def findOrthologs(gtree, stree, recon, counts=True):
     """Find all ortholog pairs within a gene tree"""
 
     events = labelEvents(gtree, recon)
@@ -545,16 +545,26 @@ def findOrthologs(gtree, stree, recon):
     for node, event in events.items():
         if event == "spec":
             leavesmat = [x.leaves() for x in node.children]
+            sp_counts = [util.histDict(util.mget(recon, row))
+                         for row in leavesmat]
             
             for i in range(len(leavesmat)):
                 for j in range(i+1, len(leavesmat)):
                     for gene1 in leavesmat[i]:
                         for gene2 in leavesmat[j]:
-                            if gene1.name < gene2.name:
-                                orth = (gene1.name, gene2.name)
+                            if gene1.name > gene2.name:
+                                g1, g2 = gene2, gene1
+                                a, b = j, i
                             else:
-                                orth = (gene2.name, gene1.name)
-                            orths.append(orth)
+                                g1, g2 = gene1, gene2
+                                a, b = i, j
+                            
+                            if not counts:
+                                orths.append((g1.name, g2.name))
+                            else:
+                                orths.append((g1.name, g2.name,
+                                              sp_counts[a][recon[g1]],
+                                              sp_counts[b][recon[g2]]))
     
     return orths
 

@@ -444,7 +444,7 @@ class Dotplot (object):
     def enableTrace(self, show, plot=None):
         if len(self.plots) == 0:
             return
-        if plot == None:
+        if plot is None:
             plot = self.plots[0]
     
         if show:
@@ -452,8 +452,10 @@ class Dotplot (object):
 
             # remove old regions
             if plot not in self.traces:
+                print "add"
                 self.traces[plot] = self.win.add_group(vis)
             else:
+                print "replace"
                 self.traces[plot] = self.win.replace_group(self.traces[plot], vis)
         
         elif plot in self.traces:
@@ -466,7 +468,8 @@ class Dotplot (object):
             return
         if plot == None:
             plot = self.plots[0]
-    
+        
+        print plot not in self.traces
         self.enableTrace(plot not in self.traces, plot)
 
 

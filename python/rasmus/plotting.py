@@ -6,40 +6,125 @@
  Plotting classes and functions: GNUPLOT wrapper, heatmaps
 """
 
-import sys, os
 
 from rasmus.util import *
 from rasmus import svg
 
+import sys, os
+import tempfile as temporaryfile
+
+
+#=============================================================================
+# R plotting
+
+# private global rplot state
+_rplot_pdf = None
+_rplot_temp = False
+_rplot_viewer = "xpdf"
+
 
 def rplot_start(filename, *args, **kargs):
+    """Starts a new PDF file"""
+    global _rplot_pdf, _rplot_temp
     from rpy import r as rp
     rp.pdf(file=filename, *args, **kargs)
+    _rplot_pdf = filename
     
 
 def rplot(func, *args, **kargs):
+    global _rplot_pdf, _rplot_temp
+
     from rpy import r as rp
     kargs.setdefault("xlab", "")
     kargs.setdefault("ylab", "")
     kargs.setdefault("main", "")
     
+    # parse my args
     if "pdf" in kargs:
-        pdf = kargs["pdf"]
+        _rplot_pdf = kargs["pdf"]
+        _rplot_temp = True  
         del kargs["pdf"]
-        rp.pdf(file=pdf)
+        rp.pdf(file=_rplot_pdf)
+        self_open = True
     else:
-        pdf = None
+        self_open = False
+
+
+    if "show" in kargs:
+        show = kargs["show"]
+        del kargs["show"]
+    else:
+        show = False           
+
+    # prepare tempfile if needed
+    if _rplot_pdf is None:
+        f, _rplot_pdf = temporaryfile.mkstemp(".pdf", "rplot_")
+        _rplot_temp = True
+        os.close(f)        
+        rp.pdf(file=_rplot_pdf)
+        
+        # fore show for tempfile
+        self_open = True
+        show = True
             
+    
+    if "pdf_close" in kargs:
+        _pdf_close = kargs["pdf_close"]
+        del kargs["pdf_close"]
+    else:
+        if self_open:
+            _pdf_close = True
+        else:
+            _pdf_close = False
+    
+    
+    # make R call   
     rp.__getattr__(func)(*args, **kargs)
     
-    if pdf is not None:
-        rp.dev_off()
+    # close PDF and show
+    if _pdf_close:
+        if _rplot_pdf is not None:
+            rp.dev_off()
+    
+            if show:
+                if _rplot_temp:
+                    os.system("('%s' '%s'; rm '%s') &" % 
+                        (_rplot_viewer, _rplot_pdf, _rplot_pdf))
+                else:
+                    os.system("('%s' '%s') &" % (_rplot_viewer, _rplot_pdf))
+                
+            _rplot_pdf = None
+            _rplot_temp = False
     
 
-def rplot_end():
+def rplot_end(show=False):
+    """Ends a PDF file"""
+    
+    global _rplot_pdf, _rplot_temp
     from rpy import r as rp
     rp.dev_off()
+    
+    if show:
+        os.system("('%s' '%s') &" % (_rplot_viewer, _rplot_pdf))
+    
+    _rplot_pdf = None
+    _rplot_temp = False
 
+
+def rplot_set_viewer(viewer):
+    global _rplot_viewer
+    _rplot_viewer = viewer
+
+def rplot_get_viewer(viewer):
+    return _rplot_viewer
+
+
+
+
+
+
+#=============================================================================
+# Gnuplot
 
 
 class Gnuplot:

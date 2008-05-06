@@ -539,6 +539,11 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
 
 def qvalues(pvals):
     import rpy
+    ret = rpy.r.p_adjust(pvals, "fdr")
+    return ret
+
+def qvalues2(pvals):
+    import rpy
     rpy.r.library('qvalue')
     ret = rpy.r.qvalue(pvals)
     return ret['qvalues']

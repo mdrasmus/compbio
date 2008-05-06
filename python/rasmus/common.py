@@ -87,7 +87,9 @@ def showTree(tree, **options):
     
     return vis
 
-
+# DEPRECATED
+# Tue Apr 29 23:22:56 EDT 2008
+"""
 # try to setup DATAPATH env
 RASMUS_COMMON_DATAPATH_LOADED = False
 if "DATAPATH" in os.environ:
@@ -97,5 +99,4 @@ if "DATAPATH" in os.environ:
     print "rasmus.common: loaded data paths from DATAPATH"
     for path in env.datapaths:
         print path
-
-    
+"""    

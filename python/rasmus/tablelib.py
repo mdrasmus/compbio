@@ -1192,6 +1192,9 @@ def sqltab(dbfile, query, maxrows=None, headers=None):
     else:
         return Table(list(cur), headers=headers)
 
+#def writesql(dbfile, tab, table_name):
+    
+
 
 #===========================================================================
 # Matrix functions

@@ -332,23 +332,34 @@ def mapwindow(func, size, lst):
     return lst2
 
 
-def groupby(func, lst):
+def groupby(func, lst, multi=False):
     """Places i and j of 'lst' into the same group if func(i) == func(j).
        
        func -- is a function of one argument that maps items to group objects
        lst  -- is a list of items
+       multi -- if True, func must return a list of keys (key1, ..., keyn) for
+                item a.  groupby will retrun a nested dict 'dct' such that
+                dct[key1]...[keyn] == a
        
        returns:
        a dictionary such that the keys are groups and values are items found in
        that group
     """
     
-    div = {}
-    for i in lst:
-        lst2 = div.setdefault(func(i), [])
-        lst2.append(i)
+    if not multi:
+        dct = {}
+        for i in lst:
+            dct.setdefault(func(i), []).append(i)
+    else:
+        dct = {}
+        for i in lst:
+            keys = func(i)
+            d = dct
+            for key in keys[:-1]:
+                d = d.setdefault(key, {})
+            d.setdefault(keys[-1], []).append(i)
     
-    return div
+    return dct
 
 
 def unique(lst):

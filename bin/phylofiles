@@ -8,13 +8,17 @@ if len(sys.argv) < 2:
     print >>sys.stderr, "usage: phylofiles [-e] <base dir> <file suffix>"
     sys.exit(1)
 
-
+# parse args
 if sys.argv[1] == "-e":
     exists = True
     path = sys.argv[2]
     ext = sys.argv[3]
-else:
+elif sys.argv[1] == "-n":
     exists = False
+    path = sys.argv[2]
+    ext = sys.argv[3]
+else:
+    exists = None
     path = sys.argv[1]
     ext = sys.argv[2]
 
@@ -22,5 +26,9 @@ else:
 for name in os.listdir(path):
     fn = os.path.join(path, name, name + ext)
     
-    if not exists or os.path.exists(fn):
+    if exists is None:
         print fn
+    
+    elif os.path.exists(fn) == exists:
+        print fn
+

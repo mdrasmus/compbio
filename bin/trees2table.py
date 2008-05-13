@@ -68,7 +68,10 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         j += 1
         
         tree = treelib.readTree(f)
-        phylo.reconRoot(tree, stree, gene2species, newCopy=False)
+        
+        # Tue May  6 18:48:15 EDT 2008
+        # trees should be rooted before using this program
+        #phylo.reconRoot(tree, stree, gene2species, newCopy=False)
 
         phylo.initDupLossTree(singleTree)
         dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)

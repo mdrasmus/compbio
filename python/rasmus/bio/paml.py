@@ -4,18 +4,22 @@ import os
 
 # rasmus libs
 from rasmus import util
-from rasmus.bio import alignlib
+from rasmus.bio import alignlib, seqlib
 from rasmus.bio import phylip
 
 
-def removeStopCodons(seq):
+def removeStopCodons(seq, stops=None):
     assert len(seq) % 3 == 0
+    
+    # ensure stop codons are defined
+    if stops is None:
+        stops = set(["TAA", "TAG", "TGA"])          
     
     seq2 = []
     
     for i in range(0, len(seq), 3):
         codon = seq[i:i+3].upper()
-        if alignlib.translate(codon) == "*":
+        if codon in stops:
             seq2.append("NNN")
         else:
             seq2.append(codon)

@@ -32,3 +32,9 @@ hash1 = phylo.hashTree(tree1)
 hash2 = phylo.hashTree(tree2)
 
 print hash1 == hash2
+
+if hash1 == hash2:
+    sys.exit(0)
+else:
+    sys.exit(1)
+

@@ -23,18 +23,28 @@ _rplot_temp = False
 _rplot_viewer = "xpdf"
 
 
+class LazyR (object):
+    def __init__(self, name):
+        self.__name = name
+
+    def __getattr__(self, attr):        
+        import rpy
+        globals()[self.__name] = rpy.r
+        return rpy.r.__getattr__(attr)
+
+rp = LazyR("rp")
+
+
 def rplot_start(filename, *args, **kargs):
     """Starts a new PDF file"""
-    global _rplot_pdf, _rplot_temp
-    from rpy import r as rp
+    global _rplot_pdf
     rp.pdf(file=filename, *args, **kargs)
     _rplot_pdf = filename
     
 
 def rplot(func, *args, **kargs):
     global _rplot_pdf, _rplot_temp
-
-    from rpy import r as rp
+    
     kargs.setdefault("xlab", "")
     kargs.setdefault("ylab", "")
     kargs.setdefault("main", "")
@@ -101,7 +111,6 @@ def rplot_end(show=False):
     """Ends a PDF file"""
     
     global _rplot_pdf, _rplot_temp
-    from rpy import r as rp
     rp.dev_off()
     
     if show:

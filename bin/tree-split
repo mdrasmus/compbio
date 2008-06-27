@@ -82,7 +82,7 @@ for filename in conf["REST"]:
     if split:
         for i, subtree in enumerate(subtrees):
             subtreename = util.replaceExt(filename, conf["treeext"],
-                                          "." + str(i) + conf["subtreeext"])
+                                          "." + str(i+1) + conf["subtreeext"])
             subtree.write(subtreename)
 
 

@@ -13,6 +13,9 @@ options = [
     {"single": True}],
  ["s:", "stree=", "stree", "<species tree>",
     {"single": True}],
+ ["P:", "partext=", "partext", "<partition file extension>",
+    {"single": True,
+     "default": ".split"}],
  ["T:", "treeext=", "treeext", "<tree filename extension>",
     {"single": True,
      "default": ".tree"}],
@@ -25,6 +28,21 @@ conf = util.parseOptions(sys.argv, options, resthelp="<tree file> ...")
 
 gene2species = genomeutil.readGene2species(conf["smap"])
 stree = treelib.readTree(conf["stree"])
+
+
+def normBoot(tree):
+    if tree.hasData("boot") and len(tree.root.children) == 2:
+        if tree.root.children[0].isLeaf() or \
+           tree.root.children[1].isLeaf():
+            tree.root.children[0].data["boot"] = 0.0
+            tree.root.children[1].data["boot"] = 0.0
+            tree.root.data["boot"] = 0.0
+        else:
+            boot = max(tree.root.children[0].data["boot"],
+                       tree.root.children[1].data["boot"])
+            tree.root.children[0].data["boot"] = boot
+            tree.root.children[1].data["boot"] = boot
+            tree.root.data["boot"] = 0.0
 
 
 def splitTree(tree, stree, gene2species):
@@ -45,6 +63,8 @@ def splitTree(tree, stree, gene2species):
         recon = phylo.reconcile(tree, stree, gene2species)
         events = phylo.labelEvents(tree, recon)
         
+        #treelib.drawTree(tree, minlen=5)
+        
         if events[tree.root] == "dup" and \
            recon[tree.root] == stree.root:
             subtrees = []
@@ -53,13 +73,7 @@ def splitTree(tree, stree, gene2species):
                 subtrees.append(treelib.subtree(tree, child))
                 
                 # use the max bootstrap for the root branches
-                tree2 = subtrees[-1]
-                if tree2.hasData("boot") and len(tree2.root.children) == 2:
-                    boot = max(tree2.root.children[0].data["boot"],
-                               tree2.root.children[1].data["boot"])
-                    tree2.root.children[0].data["boot"] = boot
-                    tree2.root.children[1].data["boot"] = boot
-                    tree2.root.data["boot"] = 0.0
+                normBoot(subtrees[-1])
             
             subtrees2 = []
             for subtree in subtrees:
@@ -69,6 +83,7 @@ def splitTree(tree, stree, gene2species):
             return True, subtrees2
         
         # tree only needs rerooting
+        normBoot(tree)
         return True, [tree]
         
     # nothing needs to change
@@ -80,10 +95,19 @@ for filename in conf["REST"]:
     split, subtrees = splitTree(tree, stree, gene2species)
     
     if split:
+        partfilename = util.replaceExt(filename, conf["treeext"], conf["partext"])
+        partfile = open(partfilename, "w")
+        
+        print "splitting", filename
+        print "  ",
         for i, subtree in enumerate(subtrees):
+            print (i+1),
             subtreename = util.replaceExt(filename, conf["treeext"],
                                           "." + str(i+1) + conf["subtreeext"])
             subtree.write(subtreename)
+            partfile.write("\t".join(subtree.leafNames()) + "\n")
+        print
+        partfile.close()
 
 
 

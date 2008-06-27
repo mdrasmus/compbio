@@ -246,6 +246,10 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     # make a consistent unrooted copy of gene tree
     if newCopy:
         gtree = gtree.copy()
+        
+    if len(gtree.leaves()) == 2:
+        return
+        
     treelib.unroot(gtree, newCopy=False)
     treelib.reroot(gtree, 
                    gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 

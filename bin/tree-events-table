@@ -2,12 +2,12 @@
 
 import os, sys
 
-from rasmus import treelib, env, tablelib, util
+from rasmus import treelib, tablelib, util
 from rasmus.bio import genomeutil, phylo
-#from rasmus.vis import treesvg
 
 import Spidir
 import Spidir.Likelihood
+
 
 
 options = [
@@ -33,7 +33,7 @@ conf = util.parseOptions(sys.argv, options, quit=True)
 
 
 
-def countDupLoss(conf, treefiles, stree, gene2species, params):
+def countDupLoss(famids, treefiles, stree, gene2species, params):
     totalTree = stree.copy()
     singleTree = stree.copy()
     
@@ -59,20 +59,14 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
     
     util.tic("read trees")
     # count dup loss
-    j = 0
-    for i, f in enumerate(treefiles):
+    for famid, f in zip(famids, treefiles):
         if not os.path.exists(f):
             print "skipping", f
             continue
-        print i, j, f
-        j += 1
+        print f
         
         tree = treelib.readTree(f)
         
-        # Tue May  6 18:48:15 EDT 2008
-        # trees should be rooted before using this program
-        #phylo.reconRoot(tree, stree, gene2species, newCopy=False)
-
         phylo.initDupLossTree(singleTree)
         dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)
         dup, loss, appear = phylo.countDupLossTree(tree, totalTree, gene2species)
@@ -80,26 +74,8 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         phylo.countAncestralGenes(singleTree)
         
         row, junk = tree2row(singleTree)
+        row["partid"] = name
         
-        """
-        row = {"partid": i,
-               "genes": len(tree.leaves()),
-               "appear": appear,               
-               "dup": dup,
-               "loss": loss
-               }
-
-        for name, node in singleTree.nodes.iteritems():
-            row["%s-appear" % str(name)] = node.data['appear']
-            row["%s-dup" % str(name)] = node.data['dup']
-            row["%s-loss" % str(name)] = node.data['loss']
-            row["%s-genes" % str(name)] = node.data['genes']
-        """
-        
-        if "treeext" in conf:
-            row["partid"] = util.replaceExt(os.path.basename(f), conf["treeext"], "")
-        else:
-            row["partid"] = i
         
         # add treelen
         row['treelen'] = sum(x.dist for x in tree.nodes.values())        
@@ -176,67 +152,29 @@ def addDupLossTree(stree, row):
 
 
 
-if 0:
-    tottree = stree.copy()
-    for row in tab:
-        if 17 < row['size'] < 40:
-            addDupLossTree(tottree, row)
-
-# count duplications after speciations
-if 0:
-    tab2 = copy.copy(tab)
-    tab2.headers.append("post-dup")
-    tab2.headers.append("dup/gene")
-
-    for row in tab2:
-        row["post-dup"] = row["dup"] - row["1-dup"]
-        row["dup/gene"] = row["dup"] / float(row["size"])
-
-
-def drawEventTree(etree, params, filename=sys.stdout):
-    labels = {}
-    for name, node in etree.nodes.iteritems():
-        labels[name] = "%s\n+%d,+%d,-%d;\n%d;" % \
-                       (str(name),
-                        node.data['appear'], 
-                        node.data['dup'], node.data['loss'],
-                        node.data['genes'])
-
-    Spidir.drawParamTree(etree, params, labels=labels, yscale=30, 
-                            labelSize=7,
-                            xscale=5000,
-                            filename=filename)
 
 
 def main(conf):
     # read data
-    env.addEnvPaths("DATAPATH")
-    gene2species = genomeutil.readGene2species(env.findFile(conf["smap"]))
-    stree = treelib.readTree(env.findFile(conf["stree"]))
+    gene2species = genomeutil.readGene2species(conf["smap"])
+    stree = treelib.readTree(conf["stree"])
 
     if "params" in conf:
-        params = Spidir.readParams(env.findFile(conf["params"]))
+        params = Spidir.readParams(conf["params"])
         
-        #for name, node in stree.nodes.items():
-        #    node.dist = params[name][0]
     else:
         params = None
     
-    #terms = readGo(env.findFile("orf_geneontology.tab"))
-    #parts = util.readDelim(env.findFile(conf["parts"]))
-    
-    
     # determine treefiles
-    treefiles = []
-    treefiles.extend(conf["REST"])
-
+    treefiles = conf["REST"]
+    
     if conf["stdin"]:  
         for line in sys.stdin:
             treefiles.append(line.rstrip())
 
 
-    #names = [util.replaceExt(os.path.basename(x), conf["treeext"], "")
-    #         for x in treefiles]
+    famids = [util.replaceExt(os.path.basename(x), conf["treeext"], "")
+              for x in treefiles]
     
     tab, totalTree = countDupLoss(conf, treefiles, stree, gene2species, params)
     
@@ -248,7 +186,5 @@ def main(conf):
     tab.write(conf["output"] + ".tab")    
     tab2.write(conf["output"] + "-total.tab")
     
-    drawEventTree(totalTree, params, filename=file(conf["output"] + ".svg", "w"))
-
 
 main(conf)

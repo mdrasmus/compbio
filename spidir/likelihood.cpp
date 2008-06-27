@@ -16,6 +16,7 @@
 #include "likelihood.h"
 #include "phylogeny.h"
 #include "ExtendArray.h"
+#include "mldist.h"
 
 
 namespace spidir {
@@ -837,7 +838,7 @@ float treelk(Tree *tree,
              int *recon, int *events, SpidirParams *params,
              float generate,
              float predupprob, float dupprob, float lossprob, 
-             bool onlyduploss, bool oldduploss)
+             bool onlyduploss, bool oldduploss, bool duploss)
 {
     float logl = 0.0; // log likelihood
     
@@ -847,11 +848,14 @@ float treelk(Tree *tree,
     clock_t startTime = clock();
     
     // rare events
-    float rareevents = (!oldduploss) ? 
-        rareEventsLikelihood(tree, stree, recon, events,
-                             predupprob, dupprob, lossprob) :
-        rareEventsLikelihood_old(tree, stree, recon, events,
-                                 predupprob, dupprob);
+    float rareevents = 0.0;
+
+    if (duploss)
+        rareevents = (!oldduploss) ? 
+          rareEventsLikelihood(tree, stree, recon, events,
+                               predupprob, dupprob, lossprob) :
+          rareEventsLikelihood_old(tree, stree, recon, events,
+                                   predupprob, dupprob);
     
     if (onlyduploss)
         return rareevents;
@@ -962,6 +966,7 @@ public:
 };
 
 
+// Ignores sequence data, assumes given branch lengths are perfectly known
 float maxPosteriorGeneRate(Tree *tree, SpeciesTree *stree,
                            int *recon, int *events, SpidirParams *params)
 {
@@ -996,6 +1001,216 @@ float maxPosteriorGeneRate(int nnodes, int *ptree, float *dists,
     return maxPosteriorGeneRate(&tree, &stree, recon, events, &params);
 }
 
+
+void samplePosteriorGeneRate(Tree *tree, 
+                             int nseqs, char **seqs, 
+                             const float *bgfreq, float ratio,
+                             SpeciesTree *stree, 
+                             int *gene2species,
+                             SpidirParams *params,
+                             int nsamples,
+                             geneRateCallback callback,
+                             void *userdata)
+{
+    // use parsimonious reconciliation as default
+    ExtendArray<int> recon(tree->nnodes);
+    ExtendArray<int> events(tree->nnodes);
+    reconcile(tree, stree, gene2species, recon);
+    labelEvents(tree, recon, events);
+
+
+    samplePosteriorGeneRate(tree,
+                            nseqs, seqs, 
+                            bgfreq, ratio,
+                            stree,
+                            recon, events, params,
+                            nsamples,
+                            callback,
+                            userdata);
+}
+
+
+// Uses MCMC to sample from P(B,G|T,D)
+void samplePosteriorGeneRate(Tree *tree,
+                             int nseqs, char **seqs, 
+                             const float *bgfreq, float ratio,
+                             SpeciesTree *stree,
+                             int *recon, int *events, SpidirParams *params,
+                             int nsamples,
+                             geneRateCallback callback,
+                             void *userdata)
+{
+    // state variables B, G
+    ExtendArray<float> dists(tree->nnodes);
+    float next_generate = 0, generate = 0;
+    float logl = -INFINITY;
+    float logl2 = 999;
+    float next_logl, next_logl2;
+    float alpha;
+
+    const float generate_step = .2;
+    const float min_generate = .0001;
+
+    // initialize first state
+    generate = gammavariate(params->alpha, params->beta);
+    generateBranchLengths(tree, stree,
+                          recon, events,
+                          params, generate);
+    
+    
+    // perform MCMC
+    for (int i=0; i<nsamples; i++) {
+        // generate a new state 
+      
+        if (frand() < .5) {
+            printLog(LOG_HIGH, "sample G: ");
+
+            // sample G_2
+            next_generate = frand(max(generate - generate_step, min_generate),
+                                  generate + generate_step);
+            //next_generate = gammavariate(params->alpha, params->beta);
+
+            // if P(B_1|T,G_1) not exist, make it
+            if (logl2 > 0) {                
+                logl2 = treelk(tree, stree, recon, events, params,
+                               generate,
+                               1, 1, 1,
+                               false, false, false);
+            }
+            
+            // set new branch lengths B_2
+            for (int j=0; j<tree->nnodes; j++)
+                tree->nodes[j]->dist *= next_generate / generate;
+            
+            // calculate P(D|B_2,T)
+            next_logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, ratio);
+
+            // calculate P(B_2|T,G_2)
+            next_logl2 = treelk(tree, stree, recon, events, params,
+                                next_generate,
+                                1, 1, 1,
+                                false, false, false);
+
+            // q(G_1|G_2) = 1 /(next_generate + generate_step - 
+            //                  max(next_generate - generate_step, 
+            //                      min_generate))
+            // q(G_2|G_1) = 1 /(generate + generate_step - 
+            //                  max(generate - generate_step, 
+            //                      min_generate))
+            // qratio = (generate + generate_step - 
+            //                  max(generate - generate_step, 
+            //                      min_generate)) /
+            //          (next_generate + generate_step - 
+            //                  max(next_generate - generate_step, 
+            //                      min_generate))
+
+
+            float logl3 = gammalog(next_generate, 
+                                   params->alpha, params->beta) - 
+                          gammalog(generate, 
+                                   params->alpha, params->beta) +
+                          log((generate + generate_step - 
+                               max(generate - generate_step, 
+                                   min_generate)) /
+                              (next_generate + generate_step - 
+                               max(next_generate - generate_step, 
+                                   min_generate)));
+
+            alpha = exp(next_logl + next_logl2 - logl - logl2 + logl3);
+
+        } else {
+            printLog(LOG_HIGH, "sample B: ");
+
+            // keep same gene rate G_2 = G_1
+            next_generate = generate;
+            
+            // sample B_2
+            generateBranchLengths(tree, stree,
+                                  recon, events,
+                                  params, next_generate, -2, -2);
+
+            // calculate P(D|B_2,T)
+            next_logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, ratio);
+            next_logl2 = 999;
+            
+            alpha = exp(next_logl - logl);
+        }
+        
+
+        if (frand() <= alpha) {
+            // accept: logl, G, B
+            printLog(LOG_HIGH, "accept\n");
+            logl = next_logl;
+            logl2 = next_logl2;
+            generate = next_generate;
+            tree->getDists(dists);
+        } else {
+            // reject
+            printLog(LOG_HIGH, "reject\n");
+            
+            // restore previous B
+            tree->setDists(dists);
+        }
+        
+        // return sample
+        callback(generate, tree, userdata);
+    }
+}
+
+
+
+
+// Uses MCMC to sample from P(B,G|T,D)
+void samplePosteriorGeneRate_old(Tree *tree,
+                             int nseqs, char **seqs, 
+                             const float *bgfreq, float ratio,
+                             SpeciesTree *stree,
+                             int *recon, int *events, SpidirParams *params,
+                             int nsamples,
+                             geneRateCallback callback,
+                             void *userdata)
+{
+    // state variables B, G
+    ExtendArray<float> dists(tree->nnodes);
+    float next_generate = 0, generate = 0;
+    float logl = -INFINITY;
+    float next_logl;
+    
+    for (int i=0; i<nsamples; i++) {
+        // generate a new state 
+
+        // sample G
+        next_generate = gammavariate(params->alpha, params->beta);
+
+        // sample B
+        generateBranchLengths(tree, stree,
+                              recon, events,
+                              params, next_generate);
+        
+        // calculate P(D|B,T)
+        next_logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, ratio);
+
+        //printf(">> %f %f\n", next_logl, logl);
+
+        float alpha = exp(next_logl - logl);
+        if (frand() <= alpha) {
+            // accept: logl, G, B
+            printLog(LOG_HIGH, "accept: %f, %f\n", next_logl, logl);
+            logl = next_logl;
+            generate = next_generate;
+            tree->getDists(dists);
+        } else {
+            // reject
+            printLog(LOG_HIGH, "reject: %f, %f\n", next_logl, logl);
+            
+            // restore previous B
+            tree->setDists(dists);
+        }
+        
+        // return sample
+        callback(generate, tree, userdata);
+    }
+}
 
 //=============================================================================
 // branch length generation
@@ -1061,7 +1276,7 @@ void genSubtree(Tree *tree, Node *root,
         reconparams->midpoints[root->name] = 1.0; // TODO: need to understand why this is here
         setRandomMidpoints(root->name, ptree, subnames, subnodes.size(),
                            recon, events, reconparams);
-
+        
         // loop through all branches in subtree
         for (int j=0; j<subnodes.size(); j++) {
             Node *node = subnodes[j];
@@ -1083,7 +1298,7 @@ void generateBranchLengths(Tree *tree,
                            SpeciesTree *stree,
                            int *recon, int *events,
                            SpidirParams *params,
-                           float generate)
+                           float generate, int subnode, int subchild)
 {
     // generate a gene rate if it is requested (i.e. generate < 0)
     if (generate < 0.0)
@@ -1103,18 +1318,36 @@ void generateBranchLengths(Tree *tree,
     ExtendArray<int> pstree(stree->nnodes);
     tree2ptree(tree, ptree);
     tree2ptree(stree, pstree);
-        
     
-    // loop through independent subtrees
-    for (int i=0; i<tree->nnodes; i++) {
-        if (events[i] == EVENT_SPEC || i == tree->root->name) {
-            for (int j=0; j<2; j++) {
-                Node *node = tree->nodes[i]->children[j];
-                genSubtree(tree, node,
-                           stree, ptree, pstree,
-                           recon, events, params,
-                           generate,
-                           &reconparams);
+    if (subnode != -1 && subchild != -1) {
+        if (subnode == -2) {
+            // pick random subnode
+            do {
+                subnode = irand(tree->nnodes);                
+            } while (events[subnode] != EVENT_SPEC ||
+                     subnode == tree->root->name);
+            subchild = irand(2);
+        }
+
+        // regenerate only one subtree
+        Node *node = tree->nodes[subnode]->children[subchild];
+        genSubtree(tree, node,
+                   stree, ptree, pstree,
+                   recon, events, params,
+                   generate,
+                   &reconparams);
+    } else {    
+        // loop through independent subtrees
+        for (int i=0; i<tree->nnodes; i++) {
+            if (events[i] == EVENT_SPEC || i == tree->root->name) {
+                for (int j=0; j<2; j++) {
+                    Node *node = tree->nodes[i]->children[j];
+                    genSubtree(tree, node,
+                               stree, ptree, pstree,
+                               recon, events, params,
+                               generate,
+                               &reconparams);
+                }
             }
         }
     }

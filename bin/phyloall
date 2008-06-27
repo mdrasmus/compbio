@@ -123,8 +123,8 @@ align2treeProgs = ["proml", "dnaml", "protpars", "dnapars",
              
 dist2treeProgs = ["bionj", "lse", "wls", "nj"]
 
-align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "lapd",
-                   "puzzledist"]
+align2distProgs = ["dnadist", "protdist", "fourfold", "ds", "dn", "dnds", 
+                   "lapd", "puzzledist"]
 
 tree2distProgs = ["tree2dist"]
 
@@ -141,6 +141,9 @@ def getAlignFile(conf, basename):
 
 def getDistFile(conf, basename):
     return basename + conf["distext"][-1]
+
+def getDistFiles(conf, basename):
+    return [basename + x for x in conf["distext"]]
 
 def getTreeFile(conf, basename):
     return basename + conf["treeext"][-1]
@@ -484,12 +487,24 @@ def align2dist(conf, prog, alignfile, basename):
         phylip.writeDistMatrix(mat, out=distfile)
     
     elif prog == "ds":
-        dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"])
+        dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
+                                 saveOutput=conf["extraoutput"])
         phylip.writeDistMatrix(ds[1], out=distfile)
 
     elif prog == "dn":
-        dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"])
+        dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
+                                 saveOutput=conf["extraoutput"])
         phylip.writeDistMatrix(dn[1], out=distfile)
+    
+    elif prog == "dnds":
+        distfiles = getDistFiles(conf, basename)
+        if len(distfiles) != 2:
+            raise Exception("must specify two distance files for 'dnds'")
+        
+        dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
+                                 saveOutput=conf["extraoutput"])
+        phylip.writeDistMatrix(dn[1], out=distfiles[0])
+        phylip.writeDistMatrix(ds[1], out=distfiles[1])
     
     elif prog == "lapd":
         if conf["args"] == None:
@@ -504,7 +519,7 @@ def align2dist(conf, prog, alignfile, basename):
                                  verbose=conf["verbose"])
     
     else:
-        raise "unknown program '%s'" % prog
+        raise Exception("unknown program '%s'" % prog)
 
 
 def tree2dist(conf, prog, treefile, labelfile, distfile, basename):

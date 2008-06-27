@@ -183,6 +183,8 @@ def simTree(stree, params, duprate, lossrate, generate, use_spec,
         # randomly sample gene rate
         generate = random.gammavariate(params["baserate"][0],
                                        1.0 / params["baserate"][1])
+        
+    infofile.write("gene rate: %f\n" % generate)
     
     tree, recon, events = birthdeath.sample_birth_death_gene_tree(
         stree, duprate, lossrate, removeloss=False)    

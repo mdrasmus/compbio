@@ -98,6 +98,8 @@ bool ParsePy(PyObject *args, const char *fmt, ...)
     int **dl;
     float *f;
     float **fl;
+    char ***cl;
+    void **v;
     string *str;
     bool *b;
     
@@ -174,9 +176,27 @@ bool ParsePy(PyObject *args, const char *fmt, ...)
                 str = va_arg(ap, string *);
                 *str = PyString_AS_STRING(arg);
                 break;
+            case 'C':
+                if (!PyList_Check(arg)) {
+                    printf("expected list for argument %d", i);
+		    status = false;
+		    break;
+		}
+		
+		cl = va_arg(ap, char ***);
+		d = va_arg(ap, int *);
+                if (!makeStringArray(arg, cl, d)) {
+                    printf("error parsing char matrix");
+		    status = false;
+                }
+		break;
             case 'b':
                 b = va_arg(ap, bool *);
                 *b = (arg != Py_False);
+                break;
+            case 'v':
+                v = va_arg(ap, void **);
+                *v = (void*) arg;
                 break;
         }
     }
@@ -384,39 +404,6 @@ pyspidir_genbranches(PyObject *self, PyObject *args)
 static PyObject *
 pyspidir_est_generate(PyObject *self, PyObject *args)
 {
-    
-    // check number of args
-    if (PyTuple_GET_SIZE(args) < 8) {
-        printf("wrong number of args\n");
-        return NULL;
-    }
-    
-    // parse args
-    PyObject *pyptree = PyTuple_GET_ITEM(args, 0);
-    PyObject *pydists = PyTuple_GET_ITEM(args, 1);
-    PyObject *pypstree = PyTuple_GET_ITEM(args, 2);
-    PyObject *pygene2species = PyTuple_GET_ITEM(args, 3);
-    PyObject *pymu = PyTuple_GET_ITEM(args, 4);
-    PyObject *pysigma = PyTuple_GET_ITEM(args, 5);
-    PyObject *pyalpha = PyTuple_GET_ITEM(args, 6);
-    PyObject *pybeta = PyTuple_GET_ITEM(args, 7);
-    
-    // check arg types
-    if (!PyList_Check(pyptree) || 
-        !PyList_Check(pydists) ||
-        !PyList_Check(pypstree) ||
-        !PyList_Check(pygene2species) ||
-        !PyList_Check(pymu) ||
-        !PyList_Check(pysigma) ||
-        !PyFloat_Check(pyalpha) ||
-        !PyFloat_Check(pybeta)
-        )
-    {
-        printf("wrong argument types\n");
-        return NULL;
-    }
-    
-    
     // gene tree
     int nnodes;
     StackArray<int> ptree;
@@ -432,41 +419,19 @@ pyspidir_est_generate(PyObject *self, PyObject *args)
     // params
     StackArray<float> mu;
     StackArray<float> sigma;
-    float alpha = PyFloat_AS_DOUBLE(pyalpha);
-    float beta = PyFloat_AS_DOUBLE(pybeta);    
+    float alpha;
+    float beta;
     
     
-    // convert data
-    if (!makeIntArray(pyptree, &ptree, &nnodes)) {
-        printf("bad ptree\n");
-        return NULL;
-    }
-
-    if (!makeFloatArray(pydists, &dists, &nnodes)) {
-        printf("bad dists\n");
-        return NULL;
-    }
-    
-    if (!makeIntArray(pypstree, &pstree, &nsnodes)) {
-        printf("bad pstree\n");
-        return NULL;
-    }
-    
-    if (!makeIntArray(pygene2species, &gene2species, &nnodes)) {
-        printf("bad gene2species\n");
-        return NULL;
-    }
-    
-    if (!makeFloatArray(pymu, &mu, &nsnodes)) {
-        printf("bad mu\n");
-        return NULL;
-    }
-    
-    if (!makeFloatArray(pysigma, &sigma, &nsnodes)) {
-        printf("bad sigma\n");
-        return NULL;
-    }
-    
+    if (!ParsePy(args, "DFDDFFff", 
+                 &ptree, &nnodes,
+                 &dists, &nnodes,
+                 &pstree, &nsnodes,
+                 &gene2species, &nnodes,
+                 &mu, &nsnodes,
+                 &sigma, &nsnodes,
+                 &alpha, &beta))
+        return NULL;   
     
     // make tree object
     Tree tree(nnodes);
@@ -490,6 +455,93 @@ pyspidir_est_generate(PyObject *self, PyObject *args)
     float generate = maxPosteriorGeneRate(&tree, &stree, recon, events, &params);
     
     return Py_BuildValue("f", generate);
+}
+
+
+void samples_posterior_gene_rate(float generate, Tree *tree, void *userdata)
+{
+    PyObject *callback = (PyObject*) userdata;
+
+    PyObject *args = PyTuple_New(1);
+    PyObject *pygenerate = PyFloat_FromDouble(generate);
+    PyTuple_SET_ITEM(args, 0, pygenerate);
+    
+    PyObject_CallObject(callback, args);
+}
+
+
+// Calculate the likelihood of a tree
+static PyObject *
+pyspidir_sample_gene_rate(PyObject *self, PyObject *args)
+{
+    int nsamples;
+
+    // gene tree
+    int nnodes;
+    StackArray<int> ptree;
+    
+    // species tree
+    int nsnodes;
+    StackArray<int> pstree;
+    
+    // reconciliation
+    StackArray<int> gene2species;
+    
+    // params
+    StackArray<float> mu;
+    StackArray<float> sigma;
+    float alpha;
+    float beta;
+
+    // sequence model params
+    int nbgfreq;
+    ExtendArray<float> bgfreq;
+    float tsvratio;
+
+    // sequence matrix
+    int nseqs;
+    char **seqs;
+
+    PyObject *pycallback;
+    
+    
+    if (!ParsePy(args, "dDDDFFffFfCv", 
+                 &nsamples,
+                 &ptree, &nnodes,
+                 &pstree, &nsnodes,
+                 &gene2species, &nnodes,
+                 &mu, &nsnodes,
+                 &sigma, &nsnodes,
+                 &alpha, &beta,
+                 &bgfreq, &nbgfreq,
+                 &tsvratio,
+		 &seqs, &nseqs,
+                 &pycallback))
+        return NULL;
+
+    
+    // make tree object
+    Tree tree(nnodes);
+    ptree2tree(nnodes, ptree, &tree);
+
+    SpeciesTree stree(nsnodes);
+    ptree2tree(nsnodes, pstree, &stree);
+    stree.setDepths();
+
+    SpidirParams params(nsnodes, NULL, mu, sigma, alpha, beta);
+
+
+    samplePosteriorGeneRate(&tree, 
+                            nseqs, seqs, 
+                            bgfreq, tsvratio,
+                            &stree, 
+                            gene2species,
+                            &params,
+                            nsamples,
+                            samples_posterior_gene_rate,
+                            (void*) pycallback);
+    
+    Py_RETURN_NONE;
 }
 
 
@@ -731,6 +783,8 @@ initpyspidir(void)
          "Generate branch lengths"},
         {"est_generate", pyspidir_est_generate, METH_VARARGS,
          "Estimates max a posteriori gene rate"},
+        {"sample_gene_rate", pyspidir_sample_gene_rate, METH_VARARGS,
+         "Samples gene rates from the posterior distribution"},
         {"parsimony",  pyspidir_parsimony, METH_VARARGS,
          "Parsimony method"},
         {"mlhkydist", pyspidir_mlhkydist, METH_VARARGS,

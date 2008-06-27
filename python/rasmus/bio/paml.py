@@ -1,21 +1,25 @@
 
 # python libs
-import os
+import os, re
 
 # rasmus libs
-from rasmus import util
-from rasmus.bio import alignlib
+from rasmus import util, tablelib
+from rasmus.bio import alignlib, seqlib
 from rasmus.bio import phylip
 
 
-def removeStopCodons(seq):
+def removeStopCodons(seq, stops=None):
     assert len(seq) % 3 == 0
+    
+    # ensure stop codons are defined
+    if stops is None:
+        stops = set(["TAA", "TAG", "TGA"])          
     
     seq2 = []
     
     for i in range(0, len(seq), 3):
         codon = seq[i:i+3].upper()
-        if alignlib.translate(codon) == "*":
+        if codon in stops:
             seq2.append("NNN")
         else:
             seq2.append(codon)
@@ -109,6 +113,156 @@ def align2tree(seq, seqtype="dna",
     CodonFreq = 2
     
     """)
+    
+
+
+class PamlResults (object):
+    def __init__(self, resultsFile):
+        self._lines = util.openStream(resultsFile).readlines()
+        
+    def iterBebLines(self, lines=None):
+        """Iterate over the BEB section of PamlResults"""
+        
+        if lines is None:
+            lines = iter(self._lines)
+        else:
+            lines = iter(lines)
+            
+        for line in lines:
+            if line.startswith("Bayes Empirical Bayes"):
+                # skip next four lines
+                stream.next()
+                stream.next()
+                stream.next()
+                stream.next()
+                break
+        
+        for line in lines:
+            if line == "\n":
+                break
+            yield line
+        
+    def getBeb(self, lines=None):
+        """Iterate over a parsed matrix of BEB data"""
+        
+        if lines is None:
+            lines = self.iterBebLines()
+        
+        for line in lines:
+            pos, aa, prob, omega, plusmin, omega_stdev = line.rstrip().split()
+            yield [int(pos), aa, float(prob.replace("*", "")),
+                        float(omega), float(omega_stdev)]
+    
+    def getBebTable(self, lines=None):
+        """Returns a table of BEB data"""
+        
+        return tablelib.Table(list(self.getBeb(lines)), 
+                              headers=["pos", "aa", "prob", "omega",
+                                       "omega_stdev"],
+                              types={"pos": int,
+                                     "aa": str,
+                                     "prob": float,
+                                     "omega": float,
+                                     "omega_stdev": float})
+    
+    
+    def getM0_dnds(self, lines=None):
+        """Return the omega value from the Model 0 section"""
+        
+        omega = None
+        dn = None
+        ds = None
+        dt = None
+        kappa = None
+        
+        if lines is None:
+            lines = iter(self._lines)
+        else:
+            lines = iter(lines)
+            
+        for line in lines:
+            if line.startswith("Model 0"):
+                break
+        else:
+            # paml file does not contain model 0
+            return None, None, None, None, None
+        
+        for line in lines:
+            if line.startswith("omega (dN/dS) ="):
+                omega = float(line.rstrip().split()[-1])
+            
+            elif line.startswith("kappa (ts/tv) ="):
+                kappa = float(line.rstrip().split()[-1])
+            
+            elif line.startswith("tree length for dN:"):
+                dn = float(line.split(":")[1])
+            
+            elif line.startswith("tree length for dS:"):
+                ds = float(line.split(":")[1])
+                
+            elif line.startswith("tree length ="):
+                dt = float(line.split("=")[1])
+            
+            # quit if entering next model
+            elif line.startswith("Model"):
+                break
+                
+        assert None not in (omega, dn, ds, dt, kappa)
+        return omega, dn, ds, dt, kappa
+    
+    
+    def get_ng_dnds(self, lines=None):
+        """Return the Nei & Gojobori 1986 dN, dS  matrices"""
+        
+        genes1 = []
+        genes2 = []
+        omegas = []
+        dn = []
+        ds = []
+        
+        if lines is None:
+            lines = iter(self._lines)
+        else:
+            lines = iter(lines)
+        
+        for line in lines:
+            if line.startswith("Nei & Gojobori 1986"):
+                break
+        else:
+            # paml file does not contain Nei Gojobori matrix
+            return None, None, None, None, None
+        
+        # skip to first blank line
+        for line in lines:
+            if len(line) <= 1:
+                break
+        
+        genes = []
+        pattern = re.compile("[ \t\(\)]+")
+        for line in lines:
+            # quit on first blank line
+            if len(line) <= 1:
+                break
+            
+            tokens = re.split(pattern, line.rstrip("\n\t )"))
+            if len(tokens) != 1 + 3 * len(genes):
+                # early truncation
+                return None, None, None, None, None
+            
+            genes.append(tokens[0])           
+            for i in xrange(0, 3*(len(genes) - 1), 3):
+                genes1.append(tokens[0])
+                genes2.append(genes[i/3])
+                omegas.append(float(tokens[1+i]))
+                dn.append(float(tokens[1+i+1]))
+                ds.append(float(tokens[1+i+2]))
+        
+        return genes1, genes2, omegas, dn, ds
+        
+                
+        
+        
+        
 
 # Example codeml.ctl
 """

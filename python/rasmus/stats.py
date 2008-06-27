@@ -155,18 +155,24 @@ def fitLineError(xlist, ylist, slope, inter):
 
 
 def pearsonsRegression(observed, expected):
-    """Pearson's co-efficient of regression"""
+    """Pearson's coefficient of regression"""
     
     # error sum of squares
     ess = sum((a - b)**2 for a, b in util.izip(observed, expected))
     
     # total sum of squares
     u = mean(observed)
-    tss = sum((a - u)**2 for a in util.izip(observed))
+    tss = sum((a - u)**2 for a in observed)
     
     r2 = 1 - ess / tss
     return r2
+
     
+def pearsonsRegressionLine(x, y, m, b):
+    observed = y
+    expected = [m*i + b for i in x]
+    return pearsonsRegression(observed, expected)
+
 
 
 def percentile(vals, perc, rounding=-1, sort=True):
@@ -176,7 +182,7 @@ def percentile(vals, perc, rounding=-1, sort=True):
     """
     
     if sort:
-        vals2 = util.sort(vals)
+        vals2 = sorted(vals)
     else:
         vals2 = vals
     n = len(vals2)
@@ -514,7 +520,7 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
                 out_count=b,
                 pval=rhyper(a, a+b, M, N),
                 pval_under=rhyper(a, a+b, M, N, 1))
-
+    
     # add qvalues
     if useq:
         qval = qvalues(tab.cget("pval"))
@@ -531,7 +537,8 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
             for row in tab])
         tab.addCol("size_ratio", data=[
             M / float(N) for row in tab])
-            
+        tab.addCol("fold", data=[row["item_ratio"] / row["size_ratio"]
+                                 for row in tab])
     
     tab.sort(col='pval')
     return tab
@@ -1002,6 +1009,7 @@ def spearman(vec1, vec2):
 #
 def fitCurve(xdata, ydata, func, paramsInit):   
     import scipy
+    import scipy.optimize
 
     y = scipy.array(ydata)
     p0 = scipy.array(paramsInit)

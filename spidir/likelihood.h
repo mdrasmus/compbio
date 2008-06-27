@@ -6,6 +6,8 @@
 
 namespace spidir {
 
+typedef void (*geneRateCallback) (float generate, Tree *tree, void *userdata);
+
 float treelk(int nnodes, int *ptree, float *dists,
              int nsnodes, int *pstree, 
              int *recon, int *events,
@@ -18,7 +20,8 @@ float treelk(Tree *tree,
              int *recon, int *events, SpidirParams *params,
              float generate, 
              float predupprob, float dupprob, float lossprob,
-             bool onlyduploss=false, bool oldduploss=false);
+             bool onlyduploss=false, bool oldduploss=false,
+             bool duploss=true);
 
 
 float rareEventsLikelihood(Tree *tree, SpeciesTree *stree, int *recon, 
@@ -38,6 +41,28 @@ float maxPosteriorGeneRate(int nnodes, int *ptree, float *dists,
                            float *mu, float *sigma,
                            float alpha, float beta);
 
+
+void samplePosteriorGeneRate(Tree *tree,
+                             int nseqs, char **seqs,
+                             const float *bgfreq, float ratio,
+                             SpeciesTree *stree,
+                             int *gene2species,
+                             SpidirParams *params,
+                             int nsamples,
+                             geneRateCallback callback,
+                             void *userdata);
+
+
+void samplePosteriorGeneRate(Tree *tree,
+                             int nseqs, char **seqs, 
+                             const float *bgfreq, float ratio,
+                             SpeciesTree *stree,
+                             int *recon, int *events, SpidirParams *params,
+                             int nsamples,
+                             geneRateCallback callback,
+                             void *userdata);
+
+
 void generateBranchLengths(int nnodes, int *ptree, 
                            int nsnodes, int *pstree,
                            int *recon, int *events,
@@ -49,7 +74,8 @@ void generateBranchLengths(Tree *tree,
                            SpeciesTree *stree,
                            int *recon, int *events,
                            SpidirParams *params,
-                           float generate=-1.0);
+                           float generate=-1.0, 
+                           int subnode=-1, int subchild=-1);
 
 
 float birthDeathDensity(float *times, int ntimes, float maxtime, 

@@ -21,6 +21,9 @@ def parseBgFreq(txt):
     return map(float, txt.split(","))
 
 options = [
+    ["o:", "outfile=", "outfile", "<output file>",
+     {"single": True,
+      "help": "if specified, write output to file"}],
     ["r", "rooted", "rooted", "",
      {"single": True,
       "help": "treat trees as rooted"}],
@@ -30,6 +33,10 @@ options = [
      {"single": True,
       "parser": parseBgFreq,
       "default": [.25,.25,.25,.25]}],
+    ["n:", "numtrees=", "numtrees", "<expected number of trees>",
+        {"single": True,
+         "parser": int,
+         "help": "if given, require a certain number of trees to be present"}],
     ["t:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
      {"single": True,
       "parser": float,
@@ -99,8 +106,14 @@ for filename in conf["REST"]:
     if conf["rooted"]:
         args = "r\n" + args
     
+    ntrees = len(open(filename).readlines())    
+    
+    if "numtrees" in conf and ntrees != conf["numtrees"]:
+        print >>sys.stderr, "wrong number of trees present (%d != %d)" % \
+            (ntrees, conf["numtrees"])
+        sys.exit(1)    
+    
     tree = phylip.consenseFromFile(filename, False, args)
-    ntrees = len(open(filename).readlines())
     
     if "align" in conf:
         aln = fasta.readFasta(conf["align"])
@@ -133,7 +146,10 @@ for filename in conf["REST"]:
             tree.root.children[0].data["boot"] =  b
             tree.root.children[1].data["boot"] =  b
     
-    tree.write()
+    if "outfile" in conf:
+        tree.write(conf["outfile"])
+    else:
+        tree.write()
 
 
 

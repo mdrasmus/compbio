@@ -35,15 +35,17 @@ namespace spidir {
         thus, time also corresponds to sub/site
 
     Definitions:
-        i    = destination base
-        j    = source base
-        t    = time
-        pi_i = background/prior distribution of base i
-        R    = Transition/Transversion ratio
+        i     = destination base
+        j     = source base
+        t     = time
+        pi_i  = background/prior distribution of base i
+        R     = Transition/Transversion ratio
+        kappa = Transition/Transversion ratio (easier to specify)
 
     Parameterization:
+        R    = (pi_t*pi_c + pi_a*pi_g) * kappa / (pi_y pi_r)
         beta = 1 / (2.0 * pi_r * pi_y * (1+R))
-        rho = pi_r / pi_y    
+        rho  = pi_r / pi_y
 
         alpha_y = (pi_r * pi_y * R - pi_a*pi_g - pi_c*pi_t) / 
                   (2.0*(1+R)*(pi_y*pi_a*pi_g*rho + pi_r*pi_c*pi_t))
@@ -58,8 +60,8 @@ namespace spidir {
             pi_ry = pi_y;
         }
         int delta_ij =  int(i == j);
-        int e_ij = int(dnatype[i] == dnatype[j]);    
-
+        int e_ij = int(dnatype[i] == dnatype[j]);
+        
     Formula:
         prob(j | i, t, pi, R) = 
             exp(-(alpha_i + beta)*t) * delta_ij + 
@@ -67,12 +69,11 @@ namespace spidir {
             (1 - exp(-beta*t)) * pi_j
 
 */
+
 class HkyModel
 {
 public:
-    HkyModel(const float *bgfreq, float _ratio) :
-        // convert the usual ratio definition to Felsenstein's definition
-        ratio(_ratio / 2.0) 
+    HkyModel(const float *bgfreq, float ratio_kappa)
     {
         // set background base frequencies
         for (int i=0; i<4; i++)
@@ -82,7 +83,11 @@ public:
         pi_y = pi[DNA_C] + pi[DNA_T];
         rho = pi_r / pi_y;
 
-
+        // convert the usual ratio definition (kappa) to Felsenstein's 
+        // definition (R)
+        ratio = (pi[DNA_T]*pi[DNA_C] + pi[DNA_A]*pi[DNA_G]) * ratio_kappa / \
+                (pi_y * pi_r);
+        
         // determine HKY parameters alpha_r, alpha_y, and beta
         b = 1.0 / (2.0 * pi_r * pi_y * (1.0+ratio));
         a_y = (pi_r*pi_y*ratio - 
@@ -450,6 +455,41 @@ float getTotalLikelihood(ExtendArray<float*> &lktable, Tree *tree,
 
 
 
+template <class Model>
+float calcSeqProb(Tree *tree, int nseqs, char **seqs, 
+                  const float *bgfreq, Model &model)
+{
+    int seqlen = strlen(seqs[0]);
+    
+    // allocate conditional likelihood dynamic programming table
+    ExtendArray<float*> lktable(tree->nnodes);
+    for (int i=0; i<tree->nnodes; i++) {
+        lktable[i] = new float [4 * seqlen];
+        for (int j=0; j<4*seqlen; j++)
+            lktable[i][j] = 0.0; //-INFINITY;
+    }
+    
+    // initialize the condition likelihood table
+    initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
+    float logl = getTotalLikelihood(lktable, tree, seqlen, model, bgfreq);
+    
+    // cleanup
+    for (int i=0; i<tree->nnodes; i++)
+        delete [] lktable[i];
+    
+    return logl;
+}
+
+
+float calcHkySeqProb(Tree *tree, int nseqs, char **seqs, 
+                     const float *bgfreq, float ratio)
+{
+    HkyModel hky(bgfreq, ratio);
+    return calcSeqProb(tree, nseqs, seqs, bgfreq, hky);
+}
+
+
+
 //=============================================================================
 // find MLE branch lengths
 
@@ -487,39 +527,6 @@ void getRootOrder(Tree *tree, ExtendArray<Node*> *nodes, Node *node=NULL)
             }
         }*/
     }
-}
-
-template <class Model>
-float calcSeqProb(Tree *tree, int nseqs, char **seqs, 
-                  const float *bgfreq, Model &model)
-{
-    int seqlen = strlen(seqs[0]);
-    
-    // allocate conditional likelihood dynamic programming table
-    ExtendArray<float*> lktable(tree->nnodes);
-    for (int i=0; i<tree->nnodes; i++) {
-        lktable[i] = new float [4 * seqlen];
-        for (int j=0; j<4*seqlen; j++)
-            lktable[i][j] = 0.0; //-INFINITY;
-    }
-    
-    // initialize the condition likelihood table
-    initCondLkTable(lktable, tree, nseqs, seqlen, seqs, model);
-    float logl = getTotalLikelihood(lktable, tree, seqlen, model, bgfreq);
-    
-    // cleanup
-    for (int i=0; i<tree->nnodes; i++)
-        delete [] lktable[i];
-    
-    return logl;
-}
-
-
-float calcHkySeqProb(Tree *tree, int nseqs, char **seqs, 
-                     const float *bgfreq, float ratio)
-{
-    HkyModel hky(bgfreq, ratio);
-    return calcSeqProb(tree, nseqs, seqs, bgfreq, hky);
 }
 
 

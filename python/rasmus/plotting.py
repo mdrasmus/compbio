@@ -26,11 +26,16 @@ _rplot_viewer = "xpdf"
 class LazyR (object):
     def __init__(self, name):
         self.__name = name
-
+    
     def __getattr__(self, attr):        
         import rpy
         globals()[self.__name] = rpy.r
         return rpy.r.__getattr__(attr)
+    
+    def __call__(self, *args, **kargs):
+        import rpy
+        globals()[self.__name] = rpy.r
+        return rpy.r(*args, **kargs)
 
 rp = LazyR("rp")
 

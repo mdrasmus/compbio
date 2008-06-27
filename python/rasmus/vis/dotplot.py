@@ -122,9 +122,10 @@ class DotplotMenu (summon.SummonMenu):
   
 
 class Dotplot (object):
-    def __init__(self, chroms1, chroms2):
+    def __init__(self, chroms1, chroms2, labels=True):
         self.chroms1 = chroms1
         self.chroms2 = chroms2
+        self.showLabels = labels
         
         self.plots = []
         
@@ -197,6 +198,10 @@ class Dotplot (object):
                     self.plotSize[0], self.plotSize[1],
                     self.onClick,
                     give_pos=True)))
+        
+        if self.showLabels:
+            vis.append(self.drawLabels())
+        
         return vis
 
 
@@ -239,7 +244,7 @@ class Dotplot (object):
             x += chrom.length()
                 
         return chromLayout
-    
+
     
     def drawPlot(self, plot):
         if plot.style in ("line", "box"):
@@ -299,7 +304,7 @@ class Dotplot (object):
 
     
     def drawChromBorders(self):
-        vis = []
+        vis = [self.colorGenomeDiv]
                 
         # determine chrom layout
         divx = [0]
@@ -320,7 +325,42 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
         
         return group(self.colorChromDiv, lines(* vis))
+
+
+    def drawLabels(self):
+        vis = group()
+        thick = 1000000
     
+        # determine chrom layout
+        divx = [0]
+        divy = [0]
+        labelsx = []
+        labelsy = []
+        
+        for chrom in self.chroms1:
+            labelsx.append(chrom.seqname)
+            divx.append(divx[-1] + chrom.length())
+        for chrom in self.chroms2:
+            labelsy.append(chrom.seqname)
+            divy.append(divy[-1] + chrom.length())
+            
+        maxx = divx[-1]
+        maxy = divy[-1]
+        
+        last = 0
+        for x, label in zip(divx, labelsx):
+            print label
+            vis.append(text(label, last, 0, x, thick, "left", "top")
+            last = x
+
+        last = 0
+        for y, label in zip(divy, labelsy):            
+            vis.append(translate(0, last,
+                rotate(-90,
+                    text(label, 0, 0, -thick, y-last, "right", "bottom"))))
+            last = t
+        return vis
+            
     
     def drawGenomeBorders(self):
         vis = []

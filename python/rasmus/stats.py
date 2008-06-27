@@ -531,7 +531,8 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
             for row in tab])
         tab.addCol("size_ratio", data=[
             M / float(N) for row in tab])
-            
+        tab.addCol("fold", data=[row["item_ratio"] / row["size_ratio"]
+                                 for row in tab])    
     
     tab.sort(col='pval')
     return tab
@@ -1002,6 +1003,7 @@ def spearman(vec1, vec2):
 #
 def fitCurve(xdata, ydata, func, paramsInit):   
     import scipy
+    import scipy.optimize
 
     y = scipy.array(ydata)
     p0 = scipy.array(paramsInit)

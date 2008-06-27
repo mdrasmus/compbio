@@ -122,9 +122,14 @@ class DotplotMenu (summon.SummonMenu):
   
 
 class Dotplot (object):
-    def __init__(self, chroms1, chroms2):
+    def __init__(self, chroms1, chroms2, labels=True, getLabel=None):
         self.chroms1 = chroms1
         self.chroms2 = chroms2
+        self.showLabels = labels
+        if getLabel is None:
+            self.getLabel = lambda x: x.seqname
+        else:
+            self.getLabel = getLabel
         
         self.plots = []
         
@@ -197,6 +202,10 @@ class Dotplot (object):
                     self.plotSize[0], self.plotSize[1],
                     self.onClick,
                     give_pos=True)))
+        
+        if self.showLabels:
+            vis.append(self.drawLabels())
+        
         return vis
 
 
@@ -239,7 +248,7 @@ class Dotplot (object):
             x += chrom.length()
                 
         return chromLayout
-    
+
     
     def drawPlot(self, plot):
         if plot.style in ("line", "box"):
@@ -320,7 +329,7 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
         
         return group(self.colorChromDiv, lines(* vis))
-    
+            
     
     def drawGenomeBorders(self):
         vis = []
@@ -334,17 +343,17 @@ class Dotplot (object):
         y = self.chroms2[0].length()
         
         for i in xrange(1, len(self.chroms1)):
-            x += self.chroms1[i].length()
             if self.chroms1[i].species != self.chroms1[i-1].species:
                 divx.append(x)
+            x += self.chroms1[i].length()
         for i in xrange(1, len(self.chroms2)):
-            y += self.chroms2[i].length()
             if self.chroms2[i].species != self.chroms2[i-1].species:
                 divy.append(y)
+            y += self.chroms2[i].length()
         
         divx.append(x)
         divy.append(y)
-            
+        
         maxx = x
         maxy = y
         
@@ -355,6 +364,40 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
         
         return group(self.colorGenomeDiv, lines(* vis))
+
+
+    def drawLabels(self):
+        vis = group(self.colorGenomeDiv)
+        thick = 1000000
+    
+        # determine chrom layout
+        divx = [0]
+        divy = [0]
+        labelsx = []
+        labelsy = []
+        
+        for chrom in self.chroms1:
+            labelsx.append(self.getLabel(chrom))
+            divx.append(divx[-1] + chrom.length())
+        for chrom in self.chroms2:
+            labelsy.append(self.getLabel(chrom))
+            divy.append(divy[-1] + chrom.length())
+            
+        maxx = divx[-1]
+        maxy = divy[-1]
+        
+        last = 0
+        for x, label in zip(divx[1:], labelsx):
+            vis.append(text_clip(label, last, 0, x, -thick, 4, 20, "left", "top"))
+            last = x
+
+        last = 0
+        for y, label in zip(divy[1:], labelsy):            
+            vis.append(translate(0, last,
+                rotate(90,
+                    text_clip(label, 0, 0, thick, y-last, 4, 20, "left", "bottom"))))
+            last = y
+        return vis
 
 
     def drawTrace(self, plot):
@@ -452,10 +495,8 @@ class Dotplot (object):
 
             # remove old regions
             if plot not in self.traces:
-                print "add"
                 self.traces[plot] = self.win.add_group(vis)
             else:
-                print "replace"
                 self.traces[plot] = self.win.replace_group(self.traces[plot], vis)
         
         elif plot in self.traces:
@@ -469,7 +510,6 @@ class Dotplot (object):
         if plot == None:
             plot = self.plots[0]
         
-        print plot not in self.traces
         self.enableTrace(plot not in self.traces, plot)
 
 

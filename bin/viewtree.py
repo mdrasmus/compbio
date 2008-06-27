@@ -101,6 +101,7 @@ def iterTrees(treefile):
             if ntrees < 1:
                 print >>sys.stderr, e
             break
+            
 
 def processTree(tree):
     global gene2species, ntrees, stree

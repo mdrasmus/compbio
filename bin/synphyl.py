@@ -5,8 +5,9 @@ from rasmus import synphylweb,  env
 from rasmus import util, algorithms
 
 # rasmus bio libs
-from rasmus.bio import muscle, phylip, clustalw, synteny, bionj
+from rasmus.bio import muscle, phylip, clustalw, bionj
 from rasmus.bio import phylo, genomeio, genomeutil, fasta, ensembl
+from rasmus.bio import synteny2 as synteny
 
 
 options = [

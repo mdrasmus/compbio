@@ -147,7 +147,7 @@ def manoli_str2bool(text=None):
         
             
 
-class TableTypeLookup:
+class TableTypeLookup (object):
     def __init__(self, names_types=[]):
         self.name2type = {}
         self.type2name = {}
@@ -195,7 +195,7 @@ class TableTypeLookup:
         return delim.join(names)
 
 
-class TableType:
+class TableType (object):
     def __init__(self, parser=None, formatter=None):
         if parser != None:
             self.parserFunc = parser
@@ -408,14 +408,15 @@ class Table (list):
     #
     
     def read(self, filename, delim="\t", nheaders=1,
-                   headers=None, types=None):
+                   headers=None, types=None, guessTypes=False):
         for row in self.readIter(filename, delim=delim, nheaders=nheaders,
-                                 headers=headers, types=types):
+                                 headers=headers, types=types,
+                                 guessTypes=guessTypes):
             self.append(row)
             
     
     def readIter(self, filename, delim="\t", nheaders=1,
-                 headers=None, types=None):
+                 headers=None, types=None, guessTypes=False):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -563,6 +564,7 @@ class Table (list):
                 assert len(self.tmptypes) == len(self.headers)
                 self.types = dict(zip(self.headers, self.tmptypes))
             else:
+                # default to strings
                 self.types = {}.fromkeys(self.headers, str)
 
 
@@ -1063,11 +1065,13 @@ class Table (list):
 # convenience functions
 #
 
-def readTable(filename, delim="\t", nheaders=1, typeLookup=None):
+def readTable(filename, delim="\t", nheaders=1, typeLookup=None, types=None,
+              guessTypes=False):
     """Read a Table from a file written in PTF"""
     
     table = Table(typeLookup=typeLookup)
-    table.read(filename, delim=delim, nheaders=nheaders)
+    table.read(filename, delim=delim, nheaders=nheaders, types=types,
+               guessTypes=guessTypes)
     return table
 
 
@@ -1169,7 +1173,8 @@ def showtab(tab, name='table'):
               (name, name, tmp, tmp))
 
 
-def sqltab(dbfile, query, maxrows=None, headers=None):
+def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
+    """Get a table from a sqlite file"""
     try:
         from pysqlite2 import dbapi2 as sqlite
     except ImportError:
@@ -1180,6 +1185,10 @@ def sqltab(dbfile, query, maxrows=None, headers=None):
     cur = con.cursor()
     
     cur.execute(query)
+
+    # infer header names
+    if headers is None and not headernum:
+        headers = [x[0] for x in cur.description]
     
     if maxrows != None:
         lst = []
@@ -1188,13 +1197,87 @@ def sqltab(dbfile, query, maxrows=None, headers=None):
                 lst.append(cur.next())
         except StopIteration:
             pass
-        return Table(lst, headers=headers)
+        tab = Table(lst, headers=headers)
     else:
-        return Table(list(cur), headers=headers)
+        tab = Table(list(cur), headers=headers)
 
-#def writesql(dbfile, tab, table_name):
+    con.close()
+    return tab
+
+# DEPRECATED:
+sqltab = sqlget
+
+
+
+def sqlput(dbfile, table_name, tab, overwrite=True):
+    """Insert a table into a sqlite file"""
+
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
+
+    # open database
+    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+    cur = con.cursor()
+
+    # drop old table if needed
+    if overwrite:
+        cur.execute("DROP TABLE IF EXISTS %s;" % table_name)
+
+
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)
     
 
+    # build columns
+    cols = []
+    text = set()
+    for header in tab.headers:
+
+        t = tab.types[header]
+        
+
+        if issubclass2(t, basestring):
+            cols.append("%s TEXT" % header)
+            text.add(header)
+        elif issubclass2(t, int):
+            cols.append("%s INTEGER" % header)
+        elif t == TableFloat or \
+             issubclass2(t, float) or \
+             issubclass2(t, TableFloat):
+            cols.append("%s FLOAT" % header)
+        elif t == TableBool or \
+             issubclass2(t, bool) or \
+             issubclass2(t, TableBool):
+            cols.append("%s BOOLEAN" % header)
+        else:
+            # default is text
+            cols.append("%s TEXT" % header)
+            text.add(header)
+
+    cols = ",".join(cols)
+
+    # create table
+    cur.execute("""CREATE TABLE %s (%s);""" %
+                (table_name, cols))
+
+    # insert rows
+    for row in tab:
+        vals = []
+        for header in tab.headers:
+            if header in text:
+                vals.append('"%s"' % row[header])
+            else:
+                vals.append(tab.types[header].__str__(row[header]))
+        vals = ",".join(vals)
+        cur.execute("INSERT INTO %s VALUES (%s);" % (table_name, vals))
+
+    con.commit()
+    con.close()
+    
 
 #===========================================================================
 # Matrix functions

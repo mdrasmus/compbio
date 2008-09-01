@@ -1356,6 +1356,18 @@ def writeEventTree(stree, out=sys.stdout):
 
 
 #=============================================================================
+# file functions
+
+def phylofile(famdir, famid, ext):
+    """Creates a filename using my gene family format
+
+    famdir/famid/famid.ext
+    """
+    return os.path.join(famdir, famid, famid + ext)
+
+
+
+#=============================================================================
 # Old code 
 #
 

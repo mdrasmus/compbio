@@ -93,10 +93,10 @@ options = [
     {"single": True,
      "default": None}],
   ["D:", "distext=", "distext", "<distance matrix extension>",
-    {"default": [".dist"]}],
+    {"default": [".dist"]}],  
   ["O:", "extraoutputext=", "extraoutputext", "",
     {"single": True,
-     "default": ""}],
+     "default": ""}],  
 
   "Misc options",
   ["", "fixdist=", "fixdist", "<backup file>",
@@ -267,6 +267,10 @@ def run(conf, infile, test=False):
     
     # set skip flag
     executed = False
+
+    # start the timer
+    timer = util.Timer()
+    timer.start()
     
     # run each program
     for prog in progs:
@@ -313,6 +317,25 @@ def run(conf, infile, test=False):
         if test:
             return True
         executed = True
+
+    # stop timer
+    runtime = timer.stop()
+
+    if conf["extraoutput"] != "":
+        if not os.path.exists(conf["extraoutput"]):
+            os.mkdir(conf["extraoutput"])
+        out = open(os.path.join(conf["extraoutput"], "phyloall-time.txt"), "w")
+        out.write("sec: %f\n" % runtime)
+    
+        if runtime > 3600:
+            pretty = "%.1fh" % (runtime / 3600.)
+        elif runtime > 60:
+            pretty = "%.1fm" % (runtime / 60.)
+        else:
+            pretty = "%.3fs" % runtime
+        out.write("time: %s\n" % pretty)
+        out.close()
+    
     
     return executed
             
@@ -430,10 +453,14 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
     # check family size
     if not checkFamilySize(conf, len(labels), distfile):
         return
-
     
     if labelfile != None:
         labels = fasta.readFasta(labelfile).keys()
+
+    
+    timer = util.Timer()
+    timer.start()
+    
     
     if prog == "bionj":
         tree = bionj.bionj(labels=labels, distmat=mat, 
@@ -458,8 +485,10 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
     
     else:
         raise "unknown program '%s'" % prog
+
     
     tree.writeNewick(treefile)
+
     
 
 

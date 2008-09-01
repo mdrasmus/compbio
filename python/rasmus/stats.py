@@ -481,16 +481,16 @@ def rhyper(m, n, M, N, report=0):
 
 def cdf(vals):
     """Computes the CDF of a list of values"""
-   
-    vals = sort(vals)
+    
+    vals = sorted(vals)
     tot = float(len(vals))
     x = []
     y = []
-
+    
     for i, x2 in enumerate(vals):
         x.append(x2)
         y.append(i / tot)
-
+        
     return x, y
     
     

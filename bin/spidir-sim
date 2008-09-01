@@ -13,6 +13,7 @@ from rasmus import env, treelib
 from rasmus import util
 from rasmus import stats
 import Spidir
+import pyspidir
 
 from rasmus.bio import alignlib, fasta, phylo, genomeutil, birthdeath
 
@@ -64,6 +65,10 @@ options = [
         {"single": True,
          "parser": util.readFloats,
          "default": [.2, .2, .2, .2, .1, .1]}],
+    ["m:", "minsize=", "minsize", "<min # of genes per tree>",
+        {"single": True,
+         "parser": int,
+         "default": 4}],
          
     ["D:", "duprate=", "duprate", "<duplication rate>",
         {"single": True,
@@ -150,9 +155,14 @@ def main(conf):
         infofile = open(infofilename, "w")                    
         
         # create tree and write it
-        pretree, tree = simTree(stree, params, conf["duprate"], conf["lossrate"], 
-                       generate, not conf["nospecrates"], infofile=infofile)
-        pretree.write(os.path.join(dirname, str(i) + ".times" + conf["outtreeext"]))
+        pretree, tree = simTree(stree, params, conf["duprate"],
+                                conf["lossrate"], 
+                                generate,
+                                not conf["nospecrates"],
+                                infofile=infofile,
+                                minsize=conf["minsize"])
+        pretree.write(os.path.join(dirname, str(i) + ".times" +
+                                   conf["outtreeext"]))
         tree.write(os.path.join(dirname, str(i) + conf["outtreeext"]))
         
         # create sequence for tree
@@ -176,6 +186,7 @@ def gene2species(gene):
 
 
 def simTree(stree, params, duprate, lossrate, generate, use_spec,
+            minsize=4,
             infofile=sys.stdout):
     """simulate one tree"""
 
@@ -210,8 +221,10 @@ def simTree(stree, params, duprate, lossrate, generate, use_spec,
     doomed = removeLosses(tree, recon, events)
     
     # try again if there is total extinction
-    if len(tree.nodes) < 3:
-        infofile.write("extinction\n")
+    if len(tree.nodes) < minsize:
+        infofile.write("tree too small. size: %d\n" % len(tree.nodes))
+        if len(tree.nodes) == 0:
+            infofile.write("extinction\n")
         return simTree(stree, params, duprate, lossrate, generate, use_spec,
                        infofile=infofile)
     
@@ -232,6 +245,58 @@ def simTree(stree, params, duprate, lossrate, generate, use_spec,
 
 
 def simSeq(tree, outfile, seqlen=999, mutaterate=[1.0],
+           tsvratio=1.0, bgfreq=[.25, .25, .25, .25],
+           insfreq=0.0,
+           delfreq=0.0,
+           insprobs=[.2, .2, .2, .2, .1, .1],
+           delprobs=[.2, .2, .2, .2, .1, .1]):
+
+    
+    bases = "ACGT"
+
+    # make root sequence
+    rootseq = [bases[stats.sample(bgfreq)]
+               for i in xrange(seqlen)]
+
+    # final sequences
+    seqs = fasta.FastaDict()
+
+    # evolve sequences down tree
+    def walk(node, seq):
+        if node.isLeaf():
+            # save sequence
+            seqs[node.name] = seq
+
+        # recurse
+        for child in node.children:
+            seq2 = simBranch(seq, child.dist, bgfreq, tsvratio)
+            walk(child, seq2)        
+    walk(tree.root, rootseq)
+
+    # write output
+    seqs.write(outfile + ".fasta")
+    seqs.write(outfile + ".align")
+    
+    
+    
+
+def simBranch(seq, time, bgfreq, tsvratio):
+    """Simulate sequence evolving down one branch"""
+    matrix = pyspidir.hkymatrix(bgfreq, tsvratio, time)
+    bases = "ACGT"
+    lookup = {"A": 0,
+              "C": 1,
+              "G": 2,
+              "T": 3}
+
+    seq2 = []
+    for a in seq:
+        seq2.append(bases[stats.sample(matrix[lookup[a]])])
+
+    return "".join(seq2)
+        
+
+def simSeq2(tree, outfile, seqlen=999, mutaterate=[1.0],
            tsvratio=1.0, bgfreq=[.25, .25, .25, .25],
            insfreq=0.0,
            delfreq=0.0,

@@ -466,7 +466,8 @@ void samples_posterior_gene_rate(float generate, Tree *tree, void *userdata)
     PyObject *pygenerate = PyFloat_FromDouble(generate);
     PyTuple_SET_ITEM(args, 0, pygenerate);
     
-    PyObject_CallObject(callback, args);
+    Py_DECREF(PyObject_CallObject(callback, args));
+    Py_DECREF(args);
 }
 
 
@@ -495,7 +496,7 @@ pyspidir_sample_gene_rate(PyObject *self, PyObject *args)
 
     // sequence model params
     int nbgfreq;
-    ExtendArray<float> bgfreq;
+    StackArray<float> bgfreq;
     float tsvratio;
 
     // sequence matrix
@@ -519,10 +520,17 @@ pyspidir_sample_gene_rate(PyObject *self, PyObject *args)
                  &pycallback))
         return NULL;
 
+
+    Py_INCREF(pycallback);
     
     // make tree object
     Tree tree(nnodes);
     ptree2tree(nnodes, ptree, &tree);
+
+    // assert binary tree
+    for (int i=0; i<tree.nnodes; i++) {
+	assert(tree.nodes[i]->nchildren <= 2);
+    }
 
     SpeciesTree stree(nsnodes);
     ptree2tree(nsnodes, pstree, &stree);
@@ -541,6 +549,8 @@ pyspidir_sample_gene_rate(PyObject *self, PyObject *args)
                             samples_posterior_gene_rate,
                             (void*) pycallback);
     
+    Py_DECREF(pycallback);
+
     Py_RETURN_NONE;
 }
 

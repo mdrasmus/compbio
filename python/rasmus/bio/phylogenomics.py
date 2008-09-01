@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, re
 
 from pysqlite2 import dbapi2 as sqlite
 
@@ -379,31 +379,38 @@ class PhyloDb:
         if tableExists(self.cur, "GenePfamDomains"):
             self.cur.execute("DROP TABLE GenePfamDomains;")
 
-
     def addPfams(self, pfamfile):
-        """add pfam domains"""
-        
+
         if not tableExists(self.cur, "PfamDomains"):
             self.makePfamTable()
         
-        util.tic("add pfam domains")
         pfams = tablelib.readTable(pfamfile)
-        pfams_lookup = pfams.groupby("locus")
-        pfams_bydomain = pfams.groupby("pfam_name")
-
         
-        for domain in pfams_bydomain.itervalues():
+        for row in pfams:         
             self.cur.execute("""INSERT INTO PfamDomains VALUES ("%s", "%s", "%s");""" %
-                             (domain[0]['pfam_acc'], 
-                              domain[0]['pfam_name'], 
-                              domain[0]['description']))
+                             (row['pfamid'], 
+                              row['pfam_name'], 
+                              row['pfam_description']))
 
 
 
+
+    def addPfamGenes(self, pfamfile):
+        """add pfam domains"""
+
+        if not tableExists(self.cur, "PfamDomains"):
+            self.makePfamTable()      
+
+        util.tic("add pfam domains")
+
+        pfams = tablelib.readTable(pfamfile)
+        
         for row in pfams:
+            name = re.sub("\..*$", "", row["pfam_acc"])
+           
             self.cur.execute("""INSERT INTO GenePfamDomains VALUES
                                 ("%s", "%s", %d, %d, %f, %f);""" %
-                             (row["locus"], row["pfam_acc"], row["start"], 
+                             (row["locus"], name, row["start"], 
                               row["end"], row["score"], row["evalue"]))
         util.toc()
 

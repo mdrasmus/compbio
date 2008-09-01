@@ -71,14 +71,18 @@ if action == "prepare":
         dirname = os.path.join(evaldir, name)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
+            
+        newfile = os.path.join(evaldir, name, name+ext)
         
-        
+        if os.path.exists(newfile):
+            continue
+                
         if docopy:
             shutil.copy(os.path.join(datadir, name, name+ext),
-                        os.path.join(evaldir, name, name+ext))
-        else:
+                        newfile)
+        else:            
             os.symlink(os.path.join(basedir, "..", datadir, name, name+ext),
-                       os.path.join(evaldir, name, name+ext))
+                       newfile)
             
 
 elif action == "report":

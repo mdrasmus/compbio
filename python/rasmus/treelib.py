@@ -16,7 +16,7 @@ import os
 import StringIO
 
 # rasmus libs
-import util
+from rasmus import util
 
 # newick parsing support
 try:
@@ -443,10 +443,11 @@ class Tree:
     # input and output
     #
     
-    def write(self, out = sys.stdout, writeData=None, oneline=False):
+    def write(self, out = sys.stdout, writeData=None, oneline=False,
+              rootData=False):
         """Write the tree in newick notation"""
         self.writeNewick(util.openStream(out, "w"), writeData=writeData, 
-                         oneline=oneline)        
+                         oneline=oneline, rootData=rootData)
     
     def readData(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
@@ -461,8 +462,13 @@ class Tree:
                 else:
                     try:
                         node.data["boot"] = float(boot)
-                    except ValueError: pass
-    
+                    except ValueError:
+                        # treat as node name
+                        node.name = boot.strip()
+        else:
+            # treat as name
+            if not node.isLeaf():
+                node.name = data.strip()
     
     
     def writeData(self, node):
@@ -476,18 +482,26 @@ class Tree:
                 string += "%d" % node.data["boot"]
             else:
                 string += "%f" % node.data["boot"]
+        else:
+            # see if internal node names exist
+            if not node.isLeaf() and isinstance(node.name, str):
+                string += node.name
+
         string += ":%f" % node.dist
         return string
     
     
-    def writeNewick(self, out = sys.stdout, writeData=None, oneline=False):
+    def writeNewick(self, out = sys.stdout, writeData=None, oneline=False,
+                    rootData=False):
         """Write the tree in newick notation"""
         self.writeNewickNode(self.root, util.openStream(out, "w"), 
-                             writeData=writeData, oneline=oneline)
+                             writeData=writeData, oneline=oneline,
+                             rootData=rootData)
    
     
     def writeNewickNode(self, node, out = sys.stdout, 
-                              depth = 0, writeData=None, oneline=False):
+                        depth=0, writeData=None, oneline=False,
+                        rootData=False):
         """Write the node in newick format to the out file stream"""
         
         # default data writer
@@ -522,6 +536,8 @@ class Tree:
 
         # don't print data for root node
         if depth == 0:
+            if rootData:
+                out.write(writeData(node))
             if oneline:
                 out.write(";")
             else:
@@ -1153,6 +1169,8 @@ def parentTable2tree(parentTable):
     
     See tree2parentTable for details
     """
+
+    # TODO: allow named internal nodes
     
     tree = Tree()
     
@@ -1709,3 +1727,12 @@ def drawTreeNameLens(tree, *args, **kargs):
         labels[node.name] += "%f" % node.dist
     
     drawTree(tree, labels, *args, **kargs)
+
+
+if __name__ == "__main__":
+    from StringIO import StringIO
+    
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)r;")
+    tree = readTree(infile)
+    tree.write(rootData=True)
+    

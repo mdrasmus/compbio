@@ -433,6 +433,7 @@ void reconBranch(int node, int *ptree, int *pstree, int *recon, int *events,
             parent_snode = recon[ptree[node]];
         else
             parent_snode = -1;
+	
         while (snode != parent_snode && pstree[snode] != -1) {
             totmean += params->mu[snode];
             totvar += params->sigma[snode] * params->sigma[snode];
@@ -458,10 +459,10 @@ void setRandomMidpoints(int root, int *ptree,
     for (int i=0; i<nsubnodes; i++) {
         int node = subnodes[i];
         
-        if (events[node] == EVENT_DUP && ptree[node] != -1) {
+        if (events[node] == EVENT_DUP) {
             float lastpoint;
             
-            if (recon[node] == recon[ptree[node]])
+            if (ptree[node] != -1 && recon[node] == recon[ptree[node]])
                 // if im the same species branch as my parent 
                 // then he is my last midpoint
                 lastpoint = reconparams->midpoints[ptree[node]];
@@ -475,7 +476,7 @@ void setRandomMidpoints(int root, int *ptree,
                                            (1.0-2*esp) * remain * frand();
         } else {
             // genes or speciations reconcile exactly to the end of the branch
-            // gene tree roots also reconcile exactly to the end of the branch
+            // DEL: gene tree roots also reconcile exactly to the end of the branch
             reconparams->midpoints[node] = 1.0;
         }
     }
@@ -555,11 +556,16 @@ float branchlk(float dist, int node, int *ptree, ReconParams *reconparams)
         return 0.0;
     
     float logl = normallog(dist, totmean, totsigma);
-    assert(!isnan(logl));
+    
+    if (isnan(logl)) {
+	printf("dist=%f, totmean=%f, totsigma=%f\n", dist, totmean, totsigma);
+	assert(0);
+    }
     return logl;
 }
 
 
+// get nodes in preorder (starting with given node)
 void getSubtree(int **ftree, int node, int *events, ExtendArray<int> *subnodes)
 {
     subnodes->append(node);
@@ -664,7 +670,6 @@ float subtreelk(int nnodes, int *ptree, int **ftree, float *dists, int root,
         logl = log(prob);
     }
     
-
     assert(!isnan(logl));
     return logl;
 }
@@ -763,7 +768,7 @@ public:
     double calc(float generate)
     {
         double logl = 0.0;
-    
+
         // determine reconciliation parameters
         ReconParams reconparams = ReconParams(tree->nnodes);
         determineFreeBranches(tree, stree, recon, events, generate,
@@ -797,10 +802,11 @@ public:
 
         }
         
-        // generate probability
+        // gene rate probability
         if (params->alpha > 0 && params->beta > 0)
             logl += gammalog(generate, params->alpha, params->beta);    
             
+
         printLog(LOG_HIGH, "generate: %f %f\n", generate, exp(logl));
         return logl;
     }
@@ -1018,6 +1024,10 @@ void samplePosteriorGeneRate(Tree *tree,
     reconcile(tree, stree, gene2species, recon);
     labelEvents(tree, recon, events);
 
+    // check events
+    for (int i=0; i<tree->nnodes; i++) {
+	assert(events[i] <= 2 && events[i] >= 0);
+    }
 
     samplePosteriorGeneRate(tree,
                             nseqs, seqs, 
@@ -1056,13 +1066,24 @@ void samplePosteriorGeneRate(Tree *tree,
     generateBranchLengths(tree, stree,
                           recon, events,
                           params, generate);
-    
+
     
     // perform MCMC
     for (int i=0; i<nsamples; i++) {
         // generate a new state 
-      
+	//printf("sample %d\n", i);
+     
+	for (int j=0; j<tree->nnodes; j++) {
+	    assert(events[j] <= 2 && events[j] >= 0);
+
+	    // NAN distances
+	    if (isnan(tree->nodes[j]->dist)) {
+		tree->nodes[j]->dist = min_generate;
+	    }	    
+	}
+ 
         if (frand() < .5) {
+	    //printf("sample G\n");
             printLog(LOG_HIGH, "sample G: ");
 
             // sample G_2
@@ -1077,14 +1098,22 @@ void samplePosteriorGeneRate(Tree *tree,
                                1, 1, 1,
                                false, false, false);
             }
-            
+	    
             // set new branch lengths B_2
-            for (int j=0; j<tree->nnodes; j++)
+            for (int j=0; j<tree->nnodes; j++) {
                 tree->nodes[j]->dist *= next_generate / generate;
+
+		// sometimes when generate change is drastic we need to catch
+		// NAN distances
+		if (isnan(tree->nodes[j]->dist)) {
+		    tree->nodes[j]->dist = min_generate;
+		}
+	    }
+
             
             // calculate P(D|B_2,T)
             next_logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, ratio);
-
+	    
             // calculate P(B_2|T,G_2)
             next_logl2 = treelk(tree, stree, recon, events, params,
                                 next_generate,
@@ -1119,6 +1148,7 @@ void samplePosteriorGeneRate(Tree *tree,
             alpha = exp(next_logl + next_logl2 - logl - logl2 + logl3);
 
         } else {
+	    //printf("sample B\n");
             printLog(LOG_HIGH, "sample B: ");
 
             // keep same gene rate G_2 = G_1
@@ -1128,6 +1158,13 @@ void samplePosteriorGeneRate(Tree *tree,
             generateBranchLengths(tree, stree,
                                   recon, events,
                                   params, next_generate, -2, -2);
+	    
+	    for (int j=0; j<tree->nnodes; j++) {
+		// NAN distances
+		if (isnan(tree->nodes[j]->dist)) {
+		    tree->nodes[j]->dist = min_generate;
+		}	    
+	    }
 
             // calculate P(D|B_2,T)
             next_logl = calcHkySeqProb(tree, nseqs, seqs, bgfreq, ratio);
@@ -1220,8 +1257,15 @@ float genBranch(float generate, float mean, float sdev)
     float blen = 0;
     const float maxlen = mean + sdev * 3.0;
     
-    while (blen <= 0 || blen > maxlen)
+    assert(mean != 0.0 || sdev != 0.0);
+
+    while (blen <= 0 || blen > maxlen) {
         blen = normalvariate(mean, sdev);
+	if (isnan(blen)) {
+	    blen = mean;
+	    break;
+	}
+    }
     
     return generate * blen;
 }
@@ -1287,12 +1331,23 @@ void genSubtree(Tree *tree, Node *root,
             } else {
                 // set branch length above sroot by exponential
                 const float preratio = 0.05;
-                node->dist = expovariate(1.0 / (generate * preratio));
+		int i = 0;
+
+		do {
+		    node->dist = expovariate(1.0 / (generate * preratio));
+		    i += 1;
+		    if (i > 10) {
+			node->dist = .001;
+		    }
+		} while (isnan(node->dist));
             }
         }
     }
 }
 
+// TODO: here is extra doc that should be worked in
+// subnode == -1 && subnode == -1  --> generate whole tree
+// subnode == -2 --> randomly pick node and child to resample
 
 void generateBranchLengths(Tree *tree,
                            SpeciesTree *stree,
@@ -1324,13 +1379,15 @@ void generateBranchLengths(Tree *tree,
             // pick random subnode
             do {
                 subnode = irand(tree->nnodes);                
-            } while (events[subnode] != EVENT_SPEC ||
-                     subnode == tree->root->name);
+            } while (events[subnode] != EVENT_SPEC &&
+		     subnode != tree->root->name);
             subchild = irand(2);
         }
 
         // regenerate only one subtree
-        Node *node = tree->nodes[subnode]->children[subchild];
+        Node *node = (subnode == tree->root->name) ?
+	    tree->root :
+	    tree->nodes[subnode]->children[subchild];
         genSubtree(tree, node,
                    stree, ptree, pstree,
                    recon, events, params,

@@ -28,11 +28,11 @@ options = [
 conf = util.parseOptions(sys.argv, options)
 
 
-def filterAlign(aln):
+def filterAlign(aln, ratio):
     ind = []
     seqs = aln.values()
     rows = range(len(aln))
-    minseq = len(aln) * .5
+    minseq = len(aln) * ratio
     
     ind = [i for i in xrange(aln.alignlen())
                 if util.count(lambda j: seqs[j][i] != "-", rows) >= minseq]
@@ -44,7 +44,7 @@ for alignfile in conf["REST"]:
     print alignfile
     
     aln = fasta.readFasta(alignfile)
-    ind = filterAlign(aln)
+    ind = filterAlign(aln, conf["ratio"])
     
     aln2 = alignlib.subalign(aln, ind)
 

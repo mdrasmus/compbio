@@ -288,6 +288,7 @@ void printLog(int level, const char *fmt, ...)
         va_start(ap, fmt);
         vfprintf(g_logstream, fmt, ap);
         va_end(ap);
+	fflush(g_logstream);
     }
 }
 

@@ -33,6 +33,9 @@ from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, ali
 from rasmus.bio import gff, genomeio
 
 
+from rasmus.tablelib import histTable as histtab
+from rasmus.tablelib import showtab, sqltab, sqlget, sqlput
+
 
 def ipy():
     """start an ipython shell"""
@@ -71,9 +74,7 @@ pc = printcols
 pa = alignlib.printAlign
 pd = printDict
 
-histtab = tablelib.histTable
-showtab = tablelib.showtab
-sqltab = tablelib.sqltab
+
 
 def pl(lines, out=sys.stdout):
     for line in lines:

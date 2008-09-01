@@ -446,8 +446,6 @@ def chyper(m, n, M, N, report=0):
 
 
 def rhyper(m, n, M, N, report=0):
-    from rpy import r
-
     '''
     calculates cumulative probability based on
     hypergeometric distribution
@@ -460,6 +458,9 @@ def rhyper(m, n, M, N, report=0):
     m = drawn white balls from urn
     
     '''
+
+    from rpy import r
+
     
     assert( (type(m) == type(n) == type(M) == type(N) == int)
             and m <= n and m <= M and n <= N)
@@ -1096,6 +1097,28 @@ def solveCubic(a, b, c, real=True):
                 if abs(x.imag) < 1e-10]
     else:
         return [root1, root2, root3]
+
+
+def _solveCubic_test(n=100):
+
+    def test(a, b, c):
+        xs = solveCubic(a, b, c)
+
+        for x in xs:
+            y = x**3 + a*x*x + b*x + c
+            assert abs(y) < 1e-4, y
+
+    test(0, 0, 0)
+    test(0, 1, 1)
+    test(0, 0, 1)
+
+    for i in xrange(n):
+        
+        a = random.normalvariate(10, 5)
+        b = random.normalvariate(10, 5)
+        c = random.normalvariate(10, 5)
+
+        test(a, b, c)
     
     
     

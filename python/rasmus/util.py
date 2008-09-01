@@ -53,7 +53,7 @@ class Bundle (dict):
     Example:
 
     def func1():
-        this = Closure(var1 = 0, var2 = "hello")
+        this = Bundle(var1 = 0, var2 = "hello")
         def func2():
             this.var1 += 1
         func2()
@@ -75,9 +75,6 @@ class Bundle (dict):
         dict.__setitem__(self, key, val)
     
 
-# backwards compatiable (remove soon)
-Closure = Bundle
-
 
 class Dict (dict):
     """My personal nested Dictionary (with default values)"""
@@ -97,9 +94,9 @@ class Dict (dict):
         elif items is not None:
             dict.__init__(self, items)
         
-        self.dim = dim
-        self.null = default
-        self.insert = insert
+        self._dim = dim
+        self._null = default
+        self._insert = insert
         
         # backwards compatiability
         self.data = self
@@ -107,11 +104,11 @@ class Dict (dict):
     
     def __getitem__(self, i):
         if not i in self:
-            if self.dim > 1:
-                ret = Dict(self.dim - 1, self.null)
+            if self._dim > 1:
+                ret = Dict(self._dim - 1, self._null)
             else:
-                ret = copy.copy(self.null)
-            if self.insert:
+                ret = copy.copy(self._null)
+            if self._insert:
                 self[i] = ret
             return ret
         return dict.__getitem__(self, i)
@@ -143,6 +140,8 @@ class Dict (dict):
         print >>out, ">"
 
 
+
+
 class Percent (float):
     digits = 1
     
@@ -152,6 +151,28 @@ class Percent (float):
     def __repr__(self):
         return str(self)
 
+
+class PushIter (object):
+    """Wrap an iterator in another iterator that allows one to push new
+       items onto the front of the iteration stream"""
+    
+    def __init__(self, it):
+        self._it = iter(it)
+        self._queue = []
+
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        if len(self._queue) > 0:
+            return self._queue.pop()
+        else:
+            return self._it.next()
+
+    def push(self, item):
+        """Push a new item onto the front of the iteration stream"""
+        self._queue.append(item)
+       
 
 def exceptDefault(func, val, exc=Exception):
     """Specify a default value for when an exception occurs"""
@@ -189,7 +210,7 @@ def remove(lst, *vals):
 def sort(lst, compare=cmp, key=None, reverse=False):
     """Returns a sorted copy of a list
        
-       python2.5 now has sorted() which fulfills the same purpose
+       python2.4 now has sorted() which fulfills the same purpose
        
        lst     -- a list to sort
        compare -- a function for comparing items (default: cmp)
@@ -223,11 +244,8 @@ def cget(mat, *i):
     if len(i) == 1:
         return [row[i[0]] for row in mat]
     else:
-        cols = []
-
-        for index in i:
-            cols.append([row[index] for row in mat])
-        return cols
+        return [[row[index] for row in mat]
+                for index in i]
 
 
 def mget(lst, ind):
@@ -306,9 +324,9 @@ def mapdict(dic, key=lambda x: x, val=lambda x: x,
     
     """
     
-    if keyfunc != None:
+    if keyfunc is not None:
         key = keyfunc
-    if valfunc != None:
+    if valfunc is not None:
         val = valfunc
     
     dic2 = {}
@@ -409,7 +427,7 @@ def mapapply(funcs, lst):
 
 
 def cumsum(vals):
-    """Returns a cumalative sum of vals (as an iterator)"""
+    """Returns a cumalative sum of vals (as a list)"""
     
     lst = []
     tot = 0
@@ -714,15 +732,6 @@ def minfunc(func, lst):
             lowi = i
     return lowi
 
-
-def argmaxfunc(func, lst):
-    """DEPRECATED: use argmax"""
-    return argmax(lst, key=func)
-
-    
-def argminfunc(func, lst):
-    """DEPRECATED: use argmin"""
-    return argmin(lst, key=func)
 
 
 #=============================================================================
@@ -1064,9 +1073,7 @@ class DelimReader:
 def readDelim(filename, delim=None):
     """Read an entire delimited file into memory as a 2D list"""
     
-    reader = DelimReader(filename, delim)
-    data = [row for row in reader]
-    return data
+    return list(DelimReader(filename, delim))
     
 
 def writeDelim(filename, data, delim="\t"):
@@ -1246,48 +1253,23 @@ def str2bool(val):
         raise Exception("unknown string for bool '%s'" % val)
 
 
-#=============================================================================
-# Dictionary printing
-#
 
-def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-              num=None, compare=lambda a,b: cmp(a[0],b[0]),
+def printDict(dic, key=lambda x: x, val=lambda x: x,
+              num=None, cmp=cmp,
               spacing=4, out=sys.stdout,
               format=defaultFormat, 
               justify=defaultJustify):
+    """Print s a dictionary in two columns"""
+    
     if num == None:
         num = len(dic)
     
-    dic = mapdict(dic, keyfunc=keyfunc, valfunc=valfunc)
+    dic = mapdict(dic, key=key, val=val)
     items = dic.items()
-    items.sort(compare)
+    items.sort(cmp)
     
     printcols(items[:num], spacing=spacing, out=out, format=format, 
               justify=justify)
-
-
-def printDictByKeys(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-                    num=None, spacing=4, compare=cmp, out=sys.stdout):
-    printDict(dic, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=lambda a,b: compare(a[0],b[0]),
-              spacing=spacing, out=out)
-
-
-def printDictByValues(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-                      num=None, spacing=4, compare=cmp, out=sys.stdout):
-    printDict(dic, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=lambda a,b: compare(a[1],b[1]),
-              spacing=spacing, out=out)
-
-
-def printHistDict(array, keyfunc=lambda x: x, valfunc=lambda x: x,
-                  num=None, compare=lambda a,b: cmp(b[1],a[1]),
-              spacing=4, out=sys.stdout):
-    """DEPRECATED:  Probably should use tablelib.histTable()"""
-    hist = histDict(array)
-    printDict(hist, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=compare, spacing=spacing, out=out)
-
 
 
 
@@ -1408,7 +1390,12 @@ def listFiles(path, ext=""):
 
 
 def tempfile(path, prefix, ext):
-    """Generates a a temp filename 'path/prefix_XXXXXX.ext'"""
+    """Generates a a temp filename 'path/prefix_XXXXXX.ext'
+
+    DEPRECATED: use this instead
+    fd, filename = temporaryfile.mkstemp(ext, prefix)
+    os.close(fd)
+    """
     
     import warnings
     warnings.filterwarnings("ignore", ".*", RuntimeWarning)
@@ -1468,14 +1455,14 @@ def replaceExt(filename, oldext, newext):
 #
 
 
-def sortrank(array, compare = cmp, key=None, reverse=False):
-    """Returns list of indices into 'array' sorted by 'compare'"""
-    ind = range(len(array))
+def sortrank(lst, cmp=cmp, key=None, reverse=False):
+    """Returns the ranks of items in lst"""
+    ind = range(len(lst))
     
-    if key == None:
-        compare2 = lambda a, b: compare(array[a], array[b])
+    if key is None:
+        compare2 = lambda a, b: cmp(lst[a], lst[b])
     else:
-        compare2 = lambda a, b: compare(key(array[a]), key(array[b]))
+        compare2 = lambda a, b: cmp(key(lst[a]), key(lst[b]))
     
     ind.sort(compare2, reverse=reverse)
     return ind
@@ -1690,26 +1677,24 @@ def printHist(array, ndivs=20, low=None, width=None,
 # import common functions from other files, 
 # so that only util needs to be included
 
-# TODO: use new relative import when we port to 2.5
-
 try:
-    from timer import *
-except:
+    from rasmus.timer import *
+except ImportError:
     pass
 
 try:
-    from vector import *
-except:
+    from rasmus.vector import *
+except ImportError:
     pass
 
 try:
-    from options import *
-except:
+    from rasmus.options import *
+except ImportError:
     pass
     
 try:
-    from plotting import *
-except:
+    from rasmus.plotting import *
+except ImportError:
     pass
 
 

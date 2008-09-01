@@ -359,13 +359,13 @@ def findIncompletes(genomes, orths):
     return filter(lambda x: isIncomplete(genomes, x), orths)
 
 if __name__ == "__main__":
-    import algorithms
     import genomeio
+    import treelib
     
     m = Matching()
     genomeio.readGenomes(m, ["human", "dog"])
     
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick("test/small2.tree")
     genes = m.getGenes()
     setupTree(tree, genes)

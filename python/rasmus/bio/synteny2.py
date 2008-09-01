@@ -22,9 +22,6 @@ from rasmus.bio import phylip
 from rasmus.bio import phylo
 
 
-# TODO: remove algorithms.<tree func> calls
-# make them treelib.<tree func>
-
 
 def initConf(conf = None):
     if conf == None:
@@ -81,7 +78,8 @@ def bestBidir(conf, genomes, matches):
         for gene in genome.genes.values():
             if gene.length() > conf["minGeneSize"]:
                 if len(gene.matches) > 0:
-                    besti = util.argmaxfunc(lambda x: x.score, gene.matches)
+                    besti = util.argmax(gene.matches,
+                                        key=lambda x: x.score)
                     best[gene.matches[besti]] += 1
     
     for match in matches:
@@ -174,8 +172,8 @@ def findNearestBlock(conf, direction, block1, blocks, side, quadtrees):
         return None
     
     # search for nearest block
-    i = util.argminfunc(lambda x: 
-                    blockDistance(conf, direction, block1, x, side), nearBlocks)
+    i = util.argmin(nearBlocks, key=lambda x: 
+                    blockDistance(conf, direction, block1, x, side))
     block2 = nearBlocks[i]
 
     if blockDistance(conf, direction, block1, block2, side) < 1e1000:
@@ -1002,7 +1000,7 @@ def partOrthoComponents(hitdata, conf, comps, outputDir, outprefix):
     util.toc()
     
     # load sprecies tree (use only the subtree needed for these genomes)
-    stree = algorithms.Tree()
+    stree = treelib.Tree()
     stree.readNewick(env.findFile(conf["species_tree"]))
     stree = treelib.subtree(stree, stree.lca(genomes))
     

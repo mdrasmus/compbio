@@ -58,7 +58,7 @@ import copy
 import StringIO
 import sys
 import os
-
+import itertools
 
 
 # rasmus libs
@@ -1181,8 +1181,14 @@ def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
         import sqlite
 
     # open database
-    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
-    cur = con.cursor()
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
     
     cur.execute(query)
 
@@ -1201,48 +1207,57 @@ def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
     else:
         tab = Table(list(cur), headers=headers)
 
-    con.close()
+    if auto_close:
+        con.close()
     return tab
 
 # DEPRECATED:
 sqltab = sqlget
 
 
-
-def sqlput(dbfile, table_name, tab, overwrite=True):
-    """Insert a table into a sqlite file"""
-
+def sqlexe(dbfile, sql):
     try:
         from pysqlite2 import dbapi2 as sqlite
     except ImportError:
         import sqlite
 
     # open database
-    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
-    cur = con.cursor()
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    cur.execute(sql)
+
+    if auto_close:
+        con.close()
+
+
+def sql_create_table(cur, table_name, tab, overwrite=True):
+    """Create an SQL based on a tab"""
+
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
 
     # drop old table if needed
     if overwrite:
         cur.execute("DROP TABLE IF EXISTS %s;" % table_name)
 
-
-    def issubclass2(t1, t2):
-        if type(t1) != type:
-            return False
-        return issubclass(t1, t2)
-    
-
     # build columns
     cols = []
-    text = set()
     for header in tab.headers:
 
         t = tab.types[header]
-        
+
 
         if issubclass2(t, basestring):
             cols.append("%s TEXT" % header)
-            text.add(header)
         elif issubclass2(t, int):
             cols.append("%s INTEGER" % header)
         elif t == TableFloat or \
@@ -1256,16 +1271,79 @@ def sqlput(dbfile, table_name, tab, overwrite=True):
         else:
             # default is text
             cols.append("%s TEXT" % header)
-            text.add(header)
 
     cols = ",".join(cols)
 
     # create table
     cur.execute("""CREATE TABLE %s (%s);""" %
-                (table_name, cols))
+                    (table_name, cols))
+
+    
+
+#def sql_insert_rows(cur, headers, types, rows
+
+def sqlput(dbfile, table_name, tab, overwrite=True, create=True):
+    """Insert a table into a sqlite file"""
+
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
+
+    # open database
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    # read table from file
+    if not isinstance(tab, Table):
+        filename = tab
+        tab = Table()
+        it = tab.readIter(filename)
+        
+        try:
+            # force a reading of the headers
+            row = it.next()
+            rows = itertools.chain([row], it)
+        except StopIteration:
+            rows = []
+            pass
+    else:
+        rows = tab
+
+
+    if create:
+        sql_create_table(cur, table_name, tab, overwrite=overwrite)
+
+    # determine text columns
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
+
+
+    text = set()
+    for header in tab.headers:
+        t = tab.types[header]
+        
+        if issubclass2(t, basestring) or not (
+           issubclass2(t, int) or
+           t == TableFloat or 
+           issubclass2(t, float) or 
+           issubclass2(t, TableFloat) or
+           t == TableBool or 
+           issubclass2(t, bool) or 
+           issubclass2(t, TableBool)):            
+            text.add(header)
+
 
     # insert rows
-    for row in tab:
+    for row in rows:
         vals = []
         for header in tab.headers:
             if header in text:
@@ -1274,9 +1352,10 @@ def sqlput(dbfile, table_name, tab, overwrite=True):
                 vals.append(tab.types[header].__str__(row[header]))
         vals = ",".join(vals)
         cur.execute("INSERT INTO %s VALUES (%s);" % (table_name, vals))
-
+    
     con.commit()
-    con.close()
+    if auto_close:
+        con.close()
     
 
 #===========================================================================

@@ -788,7 +788,7 @@ def safediv(a, b, default=INF):
 
 def safelog(x, base=math.e, default=-INF):
     try:
-        return math.log(x)
+        return math.log(x, base)
     except (OverflowError, ValueError):
         return default
         

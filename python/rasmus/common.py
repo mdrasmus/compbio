@@ -19,12 +19,13 @@ from rasmus.algorithms import *
 from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
-from regionlib import *
+from rasmus.regionlib import *
 
 
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib
-from rasmus.tablelib import Table, readTable
+from rasmus.tablelib import Table, read_table, iter_table, histtab
+from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
 from rasmus.treelib import *
 
 # bio tools
@@ -33,8 +34,6 @@ from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, ali
 from rasmus.bio import gff, genomeio
 
 
-from rasmus.tablelib import histTable as histtab
-from rasmus.tablelib import showtab, sqltab, sqlget, sqlput
 
 
 def ipy():

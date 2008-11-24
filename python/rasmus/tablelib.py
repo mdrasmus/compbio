@@ -59,7 +59,7 @@ import copy
 import StringIO
 import sys
 import os
-
+import itertools
 
 # rasmus libs
 from rasmus import util
@@ -321,7 +321,7 @@ _defaultTypeLookup = \
 class Table (list):
     """Class implementing the Portable Table Format"""
 
-    def __init__(self, rows=[], 
+    def __init__(self, rows=None, 
                        headers=None,
                        defaults={},
                        types={},
@@ -338,41 +338,49 @@ class Table (list):
         self.nheaders = 1
         self.version = TABLE_VERSION
         
-        if type_lookup == None:
+        if type_lookup is None:
             self._type_lookup = _defaultTypeLookup
         else:
             self._type_lookup = _defaultTypeLookup.extend(type_lookup)
         
         
         # set data
-        if len(rows) > 0:
-            # data is a list of dicts
-            if isinstance(rows[0], dict):
-                for row in rows:
-                    self.append(copy.copy(row))
+        if rows is not None:
+            it = iter(rows)
+            try:
+                first_row = it.next()
+
+                # data is a list of dicts
+                if isinstance(first_row, dict):
+                    self.append(first_row)
+                    for row in it:
+                        self.append(dict(row))
+
+                    if self.headers is None:
+                        self.headers = sorted(self[0].keys())
+
+                # data is a list of lists
+                elif isinstance(first_row, (list, tuple)):
+                    if self.headers is None:
+                        self.headers = range(len(first_row))
+                        self.nheaders = 0
+                    for row in itertools.chain([first_row], it):
+                        self.append(dict(zip(self.headers, row)))
+
+
+                # set table info
+                for key in self.headers:
+                    # guess any types not specified
+                    if key not in self.types:
+                        self.types[key] = type(self[0][key])
+
+                    # guess any defaults not specified
+                    if key not in self.defaults:
+                        self.defaults[key] = self.types[key]()
                 
-                if self.headers == None:
-                    self.headers = sorted(self[0].keys())
-        
-            # data is a list of lists
-            elif isinstance(rows[0], list) or \
-                 isinstance(rows[0], tuple):
-                if self.headers == None:
-                    self.headers = range(len(rows[0]))
-                    self.nheaders = 0
-                for row in rows:
-                    self.append(dict(zip(self.headers, row)))
+            except StopIteration:
+                pass
             
-            
-            # set table info
-            for key in self.headers:
-                # guess any types not specified
-                if key not in self.types:
-                    self.types[key] = type(self[0][key])
-            
-                # guess any defaults not specified
-                if key not in self.defaults:
-                    self.defaults[key] = self.types[key]()
         
             
     def clear(self, headers=[], delim="\t", nheaders=1, types=None):
@@ -881,7 +889,66 @@ class Table (list):
                 tab.append(row)
         
         return tab
-    
+
+
+    def map(self, func, headers=None):
+        """Returns a new table with each row mapped by function 'func'"""
+
+        if len(self) == 0:
+            # handle case of zero length table
+            return self.new()
+
+        # determine what table will look like from first row
+        first_row = func(self[0])
+
+        # determine headers of new table
+        if headers is None:
+            # try order new headers the same way as old headers
+            headers = first_row.keys()
+            lookup = util.list2lookup(self.headers)
+            top = len(headers)            
+            headers.sort(key=lambda x:
+                         (lookup.get(x, top), x))
+            
+        
+        tab = type(self)(
+            itertools.chain([first_row],
+                            (func(x) for x in self[1:])),
+            headers=headers)
+        tab.delim = self.delim
+        tab.nheaders = self.nheaders
+        
+        return tab
+
+
+    def uniq(self, key=None, col=None):
+        """Returns a copy of this table with consecutive repeated rows removed"""
+
+        tab = self.new()
+
+        if len(self) == 0:
+            return tab
+
+        if col is not None:
+            key = lambda x: x[col]
+
+        if key is None:
+            last_row = self[0]
+            for row in self[1:]:
+                if row != last_row:
+                    tab.append(row)
+                last_row = row
+        else:
+            last_row = key(self[0])
+            for row in self[1:]:
+                key_row = key(row)
+                if key_row != last_row:
+                    tab.append(row)
+                last_row = key_row
+            
+
+        return tab
+        
     
     def groupby(self, key=None):
         """Groups the row of the table into separate tables based on the 
@@ -1074,7 +1141,7 @@ def iter_table(filename, delim="\t", nheaders=1):
     """Iterate through the rows of a Table from a file written in PTF"""
     
     table = Table()
-    return table.readIter(filename, delim=delim, nheaders=nheaders)
+    return table.read_iter(filename, delim=delim, nheaders=nheaders)
 
 # NOTE: back-compat
 iterTable = iter_table
@@ -1185,8 +1252,14 @@ def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
         import sqlite
 
     # open database
-    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
-    cur = con.cursor()
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
     
     cur.execute(query)
 
@@ -1205,48 +1278,57 @@ def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
     else:
         tab = Table(list(cur), headers=headers)
 
-    con.close()
+    if auto_close:
+        con.close()
     return tab
 
 # DEPRECATED:
 sqltab = sqlget
 
 
-
-def sqlput(dbfile, table_name, tab, overwrite=True):
-    """Insert a table into a sqlite file"""
-
+def sqlexe(dbfile, sql):
     try:
         from pysqlite2 import dbapi2 as sqlite
     except ImportError:
         import sqlite
 
     # open database
-    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
-    cur = con.cursor()
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    cur.execute(sql)
+
+    if auto_close:
+        con.close()
+
+
+def sql_create_table(cur, table_name, tab, overwrite=True):
+    """Create an SQL based on a tab"""
+
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
 
     # drop old table if needed
     if overwrite:
         cur.execute("DROP TABLE IF EXISTS %s;" % table_name)
 
-
-    def issubclass2(t1, t2):
-        if type(t1) != type:
-            return False
-        return issubclass(t1, t2)
-    
-
     # build columns
     cols = []
-    text = set()
     for header in tab.headers:
 
         t = tab.types[header]
-        
+
 
         if issubclass2(t, basestring):
             cols.append("%s TEXT" % header)
-            text.add(header)
         elif issubclass2(t, int):
             cols.append("%s INTEGER" % header)
         elif t == TableFloat or \
@@ -1260,16 +1342,79 @@ def sqlput(dbfile, table_name, tab, overwrite=True):
         else:
             # default is text
             cols.append("%s TEXT" % header)
-            text.add(header)
 
     cols = ",".join(cols)
 
     # create table
     cur.execute("""CREATE TABLE %s (%s);""" %
-                (table_name, cols))
+                    (table_name, cols))
+
+    
+
+#def sql_insert_rows(cur, headers, types, rows
+
+def sqlput(dbfile, table_name, tab, overwrite=True, create=True):
+    """Insert a table into a sqlite file"""
+
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
+
+    # open database
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    # read table from file
+    if not isinstance(tab, Table):
+        filename = tab
+        tab = Table()
+        it = tab.read_iter(filename)
+        
+        try:
+            # force a reading of the headers
+            row = it.next()
+            rows = itertools.chain([row], it)
+        except StopIteration:
+            rows = []
+            pass
+    else:
+        rows = tab
+
+
+    if create:
+        sql_create_table(cur, table_name, tab, overwrite=overwrite)
+
+    # determine text columns
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
+
+
+    text = set()
+    for header in tab.headers:
+        t = tab.types[header]
+        
+        if issubclass2(t, basestring) or not (
+           issubclass2(t, int) or
+           t == TableFloat or 
+           issubclass2(t, float) or 
+           issubclass2(t, TableFloat) or
+           t == TableBool or 
+           issubclass2(t, bool) or 
+           issubclass2(t, TableBool)):            
+            text.add(header)
+
 
     # insert rows
-    for row in tab:
+    for row in rows:
         vals = []
         for header in tab.headers:
             if header in text:
@@ -1278,9 +1423,10 @@ def sqlput(dbfile, table_name, tab, overwrite=True):
                 vals.append(tab.types[header].__str__(row[header]))
         vals = ",".join(vals)
         cur.execute("INSERT INTO %s VALUES (%s);" % (table_name, vals))
-
+    
     con.commit()
-    con.close()
+    if auto_close:
+        con.close()
     
 
 #===========================================================================

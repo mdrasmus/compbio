@@ -5,7 +5,7 @@ import StringIO
 
 from rasmus import treelib
 from rasmus import stats
-from rasmus import matrix
+from rasmus import matrixlib
 from rasmus.bio import phylo
 
 
@@ -694,7 +694,7 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
         toplogl = -util.INF
         toptree = None
         
-        distmat2 = matrix.submatrix(distmat, range(ngenes+1), range(ngenes+1))
+        distmat2 = matrixlib.submatrix(distmat, range(ngenes+1), range(ngenes+1))
         labels2  = labels[:ngenes+1]
         
         

@@ -15,7 +15,6 @@ from itertools import izip
 # rasmus libs
 from rasmus import algorithms
 from rasmus import graph
-from rasmus import matrix
 from rasmus import util
 from rasmus import regionlib
 from rasmus import tablelib

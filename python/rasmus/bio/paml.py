@@ -515,7 +515,39 @@ class PamlResults (object):
                 break
 
         return aln
+
+
+    def get_branch_site_params(self, lines=None):
+        """Return the parameters found in the branch site model"""
+        lines = self.setupLines(lines)
         
+        # find start of params
+        for line in lines:
+            if line.startswith("dN/dS for site classes (K=4)"):
+                lines.next() # skip blank line
+                line = lines.next() 
+                break
+        else:
+            raise Exception("no reconstruction found")
+
+        tokens = line.rstrip().split()
+        site_names = tokens[2:6]
+        line = lines.next()
+
+        tokens = line.rstrip().split()
+        proportions = dict(zip(site_names,
+                               map(float, tokens[1:5])))
+        lines.next()
+
+        # skip line
+        line = lines.next()
+
+        tokens = line.rstrip().split()
+        omegas = dict(zip(site_names,
+                          map(float, tokens[2:6])))
+        
+        return proportions, omegas
+                      
             
 
 

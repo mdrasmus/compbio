@@ -902,45 +902,50 @@ def evalstr(text):
 #=============================================================================
 # common Input/Output
 
-def readInts(filename):
+def read_ints(filename):
     """Read a list of integers from a file (one int per line)
     
        filename may also be a stream
     """
     
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = []
     for line in infile:
         vec.append(int(line))
     return vec
+readInts = read_ints
 
-def readFloats(filename):
+
+def read_floats(filename):
     """Read a list of floats from a file (one float per line)
     
        filename may also be a stream
     """
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = []
     for line in infile:
         vec.append(float(line))
     return vec
+readFloats = read_floats
 
-def readStrings(filename):
+
+def read_strings(filename):
     """Read a list of strings from a file (one string per line)
     
        filename may also be a stream
     """
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = [line.rstrip() for line in infile]
     return vec
+readStrings = read_strings
 
-def readDict(filename, delim="\t", keytype=str, valtype=str):
+def read_dict(filename, delim="\t", keytype=str, valtype=str):
     """Read a dict from a file
        
        filename may also be a stream
     """
     
-    infile = openStream(filename)
+    infile = open_stream(filename)
     dct = {}
     
     for line in infile:
@@ -949,26 +954,28 @@ def readDict(filename, delim="\t", keytype=str, valtype=str):
         dct[keytype(tokens[0])] = valtype(tokens[1])
     
     return dct
+readDict = read_dict
 
-
-def writeList(filename, lst):
+def write_list(filename, lst):
     """Write a list of anything (ints, floats, strings, etc) to a file.
     
        filename may also be a stream
     """
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for i in lst:
         print >>out, i
-writeVector = writeList
+writeList = write_list
+writeVector = write_list
 
 
-def writeDict(filename, dct, delim="\t"):
+def write_dict(filename, dct, delim="\t"):
     """Write a dictionary to a file"""
     
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for k, v in dct.iteritems():
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
-    
+writeDict = write_dict
+
 
 '''
 def makeReopenStream(stream):
@@ -991,7 +998,7 @@ def makeReopenStream(stream):
 
 
 # TODO: add code for multiple close() calls
-def openStream(filename, mode = "r"):
+def open_stream(filename, mode = "r"):
     """Returns a file stream depending on the type of 'filename' and 'mode'
     
        The following types for 'filename' are handled:
@@ -1037,7 +1044,7 @@ def openStream(filename, mode = "r"):
     # cannot handle other types for filename
     else:
         raise Exception("unknown filename type '%s'" % type(filename))
-
+openStream = open_stream
 
 
 #=============================================================================
@@ -1055,7 +1062,7 @@ class DelimReader:
            delim     - delimiting character
         """
         
-        self.infile = openStream(filename)
+        self.infile = open_stream(filename)
         self.delim = delim
         
     def __iter__(self):
@@ -1070,33 +1077,33 @@ class DelimReader:
         return line.rstrip().split(self.delim)
 
 
-def readDelim(filename, delim=None):
+def read_delim(filename, delim=None):
     """Read an entire delimited file into memory as a 2D list"""
     
     return list(DelimReader(filename, delim))
-    
+readDelim = read_delim
 
-def writeDelim(filename, data, delim="\t"):
+def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
     
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for line in data:
         print >>out, delim.join(map(str, line))
-
+writeDelim = write_delim
 
 #=============================================================================
 # printing functions
 #
 
-def defaultJustify(val):
+def default_justify(val):
     if isinstance(val, int) or \
        isinstance(val, float):
         return "right"
     else:
         return "left"
+defaultJustify = default_justify
 
-
-def defaultFormat(val):
+def default_format(val):
     if isinstance(val, int) and \
        not isinstance(val, bool):
         return int2pretty(val)
@@ -1109,7 +1116,7 @@ def defaultFormat(val):
             return "%.4f" % val
     else:
         return str(val)
-
+defaultFormat = default_format
 
 def printcols(data, width=None, spacing=1, format=defaultFormat, 
               justify=defaultJustify, out=sys.stdout,
@@ -1342,7 +1349,7 @@ class IndentStream:
     """
     
     def __init__(self, stream):
-        self.stream = openStream(stream, "w")
+        self.stream = open_stream(stream, "w")
         self.linestart = True
         self.depth = 0
     
@@ -1440,14 +1447,14 @@ def deldir(path):
             break
 
 
-def replaceExt(filename, oldext, newext):
+def replace_ext(filename, oldext, newext):
     """Safely replaces a file extension new a new one"""
     
     if filename.endswith(oldext):
         return filename[:-len(oldext)] + newext
     else:
         raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
-
+replaceExt = replace_ext
 
 
 #=============================================================================
@@ -1469,7 +1476,7 @@ def sortrank(lst, cmp=cmp, key=None, reverse=False):
 sortInd = sortrank
 
     
-def sortTogether(compare, lst, *others):
+def sort_together(compare, lst, *others):
     """Sort several lists based on the sorting of 'lst'"""
 
     ind = sortrank(lst, compare)
@@ -1479,7 +1486,7 @@ def sortTogether(compare, lst, *others):
         lsts.append(mget(other, ind))
     
     return lsts
-
+sortTogether = sort_together
 
 def invperm(perm):
     """Returns the inverse of a permutation 'perm'"""
@@ -1628,7 +1635,7 @@ def distrib(array, ndivs=None, low=None, width=None):
     return (h[0], map(lambda x: (x/total)/width, h[1]))
 
 
-def histInt(array):
+def hist_int(array):
     """Returns a histogram of integers as a list of counts"""
     
     hist = [0]  * (max(array) + 1)
@@ -1639,8 +1646,9 @@ def histInt(array):
         else:
             negative.append(i)
     return hist
+histInt = hist_int
 
-def histDict(array):
+def hist_dict(array):
     """Returns a histogram of any items as a dict.
     
        The keys of the returned dict are elements of 'array' and the values
@@ -1654,9 +1662,10 @@ def histDict(array):
         else:
             hist[i] = 1
     return hist
+histDict = hist_dict
 
 
-def printHist(array, ndivs=20, low=None, width=None,
+def print_hist(array, ndivs=20, low=None, width=None,
               cols=75, spacing=2, out=sys.stdout):
     data = list(hist(array, ndivs, low=low, width=width))
     
@@ -1672,6 +1681,7 @@ def printHist(array, ndivs=20, low=None, width=None,
     data.append(bars)                                                           
                                                                                 
     printcols(zip(* data), spacing=spacing, out=out)   
+printHist = print_hist
 
 
 # import common functions from other files, 

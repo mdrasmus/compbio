@@ -321,7 +321,7 @@ _defaultTypeLookup = \
 class Table (list):
     """Class implementing the Portable Table Format"""
 
-    def __init__(self, rows=[], 
+    def __init__(self, rows=None, 
                        headers=None,
                        defaults={},
                        types={},
@@ -338,41 +338,49 @@ class Table (list):
         self.nheaders = 1
         self.version = TABLE_VERSION
         
-        if type_lookup == None:
+        if type_lookup is None:
             self._type_lookup = _defaultTypeLookup
         else:
             self._type_lookup = _defaultTypeLookup.extend(type_lookup)
         
         
         # set data
-        if len(rows) > 0:
-            # data is a list of dicts
-            if isinstance(rows[0], dict):
-                for row in rows:
-                    self.append(copy.copy(row))
+        if rows is not None:
+            it = iter(rows)
+            try:
+                first_row = it.next()
+
+                # data is a list of dicts
+                if isinstance(first_row, dict):
+                    self.append(first_row)
+                    for row in it:
+                        self.append(dict(row))
+
+                    if self.headers is None:
+                        self.headers = sorted(self[0].keys())
+
+                # data is a list of lists
+                elif isinstance(first_row, (list, tuple)):
+                    if self.headers is None:
+                        self.headers = range(len(first_row))
+                        self.nheaders = 0
+                    for row in itertools.chain([first_row], it):
+                        self.append(dict(zip(self.headers, row)))
+
+
+                # set table info
+                for key in self.headers:
+                    # guess any types not specified
+                    if key not in self.types:
+                        self.types[key] = type(self[0][key])
+
+                    # guess any defaults not specified
+                    if key not in self.defaults:
+                        self.defaults[key] = self.types[key]()
                 
-                if self.headers == None:
-                    self.headers = sorted(self[0].keys())
-        
-            # data is a list of lists
-            elif isinstance(rows[0], list) or \
-                 isinstance(rows[0], tuple):
-                if self.headers == None:
-                    self.headers = range(len(rows[0]))
-                    self.nheaders = 0
-                for row in rows:
-                    self.append(dict(zip(self.headers, row)))
+            except StopIteration:
+                pass
             
-            
-            # set table info
-            for key in self.headers:
-                # guess any types not specified
-                if key not in self.types:
-                    self.types[key] = type(self[0][key])
-            
-                # guess any defaults not specified
-                if key not in self.defaults:
-                    self.defaults[key] = self.types[key]()
         
             
     def clear(self, headers=[], delim="\t", nheaders=1, types=None):
@@ -881,7 +889,66 @@ class Table (list):
                 tab.append(row)
         
         return tab
-    
+
+
+    def map(self, func, headers=None):
+        """Returns a new table with each row mapped by function 'func'"""
+
+        if len(self) == 0:
+            # handle case of zero length table
+            return self.new()
+
+        # determine what table will look like from first row
+        first_row = func(self[0])
+
+        # determine headers of new table
+        if headers is None:
+            # try order new headers the same way as old headers
+            headers = first_row.keys()
+            lookup = util.list2lookup(self.headers)
+            top = len(headers)            
+            headers.sort(key=lambda x:
+                         (lookup.get(x, top), x))
+            
+        
+        tab = type(self)(
+            itertools.chain([first_row],
+                            (func(x) for x in self[1:])),
+            headers=headers)
+        tab.delim = self.delim
+        tab.nheaders = self.nheaders
+        
+        return tab
+
+
+    def uniq(self, key=None, col=None):
+        """Returns a copy of this table with consecutive repeated rows removed"""
+
+        tab = self.new()
+
+        if len(self) == 0:
+            return tab
+
+        if col is not None:
+            key = lambda x: x[col]
+
+        if key is None:
+            last_row = self[0]
+            for row in self[1:]:
+                if row != last_row:
+                    tab.append(row)
+                last_row = row
+        else:
+            last_row = key(self[0])
+            for row in self[1:]:
+                key_row = key(row)
+                if key_row != last_row:
+                    tab.append(row)
+                last_row = key_row
+            
+
+        return tab
+        
     
     def groupby(self, key=None):
         """Groups the row of the table into separate tables based on the 
@@ -1074,7 +1141,7 @@ def iter_table(filename, delim="\t", nheaders=1):
     """Iterate through the rows of a Table from a file written in PTF"""
     
     table = Table()
-    return table.readIter(filename, delim=delim, nheaders=nheaders)
+    return table.read_iter(filename, delim=delim, nheaders=nheaders)
 
 # NOTE: back-compat
 iterTable = iter_table
@@ -1308,7 +1375,7 @@ def sqlput(dbfile, table_name, tab, overwrite=True, create=True):
     if not isinstance(tab, Table):
         filename = tab
         tab = Table()
-        it = tab.readIter(filename)
+        it = tab.read_iter(filename)
         
         try:
             # force a reading of the headers

@@ -5,7 +5,6 @@ import math
 import sys
 
 # rasmus libs
-from rasmus import matrix
 from rasmus import stats
 from rasmus import util
 from rasmus.bio.genomeutil import *

@@ -14,7 +14,7 @@ options
    -r             output first column to row label file
    -c             output first row to column label file
    -rfile <file>  specify row label file (default: *.rlabel)
-   -cfile <fiel>  specify col label file (default: *.clabel)
+   -cfile <file>  specify col label file (default: *.clabel)
    -o <file>      output matrix to a file (default: stdout)
    -oext <ext>    output to file with input filename plus a new extension
 EOF

@@ -68,7 +68,7 @@ if pyparsing:
         # recursive rules
         subtree = Forward()
         subtreelist = Forward()
-
+        
         subtree << \
             Group(
                 (
@@ -464,11 +464,15 @@ class Tree:
                         node.data["boot"] = float(boot)
                     except ValueError:
                         # treat as node name
-                        node.name = boot.strip()
+                        name = boot.strip()
+                        if name and not node.isLeaf():
+                            node.name = name
         else:
+            data = data.strip()
+            
             # treat as name
-            if not node.isLeaf():
-                node.name = data.strip()
+            if data and not node.isLeaf():
+                node.name = data
     
     
     def writeData(self, node):
@@ -680,13 +684,12 @@ class Tree:
         if labelFile:
             labels = util.readStrings(labelFile)
         elif labels == None:
-            nitems = (len(file(treeFile).readlines()) + 1)/ 2
+            nitems = (len(open(treeFile).readlines()) + 1)/ 2
             labels = map(str, range(nitems))
         
         self.makeRoot()
 
-        i = 0
-        for line in file(treeFile):
+        for i, line in enumerate(open(treeFile)):
             parentid = int(line.split(" ")[0])
             
             # determine current child
@@ -712,7 +715,12 @@ class Tree:
                     self.addChild(parent, child)
                 except:
                     print i, parentid
-            i += 1
+
+        # remove unused internal nodes
+        labelset = set(labels)
+        for child in list(self.root.children):
+            if child.isLeaf() and child.name not in labelset:
+                self.remove(child)
         
         # remove redunant root
         if len(self.root.children) == 1:

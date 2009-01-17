@@ -1,7 +1,0 @@
-
-test: test/scripts/test_spidir
-
-# testing program
-test/scripts/test_spidir: $(SPIDIR_OBJS) 
-	$(CXX) $(SPIDIR_OBJS) $(CFLAGS) test/scripts/test.cpp $(PROG_LIBS) \
-           -o test/scripts/test_spidir

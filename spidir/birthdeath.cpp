@@ -6,7 +6,17 @@
 namespace spidir
 {
 
+extern "C" {
 
+
+int numHistories(int ngenes)
+{
+    int n = 1;
+    for (int i=2; i<=ngenes; i++) {
+	n *= i*(i-1) / 2;
+    }
+    return n;
+}
 
 
 // returns the probability of 1 gene giving rise to ngenes after time 'time'
@@ -33,7 +43,7 @@ float birthDeathCount(int ngenes, float time, float birthRate, float deathRate)
 
 // returns the probability of 'start' genes giving rise to 'end' genes after 
 // time 'time'
-float birthDeathCount(int start, int end, float time, float birthRate, float deathRate)
+float birthDeathCount2(int start, int end, float time, float birthRate, float deathRate)
 {
     const float l = birthRate;
     const float u = deathRate;
@@ -338,17 +348,17 @@ float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon,
 
 
 
-void getNodeTimes(Node *node, float time, float *times)
+void getNodeTimes_helper(Node *node, float time, float *times)
 {
     times[node->name] = time + node->dist;
     
     for (int i=0; i<node->nchildren; i++)
-        getNodeTimes(node->children[i], time + node->dist, times);
+        getNodeTimes_helper(node->children[i], time + node->dist, times);
 }
 
 void getNodeTimes(Tree *tree, float *times)
 {
-    getNodeTimes(tree->root, 0.0, times);
+    getNodeTimes_helper(tree->root, 0.0, times);
 }
 
 void setNodeTimes(Tree *tree, float *times)
@@ -365,7 +375,7 @@ void setNodeTimes(Tree *tree, float *times)
 }
 
 
-void sampleDupTimes(Node *node, SpeciesTree *stree, int *recon, int *events,
+void sampleDupTimes_helper(Node *node, SpeciesTree *stree, int *recon, int *events,
                     float *times, float *stimes,
                     float birthRate, float deathRate)
 {     
@@ -390,8 +400,9 @@ void sampleDupTimes(Node *node, SpeciesTree *stree, int *recon, int *events,
 
     // recurse
     for (int i=0; i<node->nchildren; i++)
-        sampleDupTimes(node->children[i], stree, recon, events, times, stimes,
-                       birthRate, deathRate);
+        sampleDupTimes_helper(node->children[i], stree, recon, events, 
+			      times, stimes,
+			      birthRate, deathRate);
 }
 
 
@@ -404,11 +415,13 @@ void sampleDupTimes(Tree *tree, SpeciesTree *stree, int *recon, int *events,
     
     // set gene tree times
     float times[tree->nnodes];
-    sampleDupTimes(tree->root, stree, recon, events, times, stimes, 
-                   birthRate, deathRate);
+    sampleDupTimes_helper(tree->root, stree, recon, events, times, stimes, 
+			  birthRate, deathRate);
     
     // use the times to set branch lengths
     setNodeTimes(tree, times);
+}
+
 }
 
 } // namespace spidir

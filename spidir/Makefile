@@ -41,7 +41,7 @@ SPIDIR_SRC = \
     mldist.cpp \
     common.cpp \
     likelihood.cpp \
-    likelihood2.cpp \
+    birthdeath.cpp \
     parsimony.cpp \
     phylogeny.cpp \
     search.cpp \
@@ -52,7 +52,7 @@ SPIDIR_OBJS = \
     mldist.o \
     common.o \
     likelihood.o \
-    likelihood2.o \
+    birthdeath.o \
     parsimony.o \
     phylogeny.o \
     search.o \
@@ -76,7 +76,7 @@ PYTHON_MODULE = pyspidir.so
 PYTHON_MODULE_OBJS = \
     pyspidir.o \
     $(SPIDIR_OBJS)  
-PYTHON_MODULE_LIBS = 
+PYTHON_MODULE_LIBS = -lpython2.5
 #-lpython2.4 
 #`gsl-config --libs`
 
@@ -144,7 +144,7 @@ $(LIBSPIDIR_SHARED): $(LIBSPIDIR_OBJS)
 
 
 # python module
-#pyspidir: $(PYTHON_MODULE)
+py: $(PYTHON_MODULE)
 
 $(PYTHON_MODULE): $(PYTHON_MODULE_OBJS)
 	$(CXX) -shared $(PYTHON_MODULE_OBJS) $(PYTHON_MODULE_LIBS) -o $(PYTHON_MODULE)

@@ -14,6 +14,7 @@
 // spidir headers
 #include "common.h"
 #include "likelihood.h"
+#include "birthdeath.h"
 #include "phylogeny.h"
 #include "ExtendArray.h"
 #include "mldist.h"

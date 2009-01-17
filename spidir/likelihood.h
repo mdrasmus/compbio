@@ -3,6 +3,7 @@
 
 #include "Tree.h"
 #include "spidir.h"
+#include "birthdeath.h"
 
 namespace spidir {
 
@@ -77,18 +78,6 @@ void generateBranchLengths(Tree *tree,
                            float generate=-1.0, 
                            int subnode=-1, int subchild=-1);
 
-
-float birthDeathDensity(float *times, int ntimes, float maxtime, 
-                        float birthRate, float deathRate);
-
-float birthDeathTreePrior(Tree *tree, SpeciesTree *stree, int *recon, 
-                          int *events, float birthRate, float deathRate);
-
-float birthDeathTreeQuickPrior(Tree *tree, SpeciesTree *stree, int *recon, 
-                               int *events, float birthRate, float deathRate);
-
-void sampleDupTimes(Tree *tree, SpeciesTree *stree, int *recon, int *events,
-                    float birthRate, float deathRate);
 
 } // namespace spidir
 

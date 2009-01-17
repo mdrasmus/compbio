@@ -254,7 +254,7 @@ public:
     Node *root;                 // root of the tree (NULL if no nodes)
     ExtendArray<Node*> nodes;   // array of nodes (size = nnodes)
 };
-
+                               
 
 // A hash function for a topology key to an integer
 struct HashTopology {
@@ -313,6 +313,13 @@ void tree2ptree(Tree *tree, int *ptree);
 
 void printFtree(int nnodes, int **ftree);
 void printTree(Tree *tree, Node *node=NULL, int depth=0);
+
+
+// C exports
+extern "C" {
+    Tree *makeTree(int nnodes, int *ptree);
+
+}
 
 
 } // namespace spidir

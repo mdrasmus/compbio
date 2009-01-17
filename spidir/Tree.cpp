@@ -977,4 +977,24 @@ void printTree(Tree *tree, Node *node, int depth)
 }
 
 
+//=============================================================================
+
+// C exports
+extern "C" {
+
+Tree *makeTree(int nnodes, int *ptree) 
+{
+    Tree *tree = new Tree(nnodes);
+
+    for (int i=0; i<nnodes; i++)
+	printf("> %d\n", ptree[i]);
+
+    ptree2tree(nnodes, ptree, tree);
+    return tree;
+}
+
+} // extern C
+
+
+
 } // namespace spidir

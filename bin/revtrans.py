@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 import sys, time, os
-from rasmus import env, fasta, alignlib, util
+from rasmus import env, util
+from rasmus.bio import fasta, alignlib
 
 
 
 options = [
+    ["c", "check", "check", "",
+        {"single": True,
+         "help": "check that the dna translates to the peptide"}],
     ["d:", "dna=", "dna", "<dna fasta>"],
     ["o:", "oldext=", "oldext", "<old extension>",
         {"default": ".align",
@@ -46,9 +50,17 @@ def main(param):
         newfile = alnFile.replace(param["oldext"], param["newext"])
         util.log(alnFile, "===>", newfile)
         aln = fasta.readFasta(alnFile)
-        alnDna = alignlib.revtranslateAlign(aln, seqs)
         
-        alnDna.write(newfile)
+        try:
+            alnDna = alignlib.revtranslateAlign(aln, seqs, check=param["check"])
+        except alignlib.TranslateError, e:
+            print e
+            print "%s  ! ===> %s" % (e.a, e.codon)
+            print e.dna
+            print e.aa
+        else:    
+            alnDna.write(newfile)
+            
     util.toc()
 
 main(param)

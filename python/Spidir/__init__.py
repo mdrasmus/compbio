@@ -25,11 +25,15 @@ from rasmus.vis import treesvg
 
 
 # SPIDIR libs
-from Spidir import Search
-from Spidir import Likelihood
-from Spidir.Debug import *
+#from Spidir import Search
+#from Spidir import Likelihood
+#from Spidir.Debug import *
 
-try :
+import Search
+import Likelihood
+from Debug import *
+
+try:
     import pyspidir
 except ImportError:
     pyspidir = None
@@ -41,7 +45,7 @@ try:
     import scipy.linalg
     import scipy.integrate
     import scipy.optimize
-except ImportError:
+except:
     if pyspidir == None:
         raise Exception("Must install SciPy before using SPIDIR")
 
@@ -678,6 +682,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
             tree, logl = Search.searchHillClimb(conf, distmat, labels, stree, 
                                          gene2species, params, initTree=tree,
                                          visited=visited)
+        
         elif search == "none":
             break
         else:

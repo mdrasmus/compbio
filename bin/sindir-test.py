@@ -21,9 +21,6 @@ from rasmus.bio import fasta
 from rasmus.bio import phylo
 from rasmus.bio import genomeutil
 
-# SPIDIR lib
-import Spidir
-
 
 
 
@@ -205,7 +202,7 @@ def makeReport(conf):
             continue
             
         
-        error = Spidir.robinsonFouldsError(tree1, tree2)
+        error = phylo.robinsonFouldsError(tree1, tree2)
         
         hash1 = phylo.hashTree(tree1)
         hash2 = phylo.hashTree(tree2)

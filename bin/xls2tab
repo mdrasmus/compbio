@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+# Fri Sep 12 14:47:08 EDT 2008
+# xls2tab
+
+
+import optparse
+import sys
+import xlrd
+
+
+o = optparse.OptionParser()
+o.add_option("-o", "--out", dest="out", metavar="OUT_FILE")
+o.add_option("-a", "--ascii", dest="ascii", action="store_true",
+             help="force ascii output")
+options, args = o.parse_args()
+
+
+def force_ascii(text):
+    if isinstance(text, basestring):
+        return str(text.encode("ascii", "ignore"))
+    else:
+        return str(text)
+
+
+for filename in args:
+    assert filename.endswith(".xls")
+
+    if options.out is None:
+        outfile = filename[:-4] + ".txt"
+        out = file(outfile, "w")
+    elif options.out is not "-":
+        outfile = options.out
+        out = file(outfile, "w")
+    else:
+        out = sys.stdout
+
+
+    xls = xlrd.open_workbook(filename)
+    sheet = xls.sheet_by_index(0)
+
+    if options.ascii:
+        for i in xrange(sheet.nrows):
+            out.write("\t".join(force_ascii(sheet.cell_value(i, j))
+                                for j in xrange(sheet.ncols)))
+            out.write("\n")
+    else:
+        for i in xrange(sheet.nrows):
+            out.write("\t".join(unicode(sheet.cell_value(i, j))
+                                for j in xrange(sheet.ncols)))
+            out.write("\n")
+        
+        
+
+    if out != sys.stdout:
+        out.close()

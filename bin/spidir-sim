@@ -1,0 +1,403 @@
+#!/usr/bin/env python
+"""
+
+    Simulate a birth death tree on a species tree
+
+"""
+
+# python libs
+import sys, time, os, random, math, copy
+
+# rasmus libs
+from rasmus import env, treelib
+from rasmus import util
+from rasmus import stats
+import Spidir
+import pyspidir
+
+from rasmus.bio import alignlib, fasta, phylo, genomeutil, birthdeath
+
+def parseBgFreq(txt):
+    return map(float, txt.split(","))
+
+
+options = [
+"""\
+    Simulates sequence evolution using SPIDIR's model. 
+""",
+
+    ["s:", "stree=", "stree", "<species tree>",
+        {"single": True}],
+    ["p:", "params=", "params", "<params>",
+        {"single": True}],
+    ["f:", "famrate=", "famrate", "<family rate>",
+        {"single": True,
+         "default": None,
+         "parser": float}],
+    ["l:", "genelen=", "genelen", "<gene length in base pairs>",
+        {"single": True,
+         "default": 1000,
+         "parser": int}],
+    ["", "genelenprobs=", "genelenprobs", "<gene length distribution>",
+        {"single": True,
+         "parser": util.readFloats}],
+    ["r:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
+        {"single": True,
+         "default": 1.0,
+         "parser": float}],
+    ["b:", "bgfreq=", "bgfreq", "<A>,<C>,<G>,<T>",
+        {"single": True,
+         "default": [.25,.25,.25,.25],
+         "parser": parseBgFreq}],
+    ["i:", "insfreq=", "insfreq", "<insertion frequency>",
+        {"single": True,
+         "parser": float,
+         "default": 0.0}],
+    ["d:", "delfreq=", "delfreq", "<deletion frequency>",
+        {"single": True,
+         "parser": float,
+         "default": 0.0}],
+    ["", "insprobs=", "insprobs", "<insertion length distribution>",
+        {"single": True,
+         "parser": util.readFloats,
+         "default": [.2, .2, .2, .2, .1, .1]}],
+    ["", "delprobs=", "delprobs", "<deletion length distribution>",
+        {"single": True,
+         "parser": util.readFloats,
+         "default": [.2, .2, .2, .2, .1, .1]}],
+    ["m:", "minsize=", "minsize", "<min # of genes per tree>",
+        {"single": True,
+         "parser": int,
+         "default": 4}],
+         
+    ["D:", "duprate=", "duprate", "<duplication rate>",
+        {"single": True,
+         "default": 0.0000002,
+         "parser": float}],
+    ["L:", "lossrate=", "lossrate", "<loss rate>",
+        {"single": True,
+         "default": 0.0000001,
+         "parser": float}],
+
+    ["n:", "ntrees=", "ntrees", "<number of trees to produce>",
+        {"single": True,
+         "default": 1,
+         "parser": int}], 
+    ["", "start=", "start", "<starting number>",
+        {"single": True,
+         "default": 0,
+         "parser": int}],
+    ["", "nospecrates", "nospecrates", "",
+        {"single": True,
+         "help": "do not use species rates"}],
+            
+    "Output extensions",
+    ["O:", "outtree=", "outtree", "<output directory>",
+        {"single": True,
+         "default": "./"}],
+    
+    ["T:", "outtreeext=", "outtreeext", "<output tree extension>",
+        {"single": True,
+         "default": ".tree"}],
+    ["A:", "outalignext=", "outalignext", "<output align extension>",
+        {"single": True,
+         "default": ".align"}],
+    ["I:", "outinfoext=", "outinfoext", "<output information extenstion>",
+        {"single": True,
+         "default": ".info.txt"}],
+    ["", "nodir", "nodir", "",
+        {"single": True,
+         "help": "do not create sub-directories"}],
+]
+
+
+
+conf = util.parseOptions(sys.argv, options, quit=True)
+
+
+
+def main(conf):
+    # read configuration    
+    stree = treelib.readTree(conf["stree"])
+    
+    if "params" in conf:
+        params = Spidir.readParams(conf["params"])
+        
+        # set species tree lengths
+        meanrate = params["baserate"][0] / params["baserate"][1]
+        for node in stree:
+            node.dist = meanrate * params[node.name][0]
+        
+    else:
+        params = None
+        
+    if "famrate" in conf:
+        generate = conf["famrate"]
+    else:
+        generate = None
+    
+    
+    # simulate
+    util.tic("simulating %d trees" % conf["ntrees"])
+    for i in range(conf["start"], conf["ntrees"]):
+        util.logger("simulating", i)
+        
+        # setup output directory
+        if conf["nodir"]:
+            dirname = conf["outtree"]
+        else:
+            dirname = os.path.join(conf["outtree"], str(i))
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+        
+        # open information file
+        infofilename = os.path.join(dirname, str(i) + conf["outinfoext"])
+        infofile = open(infofilename, "w")                    
+        
+        # create tree and write it
+        pretree, tree = simTree(stree, params, conf["duprate"],
+                                conf["lossrate"], 
+                                generate,
+                                not conf["nospecrates"],
+                                infofile=infofile,
+                                minsize=conf["minsize"])
+        pretree.write(os.path.join(dirname, str(i) + ".times" +
+                                   conf["outtreeext"]))
+        tree.write(os.path.join(dirname, str(i) + conf["outtreeext"]))
+        
+        # create sequence for tree
+        if "genelenprobs" in conf:
+            genelen = stats.sample(conf["genelenprobs"])
+        else:
+            genelen = conf["genelen"]
+        
+        outfile = os.path.join(dirname, str(i))
+        simSeq(tree, outfile, seqlen=genelen, 
+               tsvratio=conf["tsvratio"], bgfreq=conf["bgfreq"],
+               insfreq=conf["insfreq"], delfreq=conf["delfreq"],
+               insprobs=conf["insprobs"], delprobs=conf["delprobs"])
+
+        infofile.close()
+    util.toc()
+    
+
+def gene2species(gene):
+    return gene.split("_")[0]
+
+
+def simTree(stree, params, duprate, lossrate, generate, use_spec,
+            minsize=4,
+            infofile=sys.stdout):
+    """simulate one tree"""
+
+    if generate is None:
+        # randomly sample gene rate
+        generate = random.gammavariate(params["baserate"][0],
+                                       1.0 / params["baserate"][1])
+        
+    infofile.write("gene rate: %f\n" % generate)
+    
+    tree, recon, events = birthdeath.sample_birth_death_gene_tree(
+        stree, duprate, lossrate, removeloss=False)    
+    
+    pretree = tree.copy()
+    prerecon = copy.copy(recon)
+    preevents = copy.copy(events)
+    removeLosses(pretree, prerecon, preevents)
+    meanrate = params["baserate"][0] / params["baserate"][1]
+    
+    # multiply by generate
+    for node in tree:
+        if node == tree.root:
+            continue
+        if use_spec:
+            node.dist = simBranchLen(node.dist / meanrate, generate, 
+                                     params[recon[node].name][0],
+                                     params[recon[node].name][1])
+        else:
+            node.dist *= generate / meanrate
+    
+    # trim recon and events structures to only remaining nodes
+    doomed = removeLosses(tree, recon, events)
+    
+    # try again if there is total extinction
+    if len(tree.nodes) < minsize:
+        infofile.write("tree too small. size: %d\n" % len(tree.nodes))
+        if len(tree.nodes) == 0:
+            infofile.write("extinction\n")
+        return simTree(stree, params, duprate, lossrate, generate, use_spec,
+                       infofile=infofile)
+    
+    infofile.write("doomed: %d\n" % doomed)
+    
+    recon2 = phylo.reconcile(tree, stree, gene2species)
+    infofile.write("parsimonious reconciliation: %s\n" % str(recon2 == recon))
+    
+    def walk(node):
+        if isinstance(node.name, int):
+            node.name = "doom_%d" % node.name
+        for child in node.children:
+            walk(child)
+    walk(pretree.root)
+    
+    return pretree, tree
+
+
+
+def simSeq(tree, outfile, seqlen=999, mutaterate=[1.0],
+           tsvratio=1.0, bgfreq=[.25, .25, .25, .25],
+           insfreq=0.0,
+           delfreq=0.0,
+           insprobs=[.2, .2, .2, .2, .1, .1],
+           delprobs=[.2, .2, .2, .2, .1, .1]):
+
+    
+    bases = "ACGT"
+
+    # make root sequence
+    rootseq = [bases[stats.sample(bgfreq)]
+               for i in xrange(seqlen)]
+
+    # final sequences
+    seqs = fasta.FastaDict()
+
+    # evolve sequences down tree
+    def walk(node, seq):
+        if node.isLeaf():
+            # save sequence
+            seqs[node.name] = seq
+
+        # recurse
+        for child in node.children:
+            seq2 = simBranch(seq, child.dist, bgfreq, tsvratio)
+            walk(child, seq2)        
+    walk(tree.root, rootseq)
+
+    # write output
+    seqs.write(outfile + ".fasta")
+    seqs.write(outfile + ".align")
+    
+    
+    
+
+def simBranch(seq, time, bgfreq, tsvratio):
+    """Simulate sequence evolving down one branch"""
+    matrix = pyspidir.hkymatrix(bgfreq, tsvratio, time)
+    bases = "ACGT"
+    lookup = {"A": 0,
+              "C": 1,
+              "G": 2,
+              "T": 3}
+
+    seq2 = []
+    for a in seq:
+        seq2.append(bases[stats.sample(matrix[lookup[a]])])
+
+    return "".join(seq2)
+        
+
+def simSeq2(tree, outfile, seqlen=999, mutaterate=[1.0],
+           tsvratio=1.0, bgfreq=[.25, .25, .25, .25],
+           insfreq=0.0,
+           delfreq=0.0,
+           insprobs=[.2, .2, .2, .2, .1, .1],
+           delprobs=[.2, .2, .2, .2, .1, .1]):
+    # remove trailing ';'
+    tree2 = tree.copy()
+    flipTree(tree2)
+    top = tree2.getOnelineNewick()[:-1]
+
+    # mutation rates across bases
+    mutateratestr = ",".join(map(str, mutaterate))
+    mutate = []
+    for i in range(0, seqlen, len(mutaterate)):
+        mutate.append(mutateratestr)
+    mutate = "[" + ",".join(mutate) + "]"
+
+    bgfreqstr = list2str(bgfreq)
+
+    insstr = list2str("%.4f" % x for x in insprobs)
+    delstr = list2str("%.4f" % x for x in delprobs)
+
+    rosecmd = """
+InputType = 4 // DNA
+TheAlphabet = "ACGT"
+MeanSubstitution = 1.0
+TTratio = 0.0 // reduces F84 to JC
+
+# output formats
+OutputFilebase = "%s"
+AlignmentFormat = "FASTA"
+SequenceSuffix = ".fasta"
+AlignmentSuffix = ".align"
+StdOut = False
+
+TheFreq = %s
+SequenceNum = %d
+SequenceLen = %d
+TheTree = %s
+
+TheDNAmodel = "HKY"
+TransitionBias = %f
+TheMutationProbability = %s
+
+ChooseFromLeaves = True
+
+TheInsertThreshold = %f // do not model insertions
+TheDeleteThreshold = %f // do not model deletions
+TheInsFunc = %s // distribution of lengths
+TheDelFunc = %s // distribution of lengths
+
+""" % (outfile, bgfreqstr, len(tree.leaves()), 
+       seqlen, top, tsvratio, mutate, insfreq, delfreq, insstr, delstr)
+
+    rose = os.popen("rose -", "w")
+    rose.write(rosecmd)
+    rose.close()
+
+
+
+def removeLosses(tree, recon, events):
+    keep = [x for x in tree.leaves() if isinstance(x.name, str)]
+    
+    nnodes = len(tree.nodes)
+    treelib.removeExposedInternalNodes(tree, keep)
+    doomed = nnodes - len(tree.nodes)
+    
+    treelib.removeSingleChildren(tree)
+    
+    delnodes = set()
+    for node in recon:
+        if node.name not in tree.nodes:
+            delnodes.add(node)
+    for node in delnodes:
+        del recon[node]
+        del events[node]
+    
+    return doomed
+
+
+def simBranchLen(blen, generate, mu, sigma):
+    """simulate one branch length"""
+
+    blen2 = 0
+    k = blen / mu
+    
+    while blen2 <= 0:
+        blen2 = generate * k * random.normalvariate(mu, sigma)
+    
+    return blen2
+
+
+def flipTree(tree, node=None):
+    if node == None:
+        flipTree(tree, node=tree.root)
+    else:    
+        node.children.reverse()
+        for child in node.children:
+            flipTree(tree, child)
+
+def list2str(lst):
+    return "[" + ",".join(map(str, lst)) + "]"
+
+main(conf)

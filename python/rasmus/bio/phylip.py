@@ -795,7 +795,6 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
 
 
 def consenseFromFile(intrees, verbose=True, args="y"):
-    validateSeq(seqs)
     cwd = createTempDir()
     
     shutil.copy(os.path.join("..", intrees), "intree")

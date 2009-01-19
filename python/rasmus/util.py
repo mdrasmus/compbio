@@ -53,7 +53,7 @@ class Bundle (dict):
     Example:
 
     def func1():
-        this = Closure(var1 = 0, var2 = "hello")
+        this = Bundle(var1 = 0, var2 = "hello")
         def func2():
             this.var1 += 1
         func2()
@@ -75,9 +75,6 @@ class Bundle (dict):
         dict.__setitem__(self, key, val)
     
 
-# backwards compatiable (remove soon)
-Closure = Bundle
-
 
 class Dict (dict):
     """My personal nested Dictionary (with default values)"""
@@ -97,9 +94,9 @@ class Dict (dict):
         elif items is not None:
             dict.__init__(self, items)
         
-        self.dim = dim
-        self.null = default
-        self.insert = insert
+        self._dim = dim
+        self._null = default
+        self._insert = insert
         
         # backwards compatiability
         self.data = self
@@ -107,11 +104,11 @@ class Dict (dict):
     
     def __getitem__(self, i):
         if not i in self:
-            if self.dim > 1:
-                ret = Dict(self.dim - 1, self.null)
+            if self._dim > 1:
+                ret = Dict(self._dim - 1, self._null)
             else:
-                ret = copy.copy(self.null)
-            if self.insert:
+                ret = copy.copy(self._null)
+            if self._insert:
                 self[i] = ret
             return ret
         return dict.__getitem__(self, i)
@@ -143,6 +140,8 @@ class Dict (dict):
         print >>out, ">"
 
 
+
+
 class Percent (float):
     digits = 1
     
@@ -152,6 +151,28 @@ class Percent (float):
     def __repr__(self):
         return str(self)
 
+
+class PushIter (object):
+    """Wrap an iterator in another iterator that allows one to push new
+       items onto the front of the iteration stream"""
+    
+    def __init__(self, it):
+        self._it = iter(it)
+        self._queue = []
+
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        if len(self._queue) > 0:
+            return self._queue.pop()
+        else:
+            return self._it.next()
+
+    def push(self, item):
+        """Push a new item onto the front of the iteration stream"""
+        self._queue.append(item)
+       
 
 def exceptDefault(func, val, exc=Exception):
     """Specify a default value for when an exception occurs"""
@@ -189,7 +210,7 @@ def remove(lst, *vals):
 def sort(lst, compare=cmp, key=None, reverse=False):
     """Returns a sorted copy of a list
        
-       python2.5 now has sorted() which fulfills the same purpose
+       python2.4 now has sorted() which fulfills the same purpose
        
        lst     -- a list to sort
        compare -- a function for comparing items (default: cmp)
@@ -223,11 +244,8 @@ def cget(mat, *i):
     if len(i) == 1:
         return [row[i[0]] for row in mat]
     else:
-        cols = []
-
-        for index in i:
-            cols.append([row[index] for row in mat])
-        return cols
+        return [[row[index] for row in mat]
+                for index in i]
 
 
 def mget(lst, ind):
@@ -306,9 +324,9 @@ def mapdict(dic, key=lambda x: x, val=lambda x: x,
     
     """
     
-    if keyfunc != None:
+    if keyfunc is not None:
         key = keyfunc
-    if valfunc != None:
+    if valfunc is not None:
         val = valfunc
     
     dic2 = {}
@@ -332,23 +350,34 @@ def mapwindow(func, size, lst):
     return lst2
 
 
-def groupby(func, lst):
+def groupby(func, lst, multi=False):
     """Places i and j of 'lst' into the same group if func(i) == func(j).
        
        func -- is a function of one argument that maps items to group objects
        lst  -- is a list of items
+       multi -- if True, func must return a list of keys (key1, ..., keyn) for
+                item a.  groupby will retrun a nested dict 'dct' such that
+                dct[key1]...[keyn] == a
        
        returns:
        a dictionary such that the keys are groups and values are items found in
        that group
     """
     
-    div = {}
-    for i in lst:
-        lst2 = div.setdefault(func(i), [])
-        lst2.append(i)
+    if not multi:
+        dct = {}
+        for i in lst:
+            dct.setdefault(func(i), []).append(i)
+    else:
+        dct = {}
+        for i in lst:
+            keys = func(i)
+            d = dct
+            for key in keys[:-1]:
+                d = d.setdefault(key, {})
+            d.setdefault(keys[-1], []).append(i)
     
-    return div
+    return dct
 
 
 def unique(lst):
@@ -398,8 +427,19 @@ def mapapply(funcs, lst):
 
 
 def cumsum(vals):
+    """Returns a cumalative sum of vals (as a list)"""
+    
+    lst = []
+    tot = 0
+    for v in vals:
+        tot += v
+        lst.append(tot)
+    return lst
+
+def icumsum(vals):
     """Returns a cumalative sum of vals (as an iterator)"""
     
+    lst = []
     tot = 0
     for v in vals:
         tot += v
@@ -596,45 +636,34 @@ def findge(a, lst): return find(gefunc(a), lst)
 def findgt(a, lst): return find(gtfunc(a), lst)
 
 
-"""
 def islands(lst):
-    '''
-      takes a list, or a string, and gather islands of identical elements.
-      it returns a dictionary counting where
-      counting = {element: [(start,end), (start,end), ...],
-                  element: [(start,end), (start,end), ...],
-                  ...}
-      counting.keys() is the list of unique elements of the input list
-      counting[element] is the list of all islands of occurence of element
-      counting[element][i] = (start,end)
-       is such that list[start-1:end] only contains element
-       
-       note: this comes from Manolis's code
-    '''
+    """Takes a iterable and returns islands of equal consequtive items 
     
-    if not lst: return {}
-
-    counting = {}
-
-    i,current_char, current_start = 0,lst[0], 0
+    Return value is a dict with the following format
     
-    while i < len(lst):
-
-        if current_char == lst[i]:
-            i = i+1
-        else:
-            if not counting.has_key(current_char): counting[current_char] = []
-            counting[current_char].append((current_start, i))
-            current_char = lst[i]
-            current_start = i
-
-    if not counting.has_key(current_char): counting[current_char] = []
-    counting[current_char].append((current_start, i))
-
-    return counting
-"""
-
-
+    counts = {elm1: [(start,end), (start,end), ...],
+              elm2: [(start,end), (start,end), ...]
+              ...}
+    
+    where for each (start,end) in counts[elm1] we have lst[start:end] only 
+    containing elm1
+    
+    """
+    
+    counts = {}
+    NULL = Bundle() # unique NULL
+    last = NULL
+    start = 0
+    
+    for i, x in enumerate(lst):
+        if x != last and last != NULL:
+            counts.setdefault(last, []).append((start, i))
+            start = i
+        last = x
+    if last != NULL:
+        counts.setdefault(last, []).append((start, i+1))
+    
+    return counts
 
 
 
@@ -704,15 +733,6 @@ def minfunc(func, lst):
     return lowi
 
 
-def argmaxfunc(func, lst):
-    """DEPRECATED: use argmax"""
-    return argmax(lst, key=func)
-
-    
-def argminfunc(func, lst):
-    """DEPRECATED: use argmin"""
-    return argmin(lst, key=func)
-
 
 #=============================================================================
 # math functions
@@ -768,7 +788,7 @@ def safediv(a, b, default=INF):
 
 def safelog(x, base=math.e, default=-INF):
     try:
-        return math.log(x)
+        return math.log(x, base)
     except (OverflowError, ValueError):
         return default
         
@@ -882,45 +902,50 @@ def evalstr(text):
 #=============================================================================
 # common Input/Output
 
-def readInts(filename):
+def read_ints(filename):
     """Read a list of integers from a file (one int per line)
     
        filename may also be a stream
     """
     
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = []
     for line in infile:
         vec.append(int(line))
     return vec
+readInts = read_ints
 
-def readFloats(filename):
+
+def read_floats(filename):
     """Read a list of floats from a file (one float per line)
     
        filename may also be a stream
     """
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = []
     for line in infile:
         vec.append(float(line))
     return vec
+readFloats = read_floats
 
-def readStrings(filename):
+
+def read_strings(filename):
     """Read a list of strings from a file (one string per line)
     
        filename may also be a stream
     """
-    infile = openStream(filename)
+    infile = open_stream(filename)
     vec = [line.rstrip() for line in infile]
     return vec
+readStrings = read_strings
 
-def readDict(filename, delim="\t", keytype=str, valtype=str):
+def read_dict(filename, delim="\t", keytype=str, valtype=str):
     """Read a dict from a file
        
        filename may also be a stream
     """
     
-    infile = openStream(filename)
+    infile = open_stream(filename)
     dct = {}
     
     for line in infile:
@@ -929,26 +954,28 @@ def readDict(filename, delim="\t", keytype=str, valtype=str):
         dct[keytype(tokens[0])] = valtype(tokens[1])
     
     return dct
+readDict = read_dict
 
-
-def writeList(filename, lst):
+def write_list(filename, lst):
     """Write a list of anything (ints, floats, strings, etc) to a file.
     
        filename may also be a stream
     """
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for i in lst:
         print >>out, i
-writeVector = writeList
+writeList = write_list
+writeVector = write_list
 
 
-def writeDict(filename, dct, delim="\t"):
+def write_dict(filename, dct, delim="\t"):
     """Write a dictionary to a file"""
     
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for k, v in dct.iteritems():
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
-    
+writeDict = write_dict
+
 
 '''
 def makeReopenStream(stream):
@@ -971,7 +998,7 @@ def makeReopenStream(stream):
 
 
 # TODO: add code for multiple close() calls
-def openStream(filename, mode = "r"):
+def open_stream(filename, mode = "r"):
     """Returns a file stream depending on the type of 'filename' and 'mode'
     
        The following types for 'filename' are handled:
@@ -1017,7 +1044,7 @@ def openStream(filename, mode = "r"):
     # cannot handle other types for filename
     else:
         raise Exception("unknown filename type '%s'" % type(filename))
-
+openStream = open_stream
 
 
 #=============================================================================
@@ -1035,7 +1062,7 @@ class DelimReader:
            delim     - delimiting character
         """
         
-        self.infile = openStream(filename)
+        self.infile = open_stream(filename)
         self.delim = delim
         
     def __iter__(self):
@@ -1050,35 +1077,33 @@ class DelimReader:
         return line.rstrip().split(self.delim)
 
 
-def readDelim(filename, delim=None):
+def read_delim(filename, delim=None):
     """Read an entire delimited file into memory as a 2D list"""
     
-    reader = DelimReader(filename, delim)
-    data = [row for row in reader]
-    return data
-    
+    return list(DelimReader(filename, delim))
+readDelim = read_delim
 
-def writeDelim(filename, data, delim="\t"):
+def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
     
-    out = openStream(filename, "w")
+    out = open_stream(filename, "w")
     for line in data:
         print >>out, delim.join(map(str, line))
-
+writeDelim = write_delim
 
 #=============================================================================
 # printing functions
 #
 
-def defaultJustify(val):
+def default_justify(val):
     if isinstance(val, int) or \
        isinstance(val, float):
         return "right"
     else:
         return "left"
+defaultJustify = default_justify
 
-
-def defaultFormat(val):
+def default_format(val):
     if isinstance(val, int) and \
        not isinstance(val, bool):
         return int2pretty(val)
@@ -1091,7 +1116,7 @@ def defaultFormat(val):
             return "%.4f" % val
     else:
         return str(val)
-
+defaultFormat = default_format
 
 def printcols(data, width=None, spacing=1, format=defaultFormat, 
               justify=defaultJustify, out=sys.stdout,
@@ -1235,48 +1260,23 @@ def str2bool(val):
         raise Exception("unknown string for bool '%s'" % val)
 
 
-#=============================================================================
-# Dictionary printing
-#
 
-def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-              num=None, compare=lambda a,b: cmp(a[0],b[0]),
+def printDict(dic, key=lambda x: x, val=lambda x: x,
+              num=None, cmp=cmp,
               spacing=4, out=sys.stdout,
               format=defaultFormat, 
               justify=defaultJustify):
+    """Print s a dictionary in two columns"""
+    
     if num == None:
         num = len(dic)
     
-    dic = mapdict(dic, keyfunc=keyfunc, valfunc=valfunc)
+    dic = mapdict(dic, key=key, val=val)
     items = dic.items()
-    items.sort(compare)
+    items.sort(cmp)
     
     printcols(items[:num], spacing=spacing, out=out, format=format, 
               justify=justify)
-
-
-def printDictByKeys(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-                    num=None, spacing=4, compare=cmp, out=sys.stdout):
-    printDict(dic, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=lambda a,b: compare(a[0],b[0]),
-              spacing=spacing, out=out)
-
-
-def printDictByValues(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
-                      num=None, spacing=4, compare=cmp, out=sys.stdout):
-    printDict(dic, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=lambda a,b: compare(a[1],b[1]),
-              spacing=spacing, out=out)
-
-
-def printHistDict(array, keyfunc=lambda x: x, valfunc=lambda x: x,
-                  num=None, compare=lambda a,b: cmp(b[1],a[1]),
-              spacing=4, out=sys.stdout):
-    """DEPRECATED:  Probably should use tablelib.histTable()"""
-    hist = histDict(array)
-    printDict(hist, keyfunc=keyfunc, valfunc=valfunc, 
-              num=num, compare=compare, spacing=spacing, out=out)
-
 
 
 
@@ -1349,7 +1349,7 @@ class IndentStream:
     """
     
     def __init__(self, stream):
-        self.stream = openStream(stream, "w")
+        self.stream = open_stream(stream, "w")
         self.linestart = True
         self.depth = 0
     
@@ -1397,7 +1397,12 @@ def listFiles(path, ext=""):
 
 
 def tempfile(path, prefix, ext):
-    """Generates a a temp filename 'path/prefix_XXXXXX.ext'"""
+    """Generates a a temp filename 'path/prefix_XXXXXX.ext'
+
+    DEPRECATED: use this instead
+    fd, filename = temporaryfile.mkstemp(ext, prefix)
+    os.close(fd)
+    """
     
     import warnings
     warnings.filterwarnings("ignore", ".*", RuntimeWarning)
@@ -1442,14 +1447,14 @@ def deldir(path):
             break
 
 
-def replaceExt(filename, oldext, newext):
+def replace_ext(filename, oldext, newext):
     """Safely replaces a file extension new a new one"""
     
     if filename.endswith(oldext):
         return filename[:-len(oldext)] + newext
     else:
         raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
-
+replaceExt = replace_ext
 
 
 #=============================================================================
@@ -1457,21 +1462,21 @@ def replaceExt(filename, oldext, newext):
 #
 
 
-def sortrank(array, compare = cmp, key=None, reverse=False):
-    """Returns list of indices into 'array' sorted by 'compare'"""
-    ind = range(len(array))
+def sortrank(lst, cmp=cmp, key=None, reverse=False):
+    """Returns the ranks of items in lst"""
+    ind = range(len(lst))
     
-    if key == None:
-        compare2 = lambda a, b: compare(array[a], array[b])
+    if key is None:
+        compare2 = lambda a, b: cmp(lst[a], lst[b])
     else:
-        compare2 = lambda a, b: compare(key(array[a]), key(array[b]))
+        compare2 = lambda a, b: cmp(key(lst[a]), key(lst[b]))
     
     ind.sort(compare2, reverse=reverse)
     return ind
 sortInd = sortrank
 
     
-def sortTogether(compare, lst, *others):
+def sort_together(compare, lst, *others):
     """Sort several lists based on the sorting of 'lst'"""
 
     ind = sortrank(lst, compare)
@@ -1481,7 +1486,7 @@ def sortTogether(compare, lst, *others):
         lsts.append(mget(other, ind))
     
     return lsts
-
+sortTogether = sort_together
 
 def invperm(perm):
     """Returns the inverse of a permutation 'perm'"""
@@ -1630,7 +1635,7 @@ def distrib(array, ndivs=None, low=None, width=None):
     return (h[0], map(lambda x: (x/total)/width, h[1]))
 
 
-def histInt(array):
+def hist_int(array):
     """Returns a histogram of integers as a list of counts"""
     
     hist = [0]  * (max(array) + 1)
@@ -1641,8 +1646,9 @@ def histInt(array):
         else:
             negative.append(i)
     return hist
+histInt = hist_int
 
-def histDict(array):
+def hist_dict(array):
     """Returns a histogram of any items as a dict.
     
        The keys of the returned dict are elements of 'array' and the values
@@ -1656,9 +1662,10 @@ def histDict(array):
         else:
             hist[i] = 1
     return hist
+histDict = hist_dict
 
 
-def printHist(array, ndivs=20, low=None, width=None,
+def print_hist(array, ndivs=20, low=None, width=None,
               cols=75, spacing=2, out=sys.stdout):
     data = list(hist(array, ndivs, low=low, width=width))
     
@@ -1674,31 +1681,30 @@ def printHist(array, ndivs=20, low=None, width=None,
     data.append(bars)                                                           
                                                                                 
     printcols(zip(* data), spacing=spacing, out=out)   
+printHist = print_hist
 
 
 # import common functions from other files, 
 # so that only util needs to be included
 
-# TODO: use new relative import when we port to 2.5
-
 try:
-    from timer import *
-except:
+    from rasmus.timer import *
+except ImportError:
     pass
 
 try:
-    from vector import *
-except:
+    from rasmus.vector import *
+except ImportError:
     pass
 
 try:
-    from options import *
-except:
+    from rasmus.options import *
+except ImportError:
     pass
     
 try:
-    from plotting import *
-except:
+    from rasmus.plotting import *
+except ImportError:
     pass
 
 

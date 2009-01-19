@@ -88,7 +88,7 @@ class SeqDict (dict):
 
     # keys are always sorted in order added
     def keys(self):
-        return self.names
+        return list(self.names)
 
     def iterkeys(self):
         return iter(self.names)
@@ -301,7 +301,17 @@ INT2BASE = ["A", "C", "G", "T"]
 # Sequence functions
 #
 
-def translate(dna):
+class TranslateError (Exception):
+    def __init__(self, msg, aa, dna, a, codon):
+        Exception.__init__(self, msg)
+        self.aa = aa
+        self.dna = dna
+        self.a = a
+        self.codon = codon
+        
+
+
+def translate(dna, table=CODON_TABLE):
     """Translates DNA (with gaps) into amino-acids"""
     
     aa = []
@@ -313,11 +323,11 @@ def translate(dna):
         if "N" in codon:
             aa.append("X")     # unkown aa
         else:
-            aa.append(CODON_TABLE[codon])
+            aa.append(table[codon])
     return "".join(aa)
 
 
-def revtranslate(aa, dna):
+def revtranslate(aa, dna, check=False):
     """Reverse translates aminoacids (with gaps) into DNA
     
        Must supply original ungapped DNA.
@@ -329,21 +339,26 @@ def revtranslate(aa, dna):
         if a == "-":
             seq.append("---")
         else:
-            seq.append(dna[i:i+3])
+            codon = dna[i:i+3]
+            if check and a != CODON_TABLE.get(codon, "X"):
+                raise TranslateError("bad translate", aa, dna, a, codon)
+            seq.append(codon)
             i += 3
     return "".join(seq)
 
+_comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
+         "a":"t", "c":"g", "g":"c", "t":"a", "n":"n",
+         "R":"Y", "Y":"R", "S":"W", "W":"S", "K":"M", "M":"K",
+         "r":"y", "y":"r", "s":"w", "w":"s", "k":"m", "m":"k",
+         "B":"V", "V":"B", "D":"H", "H":"D",
+         "b":"v", "v":"b", "d":"h", "h":"d"}
 
 def revcomp(seq):
     """Reverse complement a sequence"""
-    
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
-            "a":"t", "c":"g", "g":"c", "t":"a", "n":"n",
-            "-":"-"}    
-    
+        
     seq2 = []
     for i in xrange(len(seq)-1, -1, -1):
-        seq2.append(comp[seq[i]])
+        seq2.append(_comp[seq[i]])
     return "".join(seq2)
 
 

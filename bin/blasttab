@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+# convert blast m8 to PTF (portable table format)
+
+import sys
+
+headers = [
+    ("query", "str"), 
+    ("subject", "str"), 
+    ("identity", "float"),
+    ("align_len", "int"),
+    ("mismatches", "int"),
+    ("gap_openings", "int"),
+    ("qstart", "int"),
+    ("qend", "int"),
+    ("sstart", "int"),
+    ("send", "int"),
+    ("evalue", "float"),
+    ("bitscore", "float")]
+
+
+print "##types:" + "\t".join(x[1] for x in headers)
+print "\t".join(x[0] for x in headers)
+
+
+if len(sys.argv) == 1:
+    infiles = [sys.stdin]
+else:
+    infiles = [open(x) for x in sys.argv[1:]]
+
+for infile in infiles:
+    for line in infile:
+        sys.stdout.write(line)

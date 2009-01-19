@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+from rasmus import treelib, util
+from rasmus.bio import genomeutil, phylo
+
+import os, sys
+
+
+if len(sys.argv) < 3:
+    print >>sys.stderr, "usgage: tree-orth <stree> <smap> <tree files> ..."
+    sys.exit(1)
+
+
+stree_file, gene2species_file = sys.argv[1:3]
+
+stree = treelib.readTree(stree_file)
+gene2species = genomeutil.readGene2species(gene2species_file)
+
+
+for filename in sys.argv[3:]:
+    print >>sys.stderr, filename.rstrip()
+    tree = treelib.readTree(filename.rstrip())
+    recon = phylo.reconcile(tree, stree, gene2species)
+
+    orths = phylo.findOrthologs(tree, stree, recon)
+
+    for gene1, gene2, spcnt1, spcnt2 in orths:
+        sp1 = gene2species(gene1)
+        sp2 = gene2species(gene2)
+
+        if sp1 > sp2:
+            sp1, sp2 = sp2, sp1
+            gene1, gene2 = gene2, gene1
+            spcnt1, spcnt2 = spcnt2, spcnt1
+        
+        print "%s\t%s\t%s\t%s\t%d\t%d" % (sp1, sp2, gene1, gene2,
+                                          spcnt1, spcnt2)
+
+
+
+
+        
+    

@@ -19,18 +19,20 @@ from rasmus.algorithms import *
 from rasmus.matrix import *
 from rasmus.stats import *
 from rasmus.progress import *
-from regionlib import *
+from rasmus.regionlib import *
 
 
 # rasmus modules
 from rasmus import env, svg, tablelib, treelib
-from rasmus.tablelib import Table, readTable
+from rasmus.tablelib import Table, read_table, iter_table, histtab
+from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
 from rasmus.treelib import *
 
 # bio tools
 from rasmus.bio.fasta import *
 from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, alignlib
 from rasmus.bio import gff, genomeio
+
 
 
 
@@ -71,9 +73,7 @@ pc = printcols
 pa = alignlib.printAlign
 pd = printDict
 
-histtab = tablelib.histTable
-showtab = tablelib.showtab
-sqltab = tablelib.sqltab
+
 
 def pl(lines, out=sys.stdout):
     for line in lines:
@@ -87,7 +87,9 @@ def showTree(tree, **options):
     
     return vis
 
-
+# DEPRECATED
+# Tue Apr 29 23:22:56 EDT 2008
+"""
 # try to setup DATAPATH env
 RASMUS_COMMON_DATAPATH_LOADED = False
 if "DATAPATH" in os.environ:
@@ -97,5 +99,4 @@ if "DATAPATH" in os.environ:
     print "rasmus.common: loaded data paths from DATAPATH"
     for path in env.datapaths:
         print path
-
-    
+"""    

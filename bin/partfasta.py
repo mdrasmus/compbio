@@ -14,11 +14,20 @@ from rasmus import tablelib
 
 
 options = [
+    "Clutser definitions",
+    ["F", "usefam", "usefam", "",
+        {"single": True,
+         "help": "first entry in line is family name"}],
     ["p:", "part=", "part", "<part file>"],
-    ["t:", "famtab=", "famtab", "<family table"],
+    ["t:", "famtab=", "famtab", "<family table>"],
+    
+    " ",
     ["f:", "fasta=", "fasta", "<fasta file>"],    
     ["o:", "outdir=", "outdir", "<output directory>",
         {"single": True}],
+    ["O:", "outext=", "fastaext", "<output fasta extension>",
+        {"single": True,
+         "default": ".fasta"}],
     ["P:", "paths=", "paths", "<data path1>:<data path2>:...", 
         {"default": ".",
          "single": True}],
@@ -30,11 +39,12 @@ options = [
 
 conf = util.parseOptions(sys.argv, options, quit=True)
 
-
 def main(conf):
     # setup paths
     env.addEnvPaths("DATAPATH")
     env.addPaths(conf["paths"])
+    
+    ext = conf["fastaext"]
     
     seqs = fasta.FastaDict()
     nseqs = 0
@@ -50,7 +60,12 @@ def main(conf):
     # read partition
     if "part" in conf:
         parts = util.readDelim(env.findFile(conf["part"][-1]))
-        famids = map(str, range(len(parts)))
+        
+        if conf["usefam"]:
+            famids = util.cget(parts, 0)
+            parts = [row[1:] for row in parts]
+        else:
+            famids = map(str, range(len(parts)))
     
     if "famtab" in conf:
         famtab = tablelib.readTable(conf["famtab"][-1])
@@ -64,9 +79,9 @@ def main(conf):
         if conf["dir"]:
             if not os.path.exists(os.path.join(conf["outdir"],famid)):
                 os.mkdir(os.path.join(conf["outdir"], famid))
-            seqfile = os.path.join(conf["outdir"], famid, "%s.fasta" % famid)
+            seqfile = os.path.join(conf["outdir"], famid, "%s%s" % (famid, ext))
         else:
-            seqfile = os.path.join(conf["outdir"], "%s.fasta" % famid)
+            seqfile = os.path.join(conf["outdir"], "%s%s" % (famid, ext))
         util.logger(seqfile)
         seqs2 = seqs.get(part)
         seqs2.write(seqfile)

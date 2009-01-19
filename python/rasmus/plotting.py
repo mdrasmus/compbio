@@ -3,13 +3,413 @@
  authors: Matt Rasmussen
  date: 11/30/05
 
- Plotting classes and functions: GNUPLOT wrapper, heatmaps
+ Plotting classes and functions: R plotting, GNUPLOT wrapper, svg, heatmaps
 """
-
-import sys, os
 
 from rasmus.util import *
 from rasmus import svg
+
+import sys, os
+import tempfile as temporaryfile
+
+
+#=============================================================================
+# R plotting
+
+# private global rplot state
+_rplot_pdf = None
+_rplot_temp = False
+_rplot_viewer = "xpdf"
+
+
+class LazyR (object):
+    """Allows lazy loading of rpy"""
+
+    def __init__(self, name):
+        self.__name = name
+
+    def __getattr__(self, attr):        
+        import rpy
+        globals()[self.__name] = rpy.r
+        return rpy.r.__getattr__(attr)
+
+    def __call__(self, *args, **kargs):
+        import rpy
+        globals()[self.__name] = rpy.r
+        return rpy.r(*args, **kargs)
+
+rp = LazyR("rp")
+
+
+def rplot_start(filename, *args, **kargs):
+    """Starts a new PDF file"""
+    
+    global _rplot_pdf
+    rp.pdf(file=filename, *args, **kargs)
+    _rplot_pdf = filename
+
+def rplot_end(show=False):
+    """Ends a PDF file"""
+    
+    global _rplot_pdf, _rplot_temp
+    rp.dev_off()
+    
+    if show:
+        if _rplot_temp:
+            os.system("('%s' '%s'; rm '%s') &" % 
+                      (_rplot_viewer, _rplot_pdf, _rplot_pdf))
+        else:
+            os.system("('%s' '%s') &" % (_rplot_viewer, _rplot_pdf))
+
+    _rplot_pdf = None
+    _rplot_temp = False
+
+
+def rplot(func, *args, **kargs):
+    """Wrapper for plotting with R.
+
+       Makes sensible plot labels and manages pdf plotting"""
+    
+    global _rplot_pdf, _rplot_temp
+    
+    kargs.setdefault("xlab", "")
+    kargs.setdefault("ylab", "")
+    kargs.setdefault("main", "")
+    
+    # parse my args
+    if "pdf" in kargs:
+        _rplot_pdf = kargs["pdf"]
+        _rplot_temp = True  
+        del kargs["pdf"]
+        rp.pdf(file=_rplot_pdf)
+        self_open = True
+    else:
+        self_open = False
+
+
+    if "show" in kargs:
+        show = kargs["show"]
+        del kargs["show"]
+    else:
+        show = False           
+
+    # prepare tempfile if needed
+    if _rplot_pdf is None:
+        f, _rplot_pdf = temporaryfile.mkstemp(".pdf", "rplot_")
+        _rplot_temp = True
+        os.close(f)        
+        rp.pdf(file=_rplot_pdf)
+        
+        # force show for tempfile
+        self_open = True
+        show = True
+            
+    
+    if "pdf_close" in kargs:
+        close = kargs["pdf_close"]
+        del kargs["pdf_close"]
+    else:
+        if self_open:
+            close = True
+        else:
+            close = False
+    
+    
+    # make R call   
+    rp.__getattr__(func)(*args, **kargs)
+    
+    # close PDF and show
+    if close:
+        if _rplot_pdf is not None:
+            rplot_end(show)
+
+
+def rplotfunc(self, cmd, func, start, end, step, **options):
+    """Plots a function using R"""
+    x = []
+    y = []
+    
+    while start < end:
+        try:
+            y.append(func(start))
+            x.append(start)
+        except ZeroDivisionError:
+            pass
+            start += step
+    rplot(cmd, x, y, **options)
+    
+
+def rhist(*args, **kargs):
+    """Plots a histogram"""
+    rplot("hist", *args, **kargs)
+
+def rplot_set_viewer(viewer):
+    global _rplot_viewer
+    _rplot_viewer = viewer
+
+def rplot_get_viewer(viewer):
+    return _rplot_viewer
+
+
+#=============================================================================
+# Color maps
+
+
+# common colors
+red    = ( 1,  0,  0,  1)
+orange = ( 1, .5,  0,  1)
+yellow = ( 1,  1,  0,  1)
+green  = ( 0,  1,  0,  1)
+blue   = ( 0,  0,  1,  1)
+purple = ( 1,  0,  1,  1)
+black  = ( 0,  0,  0,  1)
+grey   = (.5, .5, .5,  1)
+white  = ( 1,  1,  1,  1)
+
+
+class ColorMap:
+    """ColorMap maps values on the real line to colors"""
+    
+    
+    def __init__(self, table=[]):
+        """
+        'table' should be the following format:
+        
+        [
+          [val1, color1],
+          [val2, color2],
+          [val3, color3],
+          ...etc..
+        ]
+        
+        Values bewteen val1 and val2 will be assigned a blend of 
+        color1 and color2.  value-color pairs can be specified in any order 
+        within table.
+        
+        """
+        self.table = table
+        
+        self.table.sort(key=lambda x: x[0])
+    
+    
+    def get(self, value):
+        """Returns values in [0, 1]"""
+    
+        # determine where color falls in table
+        for i in xrange(len(self.table)):
+            if value <= self.table[i][0]:
+                break
+        if i > 0:
+            i -= 1
+        
+        
+        if value <= self.table[i][0]:
+            # return lower bound color
+            return self.table[i][1]
+        elif value >= self.table[i+1][0]:
+            # return upper bound color
+            return self.table[i+1][1]
+        else:
+            # blend two nearest colors
+            part = value - self.table[i][0]
+            tot = float(self.table[i+1][0] - self.table[i][0])
+            weight1 = (tot-part)/tot
+            weight2 = part/tot
+            
+            newcolor = []
+            color1 = self.table[i][1]
+            color2 = self.table[i+1][1]
+            for j in range(len(color1)):
+                newcolor.append(weight1 * color1[j] + 
+                                weight2 * color2[j])
+            
+            return newcolor
+    
+    
+    def getInt(self, value):
+        return [int(x*255) for x in self.get(value)]
+    
+
+def get_webcolor(color, maxval=1):
+    
+    colstr = "#"
+    for i in color:
+        h = hex(int(i * 255.0 / maxval))[2:]
+        if len(h) == 1:
+            h = "0" + h
+        colstr += h
+    return colstr
+
+
+def rainbowColorMap(data=None, low=None, high=None):
+    if data != None:
+        low = min(data)
+        high = max(data)
+    assert low != None and high != None
+    
+    return ColorMap([[low, blue],
+                     [.5*low+.5*high, green],
+                     [.25*low + .75*high, yellow],
+                     [high, red]])
+   
+
+
+#=============================================================================
+# svg plotting
+    
+def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
+    l, h = hist2(x, y, ndivs1, ndivs2)
+    bwidth = bucketSize(x)
+    bheight = bucketSize(y)
+    
+    #width *= bwidth/bheight
+    
+    heatmap(h, width/ndivs1, height/ndivs2)
+
+
+
+def makeColorLegend(filename, colormap, start, end, step, 
+                    width=100, height=10):
+    s = svg.Svg(openStream(filename, "w"))    
+    s.beginSvg(width, height)
+    
+    xscale =  float(width) / (end + step - start)
+    
+    for i in frange(start, end + step, step):
+        color = colormap.get(i)
+        s.rect((i-start) * xscale, 
+               0, 
+               step*xscale, height, 
+               color, color)
+    
+    s.endSvg()
+    
+    
+    
+
+
+def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
+            rlabels=None, clabels=None, display=True, 
+            xdir=1, ydir=1, 
+            xmargin=0, ymargin=0,
+            labelPadding=2,
+            labelSpacing=4,
+            showVals=False,
+            valColor=black):
+    
+    
+    
+    # determine filename
+    if filename == None:
+        filename = tempfile(".", "heatmap", ".svg")
+        temp = True
+    else:
+        temp = False
+    
+    # determine colormap
+    if colormap == None:
+        colormap = rainbowColorMap(flatten(matrix))
+    
+    # determine matrix size and orientation
+    nrows = len(matrix)
+    ncols = len(matrix[0])
+    
+    if xdir == 1:
+        xstart = xmargin
+        ranchor = "end"
+        coffset = width
+    elif xdir == -1:
+        xstart = xmargin + ncols * width
+        ranchor = "start"
+        coffset = 0
+    else:
+        raise Exception("xdir must be 1 or -1")
+            
+    if ydir == 1:
+        ystart = ymargin
+        roffset = height
+        canchor = "start"
+    elif ydir == -1:
+        ystart = ymargin + nrows * width
+        roffset = 0
+        canchor = "end"
+    else:
+        raise Exception("ydir must be 1 or -1")
+    
+    
+    # begin svg
+    infile = openStream(filename, "w")
+    s = svg.Svg(infile)
+    s.beginSvg(ncols*width + 2*xmargin, nrows*height + 2*ymargin)
+    
+    # draw matrix
+    for i in xrange(nrows):
+        for j in xrange(ncols):
+            color = colormap.get(matrix[i][j])
+            s.rect(xstart + xdir*j*width, 
+                   ystart + ydir*i*height, 
+                   xdir*width, ydir*height, color, color)
+    
+    # draw values
+    if showVals:
+        # find text size
+        
+        fontwidth = 7/11.0
+        
+        textsize = []
+        for i in xrange(nrows):
+            for j in xrange(ncols):
+                strval = "%.2f" % matrix[i][j]
+                textsize.append(min(height, width/(float(len(strval)) * fontwidth)))
+        textsize = min(textsize)
+    
+        for i in xrange(nrows):
+            for j in xrange(ncols):
+                strval = "%.2f" % matrix[i][j]
+                s.text(strval, 
+                       xstart + xdir*j*width, 
+                       ystart + ydir*i*height + 
+                       height/2.0 + textsize/2.0, 
+                       textsize,
+                       fillColor=valColor)
+    
+    # draw labels
+    if rlabels != None:
+        assert len(rlabels) == nrows, \
+            "number of row labels does not equal number of rows"
+        
+        for i in xrange(nrows):
+            x = xstart - xdir*labelPadding
+            y = ystart + roffset + ydir*i*height - labelSpacing/2.
+            s.text(rlabels[i], x, y, height-labelSpacing, anchor=ranchor)
+    
+    if clabels != None:
+        assert len(clabels) == ncols, \
+            "number of col labels does not equal number of cols"
+        
+        for j in xrange(ncols):
+            x = xstart + coffset + xdir*j*width - labelSpacing/2.
+            y = ystart - ydir*labelPadding
+            s.text(clabels[j], x, y, width-labelSpacing, anchor=canchor, angle=270)
+    
+    # end svg
+    s.endSvg()
+    s.close()
+    
+    
+    # display matrix
+    if display:
+        os.system("display %s" % filename)
+    
+    # clean up temp files
+    if temp:
+        os.remove(filename)
+
+
+
+
+#=============================================================================
+# Gnuplot
 
 
 class Gnuplot:
@@ -162,10 +562,12 @@ class Gnuplot:
             if len(data.ylist) > 0:
                 if len(data.zlist) > 0:
                     rows = zip(data.xlist, data.ylist, data.zlist)
-                    labels = mget(data.options, ["xlab", "ylab", "zlab"])
+                    labels = [data.options[i]
+                              for i in ["xlab", "ylab", "zlab"]]
                 else:
                     rows = zip(data.xlist, data.ylist)
-                    labels = mget(data.options, ["xlab", "ylab"])
+                    labels = [data.options[i]
+                              for i in["xlab", "ylab"]]
 
             print >>out, "\t".join(labels)
             for row in rows:
@@ -475,8 +877,8 @@ class Gnuplot:
             except ZeroDivisionError:
                 pass
             start += step
-        
-        self.plot(x, y, style="lines", **options)
+        options.setdefault("style", "lines")
+        self.plot(x, y, **options)
     
     
     def plotdiag(self, start=None, end=None, **options):
@@ -623,6 +1025,14 @@ def gfit(func, eqn, params, list1, list2=[], list3=[], ** options):
     return g
 
 
+
+       
+    
+
+
+#=============================================================================
+
+"""
 class MultiPlot (Gnuplot):
     def __init__(self, plots, ncols=None, nrows=None, direction="row",
         width=800, height=800):
@@ -685,246 +1095,4 @@ class MultiPlot (Gnuplot):
                 xpos += 1
         
         print >>self.stream, "unset multiplot"
-        
-    
-    
-    
-
-
-# common colors
-red    = ( 1,  0,  0,  1)
-orange = ( 1, .5,  0,  1)
-yellow = ( 1,  1,  0,  1)
-green  = ( 0,  1,  0,  1)
-blue   = ( 0,  0,  1,  1)
-purple = ( 1,  0,  1,  1)
-black  = ( 0,  0,  0,  1)
-grey   = (.5, .5, .5,  1)
-white  = ( 1,  1,  1,  1)
-
-
-class ColorMap:
-    """ColorMap maps values on the real line to colors"""
-    
-    
-    def __init__(self, table=[]):
-        """
-        'table' should be the following format:
-        
-        [
-          [val1, color1],
-          [val2, color2],
-          [val3, color3],
-          ...etc..
-        ]
-        
-        Values bewteen val1 and val2 will be assigned a blend of 
-        color1 and color2.  value-color pairs can be specified in any order 
-        within table.
-        
-        """
-        self.table = table
-        
-        self.table.sort(key=lambda x: x[0])
-    
-    
-    def get(self, value):
-        """Returns values in [0, 1]"""
-    
-        # determine where color falls in table
-        for i in xrange(len(self.table)):
-            if value <= self.table[i][0]:
-                break
-        if i > 0:
-            i -= 1
-        
-        
-        if value <= self.table[i][0]:
-            # return lower bound color
-            return self.table[i][1]
-        elif value >= self.table[i+1][0]:
-            # return upper bound color
-            return self.table[i+1][1]
-        else:
-            # blend two nearest colors
-            part = value - self.table[i][0]
-            tot = float(self.table[i+1][0] - self.table[i][0])
-            weight1 = (tot-part)/tot
-            weight2 = part/tot
-            
-            newcolor = []
-            color1 = self.table[i][1]
-            color2 = self.table[i+1][1]
-            for j in range(len(color1)):
-                newcolor.append(weight1 * color1[j] + 
-                                weight2 * color2[j])
-            
-            return newcolor
-    
-    
-    def getInt(self, value):
-        return [int(x*255) for x in self.get(value)]
-    
-
-
-def rainbowColorMap(data=None, low=None, high=None):
-    if data != None:
-        low = min(data)
-        high = max(data)
-    assert low != None and high != None
-    
-    return ColorMap([[low, blue],
-                     [.5*low+.5*high, green],
-                     [.25*low + .75*high, yellow],
-                     [high, red]])
-   
-    
-def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
-    l, h = hist2(x, y, ndivs1, ndivs2)
-    bwidth = bucketSize(x)
-    bheight = bucketSize(y)
-    
-    #width *= bwidth/bheight
-    
-    heatmap(h, width/ndivs1, height/ndivs2)
-
-
-
-def makeColorLegend(filename, colormap, start, end, step, 
-                    width=100, height=10):
-    s = svg.Svg(openStream(filename, "w"))    
-    s.beginSvg(width, height)
-    
-    xscale =  float(width) / (end + step - start)
-    
-    for i in frange(start, end + step, step):
-        color = colormap.get(i)
-        s.rect((i-start) * xscale, 
-               0, 
-               step*xscale, height, 
-               color, color)
-    
-    s.endSvg()
-    
-    
-    
-
-
-def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
-            rlabels=None, clabels=None, display=True, 
-            xdir=1, ydir=1, 
-            xmargin=0, ymargin=0,
-            labelPadding=2,
-            labelSpacing=4,
-            showVals=False,
-            valColor=black):
-    
-    
-    
-    # determine filename
-    if filename == None:
-        filename = tempfile(".", "heatmap", ".svg")
-        temp = True
-    else:
-        temp = False
-    
-    # determine colormap
-    if colormap == None:
-        colormap = rainbowColorMap(flatten(matrix))
-    
-    # determine matrix size and orientation
-    nrows = len(matrix)
-    ncols = len(matrix[0])
-    
-    if xdir == 1:
-        xstart = xmargin
-        ranchor = "end"
-        coffset = width
-    elif xdir == -1:
-        xstart = xmargin + ncols * width
-        ranchor = "start"
-        coffset = 0
-    else:
-        raise Exception("xdir must be 1 or -1")
-            
-    if ydir == 1:
-        ystart = ymargin
-        roffset = height
-        canchor = "start"
-    elif ydir == -1:
-        ystart = ymargin + nrows * width
-        roffset = 0
-        canchor = "end"
-    else:
-        raise Exception("ydir must be 1 or -1")
-    
-    
-    # begin svg
-    infile = openStream(filename, "w")
-    s = svg.Svg(infile)
-    s.beginSvg(ncols*width + 2*xmargin, nrows*height + 2*ymargin)
-    
-    # draw matrix
-    for i in xrange(nrows):
-        for j in xrange(ncols):
-            color = colormap.get(matrix[i][j])
-            s.rect(xstart + xdir*j*width, 
-                   ystart + ydir*i*height, 
-                   xdir*width, ydir*height, color, color)
-    
-    # draw values
-    if showVals:
-        # find text size
-        
-        fontwidth = 7/11.0
-        
-        textsize = []
-        for i in xrange(nrows):
-            for j in xrange(ncols):
-                strval = "%.2f" % matrix[i][j]
-                textsize.append(min(height, width/(float(len(strval)) * fontwidth)))
-        textsize = min(textsize)
-    
-        for i in xrange(nrows):
-            for j in xrange(ncols):
-                strval = "%.2f" % matrix[i][j]
-                s.text(strval, 
-                       xstart + xdir*j*width, 
-                       ystart + ydir*i*height + 
-                       height/2.0 + textsize/2.0, 
-                       textsize,
-                       fillColor=valColor)
-    
-    # draw labels
-    if rlabels != None:
-        assert len(rlabels) == nrows, \
-            "number of row labels does not equal number of rows"
-        
-        for i in xrange(nrows):
-            x = xstart - xdir*labelPadding
-            y = ystart + roffset + ydir*i*height - labelSpacing/2.
-            s.text(rlabels[i], x, y, height-labelSpacing, anchor=ranchor)
-    
-    if clabels != None:
-        assert len(clabels) == ncols, \
-            "number of col labels does not equal number of cols"
-        
-        for j in xrange(ncols):
-            x = xstart + coffset + xdir*j*width - labelSpacing/2.
-            y = ystart - ydir*labelPadding
-            s.text(clabels[j], x, y, width-labelSpacing, anchor=canchor, angle=270)
-    
-    # end svg
-    s.endSvg()
-    s.close()
-    
-    
-    # display matrix
-    if display:
-        os.system("display %s" % filename)
-    
-    # clean up temp files
-    if temp:
-        os.remove(filename)
-    
-    
+"""        

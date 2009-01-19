@@ -135,17 +135,19 @@ def writeFasta(filename, seqs, order = None, width=None):
     else:
         seqs.write(filename, order, width)
 
-
+_comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
+         "a":"t", "c":"g", "g":"c", "t":"a", "n":"n",
+         "R":"Y", "Y":"R", "S":"W", "W":"S", "K":"M", "M":"K",
+         "r":"y", "y":"r", "s":"w", "w":"s", "k":"m", "m":"k",
+         "B":"V", "V":"B", "D":"H", "H":"D",
+         "b":"v", "v":"b", "d":"h", "h":"d"}
 
 def _revcomp(seq):
     """Reverse complement a sequence"""
-
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
-            "a":"t", "c":"g", "g":"c", "t":"a", "n":"n"}
     
     seq2 = []
     for i in xrange(len(seq)-1, -1, -1):
-        seq2.append(comp[seq[i]])
+        seq2.append(_comp[seq[i]])
     return "".join(seq2)
 
 

@@ -246,6 +246,10 @@ def reconRoot(gtree, stree, gene2species = gene2species,
     # make a consistent unrooted copy of gene tree
     if newCopy:
         gtree = gtree.copy()
+        
+    if len(gtree.leaves()) == 2:
+        return
+        
     treelib.unroot(gtree, newCopy=False)
     treelib.reroot(gtree, 
                    gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 
@@ -536,7 +540,7 @@ def stree2gtree(stree, genes, gene2species):
 
 
 
-def findOrthologs(gtree, stree, recon):
+def findOrthologs(gtree, stree, recon, counts=True):
     """Find all ortholog pairs within a gene tree"""
 
     events = labelEvents(gtree, recon)
@@ -545,16 +549,26 @@ def findOrthologs(gtree, stree, recon):
     for node, event in events.items():
         if event == "spec":
             leavesmat = [x.leaves() for x in node.children]
+            sp_counts = [util.histDict(util.mget(recon, row))
+                         for row in leavesmat]
             
             for i in range(len(leavesmat)):
                 for j in range(i+1, len(leavesmat)):
                     for gene1 in leavesmat[i]:
                         for gene2 in leavesmat[j]:
-                            if gene1.name < gene2.name:
-                                orth = (gene1.name, gene2.name)
+                            if gene1.name > gene2.name:
+                                g1, g2 = gene2, gene1
+                                a, b = j, i
                             else:
-                                orth = (gene2.name, gene1.name)
-                            orths.append(orth)
+                                g1, g2 = gene1, gene2
+                                a, b = i, j
+                            
+                            if not counts:
+                                orths.append((g1.name, g2.name))
+                            else:
+                                orths.append((g1.name, g2.name,
+                                              sp_counts[a][recon[g1]],
+                                              sp_counts[b][recon[g2]]))
     
     return orths
 
@@ -1217,6 +1231,38 @@ def findBranchSplits(tree):
     
     return splits2
 
+def findSplits(tree):
+    """Faster branch splits for a tree"""
+    allLeaves = set(tree.leafNames())
+
+    descendants = []
+
+    def walk(node):
+        if node.isLeaf():
+            descendants.append(set([node.name]))
+        else:
+            s = set()
+            for child in node.children:
+                s.update(walk(child))
+            descendants.append(s)
+        return descendants[-1]
+    for child in tree.root.children:
+        walk(child)
+    if len(tree.root.children) == 2:
+        descendants.pop()
+    
+    splits = []
+    for leaves in descendants:
+        if len(leaves) > 1:
+            set1 = tuple(sorted(leaves))
+            set2 = tuple(sorted(allLeaves - leaves))
+            if len(set1) > len(set2):
+                set1, set2 = set2, set1
+                
+            splits.append((set1, set2))
+    
+    return splits
+
 
 def robinsonFouldsError(tree1, tree2):
     splits1 = findBranchSplits(tree1)
@@ -1226,7 +1272,12 @@ def robinsonFouldsError(tree1, tree2):
     
     #assert len(splits1) == len(splits2)
 
-    return 1 - (len(overlap) / float(max(len(splits1), len(splits2))))
+    denom = float(max(len(splits1), len(splits2)))
+    
+    if denom == 0.0:
+        return 0.0
+    else:
+        return 1 - (len(overlap) / denom)
 
 
 
@@ -1302,6 +1353,18 @@ def writeEventTree(stree, out=sys.stdout):
 
     treelib.drawTree(stree, labels=labels, minlen=15, spacing=4, labelOffset=-3,
                      out=out)
+
+
+#=============================================================================
+# file functions
+
+def phylofile(famdir, famid, ext):
+    """Creates a filename using my gene family format
+
+    famdir/famid/famid.ext
+    """
+    return os.path.join(famdir, famid, famid + ext)
+
 
 
 #=============================================================================

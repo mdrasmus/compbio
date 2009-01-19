@@ -7,6 +7,7 @@ from rasmus.bio import genomeutil, phylo
 #from rasmus.vis import treesvg
 
 import Spidir
+import Spidir.Likelihood
 
 
 options = [
@@ -67,7 +68,10 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         j += 1
         
         tree = treelib.readTree(f)
-        phylo.reconRoot(tree, stree, gene2species, newCopy=False)
+        
+        # Tue May  6 18:48:15 EDT 2008
+        # trees should be rooted before using this program
+        #phylo.reconRoot(tree, stree, gene2species, newCopy=False)
 
         phylo.initDupLossTree(singleTree)
         dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)
@@ -102,8 +106,9 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         
         # add family rate
         if params:
-            row['famrate'] = Spidir.getBaserate(tree, stree, params, \
-                                                gene2species=gene2species)
+            row['famrate'] = Spidir.Likelihood.getBaserate(
+                                    tree, stree, params, \
+                                    gene2species=gene2species)
         
         tab.append(row)
     util.toc()

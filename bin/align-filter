@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+
+import os, sys
+
+from rasmus import util
+from rasmus.bio import fasta, alignlib
+
+
+options = [
+    ["A:", "alignext=", "alignext", "<alignment file extension>",
+        {"single": True,
+         "default": ""}],
+    ["L:", "alignext2=", "alignext2", "<new alignment file extension>",
+        {"single": True,
+         "default": ".filter.align"}],
+    ["I:", "alignind=", "alignind", "<alignment index extension>",
+        {"single": True,
+         "default": ".filter.cols"}],
+    ["r:", "ratio=", "ratio", "<ratio of sequences required per column>",
+        {"single": True,
+         "default": .5}],
+    ["m:", "minlen=", "minlen", "<minimum align length allowed>",
+        {"single": True,
+         "default": 0}],
+    ]
+
+
+conf = util.parseOptions(sys.argv, options)
+
+
+def filterAlign(aln, ratio):
+    ind = []
+    seqs = aln.values()
+    rows = range(len(aln))
+    minseq = len(aln) * ratio
+    
+    ind = [i for i in xrange(aln.alignlen())
+                if util.count(lambda j: seqs[j][i] != "-", rows) >= minseq]
+    
+    return ind
+
+
+for alignfile in conf["REST"]:
+    print alignfile
+    
+    aln = fasta.readFasta(alignfile)
+    ind = filterAlign(aln, conf["ratio"])
+    
+    aln2 = alignlib.subalign(aln, ind)
+
+    alignfile2 = util.replaceExt(alignfile, conf["alignext"], conf["alignext2"])    
+    indfile = util.replaceExt(alignfile, conf["alignext"], conf["alignind"])    
+    aln2.write(alignfile2)
+    util.writeList(indfile, ind)
+    
+    

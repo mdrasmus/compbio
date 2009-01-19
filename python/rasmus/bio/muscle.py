@@ -1,16 +1,16 @@
 import os
 
-from rasmus.bio import clustalw
-from rasmus.bio import fasta
 from rasmus import util
-from rasmus import algorithms
+from rasmus import treelib
+from rasmus.bio import fasta
+
 
 
 def muscle(seqs, verbose = True, removetmp = True, options = ""):
     if len(seqs) < 2:
         return seqs
 
-    # make input file for clustalw
+    # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
     fasta.writeFasta(infilename, seqs)
     
@@ -42,7 +42,7 @@ def buildAlignTree(seqs, verbose = True, removetmp = True, options = ""):
     if len(seqs) < 2:
         return seqs
 
-    # make input file for clustalw
+    # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
     fasta.writeFasta(infilename, seqs)
     
@@ -55,7 +55,7 @@ def buildAlignTree(seqs, verbose = True, removetmp = True, options = ""):
     
     # parse output
     aln = fasta.readFasta(outfilename)
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick(outfilename2)
     
     # cleanup tempfiles
@@ -70,7 +70,7 @@ def buildAlignBigTree(seqs, verbose = True, removetmp = True, options = ""):
     if len(seqs) < 2:
         return seqs
 
-    # make input file for clustalw
+    # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
     fasta.writeFasta(infilename, seqs)
     
@@ -83,7 +83,7 @@ def buildAlignBigTree(seqs, verbose = True, removetmp = True, options = ""):
     
     # parse output
     aln = fasta.readFasta(outfilename)
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick(outfilename2)
     
     # cleanup tempfiles
@@ -96,11 +96,11 @@ def buildAlignBigTree(seqs, verbose = True, removetmp = True, options = ""):
 
 def buildTree(seqs, verbose = True, removetmp = True, options = ""):
 
-    # make input file for clustalw
+    # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
     fasta.writeFasta(infilename, seqs)
     
-    # run clustalw
+    # run muscle
     outfilename = util.tempfile(".", "muscle-out", ".tree")
     cmd = "muscle " + options + " -in " + infilename + \
           " -cluster -tree1 " + outfilename
@@ -110,7 +110,7 @@ def buildTree(seqs, verbose = True, removetmp = True, options = ""):
     
     os.system(cmd)
     
-    tree = algorithms.Tree()
+    tree = treelib.Tree()
     tree.readNewick(outfilename)
     
     if removetmp:

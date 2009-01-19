@@ -2,18 +2,39 @@ import os
 
 
 def color2string(color):
-  return "rgb(%d,%d,%d)" % (int(255 * color[0]),
-                            int(255 * color[1]),
-                            int(255 * color[2]))
+    return "rgb(%d,%d,%d)" % (int(255 * color[0]),
+                              int(255 * color[1]),
+                              int(255 * color[2]))
 
 def colorFields(strokeColor, fillColor):
-    txt = "stroke='%s' fill='%s' " % \
-          (color2string(strokeColor), 
-           color2string(fillColor))
-    if len(strokeColor) > 3:
-        txt += "stroke-opacity='%f' " % strokeColor[3]
-    if len(fillColor) > 3:
-        txt += "fill-opacity='%f' " % fillColor[3]
+
+    if isinstance(strokeColor, str):
+        stroke_str = strokeColor
+        stroke_op = None
+    else:
+        stroke_str = color2string(strokeColor)
+        if len(strokeColor) > 3:
+            stroke_op = strokeColor[3]
+        else:
+            stroke_op = None
+
+    if isinstance(fillColor, str):
+        fill_str = fillColor
+        fill_op = None
+    else:
+        fill_str = color2string(fillColor)
+        if len(fillColor) > 3:
+            fill_op = fillColor[3]
+        else:
+            fill_op = None
+    
+    
+    txt = "stroke='%s' fill='%s' " % (stroke_str, fill_str)
+    
+    if stroke_op is not None:
+        txt += "stroke-opacity='%f' " % stroke_op
+    if fill_op is not None:
+        txt += "fill-opacity='%f' " % fill_op
     return txt
 
 # common colors
@@ -49,18 +70,51 @@ class Svg:
             (width, height))
             
         # default style
-        self.out.write("<g style='stroke: rgb(0,0,0);'>")
+        self.out.write("<g>")
     
     def endSvg(self, close=True):
         self.out.write("</g></svg>")
         if close:
             self.close()
-    
-    
-    def writeAttrOptions(self, options):
-        if "color" in options:
-            color = options["color"]
-            
+
+    def defLinearGradient(self, name, x1, y1, x2, y2,
+                          stops=[], colors=[]):
+        self.out.write('''<defs>
+<linearGradient id="%s" x1="%f%%" y1="%d%%" x2="%f%%" y2="%f%%">''' %
+                       (name, x1, y1, x2, y2))
+
+        for stop, color in zip(stops, colors):
+            if len(color) == 3:
+                color = list(color) + [1.0]
+
+            self.out.write('<stop offset="%f%%" style="stop-color:%s; '
+                           'stop-opacity:%f"/>' % (stop,
+                                                   color2string(color[:3]),
+                                                   color[3]))
+
+        self.out.write('</linearGradient></defs>')
+
+
+    def defRadialGradient(self, name, cx=50, cy=50, r=50, fx=50, fy=50,
+                          stops=[], colors=[]):
+        self.out.write('''<defs>
+<radialGradient id="%s" cx="%f%%" cy="%d%%" r="%f%%" fx="%f%%" fy="%f%%">''' %
+                       (name, cx, cy, r, fx, fy))
+
+
+        for stop, color in zip(stops, colors):
+            if len(color) == 3:
+                color = list(color) + [1.0]            
+            self.out.write('<stop offset="%f%%" style="stop-color:%s; '
+                           'stop-opacity:%f"/>' % (stop,
+                                                   color2string(color[:3]),
+                                                   color[3]))
+
+        self.out.write('</radialGradient></defs>')
+        
+        
+    def writeAttrOptions(self, color=None):
+        if color:
             if len(color) > 3:
                 self.out.write("stroke-opacity='%f' stroke='%s' " % 
                 (color[3], color2string(color)))
@@ -75,7 +129,7 @@ class Svg:
         
         if color != None:
             options["color"] = color
-        self.writeAttrOptions(options)
+        self.writeAttrOptions(**options)
         
         self.out.write(" />\n")
             

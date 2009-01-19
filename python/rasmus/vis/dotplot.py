@@ -49,25 +49,27 @@ def readSyntenyBlocks(filename, feature="synteny"):
 
 class Plot (object):
     def __init__(self, regions1, regions2, hits, hitnames=True, 
-                 style="line", color=color(0, 0, 0)):
+                 style="line", color=color(0, 0, 0),
+                 selfhits=True):
         self.regions1 = regions1
         self.regions2 = regions2
         self.style = style
         self.color = color
+        self.selfhits = selfhits
         
         if hitnames:
             self.hits = []
         
             # resolve hits to regions
-            name2region = {}
+            name2region = util.Dict(default=[])
             for region in itertools.chain(self.regions1, self.regions2):
-                name2region[region.data["ID"]] = region
+                name2region[region.data["ID"]].append(region)
             
             for hit in hits:
                 newhit = []
                 for name in hit:
                     if name in name2region:
-                        newhit.append(name2region[name])
+                        newhit.extend(name2region[name])
                 if len(newhit) > 0:
                     self.hits.append(newhit)
                 
@@ -120,9 +122,16 @@ class DotplotMenu (summon.SummonMenu):
   
 
 class Dotplot (object):
-    def __init__(self, chroms1, chroms2):
+    
+    def __init__(self, chroms1, chroms2, labels=True, getLabel=None):
         self.chroms1 = chroms1
         self.chroms2 = chroms2
+        self.showLabels = labels
+
+        if getLabel is None:
+            self.getLabel = lambda x: x.seqname
+        else:
+            self.getLabel = getLabel
         
         self.plots = []
         
@@ -150,9 +159,12 @@ class Dotplot (object):
         self.plotSize = [0, 0]
 
         # create chrom lookup
-        self.chromLookup = {}
-        for chrom in itertools.chain(self.chroms1, self.chroms2):
-            self.chromLookup[(chrom.species, chrom.seqname)] = chrom
+        self.chrom1Lookup = {}
+        self.chrom2Lookup = {}        
+        for chrom in self.chroms1:
+            self.chrom1Lookup[(chrom.species, chrom.seqname)] = chrom
+        for chrom in self.chroms2:
+            self.chrom2Lookup[(chrom.species, chrom.seqname)] = chrom
         
 
 
@@ -192,6 +204,10 @@ class Dotplot (object):
                     self.plotSize[0], self.plotSize[1],
                     self.onClick,
                     give_pos=True)))
+        
+        if self.showLabels:
+            vis.append(self.drawLabels())
+        
         return vis
 
 
@@ -210,13 +226,13 @@ class Dotplot (object):
     
     
     def layoutPlot(self, plot):
-        self.layoutRegions(self.layout1, plot.regions1, self.chrom1Layout)
-        self.layoutRegions(self.layout2, plot.regions2, self.chrom2Layout)
+        self.layoutRegions(self.layout1, self.chrom1Lookup, plot.regions1, self.chrom1Layout)
+        self.layoutRegions(self.layout2, self.chrom2Lookup, plot.regions2, self.chrom2Layout)
         
 
-    def layoutRegions(self, layout, regions, chromLayout):
+    def layoutRegions(self, layout, chromLookup, regions, chromLayout):
         for region in regions:
-            chrom = self.chromLookup.get((region.species, region.seqname), None)
+            chrom = chromLookup.get((region.species, region.seqname), None)
             
             if chrom in chromLayout and \
                util.overlap(chrom.start, chrom.end, region.start, region.end):
@@ -234,7 +250,7 @@ class Dotplot (object):
             x += chrom.length()
                 
         return chromLayout
-    
+
     
     def drawPlot(self, plot):
         if plot.style in ("line", "box"):
@@ -252,14 +268,19 @@ class Dotplot (object):
                     if region in self.layout2:
                         set2.append(region)
                 
+                
                 # draw all pairs of hits
                 for region1 in set1:
-                    chrom1 = self.chromLookup[(region1.species, 
-                                               region1.seqname)]
+                    chrom1 = self.chrom1Lookup[(region1.species, 
+                                                region1.seqname)]
                     
                     for region2 in set2:
-                        chrom2 = self.chromLookup[(region2.species, 
-                                                   region2.seqname)]
+                        if not plot.selfhits and \
+                           region1.data["ID"] == region2.data["ID"]:
+                            continue
+                    
+                        chrom2 = self.chrom2Lookup[(region2.species, 
+                                                    region2.seqname)]
                         
                         s1 = max(self.chrom1Layout[chrom1], 
                                  self.layout1[region1])
@@ -289,7 +310,7 @@ class Dotplot (object):
 
     
     def drawChromBorders(self):
-        vis = []
+        vis = [self.colorGenomeDiv]
                 
         # determine chrom layout
         divx = [0]
@@ -310,7 +331,43 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
         
         return group(self.colorChromDiv, lines(* vis))
+
+
+    def drawLabels(self):
+        vis = group()
+        thick = 1000000
     
+        # determine chrom layout
+        divx = [0]
+        divy = [0]
+        labelsx = []
+        labelsy = []
+        
+        for chrom in self.chroms1:
+            labelsx.append(chrom.seqname)
+            divx.append(divx[-1] + chrom.length())
+        for chrom in self.chroms2:
+            labelsy.append(chrom.seqname)
+            divy.append(divy[-1] + chrom.length())
+            
+        maxx = divx[-1]
+        maxy = divy[-1]
+        
+        last = 0
+        for x, label in zip(divx, labelsx):
+            print label
+            vis.append(text(label, last, 0, x, thick, "left", "top")
+            last = x
+
+        last = 0
+        for y, label in zip(divy, labelsy):            
+            vis.append(translate(0, last,
+                rotate(-90,
+                    text(label, 0, 0, -thick, y-last, "right", "bottom"))))
+            last = t
+        return vis
+
+            
     
     def drawGenomeBorders(self):
         vis = []
@@ -324,17 +381,17 @@ class Dotplot (object):
         y = self.chroms2[0].length()
         
         for i in xrange(1, len(self.chroms1)):
-            x += self.chroms1[i].length()
             if self.chroms1[i].species != self.chroms1[i-1].species:
                 divx.append(x)
+            x += self.chroms1[i].length()
         for i in xrange(1, len(self.chroms2)):
-            y += self.chroms2[i].length()
             if self.chroms2[i].species != self.chroms2[i-1].species:
                 divy.append(y)
+            y += self.chroms2[i].length()
         
         divx.append(x)
         divy.append(y)
-            
+        
         maxx = x
         maxy = y
         
@@ -345,6 +402,40 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
         
         return group(self.colorGenomeDiv, lines(* vis))
+
+
+    def drawLabels(self):
+        vis = group(self.colorGenomeDiv)
+        thick = 1000000
+    
+        # determine chrom layout
+        divx = [0]
+        divy = [0]
+        labelsx = []
+        labelsy = []
+        
+        for chrom in self.chroms1:
+            labelsx.append(self.getLabel(chrom))
+            divx.append(divx[-1] + chrom.length())
+        for chrom in self.chroms2:
+            labelsy.append(self.getLabel(chrom))
+            divy.append(divy[-1] + chrom.length())
+            
+        maxx = divx[-1]
+        maxy = divy[-1]
+        
+        last = 0
+        for x, label in zip(divx[1:], labelsx):
+            vis.append(text_clip(label, last, 0, x, -thick, 4, 20, "left", "top"))
+            last = x
+
+        last = 0
+        for y, label in zip(divy[1:], labelsy):            
+            vis.append(translate(0, last,
+                rotate(90,
+                    text_clip(label, 0, 0, thick, y-last, 4, 20, "left", "bottom"))))
+            last = y
+        return vis
 
 
     def drawTrace(self, plot):
@@ -434,7 +525,7 @@ class Dotplot (object):
     def enableTrace(self, show, plot=None):
         if len(self.plots) == 0:
             return
-        if plot == None:
+        if plot is None:
             plot = self.plots[0]
     
         if show:
@@ -456,7 +547,7 @@ class Dotplot (object):
             return
         if plot == None:
             plot = self.plots[0]
-    
+        
         self.enableTrace(plot not in self.traces, plot)
 
 

@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+
+from __future__ import division
+
+import sys, os, shutil
+from rasmus import util, treelib, stats
+from rasmus.bio import phylo
+
+options = [
+"""\
+    Evaluates the accuracy of a phylogeny program
+""",
+
+    
+]
+
+conf = util.parseOptions(sys.argv, options, quit=True,
+                         resthelp="prepare")
+
+def topologyEqual(tree1, tree2, unroot=True):
+    if unroot:
+        treelib.reroot(tree1, sorted(tree1.leafNames())[0], newCopy=False)
+        treelib.reroot(tree2, sorted(tree2.leafNames())[0], newCopy=False)
+
+    hash1 = phylo.hashTree(tree1)
+    hash2 = phylo.hashTree(tree2)
+    return hash1 == hash2
+    
+
+
+
+
+if len(sys.argv) < 2:
+    raise "must include action command"
+
+action = sys.argv[1]
+
+
+def create_basedir(path):
+    a, b = os.path.split(path)
+    
+    if a == "":
+        return ".."
+    else:
+        return os.path.join("..", create_basedir(a))
+    
+
+
+if action == "prepare":
+    # prepare input files
+
+    if len(sys.argv) < 5:
+        raise "arguments must be: prepare [-c] <datadir> <evaldir> <file extension>"
+    
+    if sys.argv[2] == "-c":
+        docopy = True    
+        datadir, evaldir, ext = sys.argv[3:6]
+    else:
+        docopy = False
+        datadir, evaldir, ext = sys.argv[2:5]
+    
+    
+    if not os.path.exists(evaldir):
+        os.makedirs(evaldir)
+    
+    basedir = create_basedir(evaldir)
+    
+    
+    names = os.listdir(datadir)
+    for name in names:
+        dirname = os.path.join(evaldir, name)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+            
+        newfile = os.path.join(evaldir, name, name+ext)
+        
+        if os.path.exists(newfile):
+            continue
+                
+        if docopy:
+            shutil.copy(os.path.join(datadir, name, name+ext),
+                        newfile)
+        else:            
+            os.symlink(os.path.join(basedir, "..", datadir, name, name+ext),
+                       newfile)
+            
+
+elif action == "report":
+
+    if len(sys.argv) < 6:
+        raise "arguments must be: report <datadir> <data tree ext> <inputdir> <input tree ext>"
+
+    datadir, dataext, evaldir, evalext = sys.argv[2:6]
+    resultext = ".result"
+    summaryext = ".summary"
+
+    names = os.listdir(evaldir)
+    
+    top_correct = 0
+    ntrees = 0
+    rf_errors = []
+    
+    for name in names:
+        print "checking", name
+
+        datatreefile = os.path.join(datadir, name, name+dataext)        
+        evaltreefile = os.path.join(evaldir, name, name+evalext)
+        resultfile = os.path.join(evaldir, name, name+resultext)
+        
+        if os.path.exists(evaltreefile):
+            datatree = treelib.readTree(datatreefile)
+            evaltree = treelib.readTree(evaltreefile)
+            
+            correct = topologyEqual(datatree, evaltree, unroot=True)
+            top_correct += int(correct)
+            ntrees += 1
+            
+            if len(datatree.leaves()) <= 3:
+                rf = 0.0
+            else:
+                rf = phylo.robinsonFouldsError(datatree, evaltree)
+            rf_errors.append(rf)
+            
+            out = open(resultfile, "w")
+            print >>out, "correct topology:", correct
+            print >>out, "RF error:", rf
+            out.close()
+        else:
+            print "  no tree exists"
+        
+    # write summary
+    out = open(evaldir+summaryext, "w")
+    print >>out, "percent correct: %.2f" % (100 * top_correct / ntrees)
+    print >>out, "number correct:", top_correct
+    print >>out, "number wrong:", ntrees - top_correct
+    print >>out, "mean RF error:", stats.mean(rf_errors)
+    out.close()
+        
+    
+else:
+    raise "unknown action", action
+
+

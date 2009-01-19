@@ -230,15 +230,6 @@ def binsearch(lst, val, compare=cmp, order=1):
         return low, top
 
 
-#
-# DEPRECATED
-#
-# include tree algorithms into this module for backwards compatability
-# remove this soon.
-#
-#from treelib import *
-
-
 
 if __name__ == "__main__":
     

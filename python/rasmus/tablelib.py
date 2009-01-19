@@ -3,7 +3,7 @@ tables.py
 
 Portable Tabular Format (PTF)
 
-Implements Manolis style tab-delimited table file format.
+Implements and standardizes Manolis style tab-delimited table file format.
 
 
 --Example----------------------------------------------------
@@ -54,15 +54,19 @@ Table can also handle custom types.  Custom types must do the following
 
 """
 
+# python libs
 import copy
 import StringIO
 import sys
 import os
-
-
+import itertools
 
 # rasmus libs
 from rasmus import util
+
+
+# TODO: remove multiple headers (not useful)
+# TODO: simplify
 
 
 TABLE_VERSION = "1.0"
@@ -108,7 +112,7 @@ class TableException (Exception):
 # Types handling
 #
 
-def guessType(text):
+def guess_type(text):
     """Guesses the type of a value encoded in a string"""
     
     if text.isdigit():
@@ -127,6 +131,9 @@ def guessType(text):
         pass
     
     return str
+
+# back-compat
+guessType = guess_type
 
 
 def manoli_str2bool(text=None):
@@ -147,7 +154,7 @@ def manoli_str2bool(text=None):
         
             
 
-class TableTypeLookup:
+class TableTypeLookup (object):
     def __init__(self, names_types=[]):
         self.name2type = {}
         self.type2name = {}
@@ -195,7 +202,7 @@ class TableTypeLookup:
         return delim.join(names)
 
 
-class TableType:
+class TableType (object):
     def __init__(self, parser=None, formatter=None):
         if parser != None:
             self.parserFunc = parser
@@ -228,7 +235,7 @@ class TableType:
         return str(val)
         
 
-def stringQuote(text=None):
+def string_quote(text=None):
     if text == None:
         return ""
     
@@ -248,9 +255,9 @@ def stringQuote(text=None):
         i += 1
     
     return "".join(text2)
-    
 
-def stringExpand(text=None):
+
+def string_expand(text=None):
     if text == None:
         return ""
     
@@ -283,7 +290,7 @@ def _eval2(text=None):
         return eval(text)
         
 
-QuotedString = TableType(stringExpand, stringQuote)
+QuotedString = TableType(string_expand, string_quote)
 TableBool = TableType(manoli_str2bool, str)
 TableStr = TableType(str, str)
 TableFloat = TableType(float, str)
@@ -303,8 +310,10 @@ _defaultTypeLookup = \
                      ["expr", TableExpr]])
 
 # NOTE: ordering of name-type pairs is important
+#   the last occurrance of a type gives the perferred name for writing
 
-      
+
+
 #===========================================================================
 # Table class
 #
@@ -312,68 +321,82 @@ _defaultTypeLookup = \
 class Table (list):
     """Class implementing the Portable Table Format"""
 
-    def __init__(self, rows=[], 
+    def __init__(self, rows=None, 
                        headers=None,
                        defaults={},
                        types={},
-                       extraHeaders = [],
                        filename=None,
-                       typeLookup=None):
+                       type_lookup=None):
         
         # set table info
         self.headers = copy.copy(headers)
         self.defaults = copy.copy(defaults)
         self.types = copy.copy(types)
-        self.extraHeaders = []
         self.filename = filename
         self.comments = []
         self.delim = "\t"
         self.nheaders = 1
         self.version = TABLE_VERSION
         
-        if typeLookup == None:
-            self.typeLookup = _defaultTypeLookup
+        if type_lookup is None:
+            self._type_lookup = _defaultTypeLookup
         else:
-            self.typeLookup = _defaultTypeLookup.extend(typeLookup)
+            self._type_lookup = _defaultTypeLookup.extend(type_lookup)
         
         
         # set data
-        if len(rows) > 0:
-            # data is a list of dicts
-            if isinstance(rows[0], dict):
-                for row in rows:
-                    self.append(copy.copy(row))
+        if rows is not None:
+            it = iter(rows)
+            try:
+                first_row = it.next()
+
+                # data is a list of dicts
+                if isinstance(first_row, dict):
+                    self.append(first_row)
+                    for row in it:
+                        self.append(dict(row))
+
+                    if self.headers is None:
+                        self.headers = sorted(self[0].keys())
+
+                # data is a list of lists
+                elif isinstance(first_row, (list, tuple)):
+                    if self.headers is None:
+                        self.headers = range(len(first_row))
+                        self.nheaders = 0
+                    for row in itertools.chain([first_row], it):
+                        self.append(dict(zip(self.headers, row)))
+
+
+                # set table info
+                for key in self.headers:
+                    # guess any types not specified
+                    if key not in self.types:
+                        self.types[key] = type(self[0][key])
+
+                    # guess any defaults not specified
+                    if key not in self.defaults:
+                        self.defaults[key] = self.types[key]()
                 
-                if self.headers == None:
-                    self.headers = sorted(self[0].keys())
+            except StopIteration:
+                pass
+            
         
-            # data is a list of lists
-            elif isinstance(rows[0], list) or \
-                 isinstance(rows[0], tuple):
-                if self.headers == None:
-                    self.headers = range(len(rows[0]))
-                    self.nheaders = 0
-                for row in rows:
-                    self.append(dict(zip(self.headers, row)))
             
-            
-            # set table info
-            for key in self.headers:
-                # guess any types not specified
-                if key not in self.types:
-                    self.types[key] = type(self[0][key])
-            
-                # guess any defaults not specified
-                if key not in self.defaults:
-                    self.defaults[key] = self.types[key]()
+    def clear(self, headers=[], delim="\t", nheaders=1, types=None):
+        """Clears the contents of the table"""
         
-        # set extra headers
-        if len(extraHeaders) > 0:
-            for row in extraHeaders:
-                self.extraHeaders.append(copy.copy(row))
-            
-                
-                    
+        self[:] = []
+        self.headers = copy.copy(headers)
+        if types == None:
+            self.types = {}
+        else:
+            self.types = copy.copy(types)
+        self.defaults = {}
+        self.comments = []
+        self.delim = delim
+        self.nheaders = nheaders
+        self.version = TABLE_VERSION    
     
     
     def new(self, headers=None):
@@ -390,15 +413,11 @@ class Table (list):
         
         tab.types = util.subdict(self.types, headers)
         tab.defaults = util.subdict(self.defaults, headers)
-        tab.extraHeaders = []
-        for row in self.extraHeaders:
-            tab.extraHeaders.append(util.subdict(row, headers))
-        
         tab.comments = copy.copy(self.comments)
         tab.delim = self.delim
         tab.nheaders = self.nheaders
         
-        tab.typeLookup = copy.copy(self.typeLookup)
+        tab._type_lookup = copy.copy(self._type_lookup)
         
         return tab
     
@@ -408,14 +427,15 @@ class Table (list):
     #
     
     def read(self, filename, delim="\t", nheaders=1,
-                   headers=None, types=None):
-        for row in self.readIter(filename, delim=delim, nheaders=nheaders,
-                                 headers=headers, types=types):
+                   headers=None, types=None, guessTypes=False):
+        for row in self.read_iter(filename, delim=delim, nheaders=nheaders,
+                                  headers=headers, types=types,
+                                  guessTypes=guessTypes):
             self.append(row)
             
     
-    def readIter(self, filename, delim="\t", nheaders=1,
-                 headers=None, types=None):
+    def read_iter(self, filename, delim="\t", nheaders=1,
+                 headers=None, types=None, guessTypes=False):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -443,25 +463,13 @@ class Table (list):
         
 
         # clear table
-        self[:] = []
-        self.headers = copy.copy(headers)
-        if types == None:
-            self.types = {}
-        else:
-            self.types = copy.copy(types)
-        self.defaults = {}
-        self.extraHeaders = []        
-        self.comments = []
-        self.delim = delim
-        self.nheaders = nheaders
-        self.version = TABLE_VERSION
+        self.clear(headers, delim, nheaders, types)
         
-        
-        
+                
         # temps for reading only
         self.tmptypes = None
         self.tmpdefaults = None
-        self.tmpextraHeaders = []
+
         
         # line number for error reporting
         lineno = 0
@@ -479,7 +487,7 @@ class Table (list):
 
                 # handle comments
                 if line[0] == "#":
-                    if not self.readDirective(line):
+                    if not self._read_directive(line):
                         self.comments.append(line)
                     continue
 
@@ -488,9 +496,13 @@ class Table (list):
                 
                 # if no headers read yet, use this line as a header
                 if not self.headers:
-                    # parse header
-                    if self.parseHeader(tokens):
+                    # parse headers
+                    if self.nheaders > 0:
+                        self._parse_header(tokens)
                         continue
+                    else:
+                        self._parse_header(tokens)
+
 
                 # parse data
                 row = {}
@@ -515,73 +527,56 @@ class Table (list):
         except Exception, e:
             # report error in parsing input file
             e = TableException(str(e), self.filename, lineno)
-            raise e
-        
-        
-        # now that we know the headers we can process extra headers
-        for i, row in enumerate(self.tmpextraHeaders):
-            if len(row) != len(self.headers):
-                raise TableException("wrong number of columns in extra header %d" % i,
-                                     self.filename)
-            self.extraHeaders.append(dict(zip(self.headers, row)))
+            #raise e
+            raise
         
         
         # clear temps
         del self.tmptypes
         del self.tmpdefaults
-        del self.tmpextraHeaders
         
         raise StopIteration
-    
-    
-    def parseHeader(self, tokens):
-        if self.nheaders > 0:
-            # determine if extra headers exist
-            if len(self.tmpextraHeaders) >= self.nheaders - 1:
-                self.headers = tokens
 
-                # check that headers are unique
-                check = set()
-                for header in self.headers:
-                    if header in check:
-                        raise TableException("Duplicate header '%s'" % header)
-                    check.add(header)
-            else:
-                # this line is an extra header
-                self.tmpextraHeaders.append(tokens)
-                return True
-        else:
+    # NOTE: back-compat
+    readIter = read_iter
+
+    
+    
+    def _parse_header(self, tokens):
+        """Parse the tokens as headers"""
+        
+        if self.nheaders == 0:
             # default headers are numbers
             self.headers = range(len(tokens))
-        
-        
-        # if we have headers then we can initialize other 
-        # things (e.g. types, defaults)
-        if self.headers:
-            # populate types
-            if self.tmptypes:
-                assert len(self.tmptypes) == len(self.headers)
-                self.types = dict(zip(self.headers, self.tmptypes))
-            else:
-                self.types = {}.fromkeys(self.headers, str)
 
-
-            # populate defaults
-            if self.tmpdefaults:
-                self.defaults = {}
-                for header, default in zip(self.headers, self.tmpdefaults):
-                    self.defaults[header] = self.types[header](default)
-            else:        
-                self.defaults = util.mapdict(self.types,
-                                             valfunc=lambda x: x())
-
-        # return True if this line has been used as a (extra) header
-        # return False if this line should be parsed as data
-        if self.nheaders > 0:
-            return True
         else:
-            return False
-    
+            self.headers = tokens
+
+            # check that headers are unique
+            check = set()
+            for header in self.headers:
+                if header in check:
+                    raise TableException("Duplicate header '%s'" % header)
+                check.add(header)
+        
+        # populate types
+        if self.tmptypes:
+            assert len(self.tmptypes) == len(self.headers)
+            self.types = dict(zip(self.headers, self.tmptypes))
+        else:
+            # default to strings
+            self.types = dict.fromkeys(self.headers, str)
+
+
+        # populate defaults
+        if self.tmpdefaults:
+            self.defaults = {}
+            for header, default in zip(self.headers, self.tmpdefaults):
+                self.defaults[header] = self.types[header](default)
+        else:        
+            self.defaults = util.mapdict(self.types,
+                                         valfunc=lambda x: x())
+
     
     
     def write(self, filename=sys.stdout, delim="\t"):
@@ -597,7 +592,7 @@ class Table (list):
     
         out = util.openStream(filename, "w")
         
-        self.writeHeader(out, delim=delim)
+        self.write_header(out, delim=delim)
         
         # tmp variable
         types = self.types
@@ -614,7 +609,7 @@ class Table (list):
             print >>out, delim.join(rowstr)
     
     
-    def writeHeader(self, out=sys.stdout, delim="\t"):
+    def write_header(self, out=sys.stdout, delim="\t"):
         # ensure all info is complete
         for key in self.headers:
             if key not in self.types:
@@ -641,19 +636,19 @@ class Table (list):
             if isinstance(line, str):
                 print >>out, line
             else:
-                self.writeDirective(line, out, delim)
-        
-        # write extra headers
-        for row in self.extraHeaders:
-            print >>out, delim.join(util.mget(row, self.headers))
+                self._write_directive(line, out, delim)
         
         
         # write header
         if self.nheaders > 0:
             print >>out, delim.join(self.headers)
+
+    # NOTE: back-compat
+    writeHeader = write_header
+
     
     
-    def writeRow(self, out, row, delim="\t"):
+    def write_row(self, out, row, delim="\t"):
         rowstr = []
         types = self.types
         for header in self.headers:
@@ -663,6 +658,9 @@ class Table (list):
                 rowstr.append('')
         out.write(delim.join(rowstr))
         out.write("\n")
+
+    # NOTE: back-compat
+    writeRow = write_row
     
     
     def save(self):
@@ -679,7 +677,7 @@ class Table (list):
     # Input/Output: Directives
     #
     
-    def determineDirective(self, line):
+    def _determine_directive(self, line):
         if line.startswith("##version:"):
             return DIR_VERSION
         elif line.startswith("#Types:") or \
@@ -698,10 +696,11 @@ class Table (list):
             return None
     
     
-    def readDirective(self, line):
+    
+    def _read_directive(self, line):
         """Attempt to read a line with a directive"""
         
-        directive = self.determineDirective(line)
+        directive = self._determine_directive(line)
         
         if directive == None:
             return False
@@ -714,7 +713,7 @@ class Table (list):
             return True
             
         elif directive == DIR_TYPES:
-            self.tmptypes = self.typeLookup.parseTableTypes(rest, self.delim)
+            self.tmptypes = self._type_lookup.parseTableTypes(rest, self.delim)
             return True
             
         elif directive == DIR_DEFAULTS:
@@ -731,7 +730,7 @@ class Table (list):
             return False
     
     
-    def writeDirective(self, line, out, delim):
+    def _write_directive(self, line, out, delim):
         """Write a directive"""
         
         if line == DIR_VERSION:
@@ -743,7 +742,7 @@ class Table (list):
             else:
                 entry = [""] * len(self.headers)
             out.write("##types:" +
-                      self.typeLookup.formatTableTypes(
+                      self._type_lookup.formatTableTypes(
                             util.mget(self.types, self.headers),
                             delim) + "\n")
         elif line == DIR_DEFAULTS:
@@ -770,7 +769,7 @@ class Table (list):
         self.append(kargs)
     
     
-    def addCol(self, header, coltype=None, default=NULL, pos=None, data=None):
+    def add_col(self, header, coltype=None, default=NULL, pos=None, data=None):
         """Add a column to the table.  You must populate column data yourself.
         
            header  - name of the column
@@ -802,16 +801,15 @@ class Table (list):
         self.types[header] = coltype
         self.defaults[header] = default
         
-        for row in self.extraHeaders:
-            row[header] = ''
-        
         # add data
         if data != None:
             for i in xrange(len(self)):
                 self[i][header] = data[i]
+
+    # NOTE: back-compat
+    addCol = add_col
     
-    
-    def removeCol(self, *cols):
+    def remove_col(self, *cols):
         """Removes a column from the table"""
         
         for col in cols:
@@ -819,14 +817,17 @@ class Table (list):
             del self.types[col]
             del self.defaults[col]
 
-            for row in self.extraHeaders:
-                del row[col]
+            #for row in self.extraHeaders:
+            #    del row[col]
             
             for row in self:
                 del row[col]
+
+    # NOTE: back-compat
+    removeCol = remove_col
     
     
-    def renameCol(self, oldname, newname):
+    def rename_col(self, oldname, newname):
         """Renames a column"""
         
         # change header
@@ -847,14 +848,11 @@ class Table (list):
         for row in self:
             row[newname] = row[oldname]
             del row[oldname]
-        
-        # change extraHeaders
-        for row in self.extraHeaders:
-            row[newname] = row[oldname]
-            del row[oldname]
-            
+
+    # NOTE: back-compat
+    renameCol = rename_col
        
-    def getMatrix(self, rowheader="rlabels"):
+    def get_matrix(self, rowheader="rlabels"):
         """Returns mat, rlabels, clabels
         
            where mat is a copy of the table as a 2D list
@@ -877,6 +875,9 @@ class Table (list):
             mat.append(util.mget(row, clabels))
         
         return mat, rlabels, clabels
+
+    # NOTE:
+    getMatrix = get_matrix
     
     
     def filter(self, cond):
@@ -888,7 +889,66 @@ class Table (list):
                 tab.append(row)
         
         return tab
-    
+
+
+    def map(self, func, headers=None):
+        """Returns a new table with each row mapped by function 'func'"""
+
+        if len(self) == 0:
+            # handle case of zero length table
+            return self.new()
+
+        # determine what table will look like from first row
+        first_row = func(self[0])
+
+        # determine headers of new table
+        if headers is None:
+            # try order new headers the same way as old headers
+            headers = first_row.keys()
+            lookup = util.list2lookup(self.headers)
+            top = len(headers)            
+            headers.sort(key=lambda x:
+                         (lookup.get(x, top), x))
+            
+        
+        tab = type(self)(
+            itertools.chain([first_row],
+                            (func(x) for x in self[1:])),
+            headers=headers)
+        tab.delim = self.delim
+        tab.nheaders = self.nheaders
+        
+        return tab
+
+
+    def uniq(self, key=None, col=None):
+        """Returns a copy of this table with consecutive repeated rows removed"""
+
+        tab = self.new()
+
+        if len(self) == 0:
+            return tab
+
+        if col is not None:
+            key = lambda x: x[col]
+
+        if key is None:
+            last_row = self[0]
+            for row in self[1:]:
+                if row != last_row:
+                    tab.append(row)
+                last_row = row
+        else:
+            last_row = key(self[0])
+            for row in self[1:]:
+                key_row = key(row)
+                if key_row != last_row:
+                    tab.append(row)
+                last_row = key_row
+            
+
+        return tab
+        
     
     def groupby(self, key=None):
         """Groups the row of the table into separate tables based on the 
@@ -1030,17 +1090,14 @@ class Table (list):
 
     def __repr__(self):
         s = StringIO.StringIO("w")
-        self.writePretty(s)
+        self.write_pretty(s)
         return s.getvalue()
     
     
-    def writePretty(self, out=sys.stdout, spacing=2):
+    def write_pretty(self, out=sys.stdout, spacing=2):
         mat2, rlabels, clabels = self.getMatrix(rowheader=None)
-        
-        # get extra headers
+
         mat = []
-        for row in self.extraHeaders:
-            mat.append(util.mget(row, clabels))
         
         # get headers
         mat.append(clabels)
@@ -1049,6 +1106,10 @@ class Table (list):
         mat.extend(mat2)
         
         util.printcols(mat, spacing=spacing, out=out)
+
+    # NOTE: back-compat
+    writePretty = write_pretty
+
     
     def __str__(self):
         s = StringIO.StringIO("w")
@@ -1063,22 +1124,30 @@ class Table (list):
 # convenience functions
 #
 
-def readTable(filename, delim="\t", nheaders=1, typeLookup=None):
+def read_table(filename, delim="\t", nheaders=1, type_lookup=None, types=None,
+              guessTypes=False):
     """Read a Table from a file written in PTF"""
     
-    table = Table(typeLookup=typeLookup)
-    table.read(filename, delim=delim, nheaders=nheaders)
+    table = Table(type_lookup=type_lookup)
+    table.read(filename, delim=delim, nheaders=nheaders, types=types,
+               guessTypes=guessTypes)
     return table
 
+# NOTE: back-compat
+readTable = read_table
 
-def iterTable(filename, delim="\t", nheaders=1):
+
+def iter_table(filename, delim="\t", nheaders=1):
     """Iterate through the rows of a Table from a file written in PTF"""
     
     table = Table()
-    return table.readIter(filename, delim=delim, nheaders=nheaders)
+    return table.read_iter(filename, delim=delim, nheaders=nheaders)
+
+# NOTE: back-compat
+iterTable = iter_table
 
 
-def histTable(items, headers=["item", "count", "percent"]):
+def histtab(items, headers=["item", "count", "percent"]):
     h = util.histDict(items)
     tab = Table(headers=headers)
     tot = float(len(items))
@@ -1101,8 +1170,11 @@ def histTable(items, headers=["item", "count", "percent"]):
     
     return tab
 
+# back-compat
+histTable = histtab
 
-def joinTables(* args, **kwargs):
+
+def join_tables(* args, **kwargs):
     """Join together tables into one table.
        Each argument is a tuple (table_i, key_i, cols_i)
        
@@ -1157,26 +1229,43 @@ def joinTables(* args, **kwargs):
         tab.append(row)
     
     return tab
-               
+
+# NOTE: back-compat
+joinTables = join_tables
+     
 
 def showtab(tab, name='table'):
     """Show a table in a new xterm"""
     
     name = name.replace("'", "")
     tmp = util.tempfile(".", "tmp", ".tab")
-    tab.writePretty(file(tmp, "w"))
+    tab.write_pretty(file(tmp, "w"))
     os.system("(xterm -T '%s' -n '%s' -e less -S %s; rm %s) &" %
               (name, name, tmp, tmp))
 
 
-def sqltab(dbfile, query, maxrows=None, headers=None):
-    from pysqlite2 import dbapi2 as sqlite
+def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
+    """Get a table from a sqlite file"""
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
 
     # open database
-    con = sqlite.connect(dbfile, isolation_level="DEFERRED")
-    cur = con.cursor()
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
     
     cur.execute(query)
+
+    # infer header names
+    if headers is None and not headernum:
+        headers = [x[0] for x in cur.description]
     
     if maxrows != None:
         lst = []
@@ -1185,10 +1274,160 @@ def sqltab(dbfile, query, maxrows=None, headers=None):
                 lst.append(cur.next())
         except StopIteration:
             pass
-        return Table(lst, headers=headers)
+        tab = Table(lst, headers=headers)
     else:
-        return Table(list(cur), headers=headers)
+        tab = Table(list(cur), headers=headers)
 
+    if auto_close:
+        con.close()
+    return tab
+
+# DEPRECATED:
+sqltab = sqlget
+
+
+def sqlexe(dbfile, sql):
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
+
+    # open database
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    cur.execute(sql)
+
+    if auto_close:
+        con.close()
+
+
+def sql_create_table(cur, table_name, tab, overwrite=True):
+    """Create an SQL based on a tab"""
+
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
+
+    # drop old table if needed
+    if overwrite:
+        cur.execute("DROP TABLE IF EXISTS %s;" % table_name)
+
+    # build columns
+    cols = []
+    for header in tab.headers:
+
+        t = tab.types[header]
+
+
+        if issubclass2(t, basestring):
+            cols.append("%s TEXT" % header)
+        elif issubclass2(t, int):
+            cols.append("%s INTEGER" % header)
+        elif t == TableFloat or \
+             issubclass2(t, float) or \
+             issubclass2(t, TableFloat):
+            cols.append("%s FLOAT" % header)
+        elif t == TableBool or \
+             issubclass2(t, bool) or \
+             issubclass2(t, TableBool):
+            cols.append("%s BOOLEAN" % header)
+        else:
+            # default is text
+            cols.append("%s TEXT" % header)
+
+    cols = ",".join(cols)
+
+    # create table
+    cur.execute("""CREATE TABLE %s (%s);""" %
+                    (table_name, cols))
+
+    
+
+#def sql_insert_rows(cur, headers, types, rows
+
+def sqlput(dbfile, table_name, tab, overwrite=True, create=True):
+    """Insert a table into a sqlite file"""
+
+    try:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError:
+        import sqlite
+
+    # open database
+    if hasattr(dbfile, "cursor"):
+        con = dbfile
+        cur = con.cursor()
+        auto_close = False
+    else:
+        con = sqlite.connect(dbfile, isolation_level="DEFERRED")
+        cur = con.cursor()
+        auto_close = True
+
+    # read table from file
+    if not isinstance(tab, Table):
+        filename = tab
+        tab = Table()
+        it = tab.read_iter(filename)
+        
+        try:
+            # force a reading of the headers
+            row = it.next()
+            rows = itertools.chain([row], it)
+        except StopIteration:
+            rows = []
+            pass
+    else:
+        rows = tab
+
+
+    if create:
+        sql_create_table(cur, table_name, tab, overwrite=overwrite)
+
+    # determine text columns
+    def issubclass2(t1, t2):
+        if type(t1) != type:
+            return False
+        return issubclass(t1, t2)    
+
+
+    text = set()
+    for header in tab.headers:
+        t = tab.types[header]
+        
+        if issubclass2(t, basestring) or not (
+           issubclass2(t, int) or
+           t == TableFloat or 
+           issubclass2(t, float) or 
+           issubclass2(t, TableFloat) or
+           t == TableBool or 
+           issubclass2(t, bool) or 
+           issubclass2(t, TableBool)):            
+            text.add(header)
+
+
+    # insert rows
+    for row in rows:
+        vals = []
+        for header in tab.headers:
+            if header in text:
+                vals.append('"%s"' % row[header])
+            else:
+                vals.append(tab.types[header].__str__(row[header]))
+        vals = ",".join(vals)
+        cur.execute("INSERT INTO %s VALUES (%s);" % (table_name, vals))
+    
+    con.commit()
+    if auto_close:
+        con.close()
+    
 
 #===========================================================================
 # Matrix functions
@@ -1229,19 +1468,25 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
     return tab
 
 
-def writeMatrix(filename, mat, rlabels=None, clabels=None, rowheader="rlabels"):
+def write_matrix(filename, mat, rlabels=None, clabels=None, rowheader="rlabels"):
     tab = matrix2table(mat,
                        rlabels=rlabels,
                        clabels=clabels,
                        rowheader=rowheader)
     tab.write(filename)
 
+# back-compat
+writeMatrix = write_matrix
 
-def readMatrix(filename, rowheader="rlabels"):
+
+
+def read_matrix(filename, rowheader="rlabels"):
     tab = readTable(filename)    
     mat, rlabels, clabels = tab.getMatrix(rowheader=rowheader)
     return mat, rlabels, clabels
-    
+
+# back-compat
+readMatrix = read_matrix
 
 
 #===========================================================================
@@ -1279,30 +1524,6 @@ mike	789	1
         row['extra'] = True
     
     
-    #################################################
-    text="""\
-##types:str	int	int
-##defaults:none	0	0
-##headers:3
-#
-# hello
-#
-skip1	skip2	skip3
-skip4	skip5	skip6
-name	0	1
-matt	123	3
-alex	456	
-mike	789	1
-"""
-
-
-    tab = readTable(StringIO.StringIO(text))    
-    tab.renameCol('1', 'num')
-    tab.removeCol('0')
-    
-    print tab
-    
-    print tab
 
     #################################################
     text="""\
@@ -1419,7 +1640,7 @@ john	0	+
                     
 
         stream = StringIO.StringIO(text)
-        tab = readTable(stream, typeLookup=[["strand_type", strand_type]])
+        tab = readTable(stream, type_lookup=[["strand_type", strand_type]])
         print tab.types
         print tab
     
@@ -1456,7 +1677,7 @@ john	False	hello\n\\\nthere
     
         tab = Table(headers=["name", "list"],
                     types={"list": python_type},
-                    typeLookup=[["python", python_type]])
+                    type_lookup=[["python", python_type]])
                     
         
         tab.append({"name": "matt", "list": [1,2,3]})

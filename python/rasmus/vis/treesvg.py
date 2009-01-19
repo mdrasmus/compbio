@@ -15,7 +15,7 @@ import os
 def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
              labelOffset=None, fontSize=10, labelSize=None,
              minlen=1, maxlen=util.INF, filename=sys.stdout,
-             rmargin=100, lmargin=10, tmargin=0, bmargin=None,
+             rmargin=150, lmargin=10, tmargin=0, bmargin=None,
              colormap=None,
              stree=None,
              gene2species=None,
@@ -110,7 +110,7 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
             bot = coords[node.children[-1]][1]
             
             # draw children
-            canvas.line(x, top, x, bot)
+            canvas.line(x, top, x, bot, color=node.color)
             
             for child in node.children:
                 walk(child)

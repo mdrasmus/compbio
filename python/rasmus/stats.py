@@ -7,14 +7,17 @@ import os
 # rasmus libs
 from rasmus import util
 from rasmus import algorithms
+from rasmus import tablelib
 
 
 
 
-
-
+def prod(lst):
+    """Computes the product of a list of numbers"""
+    return exp(sum(log(i) for i in lst))
 
 def mean(vals):
+    """Computes the mean of a list of numbers"""
     n = 0
     s = 0.0
     for i in vals:
@@ -23,6 +26,7 @@ def mean(vals):
     return s / float(n)
 
 def median(vals):
+    """Computes the median of a list of numbers"""
     lenvals = len(vals)
     sortvals = util.sort(vals)
     
@@ -32,6 +36,7 @@ def median(vals):
         return sortvals[lenvals / 2]
 
 def mode(vals):
+    """Computes the mode of a list of numbers"""
     top = 0
     topkey = None
     for key, val in util.histDict(vals).iteritems():
@@ -150,18 +155,24 @@ def fitLineError(xlist, ylist, slope, inter):
 
 
 def pearsonsRegression(observed, expected):
-    """Pearson's co-efficient of regression"""
+    """Pearson's coefficient of regression"""
     
     # error sum of squares
     ess = sum((a - b)**2 for a, b in util.izip(observed, expected))
     
     # total sum of squares
     u = mean(observed)
-    tss = sum((a - u)**2 for a in util.izip(observed))
+    tss = sum((a - u)**2 for a in observed)
     
     r2 = 1 - ess / tss
     return r2
+
     
+def pearsonsRegressionLine(x, y, m, b):
+    observed = y
+    expected = [m*i + b for i in x]
+    return pearsonsRegression(observed, expected)
+
 
 
 def percentile(vals, perc, rounding=-1, sort=True):
@@ -171,7 +182,7 @@ def percentile(vals, perc, rounding=-1, sort=True):
     """
     
     if sort:
-        vals2 = util.sort(vals)
+        vals2 = sorted(vals)
     else:
         vals2 = vals
     n = len(vals2)
@@ -190,7 +201,7 @@ def logadd(lna, lnb):
     if diff < 500:
         return log(exp(diff) + 1.0) + lnb
     else:
-        return diff + lnb
+        return lna
 
 
 
@@ -212,7 +223,45 @@ def smooth(vals, radius):
     return vals2
 
 
-def smooth2(x, y, xradius, minsize=0):
+
+
+def iter_window(x, xradius):
+    """
+    iterates a sliding window over x with radius xradius
+    
+    x must be sorted least to greatest
+    """
+
+    vlen = len(x)
+    
+    # simple case
+    if vlen == 0:
+        return
+    
+    start = min(x)
+    end = max(x)
+    window = [0]
+    
+    low = 0
+    high = 0
+    
+    for i in xrange(vlen):
+        xi = x[i]
+        xradius2 = min(xi - start, end - xi, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            window.remove(low)
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            window.append(high)
+        
+        yield xi, window[:]
+
+
+
+def smooth2(x, y, xradius, minsize=0, sort=False):
     """
     return an averaging of x and y using xradius
     
@@ -225,6 +274,9 @@ def smooth2(x, y, xradius, minsize=0):
     # simple case
     if vlen == 0:
         return [], []
+    
+    if sort:
+        x, y = util.sortTogether(cmp, x, y)
     
     x2 = []
     y2 = []
@@ -258,7 +310,6 @@ def smooth2(x, y, xradius, minsize=0):
             y2.append(ytot / denom)
     
     return x2, y2
-
 
 
 def smooth_old(x, radius):
@@ -323,8 +374,21 @@ def logfactorial(x, k=1):
 
 
 def choose(n, k):
-    return factorial(n, n - k) / factorial(k)
-
+    if n == 0 and k == 0:
+        return 1.0
+        
+    if n < 0 or k < 0 or k > n:
+        return 0
+    
+    # optimization for speed
+    if k > n/2:
+        k = n - k
+    
+    t = 1.0
+    for i in xrange(1, k+1):
+        t = t * (n - i + 1) / i
+    return int(t + 0.5)
+    #return factorial(n, n - k) / factorial(k)
 
 
 def sample(weights):
@@ -385,8 +449,6 @@ def chyper(m, n, M, N, report=0):
 
 
 def rhyper(m, n, M, N, report=0):
-    from rpy import r
-
     '''
     calculates cumulative probability based on
     hypergeometric distribution
@@ -399,6 +461,9 @@ def rhyper(m, n, M, N, report=0):
     m = drawn white balls from urn
     
     '''
+
+    from rpy import r
+
     
     assert( (type(m) == type(n) == type(M) == type(N) == int)
             and m <= n and m <= M and n <= N)
@@ -417,14 +482,99 @@ def rhyper(m, n, M, N, report=0):
     else:
         raise "unknown option"
 
+def cdf(vals):
+    """Computes the CDF of a list of values"""
     
+    vals = sorted(vals)
+    tot = float(len(vals))
+    x = []
+    y = []
+    
+    for i, x2 in enumerate(vals):
+        x.append(x2)
+        y.append(i / tot)
+        
+    return x, y
+    
+    
+def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
+    """Calculates enrichment for items within an in-set vs and out-set.
+       Returns a sorted table.
+    """
+    
+    # count items
+    counts = util.Dict(default=[0, 0])
+    for item in in_items:
+        counts[item][0] += 1
+    for item in out_items:
+        counts[item][1] += 1
+    
+    if N is None:
+        N = len(in_items) + len(out_items)
+    if M is None:
+        M = len(in_items)
+    
+    tab = tablelib.Table(headers=["item", "in_count", "out_count", 
+                                  "pval", "pval_under"])
+    
+    # do hypergeometric
+    for item, (a, b) in counts.iteritems():
+        tab.add(item=item,
+                in_count=a,
+                out_count=b,
+                pval=rhyper(a, a+b, M, N),
+                pval_under=rhyper(a, a+b, M, N, 1))
+    
+    # add qvalues
+    if useq:
+        qval = qvalues(tab.cget("pval"))
+        qval_under = qvalues(tab.cget("pval_under"))
+        
+        tab.addCol("qval", data=qval)
+        tab.addCol("qval_under", data=qval_under)
+    
+    if extra:
+        tab.addCol("in_size", data=[M]*len(tab))
+        tab.addCol("out_size", data=[N-M]*len(tab))
+        tab.addCol("item_ratio", data=[
+            row["in_count"] / float(row["in_count"] + row["out_count"])
+            for row in tab])
+        tab.addCol("size_ratio", data=[
+            M / float(N) for row in tab])
+        tab.addCol("fold", data=[row["item_ratio"] / row["size_ratio"]
+                                 for row in tab])
+    
+    tab.sort(col='pval')
+    return tab
+
+
+def qvalues(pvals):
+    import rpy
+    ret = rpy.r.p_adjust(pvals, "fdr")
+    return ret
+
+def qvalues2(pvals):
+    import rpy
+    rpy.r.library('qvalue')
+    ret = rpy.r.qvalue(pvals)
+    return ret['qvalues']
+
+
 #=============================================================================
 # Distributions
 #
 
-def bionomialPdf(n, params):
-    p, k = params
-    return choose(n, k) * (p ** k) * ((1-p) ** (n - k))
+def uniformPdf(x, params):
+    a, b = params
+    if x < a or x > b:
+        return 0.0
+    else:
+        return 1.0 / (b - a)
+
+
+def binomialPdf(k, params):
+    p, n = params
+    return choose(n, k) * (p ** k) * ((1.0-p) ** (n - k))
 
 def gaussianPdf(x, params):
     return 1/sqrt(2*pi) * exp(- x**2 / 2.0)
@@ -489,6 +639,26 @@ def poissonvariate(lambd):
         if p < l:
             return k - 1
 
+def exponentialPdf(x, params):
+    lambd = params[0]
+    
+    if x < 0 or lambd < 0:
+        return 0.0
+    else:
+        return lambd * exp(-lambd * x)
+
+
+def exponentialCdf(x, params):
+    lambd = params[0]
+    
+    if x < 0 or lambd < 0:
+        return 0.0
+    else:
+        return 1.0 - exp(-lambd * x)
+
+
+def exponentialvariate(lambd):
+    return -log(random.random()) / lambd
 
 def gammaPdf(x, params):
     alpha, beta = params
@@ -843,6 +1013,7 @@ def spearman(vec1, vec2):
 #
 def fitCurve(xdata, ydata, func, paramsInit):   
     import scipy
+    import scipy.optimize
 
     y = scipy.array(ydata)
     p0 = scipy.array(paramsInit)
@@ -929,6 +1100,28 @@ def solveCubic(a, b, c, real=True):
                 if abs(x.imag) < 1e-10]
     else:
         return [root1, root2, root3]
+
+
+def _solveCubic_test(n=100):
+
+    def test(a, b, c):
+        xs = solveCubic(a, b, c)
+
+        for x in xs:
+            y = x**3 + a*x*x + b*x + c
+            assert abs(y) < 1e-4, y
+
+    test(0, 0, 0)
+    test(0, 1, 1)
+    test(0, 0, 1)
+
+    for i in xrange(n):
+        
+        a = random.normalvariate(10, 5)
+        b = random.normalvariate(10, 5)
+        c = random.normalvariate(10, 5)
+
+        test(a, b, c)
     
     
     

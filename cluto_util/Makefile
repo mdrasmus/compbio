@@ -20,7 +20,7 @@ cluto_reorder: $(REORDER_OBJS)
 	$(CC) $(REORDER_OBJS) $(CPPFLAGS) $(LIBS) -o cluto_reorder
 
 cluto_reorder_tree: $(REORDER_TREE_OBJS)
-	$(CC) $(REORDER_TREE_OBJS) $(CPPFLAGS) $(LIBS) -o cluto_reorder_tree
+	$(CC)  $(REORDER_TREE_OBJS) $(CPPFLAGS) $(LIBS) -o cluto_reorder_tree
 
 cluto_graphify: $(GRAPH_OBJS)
 	$(CC) $(GRAPH_OBJS) $(CPPFLAGS) $(LIBS) -o cluto_graphify

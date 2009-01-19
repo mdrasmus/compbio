@@ -9,7 +9,7 @@
 import os
 
 # rasmus libs
-from rasmus import matrix
+from rasmus import matrixlib
 from rasmus import util
 from rasmus import treelib
 
@@ -18,33 +18,24 @@ def writeDenseMatrix(filename, mat):
     """Write a CLUTO formatted dense matrix file"""
     
     out = util.openStream(filename, "w")
-    
-    print >>out, len(mat), len(mat[0])
-    
-    for row in mat:
-        for val in row[:-1]:
-            out.write(str(val) + "\t")
-        out.write(str(row[-1]) + "\n")
+    matrixlib.write_dmat(out, mat)
 
 
 def writeSquareMatrix(filename, mat):
     """Write a CLUTO formatted square matrix file"""
     
     out = util.openStream(filename, "w")
-    
-    print >>out, len(mat)
-    
-    for row in mat:
-        for val in row[:-1]:
-            out.write(str(val) + "\t")
-        out.write(str(row[-1]) + "\n")            
+    matrixlib.write_dmat(out, mat, square=True)
 
 
 def readDenseMatrix(filename):
     """Read a CLUTO formatted dense matrix file"""
     
     infile = util.openStream(filename)
-    
+    nrows, ncols, nnz, mat = matrixlib.read_dmat(infile, header=True)
+    return mat
+
+    '''
     header = map(int, infile.next().split())
     
     if len(header) == 1:
@@ -62,7 +53,7 @@ def readDenseMatrix(filename):
     assert len(mat) == nrows, Exception("File has wrong number of rows")
     
     return mat
-
+    '''
     
 
 # TODO: add saveOutput
@@ -291,7 +282,7 @@ if __name__ == "__main__":
     rpartids = cluster(mat, 6)
     rperm = reorderPartids(rpartids, mat)
 
-    tmat = transpose(mat)
+    tmat = util.transpose(mat)
     cpartids = cluster(tmat, 6)
     cperm = reorderPartids(cpartids, tmat)
 
@@ -316,7 +307,7 @@ if 0:
 
     # apply permutation to matrix
     mat2 = mget(mat, perm)
-    simmat2 = matrix.submatrix(simmat, perm, perm)
+    simmat2 = matrixlib.submatrix(simmat, perm, perm)
 
     # display similarity matrix
     viewer3 = summatrix.DenseMatrixViewer(simmat, cuttoff=.4)

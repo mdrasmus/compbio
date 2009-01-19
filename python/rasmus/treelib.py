@@ -68,7 +68,7 @@ if pyparsing:
         # recursive rules
         subtree = Forward()
         subtreelist = Forward()
-
+        
         subtree << \
             Group(
                 (
@@ -208,7 +208,8 @@ class BranchData:
     
 
 class Tree:
-    """Basic rooted tree
+    """
+    Basic rooted tree
     
     Well suited for phylogenetic trees
     """
@@ -220,12 +221,49 @@ class Tree:
         self.defaultData = {}
         self.data = {}
         self.branchData = branchData
-    
+
+    #=========================================
+    # iterators
     
     def __iter__(self):
         """Iterate through nodes of tree"""
         return self.nodes.itervalues()
+
+
+    def preorder(self, node=None):
+        """Iterate through nodes in pre-order traversal"""
         
+        if node is None:
+            node = self.root
+
+        queue = [node]
+
+        while len(queue) > 0:
+            node = queue.pop()
+            yield node
+
+            for child in reversed(node.children):
+                queue.append(child)
+
+                
+    def postorder(self, node=None):
+        """Iterate through nodes in post-order traversal"""
+        
+        if node is None:
+            node = self.root
+
+        stack = [[node, 0]]
+
+        while len(stack) > 0:
+            node, i = stack[-1]
+
+            if i < len(node.children):
+                stack.append([node.children[i], 0])
+                stack[-2][1] += 1
+            else:
+                yield node
+                stack.pop()
+    
   
     #=============================
     # structure functions
@@ -464,11 +502,15 @@ class Tree:
                         node.data["boot"] = float(boot)
                     except ValueError:
                         # treat as node name
-                        node.name = boot.strip()
+                        name = boot.strip()
+                        if name and not node.isLeaf():
+                            node.name = name
         else:
+            data = data.strip()
+            
             # treat as name
-            if not node.isLeaf():
-                node.name = data.strip()
+            if data and not node.isLeaf():
+                node.name = data
     
     
     def writeData(self, node):
@@ -547,7 +589,8 @@ class Tree:
     
     
     def readNewick(self, filename, readData=None):
-        """Reads newick tree format from a file stream
+        """
+        Reads newick tree format from a file stream
         
         You can specify a specialized node data reader with 'readData'
         """
@@ -680,13 +723,12 @@ class Tree:
         if labelFile:
             labels = util.readStrings(labelFile)
         elif labels == None:
-            nitems = (len(file(treeFile).readlines()) + 1)/ 2
+            nitems = (len(open(treeFile).readlines()) + 1)/ 2
             labels = map(str, range(nitems))
         
         self.makeRoot()
 
-        i = 0
-        for line in file(treeFile):
+        for i, line in enumerate(open(treeFile)):
             parentid = int(line.split(" ")[0])
             
             # determine current child
@@ -712,7 +754,12 @@ class Tree:
                     self.addChild(parent, child)
                 except:
                     print i, parentid
-            i += 1
+
+        # remove unused internal nodes
+        labelset = set(labels)
+        for child in list(self.root.children):
+            if child.isLeaf() and child.name not in labelset:
+                self.remove(child)
         
         # remove redunant root
         if len(self.root.children) == 1:
@@ -885,7 +932,7 @@ def findDist(tree, name1, name2):
     return dist
         
 
-def countDescendents(node, sizes=None):
+def countDescendants(node, sizes=None):
     """Returns a dict with number of leaves beneath each node"""
     if sizes == None:
         sizes = {}
@@ -893,7 +940,7 @@ def countDescendents(node, sizes=None):
     if len(node.children) > 0:
         sizes[node] = 0
         for child in node.children:
-            countDescendents(child, sizes)
+            countDescendants(child, sizes)
             sizes[node] += sizes[child]
     else:
         sizes[node] = 1
@@ -901,13 +948,13 @@ def countDescendents(node, sizes=None):
     return sizes
 
 
-def descendents(node, lst=None):
-    """Return a list of all the descendents benath a node"""
+def descendants(node, lst=None):
+    """Return a list of all the descendants beneath a node"""
     if lst == None:
         lst = []
     for child in node.children:
         lst.append(child)
-        descendents(child, lst=lst)
+        descendants(child, lst=lst)
     return lst
 
 
@@ -932,7 +979,7 @@ def subtree(tree, node):
 
 def smallSubtrees(tree, maxsize):
     trees = []
-    sizes = countDescendents(tree.root)
+    sizes = countDescendants(tree.root)
     
     def walk(node):
         if sizes[node] <= maxsize:
@@ -1401,7 +1448,7 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
     """
     
     # first determine sizes and nodepts
-    sizes = {}          # number of descendents (leaves have size 1)
+    sizes = {}          # number of descendants (leaves have size 1)
     nodept = {}         # distance between node y-coord and top bracket y-coord
     def walk(node):
         # calculate new y-coordinate for node
@@ -1457,7 +1504,7 @@ def layoutTreeHierarchical(tree, xscale, yscale, rootx=0, rooty=0):
     """
     
     # first determine sizes and nodepts
-    sizes = {}          # number of descendents (leaves have size 1)
+    sizes = {}          # number of descendants (leaves have size 1)
     depth = {}          # how deep in tree is node
     nodept = {}         # distance between node y-coord and top bracket y-coord
     def walk(node):

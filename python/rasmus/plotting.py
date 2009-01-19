@@ -230,6 +230,16 @@ class ColorMap:
         return [int(x*255) for x in self.get(value)]
     
 
+def get_webcolor(color, maxval=1):
+    
+    colstr = "#"
+    for i in color:
+        h = hex(int(i * 255.0 / maxval))[2:]
+        if len(h) == 1:
+            h = "0" + h
+        colstr += h
+    return colstr
+
 
 def rainbowColorMap(data=None, low=None, high=None):
     if data != None:

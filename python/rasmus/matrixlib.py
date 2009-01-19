@@ -121,8 +121,87 @@ def imat2dmat(nrows, ncols, nnz, imat):
     return dmat
 
 
+def ilmat2lmat(ilmat, default=0):
+    """Converts a labeled matrix iterator (ilmat) to a dict of dicts (lmat)"""
+
+    lmat = util.Dict(2, default)
+    for r, c, v in ilmat:
+        lmat[r][c] = v
+    return lmat
+
+
+def lmat2ilmat(lmat):
+    """Converts a dict of dicts (lmat) to labeled matrix iterator (ilmat)"""
+
+    for row in lmat:
+        for col, val in row.iteritems():
+            yield row, col, val
+
+
+def ilmat2imat(ilmat, rowlabels, collabels):
+    """
+    Converts labeled matrix iterator (ilmat) to indexed matrix iterator (imat)
+    """
+
+    rowlookup = util.list2lookup(rowlabels)
+    collookup = util.list2lookup(collabels)
+
+    for r, c, v in ilmat:
+        yield rowlookup[r], collookup[c], v
+
+
+def imat2ilmat(imat, rowlabels, collabels):
+    """
+    Converts indexed matrix iterator (imat) to labeled matrix iterator (ilmat)
+    """
+
+    for i, j, v in imat:
+        yield rowlabels[i], collabels[j], v
+
+
+
+
 #=============================================================================
 # dense matrix I/O
+
+def parse_dmat_header(first_row, header):
+
+    # parse possible header
+    if header is None:
+        # auto detect header
+        if len(first_row) == 1:
+            nrows = int(first_row[0])
+            ncols = nrows
+        elif len(first_row) == 2:
+            if len(first_row) != len(rows[1]):
+                nrows = int(first_row[0])
+                ncols = int(first_row[1])
+            else:
+                raise Exception("Cannot automatically detect matrix header")
+
+        else:
+            # no header
+            # infer matric dimension
+            nrows = ncols = None
+        
+    elif header:
+        # explicitly parse header        
+        if len(first_row) == 1:
+            nrows = int(first_row[0])
+            ncols = nrows
+        elif len(first_row) == 2:
+            nrows = int(first_row[0])
+            ncols = int(first_row[1])
+        else:
+            raise Exception("Wrong number of entries in header (expected 1 or 2)")
+            
+    else:
+        # no header
+        # infer matrix dimension
+        nrows = ncols = None
+
+    return nrows, ncols
+
 
 def read_dmat(infile, header=False):
     """
@@ -132,41 +211,12 @@ def read_dmat(infile, header=False):
     """
 
     # read file
-    rows = [line.rstrip().split() for line in infile]
-    first_row = rows[0]
-
-    # parse possible header
-    if header is None:
-        # auto detect header
-        if len(first_row) == 1:
-            nrows = int(first_row[0])
-            ncols = nrows
-            rows = rows[1:]
-        elif len(first_row) == 2 and len(first_row) != len(rows[1]):
-            nrows = int(first_row[0])
-            ncols = int(first_row[1])
-            rows = rows[1:]            
-        else:
-            raise Exception("Cannot automatically detect matrix header")
-        
-    elif header:
-        # explicitly parse header        
-        if len(first_row) == 1:
-            nrows = int(first_row[0])
-            ncols = nrows
-            rows = rows[1:]            
-        elif len(first_row) == 2:
-            nrows = int(first_row[0])
-            ncols = int(first_row[1])
-            rows = rows[1:]
-        else:
-            raise Exception("Wrong number of entries in header (expected 1 or 2)")
-            
-    else:
-        # no header
-        # infer matrix dimension
-        ncols = nrows = None
-
+    rows = [line.rstrip().split() for line in infile]    
+    nrows, ncols = parse_dmat_header(rows[0], header)
+    if nrows is not None:
+        # skip header
+        rows = rows[1:]
+    
     # convert data
     data = [[float(v) for v in row] for row in rows]
     
@@ -187,6 +237,33 @@ def read_dmat(infile, header=False):
     # return data
     nnz = nrows * ncols
     return nrows, ncols, nnz, data
+
+
+def iter_dmat(infile, header=False):
+    """
+    Iterates a dense matrix
+    header -- can be True,False,None specifying whether to read a header (True)
+              or auto-detect it (None)
+
+    Returns nrows, ncols, nnz, imat (index matrix interator)
+    """
+    
+    # read file
+    rows = [line.rstrip().split() for line in infile]    
+    nrows, ncols = parse_dmat_header(rows[0], header)
+    if nrows is not None:
+        # skip header
+        nnz = nrows * ncols
+        rows = rows[1:]
+    else:
+        nnz = None
+    
+    def data():
+        for i, row in enumerate(rows):
+            for j, v in enumerate(row):
+                yield i, j, float(v)
+
+    return nrows, ncols, nnz, data()
 
 
 def write_dmat(out, dmat, square=False):
@@ -216,7 +293,16 @@ def iter_imat(infile):
     """
     
     line = infile.next()
-    nrows, ncols, nnz = map(int, line.rstrip().split())
+    tokens = line.rstrip().split()
+
+    try:
+        if len(tokens) == 3:
+            nrows, ncols, nnz = map(int, tokens)
+        elif len(tokens) == 2:
+            nrows, nnz = map(int, tokens)
+            ncols = nrows
+    except:
+        raise Exception("header error: expected (nrows, nnz) or (nrows, ncols, nnz) in first line")
 
     def data():
         for line in infile:
@@ -251,7 +337,8 @@ def write_imat(out, nrows, ncols, nnz, imat):
 def iter_rmat(infile):
     """
     Read an compressed-row matrix
-    Returns nrows, ncols, nnz, imat (index matrix iterator)
+    Columns are 1 indexed
+    Returns nrows, ncols, nnz, imat (index matrix iterator)    
     """
 
     line = infile.next()
@@ -261,8 +348,8 @@ def iter_rmat(infile):
         for i, line in enumerate(infile):
             tokens = line.split()
 
-            for i in xrange(len(tokens)-1):
-                yield i, int(tokens[i]), float(tokens[i+1])
+            for j in xrange(0, len(tokens)-1, 2):
+                yield i, int(tokens[j]) - 1, float(tokens[j+1])
 
     return nrows, ncols, nnz, data()
 
@@ -270,6 +357,7 @@ def iter_rmat(infile):
 def read_rmat(infile):
     """
     Read an compressed-row matrix
+    Columns are 1 indexed
     Returns nrows, ncols, nnz, rmat (list of dicts)
     """
 
@@ -298,11 +386,29 @@ def write_rmat(out, nrows, ncols, nnz, rmat):
 # labeled sparse matrix I/O
 
 def read_lmat(infile, delim=None, default=0):
-    """Reads a labeled sparsed matrix"""
-    
-    mat = util.Dict(2, default)
-    
+    """
+    Reads a labeled sparsed matrix
+    Returns matrix as a dict of dicts"""
+
+    return ilmat2lmat(iter_lmat(infile, delim=delim), default=default)
+
+
+def iter_lmat(infile, delim=None, default=0):
+    """
+    Read a labeled sparsed matrix
+    Returns an labeled matrix iterator, ilmat = (rowlabel, collabel, value)
+    """
+
     for line in infile:
         tokens = line.rstrip().split(delim)
-        mat[tokens[0]][tokens[1]] = float(tokens[2])
-    return mat
+        yield tokens[0], tokens[1], float(tokens[2])
+
+
+def write_lmat(out, lmat):
+    """
+    Writes a labeled sparsed matrix
+    """
+    
+    for row in lmat:
+        for col, val in lmat.iteritems():
+            out.write("%s\t%s\t%f\n" % (row, col, val))

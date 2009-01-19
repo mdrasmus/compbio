@@ -16,7 +16,7 @@ from itertools import izip, imap
 import rasmus
 from rasmus.util import *
 from rasmus.algorithms import *
-from rasmus.matrix import *
+from rasmus.matrixlib import *
 from rasmus.stats import *
 from rasmus.progress import *
 from rasmus.regionlib import *
@@ -34,6 +34,7 @@ from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, ali
 from rasmus.bio import gff, genomeio
 
 
+readTable = read_table
 
 
 def ipy():

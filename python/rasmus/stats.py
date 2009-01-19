@@ -374,7 +374,10 @@ def logfactorial(x, k=1):
 
 
 def choose(n, k):
-    if n <= 0 or k <= 0 or k > n:
+    if n == 0 and k == 0:
+        return 1.0
+        
+    if n < 0 or k < 0 or k > n:
         return 0
     
     # optimization for speed

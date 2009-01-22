@@ -17,8 +17,8 @@ import time
 
 
 # GLOBALS
-RASMUS_TIMER = None
-GLOBAL_NOTES = None
+_RASMUS_TIMER = None
+_GLOBAL_NOTES = None
 
 
 class Timer:
@@ -165,10 +165,10 @@ class Timer:
 
 
 def globalTimer():
-    global RASMUS_TIMER
-    if RASMUS_TIMER == None:
-        RASMUS_TIMER = Timer()
-    return RASMUS_TIMER
+    global _RASMUS_TIMER
+    if _RASMUS_TIMER == None:
+        _RASMUS_TIMER = Timer()
+    return _RASMUS_TIMER
     
 
 
@@ -205,13 +205,13 @@ def noteflush():
     return notfile().flush()
 
 def notefile(out = None):
-    global GLOBAL_NOTES
+    global _GLOBAL_NOTES
 
     if out == None:
         out = file("/dev/null", "w")
-    if GLOBAL_NOTES == None:
-        GLOBAL_NOTES = out
-    return GLOBAL_NOTES
+    if _GLOBAL_NOTES == None:
+        _GLOBAL_NOTES = out
+    return _GLOBAL_NOTES
 
 
 

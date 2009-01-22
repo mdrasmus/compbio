@@ -10,6 +10,9 @@ import cPickle
 from rasmus import util
 
 
+# globals
+_varset = {}
+
 
 def binsave(filename, var):
     cPickle.dump(var, util.openStream(filename, "w"), 2)
@@ -18,9 +21,8 @@ def binload(filename):
     return cPickle.load(util.openStream(filename))
 
 def varset():
-    if "varset" not in GLOBALS():
-        GLOBALS()["varset"] = {}
-    return GLOBALS()["varset"]
+    globals _varset
+    return _varset
 
 def addvar(* varnames):
     for name in varnames:

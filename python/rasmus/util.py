@@ -31,16 +31,6 @@ from itertools import imap, izip
 # Note: I had trouble using 1e1000 directly, because bytecode had trouble
 # representing infinity (possibly)
 INF = float("1e1000") 
-
-
-def GLOBALS():
-    """Maintains a global set of variables"""
-
-    # install globals root if needed
-    if not "RASMUS_GLOBALS" in globals():
-        globals()["RASMUS_GLOBALS"] = {}
-    return globals()["RASMUS_GLOBALS"]
-
    
 
 
@@ -468,7 +458,7 @@ def frange(start, end, step):
 #=============================================================================
 # simple matrix functions
 
-def makeMatrix(nrows, ncols, val = 0):
+def make_matrix(nrows, ncols, val = 0):
     mat = []
     for i in xrange(nrows):
         row = []
@@ -476,6 +466,7 @@ def makeMatrix(nrows, ncols, val = 0):
         for j in xrange(ncols):
             row.append(copy.copy(val))
     return mat
+makeMatrix = make_matrix
 
 
 def transpose(mat):
@@ -499,6 +490,12 @@ def transpose(mat):
     
 
 def submatrix(mat, rows=None, cols=None):
+    """
+    Returns a submatrix of 'mat' with only the rows and columns specified
+
+    Rows and columns will appear in the order as indicated in 'rows' and 'cols'
+    """
+    
     if rows == None:
         rows = xrange(len(mat))
     if cols == None:
@@ -1261,8 +1258,8 @@ def str2bool(val):
 
 
 
-def printDict(dic, key=lambda x: x, val=lambda x: x,
-              num=None, cmp=cmp,
+def print_dict(dic, key=lambda x: x, val=lambda x: x,
+              num=None, cmp=cmp, order=None, reverse=False,
               spacing=4, out=sys.stdout,
               format=defaultFormat, 
               justify=defaultJustify):
@@ -1273,11 +1270,15 @@ def printDict(dic, key=lambda x: x, val=lambda x: x,
     
     dic = mapdict(dic, key=key, val=val)
     items = dic.items()
-    items.sort(cmp)
+
+    if order is not None:
+        items.sort(key=order, reverse=reverse)
+    else:
+        items.sort(cmp, reverse=reverse)
     
     printcols(items[:num], spacing=spacing, out=out, format=format, 
               justify=justify)
-
+printDict = print_dict
 
 
 #=============================================================================
@@ -1385,15 +1386,13 @@ class IndentStream:
 #=============================================================================
 # file/directory functions
 #
-def listFiles(path, ext=""):
+def list_files(path, ext=""):
     """Returns a list of files in 'path' ending with 'ext'"""
     
-    if path[-1] != "/":
-        path += "/"
     files = filter(lambda x: x.endswith(ext), os.listdir(path))
     files.sort()
-    files = map(lambda x: path + x, files)
-    return files
+    return [os.path.join(path, x) for x in files]
+listFiles = list_files
 
 
 def tempfile(path, prefix, ext):
@@ -1669,19 +1668,21 @@ def print_hist(array, ndivs=20, low=None, width=None,
               cols=75, spacing=2, out=sys.stdout):
     data = list(hist(array, ndivs, low=low, width=width))
     
-    # find max bar                                                              
-    maxwidths = map(max, map2(compose(len, str), data))                         
-    maxbar = cols- sum(maxwidths) - 2 * spacing                               
-                                                                                
-    # make bars                                                                 
-    bars = []                                                                   
-    maxcount = max(data[1])                                                     
-    for count in data[1]:                                                       
-        bars.append("*" * int(count * maxbar / float(maxcount)))                
-    data.append(bars)                                                           
-                                                                                
-    printcols(zip(* data), spacing=spacing, out=out)   
+    # find max bar
+    maxwidths = map(max, map2(compose(len, str), data))
+    maxbar = cols- sum(maxwidths) - 2 * spacing
+    
+    # make bars
+    bars = []
+    maxcount = max(data[1])
+    for count in data[1]:
+        bars.append("*" * int(count * maxbar / float(maxcount)))
+    data.append(bars)
+    
+    printcols(zip(* data), spacing=spacing, out=out)
 printHist = print_hist
+
+
 
 
 # import common functions from other files, 

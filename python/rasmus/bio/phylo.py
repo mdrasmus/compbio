@@ -1232,11 +1232,12 @@ def findBranchSplits(tree):
     return splits2
 
 def findSplits(tree):
-    """Faster branch splits for a tree"""
+    """Find branch splits for a tree"""
+    
     allLeaves = set(tree.leafNames())
 
+    # find descendants
     descendants = []
-
     def walk(node):
         if node.isLeaf():
             descendants.append(set([node.name]))
@@ -1248,9 +1249,13 @@ def findSplits(tree):
         return descendants[-1]
     for child in tree.root.children:
         walk(child)
+
+    # left child's descendants immediately defines
+    # right child's descendants (by complement)
     if len(tree.root.children) == 2:
         descendants.pop()
-    
+
+    # build splits list
     splits = []
     for leaves in descendants:
         if len(leaves) > 1:
@@ -1262,6 +1267,42 @@ def findSplits(tree):
             splits.append((set1, set2))
     
     return splits
+
+
+def splitString(split, leaves=None, leafDelim=" ", splitDelim="|"):
+    """
+    Returns a string representing a split
+
+    If leaves are specified, leaf names will be displayed in that order.
+    """
+
+    if leaves is not None:
+        lookup = util.list2lookup(leaves)
+        split = (sorted(split[0], key=lambda x: lookup[x]),
+                 sorted(split[0], key=lambda x: lookup[x]))
+
+    return leafDelim.join(split[0]) + splitDelim + leafDelim.join(split[1])
+
+
+def splitBitString(split, leaves=None, char1="*", char2=".", nochar=" "):
+    """Returns a bit string representation of a split"""
+
+    if leaves is None:
+        leaves = split[0] + split[1]
+    set1, set2 = map(set, split)
+
+    chars = []
+    for leaf in leaves:
+        if leaf in set1:
+            chars.append(char1)
+        elif leaf in set2:
+            chars.append(char2)
+        else:
+            chars.append(nochar)
+
+    return "".join(chars)
+    
+    
 
 
 def robinsonFouldsError(tree1, tree2):

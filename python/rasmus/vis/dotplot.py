@@ -355,8 +355,8 @@ class Dotplot (object):
         
         last = 0
         for x, label in zip(divx, labelsx):
-            print label
-            vis.append(text(label, last, 0, x, thick, "left", "top")
+            #print label
+            vis.append(text(label, last, 0, x, thick, "left", "top"))
             last = x
 
         last = 0

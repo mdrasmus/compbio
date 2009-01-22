@@ -780,6 +780,65 @@ def getBranchZScores(rates, params):
     return zscores
 
 
+#=============================================================================
+# add implied speciation nodes to a gene tree
+
+
+
+def addSpecNode(node, snode, tree, recon, events):
+    """
+    insert new speciation node above gene node 'node' from gene tree 'tree'
+
+    new node reconciles to species node 'snode'.  Modifies recon and events
+    accordingly
+    """
+    
+    newnode = treelib.TreeNode(tree.newName())
+    parent = node.parent
+    
+    # find index of node in parent's children
+    nodei = parent.children.index(node)
+    
+    # insert new node into tree
+    tree.addChild(parent, newnode)
+    parent.children[nodei] = newnode
+    parent.children.pop()
+    tree.addChild(newnode, node)
+    
+    # add recon and events info
+    recon[newnode] = snode
+    events[newnode] = "spec"
+
+    return newnode
+
+
+def addImpliedSpecNodes(tree, stree, recon, events):
+    """
+    adds speciation nodes to tree that are implied but are not present
+    because of gene losses
+    """
+    
+    addedNodes = []
+
+    for node in list(tree):
+        # process this node and the branch above it
+
+        # if no parent, then no implied speciation nodes above us
+        if node.parent is None:
+            continue
+
+        # determine starting and ending species
+        sstart = recon[node]
+        send = recon[node.parent]
+
+        # the species path is too short to have implied speciations
+        if sstart == send:
+            continue
+
+        parent = node.parent
+
+        # determine species path of this gene branch (node, node->parent)
+        snode = sstart.parent
 
 
 

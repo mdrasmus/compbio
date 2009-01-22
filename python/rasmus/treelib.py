@@ -1103,7 +1103,7 @@ def removeSingleChildren(tree):
         tree.remove(oldroot)
         tree.root.dist += oldroot.dist
     
-    return map(lambda x: x.name, removed)
+    return removed
 
 
 def removeExposedInternalNodes(tree, leaves=None):

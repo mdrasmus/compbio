@@ -57,7 +57,11 @@ if pyparsing:
 
 
         # terminal rules
-        name    = Word(alphanums + "_" + "-" + "." + "+")
+        # name = Word(alphanums + "_" + "-" + "." + "+")
+        name_part  = Word(alphanums + "_" + "-" + "." + "+")
+        name_part2 = Forward()        
+        name_part2 << name_part + Optional(Word(" ") + name_part2)
+        name = Combine(name_part + Optional(Word(" ") + name_part2))
         fnumber = Combine(Word("+-"+nums, nums) + 
                           Optional(point + Optional(Word(nums))) +
                           Optional(e + Word("+-"+nums, nums)))
@@ -1152,6 +1156,37 @@ def subtreeByLeafNames(tree, leafNames, newCopy=False):
     return tree
 
 
+def reorderTree(tree, tree2):
+    """Reorders the branches of tree to match tree2"""
+
+    leaf_lookup = util.list2lookup(tree2.leafNames())
+
+    def mean(lst):
+        return sum(lst) / float(len(lst))
+    
+    def walk(node):
+        if node.isLeaf():
+            return set([node.name])
+        else:
+            leaf_sets = []
+
+            for child in node.children:
+                leaf_sets.append(walk(child))
+
+            scores = [mean(util.mget(leaf_lookup, l)) for l in leaf_sets]
+            rank = util.sortrank(scores)
+            node.children = util.mget(node.children, rank)
+
+            # return union
+            ret = leaf_sets[0]
+            for l in leaf_sets[1:]:
+                ret = ret.union(l)
+            return ret
+
+    walk(tree.root)
+    
+
+
 #=============================================================================
 # parent tables
 
@@ -1782,4 +1817,9 @@ if __name__ == "__main__":
     infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)r;")
     tree = readTree(infile)
     tree.write(rootData=True)
-    
+
+    infile = StringIO("((d:1,c:2)x:3,(b:4,a:5)y:6)r;")
+    tree2 = readTree(infile)
+
+    reorderTree(tree, tree2)
+    drawTree(tree, maxlen=5)

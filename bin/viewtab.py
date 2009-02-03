@@ -22,6 +22,10 @@ options = [
     ["d:", "delim=", "delim", "<delimiter>",
      {"single": True,
       "default": "\t"}],
+    ["H:", "header=", "header", "",
+     {"single": True,
+      "parser": int,
+      "default": 0}],
     ["t", "table", "table", "",
      {"single": True}]
 ]
@@ -40,11 +44,19 @@ if conf["table"]:
     tab.writePretty()
 else:
     mat = []
-    for line in infile:
+    headers = []
+    
+    for i, line in enumerate(infile):
         tokens = line.rstrip().split(conf["delim"])
         mat.append(tokens)
 
+        if i < conf["header"]:
+            headers.append(tokens)
+
         if conf["rows"] > 0 and len(mat) >= conf["rows"]:
+            if len(headers) > 0 and i > len(mat):
+                mat = headers + mat
+            
             util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
             mat = []
 

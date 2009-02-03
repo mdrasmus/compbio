@@ -215,7 +215,7 @@ clearmarks = vis.clearMarks
 if "reroot" in conf:
     if conf["reroot"].isdigit():
         conf["reroot"] = int(conf["reroot"])
-    tree = treelib.reroot(tree, conf["reroot"])
+    tree = treelib.reroot(tree, conf["reroot"], newCopy=False)
     vis.setupTree(conf, tree)
 
 

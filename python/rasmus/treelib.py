@@ -20,7 +20,7 @@ from rasmus import util
 
 # newick parsing support
 try:
-    import pyparsing
+    from rasmus import pyparsing
 except:
     pyparsing = None
 
@@ -40,10 +40,11 @@ sys.setrecursionlimit(4000)
 if pyparsing:
     def makeNewickParser():
         # pyparsing
-        from pyparsing import Combine, Optional, Literal, CaselessLiteral, \
-                           Word, alphanums, \
-                           nums, oneOf, Group, Dict, Forward, \
-                           ParseResults, CharsNotIn, ZeroOrMore
+        from rasmus.pyparsing import Combine, Optional, Literal, \
+             CaselessLiteral, \
+             Word, alphanums, \
+             nums, oneOf, Group, Dict, Forward, \
+             ParseResults, CharsNotIn, ZeroOrMore
 
 
         # literals

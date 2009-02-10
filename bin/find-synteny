@@ -3,6 +3,8 @@
 # python libs
 import os
 import sys
+import optparse
+from itertools import chain
 
 # rasmus libs
 from rasmus import util
@@ -12,397 +14,85 @@ from rasmus.regionlib import Region
 # rasmus.bio libs
 from rasmus.bio import gff
 
-
-options = [
-    ["o:", "orth=", "orth", "<ortholog file>", {"req": True}],
-    ["g:", "gff=", "gff", "<gff file>", {"req": True}],
-    ["f:", "features=", "features", "<feature1>,<feature2>,...",
-     {"single": True,
-      "default": None}]
-]
+from rasmus.bio import synteny
+import rasmus.bio.synteny.strict
 
 
-conf = util.parseOptions(sys.argv, options, resthelp="<species1> <species2>")
+usage = "usage: %prog [options] SPECIES1 SPECIES2"
+o = optparse.OptionParser(usage=usage)
 
-if len(conf["REST"]) != 2:
-    print >>sys.stderr, "give two species"
-    sys.exit(1)
+o.add_option("-o", "--orth", dest="orth", metavar="ORTHOLOG_FILE",
+             action="append",
+             help="ortholog clustering file")
+o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
+             action="append",
+             help="genes are regions to compute synteny")
+o.add_option("-f", "--features", dest="features", metavar="FEATURES",
+             help="features to use from GFF files")
 
-species1, species2 = conf["REST"]
 
 
-# read gff
-regions1 = []
-regions2 = []
-if conf["features"] is None:
-    features = []
-else:
-    features = set(conf["features"].split(","))
+#=============================================================================
 
-for f in conf["gff"]:
-    for region in gff.iterGff(f):
-        if len(features) > 0:
-            if region.feature not in features:
-                continue
-        
+
+def read_regions(gff_file, species1, species2, regions1, regions2,
+                 features=set()):
+    """Read a GFF file and segregate regions by species"""
+    
+    for region in gff.iterGff(gff_file):
+        if len(features) > 0 and region.feature not in features:
+            continue
+
         if region.species == species1:
             regions1.append(region)
         elif region.species == species2:
-            regions2.append(region)
-
-if len(regions1) == 0 or len(regions2) == 0:
-    print >>sys.stderr, "no regions for one of the species"
+            regions2.append(region)    
 
 
-class RegionDb (object):
-    """Organize regions for easy access"""
+def main(argv):
     
-    # TODO: this is starting to look like my Matching class in genomeutil :)
-    
-    def __init__(self, regions):
-        
-        self.species = {}
-        self.regions = {}
+    # parse options
+    conf, args = o.parse_args(argv)
 
-        # sort regions into chromosomes
-        for region in regions:
-            sp = self.species.setdefault(region.species, {})
-            chrom = sp.setdefault(region.seqname, [])
-            chrom.append(region)
-            
-            if "ID" in region.data:
-                self.regions[region.data["ID"]] = region
-            
-        # sort each chromosome by start position
-        for sp, chroms in self.species.iteritems():
-            for chrom, regs in chroms.iteritems():
-                regs.sort(key=lambda x: x.start)
+    # get species
+    if len(args) != 2:
+        print >>sys.stderr, "give two species"
+        sys.exit(1)
+    species1, species2 = args
 
-        # make index lookups
-        self.positions = {}
-        for sp, chroms in self.species.iteritems():
-            self.positions[sp] = {}
-            for chrom, regs in chroms.iteritems():
-                for i, reg in enumerate(regs):
-                    self.positions[reg.data["ID"]] = (sp, chrom, i)
-regionlib.RegionDb = RegionDb
-                
-
-if 1:
-    regiondb = regionlib.RegionDb(regions1 + regions2)
-    
-    chroms1 = regiondb.species[species1]
-    chroms2 = regiondb.species[species2]
-
-
-# read orthologs
-orths = []
-for f in conf["orth"]:
-    for row in util.DelimReader(f):
-        if ((row[0] == species1 and 
-             row[1] == species2) or \
-            (row[0] == species2 and 
-             row[1] == species1)) and \
-            row[2] in regiondb.regions and \
-            row[3] in regiondb.regions:
-            orths.append(row)
-
-if 1:
-
-    orthdb = util.Dict(default=set())
-    for row in orths:
-        orthdb[row[2]].add(row[3])
-        orthdb[row[3]].add(row[2])
-        
-    inpardb = util.Dict(default=set())
-    for gene in orthdb:
-        others = orthdb[gene]
-        inpardb[gene] = orthdb[iter(others).next()]        
-    
-        
-
-class SyntenyBlock (object):
-    def __init__(self, region1, region2):
-        self.region1 = region1
-        self.region2 = region2
-        self.dir = region1.strand * region2.strand
-        self.orths = []
-
-    def add_orth(self, orth, direction=None):
-        """Initialize synteny block with an ortholog pair"""
-        self.orths.append(orth)
-
-        if direction is not None:
-            self.dir = direction
-
-
-    def can_append_orth(self, db, orth, orthdb={}):
-        """Try to add an ortholog pair to the synteny block.
-           returns True iff orth was appended.
-        """
-        
-        assert len(self.orths) > 0
-
-        current_left2 = db.positions[self.orths[-1][1][0]][2]
-        current_species2, current_chrom2, current_right2 = \
-                              db.positions[self.orths[-1][1][-1]]
-            
-        species2, chrom2, left2 = db.positions[orth[1][0]]
-        species2, chrom2, right2 = db.positions[orth[-1][0]]
-
-        lst2 = db.species[current_species2][current_chrom2]
-
-        # must be on same species and chrom
-        if species2 != current_species2 or \
-           chrom2 != current_chrom2:
-            return 0
-        
-        
-        if self.dir == 0:
-            # block has no direction yet, check both
-            
-            if left2 > current_right2:                
-                ind = current_right2 + 1
-
-                # skip over losses in species2
-                while True:            
-                    if ind >= len(lst2):
-                        return 0
-                    gene2 = lst2[ind].data["ID"]
-                    if gene2 in orthdb:
-                        break
-                    ind += 1
-                    
-                # first non-loss must be in our orth
-                if gene2 in orth[1]:                
-                    return 1
-                else:
-                    return 0
-                
-            elif right2 < current_left2:
-                ind = current_left2 - 1
-
-                # skip over losses in species2
-                while True:            
-                    if ind < 0:
-                        return 0
-                    gene2 = lst2[ind].data["ID"]
-                    if gene2 in orthdb:
-                        break
-                    ind -= 1
-                    
-                # first non-loss must be in our orth
-                if gene2 in orth[1]:                
-                    return -1
-                else:
-                    return 0
-
-            else:
-                return 0
-
-        elif self.dir == 1:
-            # block has direction 1
-            
-            # check direction
-            if len(orth[0]) == len(orth[1]) == 1:
-                s1 = db.regions[orth[0][0]].strand
-                s2 = db.regions[orth[1][0]].strand
-                if s1 * s2 != 1:
-                    return 0
-
-            ind = current_right2 + 1
-
-            # skip over losses in species2
-            while True:            
-                if ind >= len(lst2):
-                    return 0
-                gene2 = lst2[ind].data["ID"]
-                if gene2 in orthdb:
-                    break
-                ind += 1
-                    
-            # first non-loss must be in our orth
-            if gene2 in orth[1]:                
-                return 1
-            else:
-                return 0
-            
-        elif self.dir == -1:
-            # block has direction -1
-
-            # check direction matches
-            if len(orth[0]) == len(orth[1]) == 1:
-                s1 = db.regions[orth[0][0]].strand
-                s2 = db.regions[orth[1][0]].strand
-                if s1 * s2 != -1:
-                    return 0                    
-
-            ind = current_left2 - 1
-
-            # skip over losses in species2
-            while True:            
-                if ind < 0:
-                    return 0
-                gene2 = lst2[ind].data["ID"]
-                if gene2 in orthdb:
-                    break
-                ind -= 1
-                
-            # first non-loss must be in our orth
-            if gene2 in orth[1]:                
-                return -1
-            else:
-                return 0
-        else:
-            raise Exception("unknown direction '%d'" % self.dir)
-
-
-
-    def recalc_regions(self, regiondb):
-        """Recalculate the regions of a synteny block from its
-           orthologs pairs"""
-
-        self.region1.start = regiondb.regions[self.orths[0][0][0]].start
-        self.region1.end = regiondb.regions[self.orths[-1][0][-1]].end
-
-        if self.dir == 1 or self.dir == 0:
-            self.region2.start = regiondb.regions[self.orths[0][1][0]].start
-            self.region2.end = regiondb.regions[self.orths[-1][1][-1]].end
-        else:
-            self.region2.start = regiondb.regions[self.orths[-1][1][0]].start
-            self.region2.end = regiondb.regions[self.orths[0][1][-1]].end
-
-
-
-def make_orth(db, genes1, genes2):
-    genes1 = list(genes1)
-    genes2 = list(genes2)
-    genes1.sort(key=lambda x: db.regions[x].start)
-    genes2.sort(key=lambda x: db.regions[x].start)    
-    return (genes1, genes2)
-
-        
-
-
-def is_contig(db, genes):
-    if len(genes) > 1:
-        pos = [db.positions[i] for i in genes if i in db.regions]
-
-        # ensure hits are on same chromosome
-        if not util.equal(* util.cget(pos, 1)):
-            return False
-
-        ind = util.cget(pos, 2)
-        ind.sort()
-
-        #print >>sys.stderr, ind, pos
-
-        i = ind[0]
-        for j in ind[1:]:
-            if j != i+1:
-                return False
-            i += 1
-        #print >>sys.stderr, ind
-
-    return True
-
-
-def is_orth_contig(db, orth):
-    return is_contig(db, orth[0]) and is_contig(db, orth[1])
-
-def orth_regions(db, orth):
-    start1 = min(db.regions[i].start for i in orth[0])
-    end1 = max(db.regions[i].end for i in orth[0])
-    start2 = min(db.regions[i].start for i in orth[0])
-    end2 = max(db.regions[i].end for i in orth[0])
-    gene1 = db.regions[orth[0][0]]
-    gene2 = db.regions[orth[1][0]]
-    if len(orth[0]) == 1:
-        strand1 = gene1.strand
+    # determine features
+    if conf.features is None:
+        features = []
     else:
-        strand1 = 0
-    if len(orth[1]) == 1:
-        strand2 = gene2.strand
-    else:
-        strand2 = 0
-    
-    return Region(gene1.species, gene1.seqname, "synteny",
-                  start1, end1, strand1), \
-           Region(gene2.species, gene2.seqname, "synteny",
-                  start2, end2, strand2)
+        features = set(conf.features.split(","))
 
-if 1:
-    blocks = []
-    for chname1, chrom1 in chroms1.iteritems():
-        # skip empty chromosomes
-        if len(chrom1) == 0:
-            continue
+    # read gff regions
+    regions1 = []
+    regions2 = []
+    for gff_file in conf.gff:
+        read_regions(gff_file, species1, species2, regions1, regions2,
+                     features=features)
 
-        # start a new block
-        need_new_block = True
-        loss_streak = []
-        for i, gene1 in enumerate(chrom1):
-            names2 = orthdb[gene1.data["ID"]]
+    if len(regions1) == 0 or len(regions2) == 0:
+        print >>sys.stderr, "no regions for one of the species"
 
-            # no orthologs, start a loss streak
-            if len(names2) == 0:
-                #need_new_block = True
-                loss_streak.append(make_orth(regiondb, [gene1.data["ID"]], []))
-                continue
-            names1 = inpardb[gene1.data["ID"]]            
-            orth = make_orth(regiondb, names1, names2)
-            
-            # orthologs are not contiguous, stop block
-            if not is_orth_contig(regiondb, orth):
-                loss_streak = []
-                need_new_block = True
-                continue
+    all_regions = set(x.data["ID"] for x in chain(regions1, regions2))
 
-            # try to add to existing block
-            if not need_new_block:
-                block = blocks[-1]
+    # read orthologs
+    orths = []
+    for f in conf.orth:
+        for row in util.DelimReader(f):
+            if ((row[0] == species1 and 
+                 row[1] == species2) or \
+                (row[0] == species2 and 
+                 row[1] == species1)) and \
+                row[2] in all_regions and \
+                row[3] in all_regions:
+                orths.append((row[2], row[3]))
 
-                # just continue if we are still in the last ortholog pair
-                if orth == block.orths[-1]:
-                    continue
-                
-                direction = block.can_append_orth(regiondb, orth, orthdb)
-                if direction == 0:
-                    loss_streak = []
-                    need_new_block = True
-                else:
-                    for loss in loss_streak:
-                        block.add_orth(loss, direction)
-                    loss_streak = []
-                    block.add_orth(orth, direction)
+    blocks = synteny.strict.find_synteny(species1, species2,
+                                         regions1, regions2, orths)
 
-            # start a new block
-            if need_new_block:
-                loss_streak = []
-                if len(blocks) > 0:
-                    blocks[-1].recalc_regions(regiondb)
-                blocks.append(SyntenyBlock(* orth_regions(regiondb, orth)))
-                blocks[-1].add_orth(orth)
-                need_new_block = False
+    synteny.write_synteny_blocks(sys.stdout, blocks)
 
-        if len(blocks) > 0:
-            blocks[-1].recalc_regions(regiondb)
-
-
-# write blocks
-if 1:
-    for block in blocks:
-        print "\t".join(map(str, [
-                            block.region1.species,
-                            block.region1.seqname,
-                            block.region1.start,
-                            block.region1.end,
-                            block.region2.species,
-                            block.region2.seqname,
-                            block.region2.start,
-                            block.region2.end,
-                            block.dir]))
-
-
-
-
+main(sys.argv[1:])

@@ -172,10 +172,18 @@ def regionLookup(regions, key="ID"):
     lookup = {}
 
     for region in regions:
-        if key in region.data:
-            rkey = region.data[key]
+        rkey = None
+        
+        if isinstance(key, basestring):
+            if key in region.data:
+                rkey = region.data[key]
+        else:
+            rkey = key(region)
+
+        if rkey is not None:
             assert rkey not in lookup, Exception("duplicate key '%s'" % rkey)
             lookup[rkey] = region
+            
 
     return lookup
 
@@ -188,21 +196,59 @@ class RegionDb (object):
     
     def __init__(self, regions):
         
-        self.species = {}
-        self.regions = {}
-    
+        self.sp2chroms = {} # {species -> {chrom -> regions sorted by start}}
+        self.regions = {}   # {region_id -> region}
+        self.positions = {} # {region_id -> (species, chrom, position)}
+        
+
+        # sort regions into chromosomes
         for region in regions:
-            sp = self.species.setdefault(region.species, {})
+            sp = self.sp2chroms.setdefault(region.species, {})
             chrom = sp.setdefault(region.seqname, [])
             chrom.append(region)
-            
+
+            # record region id
             if "ID" in region.data:
                 self.regions[region.data["ID"]] = region
             
-    
-        for sp, chroms in self.species.iteritems():
+        # sort each chromosome by start position
+        for sp, chroms in self.sp2chroms.iteritems():
             for chrom, regs in chroms.iteritems():
                 regs.sort(key=lambda x: x.start)
+
+        # make index lookups
+        for sp, chroms in self.sp2chroms.iteritems():
+            self.positions[sp] = {}
+            for chrom, regs in chroms.iteritems():
+                for i, reg in enumerate(regs):
+                    self.positions[reg.data["ID"]] = (sp, chrom, i)
+
+
+    def has_species(self, species):
+        return species in self.sp2chroms
+
+    def get_chroms(self, species):
+        """Get list of chromosomes for a given species"""
+        return self.sp2chroms[species]
+
+    def get_regions(self, species, chrom):
+        return self.sp2chroms[species][chrom]
+
+    def get_region(self, regionid):
+        """Returns the region with regionid""" 
+        return self.regions[regionid]
+
+    def has_region(self, regionid):
+        return regionid in self.regions
+
+    def get_region_pos(self, regionid):
+        """Returns position of region along chromosome"""
+        return self.positions[regionid][2]
+
+    def get_region_pos_full(self, regionid):
+        """Returns (species, chrom, position) of a region"""
+        reg = self.regions[regionid]
+        return (reg.species, reg.seqname, self.positions[regionid][2])
 
 
 class EndPoint:

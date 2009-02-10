@@ -808,20 +808,29 @@ def clampfunc(low, high):
     return lambda x: clamp(x, low, high)
 
 
-def compose(* funcs):
+
+def compose2(f, g):
+    """
+    Compose two functions into one
+
+    compose2(f, g)(x) <==> f(g(x))
+    """
+    return lambda *args, **kargs: f(g(*args, **kargs))
+    
+
+def compose(*funcs):
     """Composes two or more functions into one function
     
        example:
-       compose(f,g)(x) <==> f(g(x))
+       compose(f,g,h,i)(x) <==> f(g(h(i(x))))
     """
-    
-    def compose2(f, g):
-        return lambda x: f(g(x))
-    
-    f = funcs[-1]
-    for i in xrange(len(funcs)-2, -1, -1):
-        f = compose2(funcs[i], f)
+
+    funcs = reversed(funcs)
+    f = funcs.next()
+    for g in funcs:
+        f = compose2(g, f)
     return f
+
 
 def overlap(a, b, x, y, inc=True):
     """

@@ -171,10 +171,12 @@ def drawEvents(canvas, tree, coords, events, losses,
 
 def drawScale(x, y, length, xscale, fontSize, canvas=None):
     assert canvas != None
+
+    color = (0,0,0)
     
-    canvas.line(x, y, x + length * xscale, y)
-    canvas.line(x, y+1, x, y-1)
-    canvas.line(x + length * xscale, y+1, x + length * xscale, y-1)
+    canvas.line(x, y, x + length * xscale, y, color=color)
+    canvas.line(x, y+1, x, y-1, color=color)
+    canvas.line(x + length * xscale, y+1, x + length * xscale, y-1, color=color)
     canvas.text("%.3f" % length, x, y-1, fontSize)
     
 

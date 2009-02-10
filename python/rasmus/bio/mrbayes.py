@@ -47,7 +47,12 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
     # write input file
-    writeNexus(file(nexfilename, "w"), names, aln.values(), seqtype, options)
+    out = file(nexfilename, "w")
+    writeNexus(out, names, aln.values(), seqtype, options)
+
+    # write options
+    writeMrbayesOptions(out, options, seqtype=format)
+    out.close()
     
     # exec mrbayes
     if verbose:
@@ -110,8 +115,7 @@ matrix
 ;
 end;
 """
-    # write options
-    writeMrbayesOptions(out, options, seqtype=format)
+    
 
 
 
@@ -252,3 +256,4 @@ def readNexusConTree(infile):
                 return tree
     raise Exception("No tree found in output file")
 
+ 

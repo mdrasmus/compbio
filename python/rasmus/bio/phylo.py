@@ -780,6 +780,65 @@ def getBranchZScores(rates, params):
     return zscores
 
 
+#=============================================================================
+# add implied speciation nodes to a gene tree
+
+
+
+def addSpecNode(node, snode, tree, recon, events):
+    """
+    insert new speciation node above gene node 'node' from gene tree 'tree'
+
+    new node reconciles to species node 'snode'.  Modifies recon and events
+    accordingly
+    """
+    
+    newnode = treelib.TreeNode(tree.newName())
+    parent = node.parent
+    
+    # find index of node in parent's children
+    nodei = parent.children.index(node)
+    
+    # insert new node into tree
+    tree.addChild(parent, newnode)
+    parent.children[nodei] = newnode
+    parent.children.pop()
+    tree.addChild(newnode, node)
+    
+    # add recon and events info
+    recon[newnode] = snode
+    events[newnode] = "spec"
+
+    return newnode
+
+
+def addImpliedSpecNodes(tree, stree, recon, events):
+    """
+    adds speciation nodes to tree that are implied but are not present
+    because of gene losses
+    """
+    
+    addedNodes = []
+
+    for node in list(tree):
+        # process this node and the branch above it
+
+        # if no parent, then no implied speciation nodes above us
+        if node.parent is None:
+            continue
+
+        # determine starting and ending species
+        sstart = recon[node]
+        send = recon[node.parent]
+
+        # the species path is too short to have implied speciations
+        if sstart == send:
+            continue
+
+        parent = node.parent
+
+        # determine species path of this gene branch (node, node->parent)
+        snode = sstart.parent
 
 
 
@@ -1232,11 +1291,12 @@ def findBranchSplits(tree):
     return splits2
 
 def findSplits(tree):
-    """Faster branch splits for a tree"""
+    """Find branch splits for a tree"""
+    
     allLeaves = set(tree.leafNames())
 
+    # find descendants
     descendants = []
-
     def walk(node):
         if node.isLeaf():
             descendants.append(set([node.name]))
@@ -1248,9 +1308,13 @@ def findSplits(tree):
         return descendants[-1]
     for child in tree.root.children:
         walk(child)
+
+    # left child's descendants immediately defines
+    # right child's descendants (by complement)
     if len(tree.root.children) == 2:
         descendants.pop()
-    
+
+    # build splits list
     splits = []
     for leaves in descendants:
         if len(leaves) > 1:
@@ -1262,6 +1326,42 @@ def findSplits(tree):
             splits.append((set1, set2))
     
     return splits
+
+
+def splitString(split, leaves=None, leafDelim=" ", splitDelim="|"):
+    """
+    Returns a string representing a split
+
+    If leaves are specified, leaf names will be displayed in that order.
+    """
+
+    if leaves is not None:
+        lookup = util.list2lookup(leaves)
+        split = (sorted(split[0], key=lambda x: lookup[x]),
+                 sorted(split[0], key=lambda x: lookup[x]))
+
+    return leafDelim.join(split[0]) + splitDelim + leafDelim.join(split[1])
+
+
+def splitBitString(split, leaves=None, char1="*", char2=".", nochar=" "):
+    """Returns a bit string representation of a split"""
+
+    if leaves is None:
+        leaves = split[0] + split[1]
+    set1, set2 = map(set, split)
+
+    chars = []
+    for leaf in leaves:
+        if leaf in set1:
+            chars.append(char1)
+        elif leaf in set2:
+            chars.append(char2)
+        else:
+            chars.append(nochar)
+
+    return "".join(chars)
+    
+    
 
 
 def robinsonFouldsError(tree1, tree2):

@@ -53,6 +53,8 @@ o.add_option("--len", dest="len",
              help="display branch lengths")
 o.add_option("-r", "--reroot", dest="reroot",
              metavar="<branch to root tree>")
+o.add_option("-O", "--order", dest="order",
+             metavar="<branch order newick file>")
 o.add_option("-c", "--colormap", dest="colormap",
              metavar="<color map file>")
 o.add_option("--rootby", dest="rootby",
@@ -110,6 +112,11 @@ if options.stree:
 else:
     stree = None
 
+if options.order:
+    order_tree = treelib.readTree(options.order)
+else:
+    order_tree = None
+
 if options.colormap:
     colormap = treelib.readTreeColorMap(options.colormap)
 else:
@@ -154,8 +161,12 @@ def processTree(tree):
                             newCopy=False)
     
     elif options.reroot is not None:
-        tree = treelib.reroot(tree, options.reroot)
-        
+        treelib.reroot(tree, options.reroot, newCopy=False)
+
+
+    if order_tree:
+        treelib.reorderTree(tree, order_tree)
+
     
     if options.hist or options.hashes:
         # only count the tree in histogram mode
@@ -323,67 +334,3 @@ if options.hashes:
     for thash in hashes:
         print thash
 
-'''
-options = [
-#  ["t:", "tree=", "tree", "<newick file>",
-#    {"default": []}],
-  ["l:", "scale=", "scale", "<scaling>",
-    {"default": 20,
-     "single": True,
-     "parser": float}],
-  ["m:", "minlen=", "minlen", "<minimum branch length>",
-    {"default": 1,
-     "single": True,
-     "parser": int}],  
-  ["M:", "maxlen=", "maxlen", "<maximum branch length>",
-    {"default": 10000,
-     "single": True,
-     "parser": int}],
-  ["i", "hist", "hist", "",  
-    {"single": True,
-     "help": "output histogram of tree topologies"}],
-  ["", "histsplit", "histsplit", "",  
-    {"single": True,
-     "help": "output histogram of tree splits"}],
-  ["", "hashes", "hashes", "",
-    {"single": True}], 
-  ["n", "names", "names", "",
-    {"single": True,
-     "help": "display internal node names"}],
-  ["", "snames", "snames", "",
-    {"single": True,
-     "help": "display species names"}],
-  ["N", "newick", "newick", "",
-    {"single": True,
-     "help": "write newick format"}],
-  ["", "len", "len", "",
-    {"single": True,
-     "help": "display branch lengths"}],
-  ["r:", "reroot=", "reroot", "<branch to root tree>",
-    {"single": True}],
-  ["c:", "colormap=", "colormap", "<color map file>",
-    {"single": True}],
-  ["", "rootby=", "rootby", "dup|loss|duploss",
-    {"single": True,
-     "default": "duploss"}],
-  ["d", "dump", "dump", "",
-    {"single": True,
-     "help": "covert to easy to parse format"}],
-  ["H", "headings", "headings", "",
-    {"single": True,
-     "help": "show heading information above each tree"}],
-  ["g:", "graphical=", "graphical", "<filename>|-",
-    {"single": True}],
-  ["G", "default-graphical", "default-graphical", "",
-    {"single": True}],
-  ["e", "events", "events", "",
-    {"single": True}],
-  ["", "paml-labels", "paml-labels", "",
-   {"single": True}],
-  ["", "trees=", "trees", "{trees}",
-   {"single": True,
-    "parser": util.shellparser,
-    "default": []}]
-] + genomeutil.options
-
-'''

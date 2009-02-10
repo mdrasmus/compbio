@@ -23,6 +23,7 @@ from rasmus.bio.synteny import read_synteny_blocks as readSyntenyBlocks
 class Plot (object):
     def __init__(self, regions1, regions2, hits, hitnames=True, 
                  style="line", color=(0, 0, 0),
+                 fill_color=None,
                  trace_color=(0, 1, 1, .2),
                  selfhits=True, name=None):
         self.name = name
@@ -30,6 +31,7 @@ class Plot (object):
         self.regions2 = regions2
         self.style = style
         self.color = color
+        self.fill_color = fill_color
         self.trace_color = trace_color
         self.selfhits = selfhits
         
@@ -95,6 +97,13 @@ class Plot (object):
                                 vis.extend([s1, e2, e1, s2])
                         elif self.style == "box":
                             vis.append(shapes.box(s1, s2, e1, e2, fill=False))
+
+                            if self.fill_color:
+                                vis.append(color(*self.fill_color))
+                                vis.append(shapes.box(s1, s2, e1, e2,
+                                                      fill=True))
+                                vis.append(color(*self.color))
+                            
                         else:
                             raise Exception("unknown plot style '%s'" % self.style)
             

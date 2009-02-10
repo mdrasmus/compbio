@@ -274,7 +274,7 @@ def write_dmat(out, dmat, square=False):
         assert len(dmat) == len(dmat[0])
         out.write("%d\n" % len(dmat))
     else:
-        out.write("%d\t%d\n" % (len(dmat), len(dat[0])))
+        out.write("%d\t%d\n" % (len(dmat), len(dmat[0])))
 
     # write data
     for row in dmat:

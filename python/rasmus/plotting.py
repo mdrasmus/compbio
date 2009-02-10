@@ -66,9 +66,11 @@ def rplot_end(show=False):
 
 
 def rplot(func, *args, **kargs):
-    """Wrapper for plotting with R.
+    """
+    Wrapper for plotting with R.
 
-       Makes sensible plot labels and manages pdf plotting"""
+    Makes sensible plot labels and manages pdf plotting
+    """
     
     global _rplot_pdf, _rplot_temp
     

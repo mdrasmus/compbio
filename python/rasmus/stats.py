@@ -225,39 +225,129 @@ def smooth(vals, radius):
 
 
 
-def iter_window(x, xradius):
+def iter_window_index(x, xdist, esp=None):
+    """
+    iterates a sliding window over x with radius xradius
+
+    returns an iterator over list of indices in x that represent windows
+    
+    x must be sorted least to greatest
+    """
+
+    vlen = len(x)
+    #if esp is None:
+    #    esp = min(x[i+1] - x[i] for i in range(vlen-1)
+    #              if x[i+1] - x[i] > 0) / 2.0
+    
+    # simple case
+    if vlen == 0:
+        return
+    
+    start = x[0]
+    end = x[-1]
+    window = [0]
+    
+    low = start
+    high = start + xdist
+    lowi = 0 # inclusive
+    highi = 0 # inclusive
+
+    # move up high boundary
+    while highi+1 < vlen and x[highi+1] < high:
+        highi += 1
+
+    yield (lowi, highi, low, high)
+    
+    while highi+1 < vlen:
+        low_step = x[lowi] - low    # dist until expell
+        high_step = x[highi+1] - high # dist until include
+
+        # advance though duplicates
+        if low_step == 0:
+            lowi += 1
+            continue
+        
+        if high_step == 0:
+            highi += 1
+            continue
+
+        # detrmine new low high boundary
+        if low_step <= high_step:
+            low = x[lowi] #+ min(esp, (high_step - low_step) / 2.0)
+            high = low + xdist            
+            lowi += 1
+            
+        if high_step <= low_step:
+            highi += 1
+            if highi >= vlen: break
+            high = x[highi] #+ min(esp, (low_step - high_step) / 2.0)
+            low = high - xdist
+
+        assert abs((high - low) - xdist) < .001, (low, high)
+        
+        yield (lowi, highi, low, high)
+
+
+def iter_window_index_step(x, size, step, minsize=0):
+
+    vlen = len(x)
+    start = x[0]
+    end = x[-1]
+
+    low = start
+    high = start + size
+    i = 1
+
+    lowi = 0
+    highi = 0
+    
+    # move up high boundary
+    while highi+1 < vlen and x[highi+1] < high:
+        highi += 1
+
+    while highi < vlen and high < end:
+        if highi - lowi >= minsize:
+            yield lowi, highi, low, high
+        low = start + i * step
+        high = low + size
+        i += 1
+
+        # move up low boundary
+        while lowi < vlen and x[lowi] < low:
+            lowi += 1
+
+        # move up high boundary
+        while highi+1 < vlen and x[highi+1] < high:
+            highi += 1
+        
+    
+
+def iter_window(x, xdist, func=lambda win: win, minsize=0):
     """
     iterates a sliding window over x with radius xradius
     
     x must be sorted least to greatest
     """
 
-    vlen = len(x)
+    for lowi, highi, low, high in iter_window_index(x, xsize):
+        if highi - lowi >= minsize:
+            yield (high + low)/2.0, func(x[lowi:highi])
+
+
+def iter_window_step(x, width, step, func=lambda win: win, minsize=0):
+    """
+    iterates a sliding window over x with width 'width'
     
-    # simple case
-    if vlen == 0:
-        return
+    x must be sorted least to greatest
+
+    return an iterator with (midx, func(x[lowi:highi]))
+    """
     
-    start = min(x)
-    end = max(x)
-    window = [0]
-    
-    low = 0
-    high = 0
-    
-    for i in xrange(vlen):
-        xi = x[i]
-        xradius2 = min(xi - start, end - xi, xradius)
-    
-        # move window
-        while x[low] < xi - xradius2:
-            window.remove(low)
-            low += 1
-        while x[high] < xi + xradius2:
-            high += 1
-            window.append(high)
-        
-        yield xi, window[:]
+    for lowi, highi, low, high in iter_window_index_step(x, width, step, minsize):
+        yield (high + low) / 2.0, func(x[lowi:highi])
+
+
+
 
 
 
@@ -1124,12 +1214,42 @@ def _solveCubic_test(n=100):
         test(a, b, c)
     
     
+
+
+
+#=============================================================================
+# testing
     
-    
-    
-    
-    
-    
-    
+if __name__ == "__main__":
     
 
+    # iter_window
+    from rasmus import util
+
+    vals = sorted([random.random() * 20 for x in range(600)])
+
+    vals += sorted([40 + random.random() * 20 for x in range(600)])
+
+    '''    
+    win = filter(lambda x: len(x) > 0,
+                 list(iter_window_index(vals, 5)))
+
+    p = util.plot(util.cget(win, 2))#, style="lines")
+    p.enableOutput(False)
+    p.plot(util.cget(win, 3)) #, style="lines")    
+
+    for i, y in enumerate(vals):
+        p.plot([i, len(vals)], [y, y], style="lines")
+    p.enableOutput(True)
+    p.replot()
+    '''
+
+    def mean2(v):
+        if len(v) == 0:
+            return 0.0
+        else:
+            return mean(v)
+
+    x, y = zip(* iter_window_step(vals, 5, 1, len))
+    util.plot(x, y)
+    

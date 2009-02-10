@@ -7,7 +7,7 @@ from rasmus import util
 
 
 try:
-    import pyparsing
+    from rasmus import pyparsing
 except:
     pass
 

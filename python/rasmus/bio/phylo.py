@@ -840,6 +840,19 @@ def addImpliedSpecNodes(tree, stree, recon, events):
         # determine species path of this gene branch (node, node->parent)
         snode = sstart.parent
 
+        while snode != send:
+            addedNodes.append(addSpecNode(node, snode, tree, recon, events))
+            node = node.parent
+            snode = snode.parent
+        
+    
+        # determine whether node.parent is a dup
+        # if so, send (a.k.a. species end) is part of species path
+        if events[parent] == "dup":
+            addedNodes.append(addSpecNode(node, send, tree, recon, events))
+
+    return addedNodes
+
 
 
 #=============================================================================

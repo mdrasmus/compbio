@@ -1247,9 +1247,12 @@ def showtab(tab, name='table'):
 def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
     """Get a table from a sqlite file"""
     try:
-        from pysqlite2 import dbapi2 as sqlite
+        from pysqlite2 import dbapi2 as sqlite    
     except ImportError:
-        import sqlite
+        try:
+            from sqlite3 import dbapi2 as sqlite
+        except ImportError:
+            import sqlite
 
     # open database
     if hasattr(dbfile, "cursor"):
@@ -1287,10 +1290,14 @@ sqltab = sqlget
 
 
 def sqlexe(dbfile, sql):
+
     try:
-        from pysqlite2 import dbapi2 as sqlite
+        from pysqlite2 import dbapi2 as sqlite    
     except ImportError:
-        import sqlite
+        try:
+            from sqlite3 import dbapi2 as sqlite
+        except ImportError:
+            import sqlite
 
     # open database
     if hasattr(dbfile, "cursor"):
@@ -1357,9 +1364,12 @@ def sqlput(dbfile, table_name, tab, overwrite=True, create=True):
     """Insert a table into a sqlite file"""
 
     try:
-        from pysqlite2 import dbapi2 as sqlite
+        from pysqlite2 import dbapi2 as sqlite    
     except ImportError:
-        import sqlite
+        try:
+            from sqlite3 import dbapi2 as sqlite
+        except ImportError:
+            import sqlite
 
     # open database
     if hasattr(dbfile, "cursor"):

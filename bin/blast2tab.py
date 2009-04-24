@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-from rasmus import blast, util
+from rasmus import util
+from rasmus.bio import blast
 import sys
 
 options = [
@@ -11,7 +12,7 @@ options = [
 
 
 try:
-    param, rest = util.parseArgs(sys.argv, options)
+    param, rest = util.parseOptions(sys.argv, options)
 except:
     sys.exit(1)
 

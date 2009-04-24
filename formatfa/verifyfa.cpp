@@ -66,7 +66,10 @@ bool verifyFasta(string filename)
             lastline = false;
         } else {
             int len = chomp(line);
-            
+
+	    if (len == 0)
+		continue;
+
             if (lastline) {
                 fprintf(stderr, "line %d occurs after shorter line\n", 
                         lineno, width, len);

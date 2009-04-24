@@ -241,7 +241,7 @@ class FastaIndex:
         
         # read index
         keys = []
-        for key, start, end in util.DelimReader(filename + ".index"):
+        for key, start, end in util.DelimReader(filename + ".index", delim="\t"):
             keys.append(key)
             self.index[key] = (int(start), int(end))
             self.filelookup[key] = infile

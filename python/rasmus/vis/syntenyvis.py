@@ -177,28 +177,29 @@ def effectiveDir(direction, geneDirection):
 class Frag:
     "represents fragment of DNA"
     
-    def __init__(self):
-        self.chrom = None
-        self.start = 0
-        self.end = 0
-        self.direction = 0
-        self.x = 0
-        self.y = 0
+    def __init__(self, chrom=None, start=0, end=0, strand=0,
+                 x=0, y=0):
+        self.chrom = chrom
+        self.start = start
+        self.end = end
+        self.direction = strand
+        self.x = x
+        self.y = y
         self.genes = []
 
     
 
 class SyntenyVis:    
-    def __init__(self, conf, matching, db, rootid=None,
-                       winsize=(800, 400)):
+    def __init__(self, conf, matching, genomes, regions, orths,
+                 rootid=None,
+                 winsize=(800, 400)):
         self.conf = None
         self.win = None
         self.winsize = winsize   
         self.rootid = rootid
         
         self.refGenome     = None
-        self.genes         = {}
-        self.frags         = {}
+        self.frags         = set()
         self.controlids    = []
         self.markids       = []
         self.labelids      = []
@@ -211,13 +212,23 @@ class SyntenyVis:
 
         
         self.conf = conf
-        self.db = db
+        self.genomes = genomes
+        self.db = regionlib.RegionDb(regions)
         self.matching = matching
-        self.genes = matching.getGenes()
-        #self.genes = db.get_all_regions() 
+        self.blocks = self.matching.blocks
+
+
+        # filter orths for only regions we have in our db
+        self.orths = [[x for x in orth
+                       if self.db.has_region(x)]
+                      for orth in orths]
         
-        self.regions = util.Dict(default=[])
-        self.findex = fff.FeatureIndex()
+        # make ortholog lookup
+        self.orth_lookup = {}
+        for orth in self.orths:
+            for region in orth:
+                self.orth_lookup[region] = orth
+        
     
     
     def show(self):
@@ -236,22 +247,23 @@ class SyntenyVis:
         
         
     def clearDrawing(self):
+        self.frags = set()
+        self.region_layout = {}
         self.win.remove_group(self.visid)
         self.clearMarks()
         self.visid = self.win.insert_group(self.rootid, group())
         
     
     
-    def draw(self, refGenomeName, refChromName, start, end, direction=1):
+    def draw(self, genome, chrom, start, end, direction=1):
         self.show()
         self.clearDrawing()
         self.win.insert_group(self.visid, 
-            self.drawChromosome(refGenomeName, 
-                                refChromName, 
-                                start, end, direction=direction))
+            self.draw_chrom(genome, chrom, 
+                            start, end, direction=direction))
         self.showControls(self.conf["use-controls"])
     
-    
+    '''
     def drawAll(self, refGenomeName):
         self.show()
         self.clearDrawing()
@@ -263,45 +275,45 @@ class SyntenyVis:
         for chrom in chroms:
             util.tic("drawing chrom %s" % chrom.name)
             self.win.insert_group(self.visid, group(translate(0, y, 
-                self.drawChromosome(refGenomeName, chrom.name, 0, chrom.size))))
+                self.draw_chrom(refGenomeName, chrom.name, 0, chrom.size))))
             self.showControls(self.conf["use-controls"])
             util.toc()
             y -= self.conf['max-genome-sep'] * (len(self.matching.genomes) + 1)
+    '''
     
-    
-    def drawChromosome(self, refGenomeName, refChromName, start, end, direction=1):
-        refGenome = self.matching.genomes[refGenomeName]
-        refChrom  = refGenome.chroms[refChromName]
-        self.refGenome = refGenomeName
+    def draw_chrom(self, genome_name, chrom_name, start, end, direction=1):
+        
+        refGenome = self.matching.genomes[genome_name]
+        refChrom  = refGenome.chroms[chrom_name]
+
+        
+        self.refGenome = genome_name
     
         # init reference fragment
-        refFrag = Frag()
-        refFrag.chrom     = refChrom
-        refFrag.start     = max(start,0)
-        refFrag.end       = min(end, refChrom.size)
-        refFrag.direction = direction
-        refFrag.x         = max(start,0)
-        refFrag.y         = 0
+        refFrag = Frag(chrom=refChrom, 
+                       start=max(start, 0),
+                       end=min(end, refChrom.size),
+                       strand=direction,
+                       x=max(start,0),
+                       y=0)
 
 
         # init visualization
-        self.frags = { refFrag : True }
-        self.region_layout = {}
+        self.frags.add(refFrag)
         self.controlids = []
         self.order = {}
         self.start = start
         self.end = end
         
+
+        # setup display order
+        for i, genome in enumerate(self.genomes):
+            self.order[genome] = i
         
         # swap the genome with order 0 and the reference genome
-        for genome in self.matching.genomes.values():
-            if genome.order == 0:
-                self.order[genome.name] = refGenome.order
-            elif genome == refGenome:
-                self.order[genome.name] = 0
-            else:
-                self.order[genome.name] = genome.order
-        
+        j = self.order[self.refGenome]
+        self.order[self.genomes[0]] = j
+        self.order[self.refGenome] = 0                
         
         util.tic("placing fragments")
         
@@ -312,7 +324,7 @@ class SyntenyVis:
         
         # find all synteny blocks in this region
         drawBlocks = []
-        for block in self.matching.blocks:
+        for block in self.blocks:
             if block.chrom1 == refChrom:
                 drawBlocks.append((block, 0))
             elif block.chrom2 == refChrom:
@@ -358,9 +370,10 @@ class SyntenyVis:
         # find all genes that will be drawn
         # walk along refChrom and store drawn genes into fragments
         refLookup = {}
-        for gene in GeneIter(refChrom.genes, start, end):
-            genes2 = self.matching.getComp(gene)
-            for gene2 in genes2:
+        for gene in GeneIter(self.db.get_regions(genome_name, chrom_name),
+                             start, end):
+            for gene2 in self.orth_lookup.get(gene.data["ID"], []):
+                gene2 = self.matching.genes.get(gene2, None)
                 if gene2 in blockLookup:
                     fragLookup[blockLookup[gene2]].genes.append(gene2)
                     refLookup[gene2] = gene
@@ -426,7 +439,7 @@ class SyntenyVis:
                        self.conf['max-genome-sep'])
             
             # store frag
-            self.frags[frag] = 1
+            self.frags.add(frag)
 
             # assign genes (x,y)-coords
             self.assignFragPos(self.conf, frag)
@@ -492,14 +505,14 @@ class SyntenyVis:
         for gene in GeneIter(chrom.genes, start, end):
             # need to sort matches by genome order so that mult-genome synteny
             # is drawn top-down
-            
-            if gene in self.matching.complookup:
-                genes2 = self.matching.comps[self.matching.complookup[gene]]
-            else:
-                continue
 
+            # get orthologs
+            genes2 = self.orth_lookup.get(gene.name, [])
+            genes2 = [self.matching.genes[x] for x in genes2]
             genes2 = [x for x in genes2
                       if x in self.region_layout]
+            if len(genes2) == 0:
+                continue
             
             rows = util.groupby(lambda x: self.region_layout[x].y, genes2)
             keys = util.sort(rows.keys(), reverse=True)
@@ -516,7 +529,7 @@ class SyntenyVis:
                         x2 = l[topGene].x + topGene.end - topGene.start
                         x3 = l[botGene].x + botGene.end - botGene.start
                         x4 = l[botGene].x
-
+                        
                         if conf['fat-matches']:
                             vis.append(quads(
                                 getBlockColor(botGene.chrom.name),
@@ -701,21 +714,23 @@ class SyntenyVis:
     
         
     def find(self, name):
-        if name in self.genes:
-            gene = self.genes[name]
-            if gene in self.region_layout: #placedGenes:
-                self.win.set_visible(* self.getGeneCoords(gene))
+        try:
+            region = self.db.get_region(name)
+            
+            if region in self.region_layout: 
+                self.win.set_visible(* self.getGeneCoords(region))
             else:
                 print "gene '%s' is not shown" % name
-        else:
+        except KeyError:
             print "cannot find gene '%s'" % name
     
     
     def mark(self, name, shape="box", col=color(1, 1, 0)):
-        if name in self.genes:
-            gene = self.genes[name]
-            self.markGene(gene, shape, col)
-        else:
+        try:
+            region = self.db.get_region(name)            
+            self.markGene(region, shape, col)
+            
+        except KeyError:
             print "cannot find gene '%s'" % name
 
 
@@ -749,7 +764,7 @@ class SyntenyVis:
     #===================================================================
     # regions
     #
-    
+    '''
     def add_regions(self, regions, shape=None, col=None, height=None):
     
         for region in regions:
@@ -794,7 +809,7 @@ class SyntenyVis:
         
         for lst in self.regions.itervalues():
             lst.sort(key=lambda x: x.start)
-    
+    '''
     
     # TODO: use regions as markings
         
@@ -859,7 +874,7 @@ class SyntenyVis:
         else:
             raise "unknown shape '%s'" % shape
     
-    
+    '''
     def drawMark(self, genome, chrom, start, end, strand=1, shape="box", col=color(0,0,1)):
         y, x1, x2 = self.getRegionDrawCoords(genome, chrom, start, end)
         
@@ -899,7 +914,7 @@ class SyntenyVis:
                            frag.x + frag.end - end
         
         return None, None, None
-    
+    '''
     
 
     def toggle_controls(self):

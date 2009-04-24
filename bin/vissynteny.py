@@ -87,9 +87,11 @@ conf = {}
 #
 
 class SyntenyVis (syntenyvis.SyntenyVis):
-    def __init__(self, conf, matching, db,
-                 comps=[], **options):
-        syntenyvis.SyntenyVis.__init__(self, conf, matching, db, **options)
+    def __init__(self, conf, matching, genomes, regions, orths,
+                 comps=[],
+                 **options):
+        syntenyvis.SyntenyVis.__init__(self, conf, matching, genomes,
+                                       regions, orths, **options)
         self.clickMode = "gene"
         self.selgenes = []
         self.seqs = FastaDict()
@@ -371,7 +373,7 @@ def readData(genomes, compfile, syntenyfile, smapfile,
     selgenes = vis.selgenes  
 
 
-def read_data(genomes, gffs, compfile, syntenyfile, smapfile,
+def read_data(genomes, gffs, orthfile, syntenyfile, smapfile,
               feature="gene",
               winsize=(800, 400)):
     global genes
@@ -391,15 +393,13 @@ def read_data(genomes, gffs, compfile, syntenyfile, smapfile,
         regions.extend(gff.readGff(fn))
         m.readGffFile(fn, gene2species, feature=feature)
     m.autoconf(genomes)
-
-    db = regionlib.RegionDb(regions)
     
     genes = m.getGenes()
 
     # read orthologs
-    util.tic("read ortholog components")
-    comps = util.readDelim(env.findFile(compfile))
-    comps = map(lambda comp: filter(lambda gene: gene in genes, comp), comps)
+    util.tic("read orthologs")
+    orths = util.readDelim(orthfile)
+    comps = map(lambda comp: filter(lambda gene: gene in genes, comp), orths)
     comps = filter(lambda comp: len(comp) > 0, comps)
     m.setGeneComponents(comps)
     util.toc()
@@ -413,7 +413,8 @@ def read_data(genomes, gffs, compfile, syntenyfile, smapfile,
     
     # setup visualization
     conf.update(syntenyvis.initConf({}, syntenyvis.calcGeneHeight(m)))
-    vis = SyntenyVis(conf, m, db, winsize=winsize, comps=comps)
+    vis = SyntenyVis(conf, m, genomes, regions, orths,
+                     winsize=winsize, comps=comps)
     selgenes = vis.selgenes  
 
 

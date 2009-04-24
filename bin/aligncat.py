@@ -12,17 +12,13 @@ options = [
     ["c", "noconserved", "noconserved", "",
         {"single": True}],
     ["S:", "smap=", "smap", "<gene2species mapping>"],
-    ["P:", "path=", "paths", "<data paths>",
-        {"default": []}]
 ]
 
 conf = util.parseOptions(sys.argv, options, 
                          resthelp="<alignments> ...", quit=True)
 
 # read options
-env.addEnvPaths("DATAPATH")
-env.addPaths(* conf["paths"])
-gene2species = genomeutil.readGene2species(* map(env.findFile, conf["smap"]))
+gene2species = genomeutil.readGene2species(conf["smap"])
 
 
 if len(conf["REST"]) > 0:

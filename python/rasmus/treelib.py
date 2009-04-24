@@ -1076,14 +1076,20 @@ def removeSingleChildren(tree):
     Branch lengths are added together when node is removed.
     
     """
-    removed = []
     
     # find single children
+    removed = [node
+               for node in tree
+               if len(node.children) == 1 and node.parent]
+            
+
+    """
     def walk(node):
         if len(node.children) == 1 and node.parent:
             removed.append(node)
         node.recurse(walk)
     walk(tree.root)
+    """
     
     # actually remove children
     for node in removed:
@@ -1106,6 +1112,7 @@ def removeSingleChildren(tree):
         tree.root = tree.root.children[0]
         oldroot.children = []
         tree.remove(oldroot)
+        tree.root.parent = None
         tree.root.dist += oldroot.dist
     
     return removed

@@ -12,7 +12,6 @@ import sys, time, os, random, math, copy
 from rasmus import env, treelib
 from rasmus import util
 from rasmus import stats
-import Spidir
 import pyspidir
 
 from rasmus.bio import alignlib, fasta, phylo, genomeutil, birthdeath
@@ -121,7 +120,7 @@ def main(conf):
     stree = treelib.readTree(conf["stree"])
     
     if "params" in conf:
-        params = Spidir.readParams(conf["params"])
+        params = readParams(conf["params"])
         
         # set species tree lengths
         meanrate = params["baserate"][0] / params["baserate"][1]
@@ -183,6 +182,23 @@ def main(conf):
 
 def gene2species(gene):
     return gene.split("_")[0]
+
+
+def readParams(filename):
+    """Read SPIDIR model parameters to a file"""
+    
+    infile = file(filename)
+    params = {}
+    
+    for line in infile:
+        tokens = line.split("\t")
+        key = tokens[0]
+        values = tokens[1:]
+        if key[0].isdigit():
+            key = int(key)
+        params[key] = map(float, values)
+        
+    return params
 
 
 def simTree(stree, params, duprate, lossrate, generate, use_spec,

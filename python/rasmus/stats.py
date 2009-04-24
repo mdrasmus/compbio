@@ -12,9 +12,18 @@ from rasmus import tablelib
 
 
 
+def logprod(lst):
+    """Computes the product of a list of numbers"""
+    return sum(log(i) for i in lst)
+
+
 def prod(lst):
     """Computes the product of a list of numbers"""
-    return exp(sum(log(i) for i in lst))
+    p = 1.0
+    for i in lst:
+        p *= i
+    return p
+
 
 def mean(vals):
     """Computes the mean of a list of numbers"""
@@ -479,6 +488,24 @@ def choose(n, k):
         t = t * (n - i + 1) / i
     return int(t + 0.5)
     #return factorial(n, n - k) / factorial(k)
+
+
+def multinomial(vals):
+    n = sum(vals)
+
+    res = logfactorial(n)
+    for v in vals:
+        res -= logfactorial(v)
+    return int(exp(res) + .05)
+
+
+def logmultinomial(vals):
+    n = sum(vals)
+
+    res = logfactorial(n)
+    for v in vals:
+        res -= logfactorial(v)
+    return res
 
 
 def sample(weights):

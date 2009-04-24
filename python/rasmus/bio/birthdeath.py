@@ -34,7 +34,7 @@ def prob_birth_death(genes1, genes2, t, birth, death):
 
 def birth_wait_time(t, n, T, birth, death):
     """Probability density for for next birth at time 't' given
-       'n' lineages starting at time 0, evolvinf until time 'T' with a
+       'n' lineages starting at time 0, evolving until time 'T' with a
        'birth' and 'death' rates for a reconstructed process.
     """
     
@@ -63,24 +63,27 @@ def prob_no_birth(n, T, birth, death):
 
 
 def sample_birth_wait_time(n, T, birth, death):
-    """Sample the next birth event from a reconstructed birthdeath process.
+    """
+    Sample the next birth event from a reconstructed birthdeath process.
     Let there be 'n' lineages at time 0 that evolve until time 'T' with
     'birth' and 'death' rates.
+
+    Conditioned that a birth will occur
     """
     
+    # TODO: could make this much more efficient (use straight line instead of
+    # flat line).
+    
     # uses rejection sampling
-    start = birth_wait_time(0, n, T, birth, death)
-    end = birth_wait_time(T, n, T, birth, death)
-    g = 1.0 / T
-    M = max(start, end) / g
-    Mg = M * g
+    start_y = birth_wait_time(0, n, T, birth, death)
+    end_y = birth_wait_time(T, n, T, birth, death)
+    M = max(start_y, end_y)
     
     while True:
         t = random.uniform(0, T)
-        u = random.uniform(0, 1)
         f = birth_wait_time(t, n, T, birth, death)
 
-        if u < f / Mg:
+        if random.uniform(0, 1) <= f / M:
             return t
 
 
@@ -93,7 +96,7 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None):
     
     # create starting node if one is not given
     if node == None:
-        tree.root = treelib.TreeNode(tree.newName())
+        tree.makeRoot() #root = treelib.TreeNode(tree.newName())
         node = tree.root
     else:
         node2 = treelib.TreeNode(tree.newName())
@@ -153,17 +156,19 @@ def sample_birth_death_gene_tree(stree, birth, death,
                                         tree=tree, node=node)
                 
                 # record reconciliation
+                next_nodes = []
                 def walk2(node):
-                    recon[node] = child
                     node.recurse(walk2)
+                    recon[node] = child
                     if node.isLeaf():
                         events[node] = "spec"
+                        next_nodes.append(node)
                     else:
                         events[node] = "dup"
                 walk2(node.children[-1])
                 
                 # recurse
-                for leaf in node.children[-1].leaves():
+                for leaf in next_nodes:
                     walk(child, leaf)
             
             # if no child for node then it is a loss
@@ -179,7 +184,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
         
         delnodes = set()
         for node in recon:
-            if node not in tree.nodes:
+            if node.name not in tree.nodes:
                 delnodes.add(node)
         for node in delnodes:
             del recon[node]

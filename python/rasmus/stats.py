@@ -280,7 +280,7 @@ def iter_window_index(x, xdist, esp=None):
             highi += 1
             continue
 
-        # detrmine new low high boundary
+        # determine new low high boundary
         if low_step <= high_step:
             low = x[lowi] #+ min(esp, (high_step - low_step) / 2.0)
             high = low + xdist            

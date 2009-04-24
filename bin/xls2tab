@@ -1,55 +1,81 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.5
 # Fri Sep 12 14:47:08 EDT 2008
 # xls2tab
+# convert XLS files to tab-delimited files
 
-
+# python imports
 import optparse
 import sys
+
+# excel library
 import xlrd
 
-
+# options
 o = optparse.OptionParser()
-o.add_option("-o", "--out", dest="out", metavar="OUT_FILE")
+o.add_option("-l", "--list", dest="list",
+             action="store_true",
+             help="List all sheets in xls file")
+o.add_option("-s", "--sheet", dest="sheet", metavar="SHEET_NUM",
+             type="int", default=0,
+             help="Sheet to export (indexed from 0)")
+o.add_option("-o", "--out", dest="out", metavar="OUT_FILE",
+             help="output file (default = ${INFILE}.txt)")
 o.add_option("-a", "--ascii", dest="ascii", action="store_true",
              help="force ascii output")
 options, args = o.parse_args()
 
 
-def force_ascii(text):
+def force_ascii(item):
+    """Force item to ascii"""
+    
     if isinstance(text, basestring):
         return str(text.encode("ascii", "ignore"))
     else:
         return str(text)
 
 
+# process each file
 for filename in args:
-    assert filename.endswith(".xls")
+    assert filename.endswith(".xls"), "input file must be an XLS file"
 
-    if options.out is None:
-        outfile = filename[:-4] + ".txt"
-        out = file(outfile, "w")
-    elif options.out is not "-":
-        outfile = options.out
-        out = file(outfile, "w")
-    else:
-        out = sys.stdout
 
 
     xls = xlrd.open_workbook(filename)
-    sheet = xls.sheet_by_index(0)
 
-    if options.ascii:
-        for i in xrange(sheet.nrows):
-            out.write("\t".join(force_ascii(sheet.cell_value(i, j))
-                                for j in xrange(sheet.ncols)))
-            out.write("\n")
+    if options.list:
+        # list sheets: index<tab>name
+        
+        for i, name in enumerate(xls.sheet_names()):
+            print "%d\t%s" % (i, name)
+
     else:
-        for i in xrange(sheet.nrows):
-            out.write("\t".join(unicode(sheet.cell_value(i, j))
-                                for j in xrange(sheet.ncols)))
-            out.write("\n")
-        
-        
+        # export
 
-    if out != sys.stdout:
-        out.close()
+        # determine output file
+        if options.out is None:
+            outfile = filename[:-4] + ".txt"
+            out = file(outfile, "w")
+        elif options.out is not "-":
+            outfile = options.out
+            out = file(outfile, "w")
+        else:
+            out = sys.stdout
+
+        # select work sheet
+        sheet = xls.sheet_by_index(options.sheet)
+
+        # export
+        if options.ascii:
+            for i in xrange(sheet.nrows):
+                out.write("\t".join(force_ascii(sheet.cell_value(i, j))
+                                    for j in xrange(sheet.ncols)))
+                out.write("\n")
+        else:
+            for i in xrange(sheet.nrows):
+                out.write("\t".join(unicode(sheet.cell_value(i, j))
+                                    for j in xrange(sheet.ncols)))
+                out.write("\n")
+
+        # close output
+        if out != sys.stdout:
+            out.close()

@@ -14,7 +14,7 @@ from rasmus import env, treelib
 from rasmus import util
 from rasmus import stats
 
-import pyspidir
+import spidir
 from rasmus.bio import phylip, phyml, fasta, phylo
 
 def parseBgFreq(txt):
@@ -57,16 +57,16 @@ conf = util.parseOptions(sys.argv, options)
 
 
 def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
-    ptree, nodes, nodelookup = treelib.makePtree(tree)
-    leaves = [x.name for x in nodes if isinstance(x.name, str)]
-    seqs = util.mget(aln, leaves)
+    #ptree, nodes, nodelookup = treelib.makePtree(tree)
+    #leaves = [x.name for x in nodes if isinstance(x.name, str)]
+    #seqs = util.mget(aln, leaves)
     
-    dists, logl = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
-    
-    for i in xrange(len(dists)):
-        nodes[i].dist = dists[i]
-    
-    return logl
+    #dists, logl = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
+
+    return 
+    #for i in xrange(len(dists)):
+    #    nodes[i].dist = dists[i]    
+    #return logl
 
 
 def ensure_binary(tree):
@@ -125,7 +125,12 @@ for filename in conf["REST"]:
             node.data["boot"] = node.dist / ntrees
         
         # find actual branch lengths
-        mlhkydist(aln, tree, conf["bgfreq"], conf["tsvratio"], conf["maxiter"])
+        spidir.find_ml_branch_lengths_hky(tree,
+                                          util.mget(aln, tree.leafNames()),
+                                          conf["bgfreq"],
+                                          conf["tsvratio"],
+                                          maxiter=conf["maxiter"],
+                                          parsinit=True)
 
     else:
         if conf["binary"]:

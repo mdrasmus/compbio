@@ -38,7 +38,7 @@ options = [
     {"single": True,
      "default": None,
      "parser": treelib.readTree}],
-  ["", "opttree=", "opttree", "",
+  ["", "opttree=", "opttree", "True|False",
     {"single": True,
      "default": True,
      "parser": util.str2bool,

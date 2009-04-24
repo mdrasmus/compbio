@@ -255,7 +255,7 @@ class Gtf (Gff):
 
             data[key] = val
 
-        return attrs
+        return data
     
     def buildHierarchy(self, regions):
         """GTF has its own heirarchy system

@@ -646,14 +646,14 @@ class Matching:
             self.readGffFile(filename, gene2species)
     
     
-    def readGffFile(self, filename, gene2species):
+    def readGffFile(self, filename, gene2species, feature="gene"):
         """assume one transcript per gene"""
         
         for region in gff.iterGff(filename,
-                            lineFilter=lambda x: "\tgene\t" in x,
-                            regionFilter=lambda x: x.feature == "gene"):
+                            regionFilter=lambda x: x.feature == feature):
             
             geneName = region.data["ID"]
+
             
             # don't add duplicate genes
             if geneName not in self.genes:

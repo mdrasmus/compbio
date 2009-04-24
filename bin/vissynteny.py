@@ -7,7 +7,7 @@ import os, sys
 from reportlab import svglib
 
 # rasmus libs
-from rasmus import util, env
+from rasmus import util, env, regionlib
 
 # rasmus bio libs
 from rasmus.bio import genomeutil, genomeio, muscle, ensembl, fasta, alignlib
@@ -87,8 +87,9 @@ conf = {}
 #
 
 class SyntenyVis (syntenyvis.SyntenyVis):
-    def __init__(self, conf, matching, comps=[], **options):
-        syntenyvis.SyntenyVis.__init__(self, conf, matching, **options)
+    def __init__(self, conf, matching, db,
+                 comps=[], **options):
+        syntenyvis.SyntenyVis.__init__(self, conf, matching, db, **options)
         self.clickMode = "gene"
         self.selgenes = []
         self.seqs = FastaDict()
@@ -334,6 +335,7 @@ def viswindows(refGenome, windowSize, windowStep, outdir):
 
 def readData(genomes, compfile, syntenyfile, smapfile,
              winsize=(800, 400)):
+    """Old function"""
     global genes
     global m
     global conf
@@ -366,6 +368,52 @@ def readData(genomes, compfile, syntenyfile, smapfile,
     # setup visualization
     conf.update(syntenyvis.initConf({}, syntenyvis.calcGeneHeight(m)))
     vis = SyntenyVis(conf, m, winsize=winsize, comps=comps)
+    selgenes = vis.selgenes  
+
+
+def read_data(genomes, gffs, compfile, syntenyfile, smapfile,
+              feature="gene",
+              winsize=(800, 400)):
+    global genes
+    global m
+    global conf
+    global vis
+    global selgenes
+    
+    util.tic("read")
+    
+    # read genomes
+    gene2species = genomeutil.readGene2species(env.findFile(smapfile))
+    m = Matching()
+
+    regions = []
+    for fn in gffs:
+        regions.extend(gff.readGff(fn))
+        m.readGffFile(fn, gene2species, feature=feature)
+    m.autoconf(genomes)
+
+    db = regionlib.RegionDb(regions)
+    
+    genes = m.getGenes()
+
+    # read orthologs
+    util.tic("read ortholog components")
+    comps = util.readDelim(env.findFile(compfile))
+    comps = map(lambda comp: filter(lambda gene: gene in genes, comp), comps)
+    comps = filter(lambda comp: len(comp) > 0, comps)
+    m.setGeneComponents(comps)
+    util.toc()
+    
+    # read synteny blocks
+    util.tic("read synteny blocks")
+    genomeio.readBlockDimensions(m, env.findFile(syntenyfile), True)
+    util.toc()
+    
+    util.toc()
+    
+    # setup visualization
+    conf.update(syntenyvis.initConf({}, syntenyvis.calcGeneHeight(m)))
+    vis = SyntenyVis(conf, m, db, winsize=winsize, comps=comps)
     selgenes = vis.selgenes  
 
 

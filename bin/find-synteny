@@ -42,7 +42,7 @@ def read_regions(gff_file, species1, species2, regions1, regions2,
     for region in gff.iterGff(gff_file):
         if len(features) > 0 and region.feature not in features:
             continue
-
+        
         if region.species == species1:
             regions1.append(region)
         elif region.species == species2:

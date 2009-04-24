@@ -39,7 +39,11 @@ l     toggle gene labels
 """
 
 
-
+class Layout (object):
+    def __init__(self, x, y, orient):
+        self.x = x
+        self.y = y
+        self.orient = orient
 
 
 def invcolor(c, alpha = 1):
@@ -185,31 +189,33 @@ class Frag:
     
 
 class SyntenyVis:    
-    def __init__(self, conf, matching, rootid=None,
+    def __init__(self, conf, matching, db, rootid=None,
                        winsize=(800, 400)):
         self.conf = None
         self.win = None
         self.winsize = winsize   
         self.rootid = rootid
         
-        self.matching = None
         self.refGenome     = None
         self.genes         = {}
         self.frags         = {}
-        self.placedGenes   = {}
-        self.placedFrags   = {}
-        self.placedRegions = {}
         self.controlids    = []
         self.markids       = []
         self.labelids      = []
         self.order         = {}
         self.groupid       = 0
         self.visid = None
+        
+        self.region2frags = {}
+        self.region_layout = {}
 
         
         self.conf = conf
+        self.db = db
         self.matching = matching
         self.genes = matching.getGenes()
+        #self.genes = db.get_all_regions() 
+        
         self.regions = util.Dict(default=[])
         self.findex = fff.FeatureIndex()
     
@@ -280,9 +286,7 @@ class SyntenyVis:
 
         # init visualization
         self.frags = { refFrag : True }
-        self.placedGenes = {}
-        self.placedFrags = []
-        self.placedRegions = {}
+        self.region_layout = {}
         self.controlids = []
         self.order = {}
         self.start = start
@@ -301,10 +305,7 @@ class SyntenyVis:
         
         util.tic("placing fragments")
         
-        
-        # store ref chrom as seed for matches
-        self.placedFrags.append(refFrag)
-        
+                
         # assign genes (x,y)-coords from reference fragment
         self.assignFragPos(self.conf, refFrag)
         
@@ -370,7 +371,7 @@ class SyntenyVis:
             if len(frag.genes) == 0:
                 frag.x = None
                 continue
-            frag.genes.sort(lambda a,b: a.start - b.start)
+            frag.genes.sort(key=lambda a: a.start)
             
             # set fragment start and end
             frag.start = frag.genes[0].start
@@ -444,30 +445,12 @@ class SyntenyVis:
     def assignFragPos(self, conf, frag):
         for gene in GeneIter(frag.chrom.genes, frag.start, frag.end):
             if frag.direction == 1:
-                gene.x = frag.x + gene.start - frag.start
+                x = frag.x + gene.start - frag.start
             else:
-                gene.x = frag.x + frag.end - gene.end
-            gene.y = frag.y
-            gene.visDir = frag.direction
-            gene.frag = frag
-            
-            # record gene as "placed"
-            self.placedGenes[gene] = True
+                x = frag.x + frag.end - gene.end
+            self.region_layout[gene] = Layout(x, frag.y, frag.direction)
+            self.region2frags[gene] = frag
         
-        
-        # TODO: the may not work due to code changes for regionlib/gff
-        for region in regionlib.iterChrom(self.regions[frag.chrom], frag.start, frag.end):
-            if frag.direction == 1:
-                region.x = frag.x + region.start - frag.start
-            else:
-                region.x = frag.x + frag.end - region.end
-            region.y = frag.y
-            region.direction = frag.direction
-            region.frag = frag
-            
-            # record region as "placed"
-            self.placedRegions[region] = True
-
 
     def drawPlaced(self):
         vis = []
@@ -479,28 +462,20 @@ class SyntenyVis:
             vis.append(self.fragWidget(self.conf, frag))
 
         # draw genes
-        for gene in self.placedGenes:
-            vis.append(translate(gene.x, gene.y, 
+        for gene in self.region_layout:
+            l = self.region_layout[gene]
+            vis.append(translate(l.x, l.y, 
                                  self.geneWidget(self.conf, gene)))
         
-        # draw regions
-        for region in self.placedRegions:
-            vis.append(self.drawRegion(region))
-            
-        for frag in self.placedFrags:
-            vis.append(self.drawFrequentFeatures(frag))
-        
-        
         # draw matches
-        for frag in self.placedFrags:
+        for frag in self.frags:
             vis.append(self.drawMatches(self.conf,
                                      frag.chrom, frag.start, frag.end))
         
         util.toc()
 
-        g = group(*vis)
-        self.groupid = get_group_id(g)
-        return g
+        self.groupid = group(*vis)
+        return self.groupid
 
 
     def drawMatches(self, conf, chrom, start, end):
@@ -518,29 +493,29 @@ class SyntenyVis:
             # need to sort matches by genome order so that mult-genome synteny
             # is drawn top-down
             
-            #genes2 = self.findGeneSynteny(None, gene)
-            
             if gene in self.matching.complookup:
                 genes2 = self.matching.comps[self.matching.complookup[gene]]
             else:
                 continue
+
+            genes2 = [x for x in genes2
+                      if x in self.region_layout]
             
-            genes2 = filter(lambda gene: "y" in dir(gene) and
-                                         gene in self.placedGenes, genes2)
-            
-            rows = util.groupby(lambda x: x.y, genes2)
-            keys = util.sort(rows.keys(), compare=util.invcmp)
+            rows = util.groupby(lambda x: self.region_layout[x].y, genes2)
+            keys = util.sort(rows.keys(), reverse=True)
             rows = util.mget(rows, keys)
+
+            l = self.region_layout
             
             for i in range(1, len(rows)):
                 for botGene in rows[i]:
                     for topGene in rows[i-1]:
-                        y1 = topGene.y 
-                        y2 = botGene.y + conf['gene-size']
-                        x1 = topGene.x
-                        x2 = topGene.x + topGene.end - topGene.start
-                        x3 = botGene.x + botGene.end - botGene.start
-                        x4 = botGene.x
+                        y1 = l[topGene].y 
+                        y2 = l[botGene].y + conf['gene-size']
+                        x1 = l[topGene].x
+                        x2 = l[topGene].x + topGene.end - topGene.start
+                        x3 = l[botGene].x + botGene.end - botGene.start
+                        x4 = l[botGene].x
 
                         if conf['fat-matches']:
                             vis.append(quads(
@@ -620,7 +595,7 @@ class SyntenyVis:
                           rightArrowFunc)))
 
             # add controls to controls list
-            self.controlids.append(get_group_id(controls))
+            self.controlids.append(controls)
             
             # add controls to vis
             vis.append(controls)
@@ -662,7 +637,7 @@ class SyntenyVis:
            self.geneClick(gene)
 
         length = gene.end - gene.start
-        effDir = effectiveDir(gene.visDir, gene.direction)
+        effDir = effectiveDir(self.region_layout[gene].orient, gene.direction)
 
         if conf['show-gene-labels'] == "scale":
             label = text_clip(gene.name, 0, 0, length, conf['gene-size'], 
@@ -671,7 +646,7 @@ class SyntenyVis:
             label = text(gene.name, 0, 0, length, conf['gene-size'], 
                          "middle", "center")
         elif conf['show-gene-labels'] == "vertical":
-            label = rotate(90, text_clip(gene.name, 0, -conf["gene-size"],
+            label = rotate(90, text_clip(gene.name, 0, -100000, #conf["gene-size"],
                                           conf['max-genome-sep'] / 2.0, 0,
                                           5, 20,
                                           "left", "top"))
@@ -719,14 +694,16 @@ class SyntenyVis:
     
     
     def getGeneCoords(self, gene):
-        return (gene.x, gene.y, 
-                gene.x + gene.end - gene.start, gene.y + self.conf['gene-size'])
+        l = self.region_layout
+        return (l[gene].x, l[gene].y, 
+                l[gene].x + gene.end - gene.start,
+                l[gene].y + self.conf['gene-size'])
     
         
     def find(self, name):
         if name in self.genes:
             gene = self.genes[name]
-            if gene in self.placedGenes:
+            if gene in self.region_layout: #placedGenes:
                 self.win.set_visible(* self.getGeneCoords(gene))
             else:
                 print "gene '%s' is not shown" % name
@@ -743,7 +720,7 @@ class SyntenyVis:
 
 
     def markGene(self, gene, shape="box", col=color(0, 0, 1)):
-        if not (gene in self.placedGenes):
+        if not (gene in self.region_layout): #placedGenes):
             print "gene '%s' is not shown" % gene.name
             return
         coords = self.getGeneCoords(gene)
@@ -769,131 +746,58 @@ class SyntenyVis:
             self.win.show_group(gid, visible)
     
     
-    #
+    #===================================================================
     # regions
     #
     
-    def addRegions(self, regions, shape=None, col=None, height=None):
+    def add_regions(self, regions, shape=None, col=None, height=None):
     
         for region in regions:
             # set default visualizatios attributes
-            if "shape" not in region.attrs:
+            if "shape" not in region.data:
                 if shape == None:
-                    region.attrs["shape"] = "fill"
+                    region.data["shape"] = "fill"
                 else:
-                    region.attrs["shape"] = shape
+                    region.data["shape"] = shape
             
-            if "color" not in region.attrs:
+            if "color" not in region.data:
                 if col == None:
-                    region.attrs["color"] = color(0,1,0)
+                    region.data["color"] = color(0,1,0)
                 else:
-                    region.attrs["color"] = col
+                    region.data["color"] = col
             else:
-                if isinstance(region.attrs["color"], str):
-                    region.attrs["color"] = eval(region.attrs["color"])
+                if isinstance(region.data["color"], str):
+                    region.data["color"] = eval(region.data["color"])
                 else:
-                    region.attrs["color"] = region.attrs["color"]
+                    region.data["color"] = region.data["color"]
             
-            if "height" not in region.attrs:
+            if "height" not in region.data:
                 if height == None:
-                    region.attrs["height"] = 1.0
+                    region.data["height"] = 1.0
                 else:
-                    region.attrs["height"] = height
+                    region.data["height"] = height
             else:
-                if isinstance(region.attrs["height"], str):
-                    region.attrs["height"] = float(region.attrs["height"])
+                if isinstance(region.data["height"], str):
+                    region.data["height"] = float(region.data["height"])
                 else:
-                    region.attrs["height"] = region.attrs["height"]
+                    region.data["height"] = region.data["height"]
             
             # ensure species is specified
-            assert "species" in region.attrs
+            assert "species" in region.data
             
             # force stand to +1 or -1
             if region.strand not in [1, -1]:
                 region.strand = 1
             
-            chrom = self.matching.genomes[region.attrs["species"]].chroms[region.seqname]
+            chrom = self.matching.genomes[region.data["species"]].chroms[region.seqname]
             self.regions[chrom].append(region)
         
         for lst in self.regions.itervalues():
             lst.sort(key=lambda x: x.start)
     
     
-    
-    def addFff(self, filename):
-        self.findex.read(filename)
-    
-    
-    def drawRegion(self, region):
+    # TODO: use regions as markings
         
-        return self.drawMarking(region.attrs["shape"], region.attrs["color"], 
-                                region.y, region.x, 
-                                region.x + region.end - region.start,
-                                region.direction * region.strand,
-                                region.attrs["height"])
-    
-    
-    def drawFrequentFeatures(self, frag):
-        
-        colors = [color(0, 0, 0),
-                  color(1, .2, 0),
-                  color(1, .5, 0)]
-                  
-        """
-                  color(1, 1, 0),
-                  color(.5, 1, 0, .6),
-                  color(.2, 1, 0, .6),
-                  color(0, 1, 0, .6),
-                  color(0, 1, .2, .6),
-                  color(0, 1, .5, .6),
-                  color(0, 1, 1, .6),
-                  color(0, .5, 1, .6),
-                  color(0, .2, 1, .6),
-                  color(0, 0, 1, .6),
-                  color(.2, 0, 1, .6),
-                  color(.5, 0, 1, .6),
-                  color(1, 0, 1, .6),
-                  color(1, 0, .5, .6),
-                  color(1, 0, .2, .6),
-                  color(.5, .5, .5, .6),
-                  color(.5, 0, 0, .6),
-                  color(.5, .5, 0, .6),
-                  color(0, .5, 0, .6),
-                  color(0 , .5, .5, .6),
-                  color(0, 0, .5, .6),
-                  color(.5, 0, .5, .6)
-                  ]"""
-        
-        features = self.findex.getFeatures(frag.chrom.genome.name,
-                                           frag.chrom.name,
-                                           frag.start,
-                                           frag.end)
-        
-        vis = []
-        i = 0
-        for feature, sites in features.iteritems():
-            col = colors[i]
-            length = self.findex.features[feature].length
-            
-            for site in sites:
-                if frag.direction == 1:
-                    x1 = frag.x + abs(site) - frag.start
-                else:
-                    x1 = frag.x + frag.end - abs(site) - length
-                
-                vis.append(self.drawMarking(
-                                "half_fill", col, 
-                                frag.y, x1, 
-                                x1 + length,
-                                util.sign(site) * frag.direction,
-                                1.5))
-            
-            i = (i + 1) % len(colors)
-            
-        
-        return group(* vis)
-    
-    
     def drawMarking(self, shape, col, y, x1, x2, direction=1, height=1.0):
         mid = y + self.conf["gene-size"] / 2.0
         
@@ -980,8 +884,8 @@ class SyntenyVis:
         frags = []
         
         for gene in [gene1, gene2, gene3, gene4]:
-            if gene in self.placedGenes:
-                frags.append(gene.frag)
+            if gene in self.region_layout: #placedGenes:
+                frags.append(self.region2frag[gene]) #gene.frag)
         
         for frag in frags:        
             if util.overlap(start, end, frag.start, frag.end):

@@ -227,12 +227,22 @@ class RegionDb (object):
     def has_species(self, species):
         return species in self.sp2chroms
 
+    def get_species(self):
+        """Returns all species in database"""
+        return self.sp2chroms.keys()
+    
     def get_chroms(self, species):
         """Get list of chromosomes for a given species"""
         return self.sp2chroms[species]
 
     def get_regions(self, species, chrom):
         return self.sp2chroms[species][chrom]
+
+    def get_all_regions(self):
+        return self.regions.values()
+
+    def iter_all_regions(self):
+        return self.regions.itervalues()
 
     def get_region(self, regionid):
         """Returns the region with regionid""" 

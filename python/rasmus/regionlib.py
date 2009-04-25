@@ -227,6 +227,9 @@ class RegionDb (object):
     def has_species(self, species):
         return species in self.sp2chroms
 
+    def has_chrom(self, species, chrom):
+        return chrom in self.sp2chroms.get(species, {})
+
     def get_species(self):
         """Returns all species in database"""
         return self.sp2chroms.keys()

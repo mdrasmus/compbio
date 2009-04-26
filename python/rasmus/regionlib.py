@@ -62,13 +62,14 @@ class Region (object):
     def length(self):
         return self.end - self.start + 1
 
-    def addChild(self, child):
+    def add_child(self, child):
         assert self not in child.parents
         assert child not in self.children
         child.parents.append(self)
         self.children.append(child)
+
     
-    def removeChild(self, child):
+    def remove_child(self, child):
         child.parents.remove(self)
         self.children.remove(child)
 
@@ -104,14 +105,14 @@ class Region (object):
 
 
 
-def findRegionPos(regions, pos):
+def find_region_pos(regions, pos):
     """Find the first region that starts after 'pos' in a sorted list of 'regions'"""
     low, top = algorithms.binsearch(regions, pos-1, lambda a,b: cmp(a.start, b))
     return top
     
 
 
-def findRegion(regions, region):
+def find_region(regions, region):
     """Find a region in a sorted list of 'regions'"""
     low, ind = algorithms.binsearch(regions, region.start-1, 
                                     lambda a,b: cmp(a.start, b))
@@ -128,7 +129,7 @@ def findRegion(regions, region):
     
 
 # TODO: add reverse iteration
-def iterChrom(regions, start, end, index=None):
+def iter_chrom(regions, start, end, index=None):
     """An iterator that walks down a sorted list of regions"""
 
     nregions = len(regions)
@@ -136,7 +137,7 @@ def iterChrom(regions, start, end, index=None):
     # find index
     if index == None:
         # find starting index by binary search
-        index = findRegionPos(regions, start)
+        index = find_region_pos(regions, start)
         if index == None:
             return
     
@@ -164,7 +165,7 @@ def overlaps(region1, regions):
     return [x for x in regions if overlap(region1, x)]
 
 
-def regionLookup(regions, key="ID"):
+def region_lookup(regions, key="ID"):
     """
     Returns a dict lookup of regions based on a key (default: ID)
     """

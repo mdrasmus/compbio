@@ -115,15 +115,15 @@ class Gff (object):
         self.nondata = set(["comment", "source", "score", "frame", "species"])
     
     
-    def formatData(self, region, ignore=set()):
+    def format_data(self, region, ignore=set()):
         # unparsed attribute
         return region.data.get(None, "")
 
-    def parseData(self, text, ignore=set()):
+    def parse_data(self, text, ignore=set()):
         return {None: text}
 
 
-    def readRegion(self, line, region=None):
+    def read_region(self, line, region=None):
         if region == None:
             region = regionlib.Region()
 
@@ -166,7 +166,7 @@ class Gff (object):
             region.data["frame"] = int(tokens[7])
 
         # parse attributes
-        region.data.update(self.parseData(tokens[8]))
+        region.data.update(self.parse_data(tokens[8]))
         
         # parse species
         region.species = region.data.get("species", "")
@@ -174,7 +174,7 @@ class Gff (object):
         return region
 
 
-    def writeRegion(self, region, out=sys.stdout):
+    def write_region(self, region, out=sys.stdout):
         score = str(region.data.get("score", "."))
         source = str(region.data.get("source", "."))
 
@@ -207,7 +207,7 @@ class Gff (object):
                    attr,
                    comment))
     
-    def buildHierarchy(self, regions):
+    def build_hierarchy(self, regions):
         """
         Produces a hierachy from a list of regions
         Returns list of regions with no parents (roots).
@@ -227,7 +227,7 @@ GFF = Gff()
 
 class Gtf (Gff):
 
-    def formatData(self, region):
+    def format_data(self, region):
         lst = []
         
         if region.species != "":
@@ -239,7 +239,7 @@ class Gtf (Gff):
         return " ".join(lst)
 
 
-    def parseData(self, text):
+    def parse_data(self, text):
         """Parses an attribute field into a dict of key/value pairs"""
 
         tokens = text.split(";")
@@ -257,7 +257,7 @@ class Gtf (Gff):
 
         return data
     
-    def buildHierarchy(self, regions):
+    def build_hierarchy(self, regions):
         """GTF has its own heirarchy system
            It is currently not implemented"""
         
@@ -271,7 +271,7 @@ GTF = Gtf()
 
 class Gff3 (Gff):
 
-    def formatData(self, region):
+    def format_data(self, region):
         lst = []
         
         if region.species != "":
@@ -283,7 +283,7 @@ class Gff3 (Gff):
         return "".join(lst)
 
 
-    def parseData(self, text):
+    def parse_data(self, text):
         """Parses an attribute field into a dict of key/value pairs"""
 
         tokens = text.split(";")
@@ -304,7 +304,7 @@ class Gff3 (Gff):
         return data
     
     
-    def buildHierarchy(self, regions):
+    def build_hierarchy(self, regions):
         """
         Produces a hierachy from a list of regions
         Returns list of regions with no parents (roots).
@@ -329,7 +329,7 @@ class Gff3 (Gff):
             if "Parent" in region.data:
                 parents = region.data["Parent"].split(",")
                 for parent in parents:
-                    lookup[parent].addChild(region)
+                    lookup[parent].add_child(region)
                 roots.remove(region)
         
         # create roots list (regions in same order as they were passed)
@@ -344,7 +344,7 @@ GFF3 = Gff3()
 # Gff Input/Output
 #
 
-def readGff(filename, format=GFF3, 
+def read_gff(filename, format=GFF3, 
             lineFilter=lambda x: True,
             regionFilter=lambda x: True):
     """
@@ -357,9 +357,10 @@ def readGff(filename, format=GFF3,
                      regionFilter)
     
     return list(infile)
+readGff = read_gff
 
 
-def writeGff(filename, regions, format=GFF3):
+def write_gff(filename, regions, format=GFF3):
     """
     Write regions to a file stream
     
@@ -367,21 +368,30 @@ def writeGff(filename, regions, format=GFF3):
     regions  - a list of Region objects
     """
     
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     
     for region in regions:
-        format.writeRegion(region, out=out)
+        format.write_region(region, out=out)
+writeGff = write_gff
 
 
-
-def iterGff(filename, format=GFF3, 
-            lineFilter=lambda x: True,
-            regionFilter=lambda x: True):
+def iter_gff(filename, format=GFF3, 
+             line_filter=lambda x: True,
+             region_filter=lambda x: True,
+             # backcompat
+             lineFilter=None,
+             regionFilter=None):
     """
     Iterate over the regions in a GFF file
     """
+
+    if lineFilter is not None:
+        line_filter = lineFilter
+    if regionFilter is not None:
+        region_filter = regionFilter
+
     
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     lineno = 0
     
     for line in infile:
@@ -389,20 +399,20 @@ def iterGff(filename, format=GFF3,
         line = line.rstrip()
         
         # only continue processing if line is not comment and passes filter
-        if len(line) == 0 or line[0] == "#" or not lineFilter(line):
+        if len(line) == 0 or line[0] == "#" or not line_filter(line):
             continue
         
         # parse region
         try:
-            region = format.readRegion(line)
+            region = format.read_region(line)
         except Exception, e:
             raise Exception("%s\nError on line %d: %s" % (e,lineno, line))
             
         
         # only return region if region passes filter
-        if regionFilter(region):
+        if region_filter(region):
             yield region
-
+iterGff = iter_gff
 
 
 #
@@ -411,14 +421,14 @@ def iterGff(filename, format=GFF3,
 if __name__ == "__main__":
     from rasmus.common import *
     
-    regions = readGff(strStream(TEST_GFF3_2), format=GFF3)
-    regions2 = GFF3.buildHierarchy(regions)
+    regions = read_gff(strStream(TEST_GFF3_2), format=GFF3)
+    regions2 = GFF3.build_hierarchy(regions)
     
     print regions2
     print regions2[0]
     
     if 0:
-        pc(readGff(strStream(TEST_GTF)))
+        pc(read_gff(strStream(TEST_GTF)))
 
 
 

@@ -187,7 +187,7 @@ class Gff (object):
 
         frame = str(region.data.get("frame", "."))
 
-        attr = self.formatData(region)
+        attr = self.format_data(region)
 
         if "comment" in region.data:
             comment = " #%s" % region.data["comment"]

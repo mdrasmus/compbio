@@ -68,12 +68,55 @@ light_colors   = [color(1, 0, 0, .6),
                   color(.5, 0, .5, .6)
                   ]
 
+def draw_gene(vis, gene, direction, col):
+    "draw a single gene"
+    
+    length = gene.length()
+    height = 1
+    steep = .1
 
+    mid = max(length - (height * steep), 0)
+    
+    return group(polygon(col,  
+                         0, 0,
+                         mid, 0,
+                         length, height/2,
+                         mid, height,
+                         0, height),
+                     lines(0, 0, 0, height))
 
+def draw_gene_box(vis, gene, direction, col):
+    "draw a single gene"
+    
+    length = gene.length()
+    height = 1
+    
+    return group(quads(col,  
+                       0, 0,
+                       length, 0,
+                       length, height,
+                       0, height),
+                 lines(0, 0, 0, height))
 
+        # determine which row gene is in (for color)
+def gene_color_alt_species(vis, gene, eff_dir):
+    order = 0
+        
+    if eff_dir == 1:
+        if order % 2 == 0:
+            col = vis.colors['gene_pos']
+        else:
+            col = vis.colors['gene2_pos']
+            
+    else:
+        if order % 2 == 0:
+            col = vis.colors['gene_neg']
+        else:
+            col = vis.colors['gene2_neg']
+    return col
 
 def effective_dir(direction, geneDirection):
-    return (direction == 1) == (geneDirection == 1)
+    return (-1, 1)[(direction == 1) == (geneDirection == 1)]
 
 
 #
@@ -110,6 +153,11 @@ class SyntenyVisBase:
                  rootid=None,
                  winsize=(800, 400),
 
+                 # graphics
+                 gene_label=lambda x: x.data["ID"],
+                 draw_gene=draw_gene_box,
+                 gene_color=gene_color_alt_species,
+
                  # misc options
                  fat_matches  = True,
                  use_controls = False,
@@ -127,7 +175,7 @@ class SyntenyVisBase:
                  color_gene_neg   = color(1, .6, 0, .95),
                  color_gene2_pos  = color(1, .2, 0, .95),
                  color_gene2_neg  = color(1, .2, 0, .95),
-                 color_matches    = color(.8, .8, 1, .1),
+                 color_matches    = color(.8, .8, 1, .8),
                  color_arrow      = color(1, .8, 0, .5),
                  color_frag       = color(0, 0, 0, .8),
                  color_blocks     = [color(.8,.8,1,.5)]
@@ -137,13 +185,17 @@ class SyntenyVisBase:
         self.winsize = winsize   
         self.rootid = rootid
         
-        self.refGenome     = None
+        self.ref_genome     = None
         self.frags         = set()
         self.controlids    = []
         self.markids       = []
         self.labelids      = []
         self.groupid       = 0
         self.visid = None
+        
+        self.gene_label = gene_label
+        self.draw_gene = draw_gene
+        self.gene_color = gene_color
         
         self.region2frags = {}
         self.region_layout = {}
@@ -250,7 +302,7 @@ class SyntenyVisBase:
     def draw_chrom(self, genome_name, chrom_name, start, end, direction=1):
         """Draw the synteny for a region of a chromosome"""
         
-        self.refGenome = genome_name
+        self.ref_genome = genome_name
 
         self.layout_frags(genome_name, chrom_name, start, end, direction)
         return self.draw_placed()
@@ -266,9 +318,9 @@ class SyntenyVisBase:
             order[genome] = i
         
         # swap the genome with order 0 and the reference genome
-        j = order[self.refGenome]
+        j = order[self.ref_genome]
         order[self.genomes[0]] = j
-        order[self.refGenome] = 0                
+        order[self.ref_genome] = 0                
         
         # init reference fragment
         ref_frag = Frag(genome=genome_name,
@@ -384,6 +436,11 @@ class SyntenyVisBase:
             frag.y = fragY[otherGenome] - \
                      ((order[otherGenome] - 1) * 
                        self.max_genome_sep)
+
+            # re-get all genes between those coordinates
+            #frag.genes = list(iter_chrom(self.db.get_regions(frag.genome, 
+            #                                                 frag.chrom),
+            #                             frag.start, frag.end))
             
             # store and lyaout frag
             self.frags.add(frag)
@@ -458,7 +515,7 @@ class SyntenyVisBase:
         return self.groupid
 
 
-    def draw_matches(self, sp, chrom, start, end):
+    def draw_matches(self, sp, chrom, start, end, drawn=set()):
         def getBlockColor(chrom):
             if not chrom.isdigit():
                 num = 0
@@ -490,6 +547,12 @@ class SyntenyVisBase:
                 for botGene in rows[i]:
                     gene1 = self.db.get_region(botGene)
                     for topGene in rows[i-1]:
+
+                        if (botGene, topGene) in drawn:
+                            continue
+
+                        drawn.add((botGene, topGene))
+                        
                         gene2 = self.db.get_region(topGene)
                         y1 = l[topGene].y 
                         y2 = l[botGene].y + 1
@@ -591,85 +654,79 @@ class SyntenyVisBase:
     #
     # gene functions
     #
-    def draw_gene(self, length, direction, order):
-        "draw a single gene"
-        height = 1
-        steep = .1
-        
-        if direction == 1:
-            if order % 2 == 0:
-                col = self.colors['gene_pos']
-            else:
-                col = self.colors['gene2_pos']
-        
-            mid = max(length - (height * steep), 0)
-            return group(polygon(col,  
-                0, 0, mid, 0, length, height/2, mid, height, 0, height),
-                lines(0, 0, 0, height))
-        else:
-            if order % 2 == 0:
-                col = self.colors['gene_neg']
-            else:
-                col = self.colors['gene2_neg']
-        
-            mid = min(height * steep, length)
-            return group(polygon(col,  
-                length, 0, length, height, mid, height, 0, height/2, mid, 0),
-                lines(length, 0, length, height))
-
+    
 
     def gene_widget(self, gene):
         def func():
            self.gene_click(gene)
 
-        length = gene.length()
-        effDir = effective_dir(self.region_layout[gene.data["ID"]].orient,
+        
+        eff_dir = effective_dir(self.region_layout[gene.data["ID"]].orient,
                                gene.strand)
 
+        length = gene.length()
         if length == 0:
             return group()
 
+        col = self.gene_color(self, gene, eff_dir)
+
+        if eff_dir == 1:
+            g = self.draw_gene(self, gene, eff_dir, col)
+        else:
+            g = translate(length, 0,
+                          flip(0, 1, self.draw_gene(self, gene, eff_dir, col)))
+        
+        return group(g, hotspot("click", 0, 0, length, 1, func),
+                     self.draw_gene_label(gene))
+    
+    
+    def draw_gene_label(self, gene):
+
+        name = self.gene_label(gene)
+        length = gene.length()
+
         if self.show_gene_labels == "scale":
-            label = text_clip(gene.data["ID"], 0, 0, length, 1,
-                              5, 20, "middle", "center")
+            label = group(color(0, 0, 0),
+                          text_clip(name, 0, 0, length, 1,
+                                    5, 20, "middle", "center"))
         elif self.show_gene_labels == "fix":
-            label = text(gene.data["ID"], 0, 0, length, 1, 
-                         "middle", "center")
+            label = group(color(0, 0, 0),
+                          text(name, 0, 0, length, 1, 
+                               "middle", "center"))
         elif self.show_gene_labels == "vertical":
-            label = rotate(90, text_clip(gene.data["ID"], 0, -100000,
-                                          self.max_genome_sep / 2.0, 0,
-                                          5, 20,
-                                          "left", "top"))
+            label = rotate(90, color(0, 0, 0),
+                           text_clip(name, 0, -100000,
+                                     self.max_genome_sep, 0,
+                                     8, 8,
+                                     "left", "top"))
         elif self.show_gene_labels == 'main_only':
-            if gene.species == self.refGenome:
-                label = rotate(90, text_clip(gene.data["ID"], 
-                                             0, 0,
-                                             self.max_genome_sep * 10000.0, 
-                                             -2,
-                                             10, 10,
-                                             "left", "top"))
+            if gene.species == self.ref_genome:
+                label = rotate(90, color(0, 0, 0),
+                               text_clip(name, 0, -100000,
+                                         10000000, 0,
+                                         8, 8,
+                                         "left", "top"))
             else:
                 label = group()
         else:
             label = group()
-        
-        # determine which row gene is in (for color)
-        order = 0
-    
-        return group(
-            self.draw_gene(length, effDir, order),
-            hotspot("click", 0, 0, length, 1, func),
-            color(0,0,0),
-            label)
+
+        return label
 
     
     def gene_click(self, gene):
         self.print_gene(gene)
     
     def frag_click(self, frag):
-        print "%s:%s:%s-%s" % (frag.genome, frag.chrom,
-                               util.int2pretty(frag.start),
-                               util.int2pretty(frag.end))
+
+        x, y = self.win.get_mouse_pos("world")
+        if frag.direction == 1:
+            pos = int(frag.start + x - frag.x)
+        else:
+            pos = int(frag.end - (x - frag.x))
+        
+        print "%s:%s:%s" % (frag.genome, frag.chrom,
+                            util.int2pretty(pos))
 
     
     def print_gene(self, gene):
@@ -679,6 +736,7 @@ class SyntenyVisBase:
                util.int2pretty(gene.start), 
                util.int2pretty(gene.end), 
                util.int2pretty(gene.length()))
+        print ";".join("%s=%s" % (a, b) for a,b in gene.data.items())
         
     def redraw(self):
         if self.groupid != 0:

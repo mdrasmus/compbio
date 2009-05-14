@@ -284,7 +284,9 @@ class RegionDb (object):
         return self.sp2chroms[species]
 
     def get_regions(self, species, chrom):
-        return self.sp2chroms[species][chrom]
+        if species not in self.sp2chroms:
+            return []        
+        return self.sp2chroms[species].get(chrom, [])
 
     def get_all_regions(self):
         return self.regions.values()

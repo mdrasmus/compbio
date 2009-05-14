@@ -50,14 +50,25 @@ if action == "prepare":
     # prepare input files
 
     if len(sys.argv) < 5:
-        raise "arguments must be: prepare [-c] <datadir> <evaldir> <file extension>"
+        raise "arguments must be: prepare [-c] <datadir> <evaldir> <file extension> [eval file extension]"
     
     if sys.argv[2] == "-c":
         docopy = True    
         datadir, evaldir, ext = sys.argv[3:6]
+
+        if len(sys.argv) > 6:
+            evalext = sys.argv[6]
+        else:
+            evalext = ext        
     else:
         docopy = False
         datadir, evaldir, ext = sys.argv[2:5]
+
+        if len(sys.argv) > 5:
+            evalext = sys.argv[5]
+        else:
+            evalext = ext
+
     
     
     if not os.path.exists(evaldir):
@@ -72,7 +83,7 @@ if action == "prepare":
         if not os.path.exists(dirname):
             os.makedirs(dirname)
             
-        newfile = os.path.join(evaldir, name, name+ext)
+        newfile = os.path.join(evaldir, name, name+evalext)
         
         if os.path.exists(newfile):
             continue

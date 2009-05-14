@@ -11,13 +11,13 @@ from glob import glob
 
 o = optparse.OptionParser()
 o.disable_interspersed_args()
-o.add_option("-r", "--reduce", dest="reduce",
-             default="cat $FILES")
+#o.add_option("-r", "--reduce", dest="reduce",
+#             default="cat $FILES")
 o.add_option("-i", "--input", dest="input",
              action="append",
              help="input file")
-o.add_option("-o", "--output", dest="output",
-             help="output file")
+#o.add_option("-o", "--output", dest="output",
+#             help="output file")
 o.add_option("-n", "--numgroup", dest="numgroup",
              type="int", default=10,
              help="number of groups to make (default: 10)")
@@ -51,10 +51,10 @@ def error(text):
 
 def doublequote(text):
     """Wrap argument in doublequotes with propper escaping"""
-    return '"' + text.replace('"', '\\"') + '"'
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
-def quote(text):
-    return text.replace('"', '\\"').replace(" ", "\\ ")
+#def quote(text):
+#    return text.replace("\\", "\\\\").replace('"', '\\"').replace(" ", "\\ ")
 
 def make_cmd(cmd, **args):
     cmd2 = ""
@@ -96,10 +96,13 @@ def main(argv):
 
 
     # determine map command
-    cmd = " ".join(args)
-    if cmd == "":
-        error("must give map command")
-        return 2
+    if len(args) > 0:
+        cmd = " ".join(args)
+        if cmd == "":
+            error("must give map command")
+            return 2
+    else:
+        cmd = sys.stdin.read()
     
 
     # determine infiles
@@ -111,7 +114,7 @@ def main(argv):
             else:
                 infiles.append(open(arg))
     else:
-        infiles.append(sys.stdin)
+        error("must specify input file(s)")
 
     # determine all input lines
     lines = []
@@ -120,8 +123,11 @@ def main(argv):
 
     # determine group size
     if options.groupsize is None:
-        options.groupsize = int(math.ceil(len(lines) / options.numgroup))
+        options.groupsize = int(math.ceil(len(lines) /
+                                          float(options.numgroup)))
 
+    if len(lines) == 0:
+        return 0
 
     # split lines
     pids = set()
@@ -140,7 +146,8 @@ def main(argv):
 
         # run command
         cmd2 = make_cmd(options.submit + 
-                        doublequote(cmd + " > $FILE.out"), FILE=fn)
+                        doublequote("( " + cmd + " ) > \"$FILE.out\""),
+                        FILE=fn)
         if options.verbose:
             print >>sys.stderr, cmd2
 
@@ -149,10 +156,13 @@ def main(argv):
     # wait for all jobs to finish
     while len(pids) > 0:
         pid, code = os.waitpid(0, 0)
-        pids.remove(pid)
+        if pid in pids:
+            pids.remove(pid)
+        
 
 
     # run reduce command
+    '''
     outfiles = " ".join(map(quote, outfiles))
     if options.output is not None:
         out_cmd = ' > %s' % doublequote(options.output)
@@ -162,7 +172,7 @@ def main(argv):
     if options.verbose:
         print >>sys.stderr, reduce_cmd
     os.system(reduce_cmd)
-
+    '''
 
     # clean up
     if not options.no_cleanup:

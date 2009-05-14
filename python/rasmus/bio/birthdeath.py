@@ -12,6 +12,12 @@ def prob_birth_death(genes1, genes2, t, birth, death):
     """Probability of 'genes1' genes at time 0 give rise to 'genes2' genes at
        time 't' with 'birth' and 'death' rates.
     """
+
+    if birth == 0.0 and death == 0.0:
+        if genes1 == genes2:
+            return 1.0
+        else:
+            return 0.0
     
     l = birth
     u = death
@@ -53,6 +59,10 @@ def prob_no_birth(n, T, birth, death):
        evolving until time 'T' with 'birth' and 'death' rates
        for a reconstructed process.
     """
+
+    if birth == 0.0:
+        return 1.0
+    
     l = birth
     u = death
     r = l - u

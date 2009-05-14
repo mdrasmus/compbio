@@ -799,12 +799,12 @@ class Tree:
         util.writeVector(treeFile, ptree)
     
     
-    def getOnelineNewick(self):
+    def get_one_line_newick(self):
         """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
         self.write(stream, oneline=True)
         return stream.getvalue()
-    
+    getOnelineNewick = get_one_line_newick
     
     #
     # should I make these external?
@@ -832,27 +832,27 @@ class Tree:
 # Convenient Input/Output functions
 #
 
-def readTree(filename):
+def read_tree(filename):
     """Read a tree from a newick file"""
     tree = Tree()
     tree.readNewick(filename)
     return tree
+readTree = read_tree
 
-
-def parseNewick(newick):
+def parse_newick(newick):
     """Read a tree from newick notation stored in a string"""
     tree = Tree()
     stream = StringIO.StringIO(newick)
     tree.readNewick(stream)
     return tree
-
+parseNewick = parse_newick
 
 #============================================================================
 # Misc. functions for manipulating trees
 #
 
 
-def assertTree(tree):
+def assert_tree(tree):
     """Assert that the tree is internally consistent"""
     
     visited = {}
@@ -869,7 +869,7 @@ def assertTree(tree):
     
     assert tree.root.parent == None
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
-
+assertTree = assert_tree
 
 
 

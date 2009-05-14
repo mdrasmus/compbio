@@ -165,6 +165,50 @@ def overlaps(region1, regions):
     return [x for x in regions if overlap(region1, x)]
 
 
+def groupby_overlaps(regions, bygroup=True):
+    """regions must be sorted by chrom and start"""
+
+    species = None
+    seqname = None
+    start = -util.INF
+    end = -util.INF
+    group = None
+    groupnum = -1
+    for reg in regions:
+        
+        if (reg.species != species or
+            reg.seqname != seqname or
+            reg.start > end):
+            
+            # start new group
+            species = reg.species
+            seqname = reg.seqname
+            start = reg.start
+            end = reg.end
+            groupnum += 1
+
+            if bygroup:
+                if group is not None:
+                    yield group
+                group = [reg]
+            else:
+                yield (groupnum, reg)
+
+        else:
+            # append to current group
+            if reg.end > end:
+                end = reg.end
+
+            if bygroup:
+                group.append(reg)
+            else:
+                yield (groupnum, reg)
+
+    
+        
+        
+
+
 def region_lookup(regions, key="ID"):
     """
     Returns a dict lookup of regions based on a key (default: ID)

@@ -45,7 +45,7 @@ class BlastReader:
     """A parser for Blast results in -m8 format"""
 
     def __init__(self, filename, moreFunc = lambda: False):
-        self.infile = util.openStream(filename)
+        self.infile = util.open_stream(filename)
         self.moreFunc = moreFunc
     
     def __iter__(self):
@@ -82,7 +82,7 @@ class BlastListReader (BlastReader):
         if len(self.infiles) > 0:
             infile = self.infiles[0]
             self.infiles = self.infiles[1:]
-            return util.openStream(infile)
+            return util.open_stream(infile)
         else:
             return False
 

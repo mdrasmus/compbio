@@ -24,9 +24,49 @@ from rasmus.bio import fasta
 from rasmus.bio import phylip
 
 
-# I was thinking about moving these functions over here... not sure yet
-from rasmus.bio.genomeutil import gene2species, makeGene2species, readGene2species
 
+def gene2species(genename):
+    """default gene2species mapping"""
+    return genename
+
+
+def make_gene2species(maps):
+    # find exact matches and expressions
+    exacts = {}
+    exps = []
+    for mapping in maps:
+        if "*" not in mapping[0]:
+            exacts[mapping[0]] = mapping[1]
+        else:
+            exps.append(mapping)
+    
+    # create mapping function
+    def gene2species(gene):
+        # eval expressions first in order of appearance
+        for exp, species in exps:
+            if exp[-1] == "*":
+                if gene.startswith(exp[:-1]):
+                    return species
+            elif exp[0] == "*":
+                if gene.endswith(exp[1:]):
+                    return species
+        
+        if gene in exacts:
+            return exacts[gene]
+        
+        raise Exception("Cannot map gene '%s' to any species" % gene)
+    return gene2species
+makeGene2species = make_gene2species
+
+
+def read_gene2species(* filenames):
+    for filename in filenames:
+        maps = []
+        for filename in filenames:
+            maps.extend(util.read_delim(util.skipComments(
+                util.openStream(filename))))
+    return make_gene2species(maps)    
+readGene2species = read_gene2species
 
 
 #=============================================================================
@@ -78,14 +118,14 @@ def reconcile(gtree, stree, gene2species = gene2species):
         
         if not node.isLeaf():
             # this node's species is lca of children species  
-            recon[node] = reconcileLca(stree, order, 
+            recon[node] = reconcile_lca(stree, order, 
                                        util.mget(recon, node.children))
     walk(gtree.root)
     
     return recon
 
 
-def reconcileLca(stree, order, nodes):
+def reconcile_lca(stree, order, nodes):
     """Helper function for reconcile"""
     
     # handle simple and complex cases
@@ -114,19 +154,21 @@ def reconcileNode(node, stree, recon):
     return treelib.lca(util.mget(recon, node.children))
 
 
-def labelEvents(gtree, recon):
+def label_events(gtree, recon):
     """Returns a dict with gene node keys and values indicating 
        'gene', 'spec', or 'dup'"""
     events = {}
     
     def walk(node):
-        events[node] = labelEventsNode(node, recon)
+        events[node] = label_events_node(node, recon)
         node.recurse(walk)
     walk(gtree.root)
     
     return events
+labelEvents = label_events
 
-def labelEventsNode(node, recon):
+
+def label_events_node(node, recon):
     if not node.isLeaf():
         if recon[node] in map(lambda x: recon[x], node.children):
             return "dup"
@@ -134,6 +176,7 @@ def labelEventsNode(node, recon):
             return "spec"
     else:
         return "gene"
+labelEventsNode = label_events_node
 
 
 def findLossNode(node, recon):
@@ -195,15 +238,14 @@ def findLossUnderNode(node, recon):
 
 
 
-def countDupNode(node, events):
+def count_dup_node(node, events):
     if events[node] == "dup":
         return len(node.children) - 1
     else:
         return 0
 
 
-def findLoss(gtree, stree, recon, node=None):
-    #depths = stree.findDepths()
+def find_loss(gtree, stree, recon, node=None):
     loss = []
 
     def walk(node):
@@ -215,13 +257,14 @@ def findLoss(gtree, stree, recon, node=None):
         walk(gtree.root)
 
     return loss
+findLoss = find_loss
 
 
-def countDup(gtree, events, node=None):    
+def count_dup(gtree, events, node=None):    
     var = {"dups": 0}
     
     def walk(node):
-        var["dups"] += countDupNode(node, events)
+        var["dups"] += count_dup_node(node, events)
         node.recurse(walk)
     if node:
         walk(node)
@@ -229,7 +272,7 @@ def countDup(gtree, events, node=None):
         walk(gtree.root)
     
     return var["dups"]
-        
+countDup = count_dup
 
 def countDupLoss(gtree, stree, recon, events=None):
     if events is None:
@@ -241,7 +284,7 @@ def countDupLoss(gtree, stree, recon, events=None):
     
 
 
-def reconRoot(gtree, stree, gene2species = gene2species, 
+def recon_root(gtree, stree, gene2species = gene2species, 
                rootby = "duploss", newCopy=True):
     # make a consistent unrooted copy of gene tree
     if newCopy:
@@ -346,6 +389,7 @@ def reconRoot(gtree, stree, gene2species = gene2species,
         treelib.reroot(gtree, node1.name, newCopy=False)
     
     return gtree
+reconRoot = recon_root
 
 
 def midrootRecon(tree, stree, recon, events, params, generate):

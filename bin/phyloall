@@ -224,6 +224,15 @@ def getDataFiles(conf, infile):
         distfile  = getDistFile(conf, basename)
         labelfile = getLabelFile(conf, basename)
         treefile  = getTreeFile(conf, basename)
+    elif infileType == "tree":
+        if "fastaext" in conf:
+            fastafile = getFastaFile(conf, basename)
+        else:
+            fastafile = None
+        alignfile = getAlignFile(conf, basename)
+        distfile  = getDistFile(conf, basename)
+        labelfile = getLabelFile(conf, basename)
+        treefile  = infile
     elif infileType == "dist":
         if "fastaext" in conf:
             fastafile = getFastaFile(conf, basename)

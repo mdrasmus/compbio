@@ -1308,7 +1308,7 @@ class SafeReadIter:
         else:
             return line
 
-def readWord(infile, delims = [" ", "\t", "\n"]):
+def read_word(infile, delims = [" ", "\t", "\n"]):
     word = ""
     
     while True:
@@ -1324,31 +1324,32 @@ def readWord(infile, delims = [" ", "\t", "\n"]):
         if char == "" or char in delims:
             return word
         word += char
+readWord = read_word
 
-
-def readUntil(stream, chars):
+def read_until(stream, chars):
     token = ""
     while True:
         char = stream.read(1)
         if char in chars or char == "":
             return token, char
         token += char
+readUntil = read_until
 
-
-def readWhile(stream, chars):
+def read_while(stream, chars):
     token = ""
     while True:
         char = stream.read(1)
         if char not in chars or char == "":
             return token, char
         token += char
+readWhile = read_while
 
-
-def skipComments(infile):
+def skip_comments(infile):
     for line in infile:
         if line.startswith("#") or line.startswith("\n"):
             continue
         yield line
+skipComments = skip_comments
 
 
 class IndentStream:

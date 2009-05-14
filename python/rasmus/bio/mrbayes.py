@@ -51,7 +51,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     writeNexus(out, names, aln.values(), seqtype, options)
 
     # write options
-    writeMrbayesOptions(out, options, seqtype=format)
+    writeMrbayesOptions(out, options, seqtype=seqtype)
     out.close()
     
     # exec mrbayes

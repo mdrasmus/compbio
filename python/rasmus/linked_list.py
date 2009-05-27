@@ -5,18 +5,10 @@ class LinkedNode (object):
     """A node in a doubly linked list"""
     
     def __init__(self, item):
-        self._next = None
-        self._prev = None
-        self._item = item
+        self.next = None
+        self.prev = None
+        self.item = item
 
-    def get_next(self):
-        return self._next
-
-    def get_prev(self):
-        return self._prev
-
-    def get_item(self):
-        return self._item
         
 
 class LinkedList (object):
@@ -40,16 +32,16 @@ class LinkedList (object):
         
         ptr = self._head
         while ptr is not None:
-            yield ptr._item
-            ptr = ptr._next
+            yield ptr.item
+            ptr = ptr.next
 
     def __reversed__(self):
         """Iterate backwards over list"""
         
         ptr = self._tail
         while ptr is not None:
-            yield ptr._item
-            ptr = ptr._prev
+            yield ptr.item
+            ptr = ptr.prev
 
     def get_head(self):
         return self._head
@@ -57,24 +49,56 @@ class LinkedList (object):
     def get_tail(self):
         return self._tail
 
-    def iternodes(self):
+    def get_first(self):
+        if self._head is None:
+            raise IndexError("No elements in list")
+        self._head.item
+
+    def get_last(self):
+        if self._last is None:
+            raise IndexError("No elements in list")
+        self._tail.item
+        
+
+    def iter_nodes(self):
         """Iterate over the linked nodes in a list"""
 
         node = self._head
         while node is not None:
-            next = node._next
+            next = node.next
             yield node
             node = next
 
-    def iternodesreversed(self):
+    def iter_nodes_reversed(self):
         """Iterate over the linked nodes in a list in reverse"""
         
         node = self._tail
         while node is not None:
-            prev = ndoe._prev
+            prev = ndoe.prev
             yield node
             node = prev
 
+    def remove_node(self):
+        """Remove node from list"""
+
+        if node.prev is not None:
+            node.prev.next = node.next
+        else:
+            # first in list
+            self._head = node.next
+            if self._head:
+                self._head.prev = None
+
+        if node.next is not None:
+            node.next.prev = node.prev
+        else:
+            # last in list
+            self._tail = node.prev
+            if self._tail:
+                self._tail.next = None
+
+        self._size -= 1
+        
 
     def append(self, item):
         """Append item to end of list"""
@@ -86,8 +110,8 @@ class LinkedList (object):
         else:
             # append to end of list
             node = LinkedNode(item)
-            self._tail._next = node
-            node._prev = self._tail
+            self._tail.next = node
+            node.prev = self._tail
             self._tail = node
 
         self._size += 1
@@ -103,8 +127,8 @@ class LinkedList (object):
         else:
             # append to front of list
             node = LinkedNode(item)
-            self._head._prev = node
-            node._next = self._head
+            self._head.prev = node
+            node.next = self._head
             self._head = node
 
         self._size += 1
@@ -129,14 +153,14 @@ class LinkedList (object):
         if self._tail is None:
             raise IndexError("pop from empty list")
         
-        item = self._tail._item
-        self._tail = self._tail._prev
+        item = self._tail.item
+        self._tail = self._tail.prev
 
         if self._tail is None:
             # list is empty
             self._head = None
         else:
-            self._tail._next = None
+            self._tail.next = None
 
         self._size -= 1
 
@@ -148,14 +172,14 @@ class LinkedList (object):
         if self._head is None:
             raise IndexError("pop from empty list")
 
-        item = self._head._item
-        self._head = self._head._next
+        item = self._head.item
+        self._head = self._head.next
 
         if self._head is None:
             # list is empty
             self._tail = None
         else:
-            self._head._prev = None
+            self._head.prev = None
 
         self._size -= 1
 

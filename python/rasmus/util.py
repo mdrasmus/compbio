@@ -1756,11 +1756,12 @@ except ImportError:
     
 try:
     from rasmus.plotting import *
-except ImportError:
+except Exception, e:
     try:
         from plotting import *
     except ImportError:
         pass
+
 
 
 

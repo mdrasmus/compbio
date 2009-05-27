@@ -16,7 +16,6 @@ from summon.core import *
 
 
 
-
 class PhyloViewer (object):
     """
     Phylogeny Visualization

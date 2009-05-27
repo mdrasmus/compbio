@@ -6,7 +6,7 @@
  Plotting classes and functions: R plotting, GNUPLOT wrapper, svg, heatmaps
 """
 
-from rasmus.util import *
+#from rasmus import util
 from rasmus import svg
 
 import sys, os
@@ -272,7 +272,8 @@ def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
 
 def makeColorLegend(filename, colormap, start, end, step, 
                     width=100, height=10):
-    s = svg.Svg(openStream(filename, "w"))    
+    from rasmus import util
+    s = svg.Svg(util.open_stream(filename, "w"))    
     s.beginSvg(width, height)
     
     xscale =  float(width) / (end + step - start)
@@ -340,7 +341,8 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     
     
     # begin svg
-    infile = openStream(filename, "w")
+    from rasmus import util
+    infile = util.open_stream(filename, "w")
     s = svg.Svg(infile)
     s.beginSvg(ncols*width + 2*xmargin, nrows*height + 2*ymargin)
     
@@ -555,8 +557,9 @@ class Gnuplot:
 
     def savetab(self, filename):
         """Save data in tab delimited format"""
-        
-        out = openStream(filename, "w")
+
+        from ramsus import util
+        out = util.open_stream(filename, "w")
 
         for data in self.data:
             print >>out, data.options["plab"]
@@ -1098,3 +1101,5 @@ class MultiPlot (Gnuplot):
         
         print >>self.stream, "unset multiplot"
 """        
+
+

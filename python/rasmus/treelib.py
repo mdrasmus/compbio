@@ -136,9 +136,10 @@ class TreeNode:
         
         return node
         
-    def isLeaf(self):
+    def is_leaf(self):
         """Returns True if the node is a leaf (no children)"""
         return len(self.children) == 0
+    isLeaf = is_leaf
     
     def recurse(self, func, *args):
         """Applies a function 'func' to the children of a node"""
@@ -158,13 +159,15 @@ class TreeNode:
           
         return leaves
     
-    def leafNames(self):
+    def leaf_names(self):
         """Returns the leaf names beneath the node in traversal order"""
         return [x.name for x in self.leaves()]
+    leafNames = leaf_names
     
-    def writeData(self, out):
+    def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
-        out.write(str(self.dist))        
+        out.write(str(self.dist))
+    writeData = write_data
 
 
 # class for managing branch data
@@ -273,12 +276,13 @@ class Tree:
     #=============================
     # structure functions
 
-    def makeRoot(self, name = None):
+    def make_root(self, name = None):
         """Create a new root node"""
         if name == None:
             name = self.newName()
         self.root = TreeNode(name)
         self.add(self.root)
+    makeRoot = make_root
 
 
     def add(self, node):
@@ -288,13 +292,14 @@ class Tree:
         self.nodes[node.name] = node
 
 
-    def addChild(self, parent, child):
+    def add_child(self, parent, child):
         """Add a child node to an existing node 'parent' in the tree"""
         assert parent != child
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
+    addChild = add_child
 
 
     def remove(self, node):
@@ -308,7 +313,7 @@ class Tree:
         del self.nodes[node.name]
     
     
-    def removeTree(self, node):
+    def remove_tree(self, node):
         """
         Removes subtree rooted at 'node' from tree.
         Notifies parent (if it exists) that node has been removed.
@@ -323,6 +328,8 @@ class Tree:
         
         if node.parent:
             node.parent.children.remove(node)
+    removeTree = remove_tree
+
     
     
     def rename(self, oldname, newname):
@@ -333,23 +340,25 @@ class Tree:
         node.name = newname
     
     
-    def newName(self):
+    def new_name(self):
         """Returns a new node name that should be unique in the tree"""
         name = self.nextname
         self.nextname += 1
         return name
+    newName = new_name
     
     
-    def addTree(self, parent, childTree):
+    def add_tree(self, parent, childTree):
         """Add a subtree to the tree."""
         
         # Merge nodes and change the names of childTree names if they conflict
         # with existing names
         self.mergeNames(childTree)        
         self.addChild(parent, childTree.root)
+    addTree = add_tree
     
     
-    def replaceTree(self, node, childTree):
+    def replace_tree(self, node, childTree):
         """Remove node and replace it with the root of childTree"""
     
         # merge nodes and change the names of childTree names if they conflict
@@ -361,9 +370,10 @@ class Tree:
             parent.children[index] = childTree.root
             childTree.root.parent = parent
             del self.nodes[node.name]
+    replaceTree = replace_tree
     
     
-    def mergeNames(self, tree2):
+    def merge_names(self, tree2):
         """Merge the node names from tree2 into this tree.
            Change any names that conflict"""
     
@@ -377,6 +387,7 @@ class Tree:
                     if name >= self.nextname:
                         self.nextname = name + 1
                 self.nodes[name] = tree2.nodes[name]
+    mergeNames = merge_names
         
     
     def clear(self):
@@ -392,17 +403,19 @@ class Tree:
         return node.leaves()
     
     
-    def leafNames(self, node = None):
+    def leaf_names(self, node = None):
         """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
+    leafNames = leaf_names
     
     
     #===============================
     # data functions
 
-    def hasData(self, dataname):
+    def has_data(self, dataname):
         """Does the tree contain 'dataname' in its extra data"""
         return dataname in self.defaultData
+    hasData = has_data
 
     
     def copy(self):
@@ -428,29 +441,31 @@ class Tree:
         return tree
     
     
-    def copyData(self, tree):
+    def copy_data(self, tree):
         """Copy tree data to another"""
         self.branchData = tree.branchData
         self.defaultData = copy.copy(tree.defaultData)
         self.data = copy.copy(tree.data)
+    copyData = copy_data
     
     
-    def copyNodeData(self, tree):
+    def copy_node_data(self, tree):
         """Copy node data to another tree"""
         for name, node in self.nodes.iteritems():
             if name in tree.nodes:
                 node.data = copy.copy(tree.nodes[name].data)
         self.setDefaultData()
+    copyNodeData = copy_node_data
     
-    
-    def setDefaultData(self):
+    def set_default_data(self):
         """Set default values in each node's data"""
         for node in self.nodes.itervalues():
             for key, val in self.defaultData.iteritems():
                 node.data.setdefault(key, val)
+    setDefaultData = set_default_data
     
     
-    def clearData(self, *keys):
+    def clear_data(self, *keys):
         """Clear tree data"""
         for node in self.nodes.itervalues():
             if len(keys) == 0:
@@ -459,6 +474,8 @@ class Tree:
                 for key in keys:
                     if key in node.data:
                         del node.data[key]
+    clearData = clear_data
+
     
     
     #======================================================================
@@ -901,7 +918,7 @@ def lca(nodes):
         raise Exception("No nodes given")
 
 
-def findDist(tree, name1, name2):
+def find_dist(tree, name1, name2):
     """Returns the branch distance between two nodes in a tree"""
 
     if not name1 in tree.nodes or \
@@ -935,6 +952,7 @@ def findDist(tree, name1, name2):
         dist += path2[-j].dist
     
     return dist
+findDist = find_dist
         
 
 def countDescendants(node, sizes=None):

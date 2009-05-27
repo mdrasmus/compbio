@@ -1,6 +1,6 @@
 #
 # Phylogeny functions
-#
+# Matt Rasmussen 2006-2009
 # 
 
 
@@ -23,6 +23,12 @@ from rasmus.bio import blast
 from rasmus.bio import fasta
 from rasmus.bio import phylip
 
+
+# NOTE: camelCase names are DEPRECATED
+
+
+#=============================================================================
+# gene to species mapping functions
 
 
 def gene2species(genename):
@@ -72,29 +78,6 @@ readGene2species = read_gene2species
 #=============================================================================
 # Phylogeny functions
 #
-    
-
-def viewTree(tree, options = "-t 1"):
-    tmpfile = util.tempfile(".", "vistree", ".tree")
-    tree.write(tmpfile)
-    os.system("vistree.py -n %s %s" % (tmpfile, options))
-    os.remove(tmpfile)
-    
-
-def tree2distmat(tree, leaves):
-    """get pair-wise distances between leaves of a tree"""
-    
-    # TODO: not implemented efficiently
-    mat = []
-    for i in range(len(leaves)):
-        mat.append([])
-        for j in range(len(leaves)):
-            mat[-1].append(treelib.findDist(tree, leaves[i], leaves[j]))
-    
-    return mat
-
-
-    
     
 
 def reconcile(gtree, stree, gene2species = gene2species):
@@ -149,7 +132,7 @@ def reconcile_lca(stree, order, nodes):
     return node1
     
 
-def reconcileNode(node, stree, recon):
+def reconcile_node(node, stree, recon):
     """Reconcile a single gene node to a species node"""
     return treelib.lca(util.mget(recon, node.children))
 
@@ -179,7 +162,7 @@ def label_events_node(node, recon):
 labelEventsNode = label_events_node
 
 
-def findLossNode(node, recon):
+def find_loss_node(node, recon):
     loss = []
     
     # if not parent, then no losses
@@ -212,7 +195,7 @@ def findLossNode(node, recon):
     return loss
 
 
-def findLossUnderNode(node, recon):
+def find_loss_under_node(node, recon):
     loss = []
     snodes = {}
     internal = {}
@@ -236,20 +219,12 @@ def findLossUnderNode(node, recon):
     return loss
 
 
-
-
-def count_dup_node(node, events):
-    if events[node] == "dup":
-        return len(node.children) - 1
-    else:
-        return 0
-
-
 def find_loss(gtree, stree, recon, node=None):
+    """Returns a list of gene losses in a gene tree"""
     loss = []
 
     def walk(node):
-        loss.extend(findLossNode(node, recon))
+        loss.extend(find_loss_node(node, recon))
         node.recurse(walk)
     if node:
         walk(node)
@@ -260,11 +235,13 @@ def find_loss(gtree, stree, recon, node=None):
 findLoss = find_loss
 
 
-def count_dup(gtree, events, node=None):    
+def count_dup(gtree, events, node=None):
+    """Returns the number of duplications in a gene tree"""
     var = {"dups": 0}
     
     def walk(node):
-        var["dups"] += count_dup_node(node, events)
+        if events[node] == "dup":
+            var["dups"] += len(node.children) - 1
         node.recurse(walk)
     if node:
         walk(node)
@@ -274,18 +251,158 @@ def count_dup(gtree, events, node=None):
     return var["dups"]
 countDup = count_dup
 
-def countDupLoss(gtree, stree, recon, events=None):
+def count_dup_loss(gtree, stree, recon, events=None):
+    """Returns the number of duplications + losses in a gene tree"""
     if events is None:
         events = labelEvents(gtree, recon)
     
     nloss = len(findLoss(gtree, stree, recon))
     ndups = countDup(gtree, events)
     return nloss + ndups
+countDupLoss = count_dup_loss
+
+
+
+def find_species_roots(tree, stree, recon):
+    """Find speciation nodes in the gene tree that reconcile to the
+       species tree root"""
     
+    roots = []
+    def walk(node):
+        found = False
+        for child in node.children:
+            found = walk(child) or found
+        if not found and recon[node] == stree.root:
+            roots.append(node)
+            found = True
+        return found
+    walk(tree.root)
+    return roots
+findSpeciesRoots = find_species_roots
+        
+
+
+def find_orthologs(gtree, stree, recon, counts=True):
+    """Find all ortholog pairs within a gene tree"""
+
+    events = labelEvents(gtree, recon)
+    orths = []
+    
+    for node, event in events.items():
+        if event == "spec":
+            leavesmat = [x.leaves() for x in node.children]
+            sp_counts = [util.histDict(util.mget(recon, row))
+                         for row in leavesmat]
+            
+            for i in range(len(leavesmat)):
+                for j in range(i+1, len(leavesmat)):
+                    for gene1 in leavesmat[i]:
+                        for gene2 in leavesmat[j]:
+                            if gene1.name > gene2.name:
+                                g1, g2 = gene2, gene1
+                                a, b = j, i
+                            else:
+                                g1, g2 = gene1, gene2
+                                a, b = i, j
+                            
+                            if not counts:
+                                orths.append((g1.name, g2.name))
+                            else:
+                                orths.append((g1.name, g2.name,
+                                              sp_counts[a][recon[g1]],
+                                              sp_counts[b][recon[g2]]))
+    
+    return orths
+findOrthologs = find_orthologs
+
+
+
+
+#============================================================================
+# duplication loss counting
+#
+
+
+def initDupLossTree(stree):
+    # initalize counts to zero
+    def walk(node):
+        node.data['dup'] = 0
+        node.data['loss'] = 0
+        node.data['appear'] = 0
+        node.data['genes'] = 0
+        node.recurse(walk)
+    walk(stree.root)
+
+
+
+def countDupLossTree(tree, stree, gene2species):
+    """count dup loss"""
+    recon = reconcile(tree, stree, gene2species)
+    events = labelEvents(tree, recon)
+    losses = findLoss(tree, stree, recon)
+    
+    dup = 0
+    loss = 0
+    appear = 0
+    
+    # count appearance    
+    recon[tree.root].data["appear"] += 1
+    appear += 1
+    
+    # count dups
+    for node, event in events.iteritems():
+        if event == "dup":
+            recon[node].data['dup'] += 1
+            dup += 1
+        elif event == "gene":
+            recon[node].data['genes'] += 1
+
+    # count losses
+    for gnode, snode in losses:
+        snode.data['loss'] += 1
+        loss += 1
+    
+    return dup, loss, appear
+
+
+
+def countAncestralGenes(stree):
+    """count ancestral genes"""
+    def walk(node):
+        if not node.isLeaf():
+            counts = []
+            for child in node.children:
+                walk(child)
+                counts.append(child.data['genes'] 
+                              - child.data['appear']
+                              - child.data['dup'] 
+                              + child.data['loss'])
+            assert util.equal(* counts), str(counts)
+            node.data['genes'] = counts[0]
+    walk(stree.root)
+
+
+def writeEventTree(stree, out=sys.stdout):
+    labels = {}
+    for name, node in stree.nodes.iteritems():
+        labels[name] = "[%s]\nD=%d,L=%d;\nG=%d;" % \
+                       (str(name),
+                        node.data['dup'], node.data['loss'],
+                        node.data['genes'])
+
+    treelib.drawTree(stree, labels=labels, minlen=15, spacing=4,
+                     labelOffset=-3,
+                     out=out)
+
+
+#=============================================================================
+# tree rooting
 
 
 def recon_root(gtree, stree, gene2species = gene2species, 
                rootby = "duploss", newCopy=True):
+    """Reroot a tree by minimizing the number of duplications/losses/both"""
+    
     # make a consistent unrooted copy of gene tree
     if newCopy:
         gtree = gtree.copy()
@@ -353,14 +470,14 @@ def recon_root(gtree, stree, gene2species = gene2species,
             if events[node2] == "dup":
                 cost -= 1
         if rootby in ["loss", "duploss"]:
-            cost -= len(findLossUnderNode(gtree.root, recon))
-            cost -= len(findLossUnderNode(node2, recon))
+            cost -= len(find_loss_under_node(gtree.root, recon))
+            cost -= len(find_loss_under_node(node2, recon))
         
         # new root and recon
         treelib.reroot(gtree, node1.name, newCopy=False)        
         
-        recon[node2] = reconcileNode(node2, stree, recon)
-        recon[gtree.root] = reconcileNode(gtree.root, stree, recon)
+        recon[node2] = reconcile_node(node2, stree, recon)
+        recon[gtree.root] = reconcile_node(gtree.root, stree, recon)
         events[node2] = labelEventsNode(node2, recon)
         events[gtree.root] = labelEventsNode(gtree.root, recon)
         
@@ -370,10 +487,8 @@ def recon_root(gtree, stree, gene2species = gene2species,
             if events[gtree.root] ==  "dup":
                 cost += 1
         if rootby in ["loss", "duploss"]:
-            cost += len(findLossUnderNode(gtree.root, recon))
-            cost += len(findLossUnderNode(node2, recon))
-        
-        #print edge[0].name, edge[1].name, cost
+            cost += len(find_loss_under_node(gtree.root, recon))
+            cost += len(find_loss_under_node(node2, recon))
         
         # keep track of min cost
         if cost < mincost:
@@ -392,7 +507,7 @@ def recon_root(gtree, stree, gene2species = gene2species,
 reconRoot = recon_root
 
 
-def midrootRecon(tree, stree, recon, events, params, generate):
+def midroot_recon(tree, stree, recon, events, params, generate):
 
     node1, node2 = tree.root.children
 
@@ -455,122 +570,9 @@ def midrootRecon(tree, stree, recon, events, params, generate):
     
     node1.dist = mid * generate
     node2.dist = (totdist - mid) * generate
+midrootRecon = midroot_recon
 
 
-
-
-
-def partitionTree(tree, stree, gene2species):
-    recon = reconcile(tree, stree, gene2species)
-    sroots = findSpeciesRoots(tree, stree, recon)
-    
-    # extend subroots
-    sroots = treelib.maxDisjointSubtrees(tree, sroots)
-    
-    # partition
-    trees = []
-    for sroot in sroots:
-        trees.append(treelib.subtree(tree, sroot))
-        trees[-1].root.parent = None
-    
-    return trees
-
-
-def findSpeciesRoots(tree, stree, recon):
-    roots = []
-    def walk(node):
-        found = False
-        for child in node.children:
-            found = walk(child) or found
-        if not found and recon[node] == stree.root:
-            roots.append(node)
-            found = True
-        return found
-    walk(tree.root)
-    return roots
-        
-
-def findSpeciesSets(stree):
-    """
-    returns a mapping for each species tree node 
-    to a set of modern day species
-    """
-    
-    setmap = {}
-    def walk(node):
-        node.recurse(walk)
-        if node.isLeaf():
-            setmap[node] = {node.name:1}
-        else:
-            setmap[node] = {}
-            for child in node.children:
-                setmap[node].update(setmap[child])
-    walk(stree.root)
-    
-    return setmap
-
-
-def findRootedSubtrees(tree):
-    """tree is unrooted"""
-    
-    trees = []
-    
-    # convert tree to graph
-    mat = treelib.tree2graph(tree)
-    
-    donei = {}
-    
-    # loop over branches, and collect rooted trees on each node of branch
-    for i in mat:
-        donei[i] = 1
-        for j in mat[i]:
-            if j not in donei:
-                tree1 = treelib.graph2tree(mat, i, closedset={j:1})
-                tree2 = treelib.graph2tree(mat, j, closedset={i:1})
-                treelib.removeSingleChildren(tree1)
-                treelib.removeSingleChildren(tree2)
-                trees.append(tree1)
-                trees.append(tree2)
-    
-    return trees
-
-
-def findOrthoNeighbors(parts, hits):
-    lookup = cluster.item2part(parts)
-    mat = util.Dict(1, (0, None))
-    
-    # find unidirectional best hits at partition level
-    for hit in hits:
-        try:
-            part1 = lookup[blast.query(hit)]
-            part2 = lookup[blast.subject(hit)]
-            score = blast.bitscore(hit)
-        except:
-            # skip genes not in parts
-            continue
-        
-        # don't count hits within a cluster
-        if part1 == part2:
-            continue
-        
-        if score > mat[part1][0]:
-            mat[part1] = (score, part2)
-        
-        if score > mat[part2][0]:
-            mat[part2] = (score, part1)
-    
-    # find best bidirectional hits
-    nbrs = []
-    touched = {}
-    for part in xrange(len(parts)):
-        other = mat[part][1]
-        if mat[other][1] == part and \
-           part not in touched and \
-           other not in touched:
-            nbrs.append((part, other))
-            touched[part] = 1
-    
-    return nbrs
 
 
 def stree2gtree(stree, genes, gene2species):
@@ -583,59 +585,62 @@ def stree2gtree(stree, genes, gene2species):
     return tree
 
 
+#=============================================================================
+# relationships
+# encoded using gene name tuples
 
-def findOrthologs(gtree, stree, recon, counts=True):
-    """Find all ortholog pairs within a gene tree"""
 
-    events = labelEvents(gtree, recon)
-    orths = []
+def get_gene_dups(tree, events):
+    """Returns duplications as gene name tuples"""
+    return set(tuple(sorted([tuple(sorted(child.leaf_names()))
+                                   for child in node.children]))
+               for node, kind in events.iteritems()
+               if kind == "dup")
+
+def get_speciations(tree, events):
+    """Returns speciations as gene name tuples"""
+    return set(tuple(sorted([tuple(sorted(child.leaf_names()))
+                                   for child in node.children]))
+               for node, kind in events.iteritems()
+               if kind == "spec")
+
+
+def get_gene_losses(tree, stree, recon):
+    """Returns losses as gene name, species name tuples"""
+    return set((loss[0].name, loss[1].name)
+               for loss in phylo.findLoss(tree, stree, recon))
+         
+
+def get_orthologs(tree, events):
+    """Returns orthologs as gene name pairs"""
     
-    for node, event in events.items():
-        if event == "spec":
-            leavesmat = [x.leaves() for x in node.children]
-            sp_counts = [util.histDict(util.mget(recon, row))
-                         for row in leavesmat]
-            
-            for i in range(len(leavesmat)):
-                for j in range(i+1, len(leavesmat)):
-                    for gene1 in leavesmat[i]:
-                        for gene2 in leavesmat[j]:
-                            if gene1.name > gene2.name:
-                                g1, g2 = gene2, gene1
-                                a, b = j, i
-                            else:
-                                g1, g2 = gene1, gene2
-                                a, b = i, j
-                            
-                            if not counts:
-                                orths.append((g1.name, g2.name))
-                            else:
-                                orths.append((g1.name, g2.name,
-                                              sp_counts[a][recon[g1]],
-                                              sp_counts[b][recon[g2]]))
+    specs = [sorted([sorted(child.leaf_names())
+                     for child in node.children])
+             for node in events
+             if events[node] == "spec"]
     
-    return orths
-
-
-
-
+    return set(tuple(sorted((a, b)))
+               for x in specs
+               for a in x[0]
+               for b in x[1])
 
 
 #=============================================================================
 # Tree hashing
 #
 
-def hashTreeCompose(childHashes):
-    return "(%s)" % ",".join(childHashes)
+def hash_tree_compose(child_hashes):
+    return "(%s)" % ",".join(child_hashes)
+hashTreeCompose = hash_tree_compose
 
-def hashTree(tree, smap = lambda x: x):
+def hash_tree(tree, smap = lambda x: x):
     def walk(node):
         if node.isLeaf():
             return smap(node.name)
         else:
-            childHashes = map(walk, node.children)
-            childHashes.sort()
-            return hashTreeCompose(childHashes)
+            child_hashes = map(walk, node.children)
+            child_hashes.sort()
+            return hash_tree_compose(child_hashes)
     
     if isinstance(tree, treelib.Tree) or hasattr(tree, "root"):
         return walk(tree.root)
@@ -643,19 +648,22 @@ def hashTree(tree, smap = lambda x: x):
         return walk(tree)
     else:
         raise Exception("Expected Tree object")
+hashTree = hash_tree
 
 
-def hashOrderTree(tree, smap = lambda x: x):
+def hash_order_tree(tree, smap = lambda x: x):
     def walk(node):
         if node.isLeaf():
             return smap(node.name)
         else:
-            childHashes = map(walk, node.children)
-            ind = util.sortrank(childHashes)
-            childHashes = util.mget(childHashes, ind)
+            child_hashes = map(walk, node.children)
+            ind = util.sortrank(child_hashes)
+            child_hashes = util.mget(child_hashes, ind)
             node.children = util.mget(node.children, ind)
-            return hashTreeCompose(childHashes)
+            return hash_tree_compose(child_hashes)
     walk(tree.root)
+hashOrderTree = hash_order_tree
+
 
 
 #=============================================================================
@@ -677,7 +685,7 @@ def mapRefTree(trees, reftree, refmapfunc):
 
 def findBranchLengths(collect):
     return util.mapdict(collect, valfunc = lambda nodes: 
-                                      map(lambda node: node.dist, nodes))
+                        map(lambda node: node.dist, nodes))
 
 def findTreeLengths(collect):
     totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
@@ -829,7 +837,7 @@ def getBranchZScores(rates, params):
 
 
 
-def addSpecNode(node, snode, tree, recon, events):
+def add_spec_node(node, snode, tree, recon, events):
     """
     insert new speciation node above gene node 'node' from gene tree 'tree'
 
@@ -854,9 +862,10 @@ def addSpecNode(node, snode, tree, recon, events):
     events[newnode] = "spec"
 
     return newnode
+addSpecNode = add_spec_node
 
 
-def addImpliedSpecNodes(tree, stree, recon, events):
+def add_implied_spec_nodes(tree, stree, recon, events):
     """
     adds speciation nodes to tree that are implied but are not present
     because of gene losses
@@ -893,7 +902,7 @@ def addImpliedSpecNodes(tree, stree, recon, events):
         snode = sstart.parent
 
         while snode != send:
-            addedNodes.append(addSpecNode(node, snode, tree, recon, events))
+            addedNodes.append(add_spec_node(node, snode, tree, recon, events))
             node = node.parent
             snode = snode.parent
         
@@ -901,16 +910,17 @@ def addImpliedSpecNodes(tree, stree, recon, events):
         # determine whether node.parent is a dup
         # if so, send (a.k.a. species end) is part of species path
         if events[parent] == "dup":
-            addedNodes.append(addSpecNode(node, send, tree, recon, events))
+            addedNodes.append(add_spec_node(node, send, tree, recon, events))
 
     return addedNodes
+addImpliedSpecNodes = add_implied_spec_nodes
 
 
 #=============================================================================
 # local rearrangements
 
 
-def proposeNni(tree, node1, node2, change=0):
+def propose_nni(tree, node1, node2, change=0):
     """Proposes a new tree using Nearest Neighbor Interchange
        
        Branch for NNI is specified by giving its two incident nodes (node1 and 
@@ -971,6 +981,7 @@ def proposeNni(tree, node1, node2, change=0):
     # swap child pointers
     node2.children[uncle], node1.children[change] = \
         node1.children[change], node2.children[uncle]
+proposeNni = propose_nni
 
 
 #=============================================================================
@@ -1094,7 +1105,7 @@ def neighborjoin(distmat, genes, usertree=None):
 #=============================================================================
 # Phylogenetic reconstruct: Least Square Error
 
-def leastSquareError(tree, distmat, genes, forcePos=True, weighting=False):
+def least_square_error(tree, distmat, genes, forcePos=True, weighting=False):
     """Least Squared Error algorithm for phylogenetic reconstruction"""
     
     # use SCIPY to perform LSE
@@ -1160,6 +1171,7 @@ def leastSquareError(tree, distmat, genes, forcePos=True, weighting=False):
                        paths=paths, 
                        edges=edges, 
                        topmat=topmat)
+leastSquareError = least_square_error
 
 
 def makeWeightMatrix(topmat, paths):
@@ -1238,98 +1250,19 @@ def setBranchLengths(tree, edges, edgelens, paths, resids,
         tree.nodes[gene1].dist = edgelens[i]
 
 
-#=============================================================================
-# Sequence Distance Estimation
 
 
-def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
-    aln = fasta.FastaDict()
-    aln["0"] = seq1
-    aln["1"] = seq2
+def tree2distmat(tree, leaves):
+    """Returns pair-wise distances between leaves of a tree"""
     
-    if os.path.isfile("infile"):
-        raise Exception("infile already exists")
+    # TODO: not implemented efficiently
+    mat = []
+    for i in range(len(leaves)):
+        mat.append([])
+        for j in range(len(leaves)):
+            mat[-1].append(treelib.find_dist(tree, leaves[i], leaves[j]))
     
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madePhylip = True
-    else:
-        madePhylip = False
-    
-    
-    
-    # write file
-    if infile == None:
-        infile = util.tempfile(".", "tmp_in", ".align")
-        madeInfile = True
-    else:
-        madeInfile = False
-    if outfile == None:    
-        outfile = util.tempfile(".", "tmp_out", ".dist")
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    if os.path.exists(outfile):
-        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
-    else:
-        args = "%s\nf\n%s\ny\n" % (infile, outfile)
-    
-    phylip.writePhylipAlign(file(infile, "w"), aln)
-    phylip.execPhylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.readDistMatrix(outfile)
-
-    if madePhylip:
-        os.remove("outfile")
-    
-    if madeInfile:
-        os.remove(infile)
-    if madeOutfile:
-        os.remove(outfile)
-    
-    return distmat[0][1]
-
-    
-def getGaplessDistMatrix(aln):
-    infile = util.tempfile("/tmp/", "tmp_in", ".align")
-    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
-    keys = aln.keys()
-    
-    for i in xrange(0, len(aln)):
-        for j in xrange(i+1, len(aln)):
-            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
-                                           infile=infile, outfile=outfile)
-            distmat[j][i] = distmat[i][j]
-    
-    
-    if madeOutfile:
-        os.remove("outfile")
-    
-    os.remove(infile)
-    os.remove(outfile)
-    
-    return distmat
-
-
-
-def jukesCantorCorrection(dist):
-    """Applies the Jukes Cantor correction to distances
-       
-       Only valid for distances less than .75 sub/site
-    """
-    assert (dist < .75)
-    return - (3/4.0) * log(1 - (4/3.) * dist)
-
+    return mat
 
 
 
@@ -1512,80 +1445,6 @@ def robinsonFouldsError(tree1, tree2):
 
 
 
-#============================================================================
-# duplication loss counting
-#
-
-
-def initDupLossTree(stree):
-    # initalize counts to zero
-    def walk(node):
-        node.data['dup'] = 0
-        node.data['loss'] = 0
-        node.data['appear'] = 0
-        node.data['genes'] = 0
-        node.recurse(walk)
-    walk(stree.root)
-
-
-# count dup loss
-def countDupLossTree(tree, stree, gene2species):
-    recon = reconcile(tree, stree, gene2species)
-    events = labelEvents(tree, recon)
-    losses = findLoss(tree, stree, recon)
-    
-    dup = 0
-    loss = 0
-    appear = 0
-    
-    # count appearance    
-    recon[tree.root].data["appear"] += 1
-    appear += 1
-    
-    # count dups
-    for node, event in events.iteritems():
-        if event == "dup":
-            recon[node].data['dup'] += 1
-            dup += 1
-        elif event == "gene":
-            recon[node].data['genes'] += 1
-
-    # count losses
-    for gnode, snode in losses:
-        snode.data['loss'] += 1
-        loss += 1
-    
-    return dup, loss, appear
-
-
-# count ancestral genes
-def countAncestralGenes(stree):
-    def walk(node):
-        if not node.isLeaf():
-            counts = []
-            for child in node.children:
-                walk(child)
-                counts.append(child.data['genes'] 
-                              - child.data['appear']
-                              - child.data['dup'] 
-                              + child.data['loss'])
-            assert util.equal(* counts), str(counts)
-            node.data['genes'] = counts[0]
-    walk(stree.root)
-
-
-def writeEventTree(stree, out=sys.stdout):
-    labels = {}
-    for name, node in stree.nodes.iteritems():
-        labels[name] = "[%s]\nD=%d,L=%d;\nG=%d;" % \
-                       (str(name),
-                        node.data['dup'], node.data['loss'],
-                        node.data['genes'])
-
-    treelib.drawTree(stree, labels=labels, minlen=15, spacing=4, labelOffset=-3,
-                     out=out)
-
-
 #=============================================================================
 # file functions
 
@@ -1599,308 +1458,214 @@ def phylofile(famdir, famid, ext):
 
 
 #=============================================================================
-# Old code 
-#
+# visualization
 
-"""
+def view_tree(tree, options = "-t 1"):
+    tmpfile = util.tempfile(".", "vistree", ".tree")
+    tree.write(tmpfile)
+    os.system("vistree.py -n %s %s" % (tmpfile, options))
+    os.remove(tmpfile)
+viewTree = view_tree
 
-# OLD inefficent version of reconRoot()
 
-def reconRoot2(gtree, stree, gene2species = gene2species, 
-              rootby = "duploss"):
-    # find reconciliation that minimizes loss
-    mincost = util.INF
-    minroot = None
-    minrecon = None
+
+#=============================================================================
+# miscellaneous code that is not used frequently
+
+
+
+def findRootedSubtrees(tree):
+    """tree is unrooted"""
     
-    # make an unrooted copy of gene tree
-    # TODO: this can be simplified (root on node.parent)
-    gtree = treelib.reroot(gtree, util.sort(gtree.leafNames())[0])
-    gtree = treelib.unroot(gtree)
+    trees = []
     
-    # make recon root consistent for rerooting tree of the same names
-    # TODO: there is the possibility of ties, they are currently broken
-    # arbitrarily.  In order to make comparison of reconRooted trees with 
-    # same gene names accurate, hashOrdering must be done, for now.
-    hashOrderTree(gtree, gene2species)
+    # convert tree to graph
+    mat = treelib.tree2graph(tree)
     
-    # determine graph and possible roots
-    mat = treelib.tree2graph(gtree)
-    newroots = util.sort(gtree.nodes.keys())
-    newroots.remove(gtree.root.name)
-
-    # try rooting on everything
-    for root in newroots:
-        gtree2 = treelib.reroot(gtree, root, mat)
-        recon = reconcile(gtree2, stree, gene2species)
-        
-        if rootby == "dup":
-            events = labelEvents(gtree2, recon)        
-            cost = countDup(gtree2, events)
-        elif rootby == "loss":
-            cost = len(findLoss(gtree2, stree, recon))
-        elif rootby == "duploss":
-            cost = countDupLoss(gtree2, stree, recon)
-        else:
-            raise "unknown rootby value '%s'"  % rootby
-        
-        # keep track of min loss
-        if cost < mincost:
-            mincost = cost
-            minroot = root
-            minrecon = recon
+    donei = {}
     
-    # handle the case where no rerooting was attempted (nleaves == 1)
-    if minroot == None:
-        return gtree
-    
-    # root tree by minroot
-    return treelib.reroot(gtree, minroot)
-"""
-
-
-
-#============================================================================
-# old orthology stuff
-#
-
-"""   
-def orthologs(gene, otherGenome, gtree, stree, recon):
-    genome = recon[gtree.nodes[gene]]
-    genome2 = stree.nodes[otherGenome]
-    
-    # determine additional labels for trees
-    setmap = findSpeciesSets(stree)
-    events = labelEvents(gtree, recon)
-    
-    # ascend until target genome is found
-    ptr = gtree.nodes[gene]
-    while ptr != gtree.root and \
-          genome2.name not in setmap[recon[ptr]]:
-        ptr = ptr.parent
-    
-    # the first node that has genome2 is a duplication node, then
-    # there are no orthologs
-    if events[ptr] == "dup":
-        return []
-    
-    # orthologs are leaves of ptr that are in otherGenome
-    nodes = filter(lambda x: recon[x] == genome2, gtree.leaves(ptr))
-    return [x.name for x in nodes]
-
-
-def paralogs(gene, gtree, recon):
-    # go up gene tree until other genomes are encountered
-    ptr = gtree.nodes[gene]
-    while ptr != gtree.root and recon[ptr.parent] == recon[ptr]:
-        ptr = ptr.parent
-    
-    genes = gtree.leafNames(ptr)
-    genes.remove(gene)
-    return genes
-
-
-
-def findBootTreeHomology(tree, stree, homology, niters, 
-                         gene2species=gene2species):
-    genomes = stree.leafNames()
-    trees = partitionTree(tree, stree)
-
-    util.log("processing tree of %d parts" % len(trees))
-    
-    for tree2 in trees:
-        tree2 = reconRoot(tree2, stree)
-        recon = reconcile(tree2, stree)
-        
-        for gene in tree2.leafNames():
-            # count orthologs
-            for genome in genomes:
-                if genome == gene2species(gene):
-                    continue
-
-                ogenes = orthologs(gene, genome, tree2, 
-                                             stree, recon)
-                for gene2 in ogenes:
-                    homology.incOrtholog(gene, gene2, .5 / niters)
-
-            # count paralogs
-            pgenes = paralogs(gene, tree2, recon)
-            for gene2 in pgenes:
-                homology.incParalog(gene, gene2, .5 / niters)
-    util.toc()
+    # loop over branches, and collect rooted trees on each node of branch
+    for i in mat:
+        donei[i] = 1
+        for j in mat[i]:
+            if j not in donei:
+                tree1 = treelib.graph2tree(mat, i, closedset={j:1})
+                tree2 = treelib.graph2tree(mat, j, closedset={i:1})
+                treelib.removeSingleChildren(tree1)
+                treelib.removeSingleChildren(tree2)
+                trees.append(tree1)
+                trees.append(tree2)
     
     return trees
 
 
-def findSimplePartHomology(genes, homology,
-                         gene2species=gene2species):
-    parts = util.Dict(1, [])
-    for gene in genes:
-        parts[gene2species(gene)].append(gene)
+def findOrthoNeighbors(parts, hits):
+    lookup = cluster.item2part(parts)
+    mat = util.Dict(1, (0, None))
     
-    # count orthologs
-    for a in xrange(len(parts)):
-        for b in xrange(a+1, len(parts)):
-            for gene1 in parts.values()[a]:
-                for gene2 in parts.values()[b]:
-                    homology.incOrtholog(gene1, gene2, 1)
-    
-    # count paralogs
-    for part in parts.values():
-        for a in xrange(len(part)):
-            for b in xrange(a+1, len(part)):
-                homology.incParalog(part[a], part[b], 1)
-
-
-def homology2orthologSets(homology, cutoff = 0):
-    mat = util.Dict(2)
-    genes = homology.getGenes()
-    
-    for gene1 in genes:
-        for gene2 in homology.getOrthologs(gene1):
-            if homology.getOrthologBootstrap(gene1, gene2) > cutoff:
-                mat[gene1][gene2] = 1
-        for gene2 in homology.getParalogs(gene1):
-            if homology.getParalogBootstrap(gene1, gene2) > cutoff:
-                mat[gene1][gene2] = 1
-    
-    comps = graph.connectedComponents(genes, lambda x: mat[x].keys())
-    comps = filter(lambda x: len(x) > 1, comps)
-    
-    return comps
-
-
-class Homology:
-    def __init__(self):
-        self.orths = {}
-        self.paras = {}
-    
-    def incOrtholog(self, gene1, gene2, inc=1):
-        val = self.orths.setdefault(gene1, {}).setdefault(gene2, 0)
-        self.orths[gene1][gene2] = val + inc
-    
-        val = self.orths.setdefault(gene2, {}).setdefault(gene1, 0)
-        self.orths[gene2][gene1] = val + inc
-
-    
-    def incParalog(self, gene1, gene2, inc=1):
-        val = self.paras.setdefault(gene1, {}).setdefault(gene2, 0)
-        self.paras[gene1][gene2] = val + inc
+    # find unidirectional best hits at partition level
+    for hit in hits:
+        try:
+            part1 = lookup[blast.query(hit)]
+            part2 = lookup[blast.subject(hit)]
+            score = blast.bitscore(hit)
+        except:
+            # skip genes not in parts
+            continue
         
-        val = self.paras.setdefault(gene2, {}).setdefault(gene1, 0)
-        self.paras[gene2][gene1] = val + inc
-    
-    def addOrtholog(self, gene1, gene2, bootstrap=1.0):
-        self.orths.setdefault(gene1, {})[gene2] = bootstrap
-        self.orths.setdefault(gene2, {})[gene1] = bootstrap
-    
-    def addParalog(self, gene1, gene2, bootstrap=1.0):
-        self.paras.setdefault(gene1, {})[gene2] = bootstrap
-        self.paras.setdefault(gene2, {})[gene1] = bootstrap
+        # don't count hits within a cluster
+        if part1 == part2:
+            continue
         
-    def getOrthologs(self, gene1):
-        if gene1 in self.orths:
-            return self.orths[gene1].keys()
+        if score > mat[part1][0]:
+            mat[part1] = (score, part2)
+        
+        if score > mat[part2][0]:
+            mat[part2] = (score, part1)
+    
+    # find best bidirectional hits
+    nbrs = []
+    touched = {}
+    for part in xrange(len(parts)):
+        other = mat[part][1]
+        if mat[other][1] == part and \
+           part not in touched and \
+           other not in touched:
+            nbrs.append((part, other))
+            touched[part] = 1
+    
+    return nbrs
+
+
+
+def partition_tree(tree, stree, gene2species):
+    recon = reconcile(tree, stree, gene2species)
+    sroots = find_species_roots(tree, stree, recon)
+    
+    # extend subroots
+    sroots = treelib.maxDisjointSubtrees(tree, sroots)
+    
+    # partition
+    trees = []
+    for sroot in sroots:
+        trees.append(treelib.subtree(tree, sroot))
+        trees[-1].root.parent = None
+    
+    return trees
+partitionTree = partition_tree
+
+
+def findSpeciesSets(stree):
+    """
+    returns a mapping for each species tree node 
+    to a set of modern day species
+    """
+    
+    setmap = {}
+    def walk(node):
+        node.recurse(walk)
+        if node.isLeaf():
+            setmap[node] = {node.name:1}
         else:
-            return []
-
-    def getParalogs(self, gene1):
-        if gene1 in self.paras:
-            return self.paras[gene1].keys()
-        else:
-            return []
+            setmap[node] = {}
+            for child in node.children:
+                setmap[node].update(setmap[child])
+    walk(stree.root)
     
-    def getOrthologBootstrap(self, gene1, gene2):
-        return self.orths[gene1][gene2]
+    return setmap
+
+
+
+def jukesCantorCorrection(dist):
+    """Applies the Jukes Cantor correction to distances
+       
+       Only valid for distances less than .75 sub/site
+    """
+    assert (dist < .75)
+    return - (3/4.0) * log(1 - (4/3.) * dist)
+
+
+'''
+#=============================================================================
+# Sequence Distance Estimation
+
+
+def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
+    aln = fasta.FastaDict()
+    aln["0"] = seq1
+    aln["1"] = seq2
     
-    def getParalogBootstrap(self, gene1, gene2):
-        return self.paras[gene1][gene2]
+    if os.path.isfile("infile"):
+        raise Exception("infile already exists")
     
-    def getGenes(self):
-        return util.unique(self.orths.keys() + self.paras.keys())
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madePhylip = True
+    else:
+        madePhylip = False
     
     
-    def getParts(self, cutoff=0):
-        def getNeighbors(gene):
-            return filter(lambda x: self.getOrthologBootstrap(gene, x) >= cutoff,
-                          self.getOrthologs(gene)) + \
-                   filter(lambda x: self.getParalogBootstrap(gene, x) >= cutoff,
-                          self.getParalogs(gene))
-        
-        comps = graph.connectedComponents(self.getGenes(), getNeighbors)
-        
-        return comps
     
-    def write(self, out = sys.stdout):
-        genes = self.getGenes()
-        genes.sort()
-        
-        print >>out, "<?xml version='1.0' encoding='ISO-8859-1'?>"
-        print >>out, "<homology>"
-
-        for gene1 in genes:
-            print >>out, "<gene name='%s'>" % gene1
-
-            keys = self.getOrthologs(gene1)
-            keys.sort()
-            for gene2 in keys:
-                print >>out, "  <homolog name='%s' type='ortholog' bootstrap='%f' />" % \
-                    (gene2, self.getOrthologBootstrap(gene1, gene2))
-
-            keys = self.getParalogs(gene1)
-            keys.sort()
-            for gene2 in keys:
-                print >>out, "  <homolog name='%s' type='paralog' bootstrap='%f' />" % \
-                    (gene2, self.getParalogBootstrap(gene1, gene2))
-            print >>out, "</gene>"
-            print >>out
-        
-        print >>out, "</homology>"
+    # write file
+    if infile == None:
+        infile = util.tempfile(".", "tmp_in", ".align")
+        madeInfile = True
+    else:
+        madeInfile = False
+    if outfile == None:    
+        outfile = util.tempfile(".", "tmp_out", ".dist")
+        madeOutfile = True
+    else:
+        madeOutfile = False
     
-
-    def read(self, filename):
-        infile = util.openStream(filename)
-
-        # Create a parser
-        parser = make_parser()
-
-        # Tell the parser we are not interested in XML namespaces
-        #parser.setFeature(feature_namespaces, 0)
-
-        # Tell the parser to use our handler
-        handler = HomologyHandler(self)
-        parser.setContentHandler(handler)
-
-        # Parse the input
-        parser.parse(infile)
-
-
-
-class HomologyHandler(xml.sax.handler.ContentHandler):
-    def __init__(self, homology):
-        self.homology = homology
-        self.gene1 = None
-        self.boostrap = None
-        self.kind = None
-        self.elm = ""
+    if os.path.exists(outfile):
+        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
+    else:
+        args = "%s\nf\n%s\ny\n" % (infile, outfile)
     
-    def startElement(self, name, attrs):
-        if name == "gene":
-            self.gene1 = str(attrs["name"])
-        elif name == "homolog":
-            if attrs["type"] == "ortholog":
-                self.homology.addOrtholog(self.gene1, str(attrs["name"]), 
-                                          float(attrs["bootstrap"]))
-            elif attrs["type"] == "paralog":
-                self.homology.addParalog(self.gene1, str(attrs["name"]), 
-                                         float(attrs["bootstrap"]))
-        self.elm = name
-    
-    def endElement(self, name):
-        self.elm = ""
-    
-    def characters(self, text):
-        pass
+    phylip.writePhylipAlign(file(infile, "w"), aln)
+    phylip.execPhylip("dnadist", args, verbose=False)
+    labels, distmat = phylip.readDistMatrix(outfile)
 
-"""
+    if madePhylip:
+        os.remove("outfile")
+    
+    if madeInfile:
+        os.remove(infile)
+    if madeOutfile:
+        os.remove(outfile)
+    
+    return distmat[0][1]
 
+
+def getGaplessDistMatrix(aln):
+    infile = util.tempfile("/tmp/", "tmp_in", ".align")
+    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
+    keys = aln.keys()
+    
+    for i in xrange(0, len(aln)):
+        for j in xrange(i+1, len(aln)):
+            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
+                                           infile=infile, outfile=outfile)
+            distmat[j][i] = distmat[i][j]
+    
+    
+    if madeOutfile:
+        os.remove("outfile")
+    
+    os.remove(infile)
+    os.remove(outfile)
+
+    return distmat
+
+'''

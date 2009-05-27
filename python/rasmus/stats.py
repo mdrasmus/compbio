@@ -236,7 +236,7 @@ def smooth(vals, radius):
 
 def iter_window_index(x, xdist, esp=None):
     """
-    iterates a sliding window over x with radius xradius
+    iterates a sliding window over x with width 'xdist'
 
     returns an iterator over list of indices in x that represent windows
     
@@ -338,7 +338,7 @@ def iter_window(x, xdist, func=lambda win: win, minsize=0):
     x must be sorted least to greatest
     """
 
-    for lowi, highi, low, high in iter_window_index(x, xsize):
+    for lowi, highi, low, high in iter_window_index(x, xdist):
         if highi - lowi >= minsize:
             yield (high + low)/2.0, func(x[lowi:highi])
 

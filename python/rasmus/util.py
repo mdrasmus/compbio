@@ -162,6 +162,16 @@ class PushIter (object):
     def push(self, item):
         """Push a new item onto the front of the iteration stream"""
         self._queue.append(item)
+
+    def peek(self, default=None):
+        try:
+            next = self.next()
+        except StopIteration:
+            return default
+
+        self.push(next)
+        return next
+        
        
 
 def exceptDefault(func, val, exc=Exception):
@@ -1483,6 +1493,26 @@ def sortrank(lst, cmp=cmp, key=None, reverse=False):
     ind.sort(compare2, reverse=reverse)
     return ind
 sortInd = sortrank
+
+
+def sort_many(lst, *others, **args):
+    """Sort several lists based on the sorting of 'lst'"""
+
+    args.setdefault("reverse", False)
+
+    if "key" in args:    
+        ind = sortrank(lst, key=args["key"], reverse=args["reverse"])
+    elif "cmp" in args:
+        ind = sortrank(lst, cmp=args["cmp"], reverse=args["reverse"])
+    else:
+        ind = sortrank(lst, reverse=args["reverse"])
+    
+    lsts = [mget(lst, ind)]
+    
+    for other in others:
+        lsts.append(mget(other, ind))
+    
+    return lsts
 
     
 def sort_together(compare, lst, *others):

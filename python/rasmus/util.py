@@ -1701,23 +1701,36 @@ printHist = print_hist
 try:
     from rasmus.timer import *
 except ImportError:
-    pass
+    try:
+        from timer import *
+    except ImportError:
+        pass
 
 try:
     from rasmus.vector import *
 except ImportError:
-    pass
+    try:
+        from vector import *
+    except ImportError:
+        pass
+
 
 try:
     from rasmus.options import *
 except ImportError:
-    pass
+    try:
+        from options import *
+    except ImportError:
+        pass
+
     
 try:
     from rasmus.plotting import *
 except ImportError:
-    pass
-
+    try:
+        from plotting import *
+    except ImportError:
+        pass
 
 
 

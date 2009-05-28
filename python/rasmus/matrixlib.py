@@ -11,7 +11,10 @@ import copy
 try:
     from rasmus import util
 except ImportError:
-    pass
+    try:
+        import util
+    except ImportError:
+        pass
 
 
 

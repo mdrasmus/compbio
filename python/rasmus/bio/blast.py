@@ -2,7 +2,6 @@
 import os
 
 # rasmus imports
-from rasmus import env
 from rasmus import util
 from rasmus.bio import fasta
 
@@ -460,19 +459,6 @@ def bl2seq(seq1, seq2, program="blastp", options="", name1="seq1", name2="seq2")
     os.remove(file2)
     
     return hit
-
-
-def findBlastFiles(genomes, ext="blastp", paths = env.datapaths):
-    files = []
-    for genome1 in genomes:
-        for genome2 in genomes:
-            try:
-                files.append(env.findFile("%s_%s.%s" % 
-                                          (genome1, genome2, ext)))
-            except:
-                pass
-    return files
-
 
 
 def bestBidir(hits, scorefunc=bitscore):

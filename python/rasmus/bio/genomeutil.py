@@ -11,13 +11,12 @@ import sys
 
 # rasmus libs
 from rasmus import algorithms
-from rasmus import env
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
 from rasmus.bio import fasta
-from rasmus.bio import gff
+from rasmus.bio import gff, phylo
 
 
 #
@@ -44,19 +43,15 @@ options = [
 
 def readOptions(conf):
     """Setup data paths and parse common options"""
-
-    # setup data paths
-    env.addPaths(* conf["paths"])
-    env.addEnvPaths("DATAPATH")
     
     # read species map
     if "smap" in conf:
-        conf["gene2species"] = readGene2species(*map(env.findFile, conf["smap"]))
+        conf["gene2species"] = readGene2species(*conf["smap"])
     else:
         conf["gene2species"] = gene2species
     
     if "stree" in conf:
-        conf["stree"] = treelib.readTree(env.findFile(conf["stree"]))
+        conf["stree"] = treelib.readTree(conf["stree"])
 
 
 
@@ -64,91 +59,228 @@ def readOptions(conf):
 #============================================================================
 # gene2species mappings and countings
 #
-# TODO: I am starting to move these to phylo since I use them more 
-# over there.  However, I will not necessarily always use gene2species for
-# phylo... still thinking it over...
+
+gene2species = phylo.gene2species
+makeGene2species = phylo.make_gene2species
+readGene2species = phylo.read_gene2species
+
+
+#----------------------------------------------------------------------------
+# MultiBlocks
+#----------------------------------------------------------------------------
+
+
+#
+# TODO: multiblocks can be done with my Regions in regionlib!
 #
 
-def gene2species(genename):
-    """default gene2species mapping"""
-    return genename
 
-
-def makeGene2species(maps):
-    # find exact matches and expressions
-    exacts = {}
-    exps = []
-    for mapping in maps:
-        if "*" not in mapping[0]:
-            exacts[mapping[0]] = mapping[1]
-        else:
-            exps.append(mapping)
+def cutBlocks(matching, blocks, refChrom, refStart, refEnd):
+    segments = [Segment(refChrom.genome, refChrom, refStart, refEnd, 1)]
     
-    # create mapping function
-    def gene2species(gene):
-        # eval expressions first in order of appearance
-        for exp, species in exps:
-            if exp[-1] == "*":
-                if gene.startswith(exp[:-1]):
-                    return species
-            elif exp[0] == "*":
-                if gene.endswith(exp[1:]):
-                    return species
-        
-        if gene in exacts:
-            return exacts[gene]
-        
-        raise Exception("Cannot map gene '%s' to any species" % gene)
-    return gene2species
-
-
-def readGene2species(* filenames):
-    for filename in filenames:
-        if filename == "DEFAULT":
-            smap = gene2species
+    for block in blocks:
+        if block.chrom1 == refChrom:
+            # ensure cut is bigger than ref
+            #assert refStart <= block.start1 and \
+            #       refEnd >= block.end1
+            otherGenome = block.genome2
+            otherChrom = block.chrom2
         else:
-            maps = []
-            for filename in filenames:
-                maps.extend(util.readDelim(util.skipComments(
-                            util.openStream(filename))))
-            smap = makeGene2species(maps)
+            # ensure cut is bigger than ref
+            #assert refStart <= block.start2 and \
+            #       refEnd >= block.end2
+            otherGenome = block.genome1
+            otherChrom = block.chrom1
     
-    return smap
-
-
-# this does not need to be in a module
-"""
-def genomeComposition(genomes, comp, gene2species=gene2species):
-    counts = {}
-    for genome in genomes:
-        counts[genome] = 0
-    for gene in comp:
-        genome = gene2species(gene)
-        if genome in genomes:
-            counts[genome] += 1
-    return counts
-
-
-def componentCompositions(order, comps, gene2species=gene2species):
-    compositions = util.Dict(1, 0)
-    for comp in comps:
-        counts = genomeComposition(order, comp, gene2species)
-        key = []
-        for genome in order:
-            key.append(counts[genome])
-        compositions[tuple(key)] += 1
-    return compositions.data
-"""
+        # add other block to segments
+        start, end, direction = \
+            matching.interpolateSegment(refChrom, refStart, refEnd, otherChrom)
+        if start != None:
+            segments.append(Segment(otherGenome, otherChrom, start, end, direction))
+    
+    
+    return MultiBlock(segments)
 
 
 
-# constants
-aminoAcids = "FLSYCWLPHQRIMTNKVADEG"
-aaPseudoCounts = {"-": 1/21.0}
+class BlockRef:   
+    def __init__(self, kind, block, side):
+        self.kind = kind    
+        self.block = block    
+        self.side = side
+        if side == 1:
+            if kind == "start":
+                self.pos = block.start1
+            else:
+                self.pos = block.end1
+        else:
+            if kind == "start":
+                self.pos = block.start2
+            else:
+                self.pos = block.end2
+    
+    def otherGenome(self):
+        if self.side == 1:
+            return self.block.genome2
+        else:
+            return self.block.genome1
 
-for i in aminoAcids:
-    aaPseudoCounts[i] = 1/21.0
+    def otherChrom(self):
+        if self.side == 1:
+            return self.block.chrom2
+        else:
+            return self.block.chrom1
 
+
+def makeChromMultiBlocks(conf, matching, refGenome, refChrom, blocks=None):
+    chroms = {}
+    
+    refs = []
+    
+    if blocks == None:
+        blocks = matching.blocks
+    
+    # assign blocks to chroms of ref genome
+    for block in blocks:
+        if block.start1 > block.end1 or \
+           block.start2 > block.end2:
+            # maybe raise error
+            continue
+    
+        if block.genome1 == refGenome and block.chrom1 == refChrom:
+            refs.append(BlockRef("start", block, 1))
+            refs.append(BlockRef("end", block, 1))
+        elif block.genome2 == refGenome and block.chrom2 == refChrom:
+            refs.append(BlockRef("start", block, 2))
+            refs.append(BlockRef("end", block, 2))            
+    
+    # sort reference in order
+    refs.sort(lambda a,b: cmp(a.pos, b.pos))
+    
+    # produce multiblocks
+    lastPos = 0
+    blocks = []
+    multiblocks = []
+    
+    for ref in refs:
+        # add or remove from current blocks
+        if ref.kind == "start":
+            if ref.pos > lastPos:
+                multiblocks.append(cutBlocks(matching, blocks, refChrom, 
+                                             lastPos, ref.pos-1))
+            lastPos = ref.pos
+            blocks.append(ref.block)
+        else:
+            if ref.pos > lastPos:
+                multiblocks.append(cutBlocks(matching, blocks, refChrom, 
+                                             lastPos, ref.pos))
+                lastPos = ref.pos+1
+            blocks.remove(ref.block)
+        
+        
+
+    if refChrom.size > lastPos:
+        multiblocks.append(cutBlocks(matching, blocks, refChrom, 
+                                     lastPos, refChrom.size))
+
+    return multiblocks
+
+
+def makeGenomeMultiBlocks(conf, matching, refGenome):
+    # split blocks by chromosome
+    blocks = util.Dict(1, [])
+    for block in matching.blocks:
+        if block.genome1 == refGenome:
+            blocks[block.chrom1].append(block)
+        elif block.genome2 == refGenome:
+            blocks[block.chrom2].append(block)
+    
+    # find multiblocks for each chromosome
+    multiblocks = []
+    for chrom in refGenome.chroms.values():
+        if chrom in blocks:
+            multiblocks.extend(
+                makeChromMultiBlocks(conf, matching, refGenome, 
+                                     chrom, blocks[chrom]))
+    return multiblocks
+
+
+def writeMultiBlocks(filename, multiblocks):
+    out = util.openStream(filename, "w")
+    
+    for multiblock in multiblocks:
+        if len(multiblock.segments) > 0:
+            out.write("\t".join([multiblock.segments[0].genome.name, 
+                                 multiblock.segments[0].chrom.name, 
+                                 str(multiblock.segments[0].start), 
+                                 str(multiblock.segments[0].end),
+                                 str(multiblock.segments[0].direction)]))
+            
+        for segment in multiblock.segments[1:]:
+            out.write("\t")
+            out.write("\t".join([segment.genome.name, segment.chrom.name, 
+                                 str(segment.start), str(segment.end),
+                                 str(segment.direction)]))
+        out.write("\n")
+  
+
+def iterMultiBlocks(filename):
+    """
+    iterates over multiblocks in a file
+    
+    Warning: this keeps genomes and chroms as names (strings) NOT objects
+    I think I will eventually convert everything to names.
+    But currently this read is incompatiable with writeMultiBlocks
+    """
+    
+    infile = util.openStream(filename, "r")
+    
+    for line in infile:
+        tokens = line.split("\t")
+        
+        segments = []
+        for i in range(0, len(tokens), 5):
+            genome, chrom, start, end, direction = tokens[i:i+5]
+            segments.append(Segment(genome, chrom, 
+                                    int(start), int(end), int(direction)))
+        
+        yield MultiBlock(segments)
+    
+
+
+def genesInMultiBlocks(genes, blocks):
+    """
+    Returns which (if any) multiblock a set of genes are in.
+    
+    genes must hit unique segments in multiblock.
+    
+    MultiBlocks must refer to genomes and chroms as strings.
+    
+    """
+
+    for block in blocks:
+        found = set()
+        for gene in genes:
+            for seg in block.segments:
+                if gene.chrom.genome.name == seg.genome and \
+                   gene.chrom.name == seg.chrom and \
+                   gene.start >= seg.start and \
+                   gene.end <= seg.end:
+                    found.add(seg)
+                    break
+            else:
+                # cannot find segment for gene, no match
+                break
+
+        # did we find a unique segment for each gene?
+        if len(found) == len(genes):
+            return block
+    return None
+
+        
+
+
+'''
         
 #============================================================================
 # Gene and genome objects for synteny and blast matches
@@ -880,220 +1012,6 @@ class Matching:
         end2 = max(map(lambda x: x.end, genes4))
 
         return start2, end2, direction
-        
 
+'''
 
-
-#--------------------------------------------------------------------------------
-# MultiBlocks
-#--------------------------------------------------------------------------------
-
-
-#
-# TODO: multiblocks can be done with my Regions in regionlib!
-#
-
-
-def cutBlocks(matching, blocks, refChrom, refStart, refEnd):
-    segments = [Segment(refChrom.genome, refChrom, refStart, refEnd, 1)]
-    
-    for block in blocks:
-        if block.chrom1 == refChrom:
-            # ensure cut is bigger than ref
-            #assert refStart <= block.start1 and \
-            #       refEnd >= block.end1
-            otherGenome = block.genome2
-            otherChrom = block.chrom2
-        else:
-            # ensure cut is bigger than ref
-            #assert refStart <= block.start2 and \
-            #       refEnd >= block.end2
-            otherGenome = block.genome1
-            otherChrom = block.chrom1
-    
-        # add other block to segments
-        start, end, direction = \
-            matching.interpolateSegment(refChrom, refStart, refEnd, otherChrom)
-        if start != None:
-            segments.append(Segment(otherGenome, otherChrom, start, end, direction))
-    
-    
-    return MultiBlock(segments)
-
-
-
-class BlockRef:   
-    def __init__(self, kind, block, side):
-        self.kind = kind    
-        self.block = block    
-        self.side = side
-        if side == 1:
-            if kind == "start":
-                self.pos = block.start1
-            else:
-                self.pos = block.end1
-        else:
-            if kind == "start":
-                self.pos = block.start2
-            else:
-                self.pos = block.end2
-    
-    def otherGenome(self):
-        if self.side == 1:
-            return self.block.genome2
-        else:
-            return self.block.genome1
-
-    def otherChrom(self):
-        if self.side == 1:
-            return self.block.chrom2
-        else:
-            return self.block.chrom1
-
-
-def makeChromMultiBlocks(conf, matching, refGenome, refChrom, blocks=None):
-    chroms = {}
-    
-    refs = []
-    
-    if blocks == None:
-        blocks = matching.blocks
-    
-    # assign blocks to chroms of ref genome
-    for block in blocks:
-        if block.start1 > block.end1 or \
-           block.start2 > block.end2:
-            # maybe raise error
-            continue
-    
-        if block.genome1 == refGenome and block.chrom1 == refChrom:
-            refs.append(BlockRef("start", block, 1))
-            refs.append(BlockRef("end", block, 1))
-        elif block.genome2 == refGenome and block.chrom2 == refChrom:
-            refs.append(BlockRef("start", block, 2))
-            refs.append(BlockRef("end", block, 2))            
-    
-    # sort reference in order
-    refs.sort(lambda a,b: cmp(a.pos, b.pos))
-    
-    # produce multiblocks
-    lastPos = 0
-    blocks = []
-    multiblocks = []
-    
-    for ref in refs:
-        # add or remove from current blocks
-        if ref.kind == "start":
-            if ref.pos > lastPos:
-                multiblocks.append(cutBlocks(matching, blocks, refChrom, 
-                                             lastPos, ref.pos-1))
-            lastPos = ref.pos
-            blocks.append(ref.block)
-        else:
-            if ref.pos > lastPos:
-                multiblocks.append(cutBlocks(matching, blocks, refChrom, 
-                                             lastPos, ref.pos))
-                lastPos = ref.pos+1
-            blocks.remove(ref.block)
-        
-        
-
-    if refChrom.size > lastPos:
-        multiblocks.append(cutBlocks(matching, blocks, refChrom, 
-                                     lastPos, refChrom.size))
-
-    return multiblocks
-
-
-def makeGenomeMultiBlocks(conf, matching, refGenome):
-    # split blocks by chromosome
-    blocks = util.Dict(1, [])
-    for block in matching.blocks:
-        if block.genome1 == refGenome:
-            blocks[block.chrom1].append(block)
-        elif block.genome2 == refGenome:
-            blocks[block.chrom2].append(block)
-    
-    # find multiblocks for each chromosome
-    multiblocks = []
-    for chrom in refGenome.chroms.values():
-        if chrom in blocks:
-            multiblocks.extend(
-                makeChromMultiBlocks(conf, matching, refGenome, 
-                                     chrom, blocks[chrom]))
-    return multiblocks
-
-
-def writeMultiBlocks(filename, multiblocks):
-    out = util.openStream(filename, "w")
-    
-    for multiblock in multiblocks:
-        if len(multiblock.segments) > 0:
-            out.write("\t".join([multiblock.segments[0].genome.name, 
-                                 multiblock.segments[0].chrom.name, 
-                                 str(multiblock.segments[0].start), 
-                                 str(multiblock.segments[0].end),
-                                 str(multiblock.segments[0].direction)]))
-            
-        for segment in multiblock.segments[1:]:
-            out.write("\t")
-            out.write("\t".join([segment.genome.name, segment.chrom.name, 
-                                 str(segment.start), str(segment.end),
-                                 str(segment.direction)]))
-        out.write("\n")
-  
-
-def iterMultiBlocks(filename):
-    """
-    iterates over multiblocks in a file
-    
-    Warning: this keeps genomes and chroms as names (strings) NOT objects
-    I think I will eventually convert everything to names.
-    But currently this read is incompatiable with writeMultiBlocks
-    """
-    
-    infile = util.openStream(filename, "r")
-    
-    for line in infile:
-        tokens = line.split("\t")
-        
-        segments = []
-        for i in range(0, len(tokens), 5):
-            genome, chrom, start, end, direction = tokens[i:i+5]
-            segments.append(Segment(genome, chrom, 
-                                    int(start), int(end), int(direction)))
-        
-        yield MultiBlock(segments)
-    
-
-
-def genesInMultiBlocks(genes, blocks):
-    """
-    Returns which (if any) multiblock a set of genes are in.
-    
-    genes must hit unique segments in multiblock.
-    
-    MultiBlocks must refer to genomes and chroms as strings.
-    
-    """
-
-    for block in blocks:
-        found = set()
-        for gene in genes:
-            for seg in block.segments:
-                if gene.chrom.genome.name == seg.genome and \
-                   gene.chrom.name == seg.chrom and \
-                   gene.start >= seg.start and \
-                   gene.end <= seg.end:
-                    found.add(seg)
-                    break
-            else:
-                # cannot find segment for gene, no match
-                break
-
-        # did we find a unique segment for each gene?
-        if len(found) == len(genes):
-            return block
-    return None
-
-        

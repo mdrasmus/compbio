@@ -23,7 +23,7 @@ from rasmus.regionlib import *
 
 
 # rasmus modules
-from rasmus import env, svg, tablelib, treelib
+from rasmus import svg, tablelib, treelib
 from rasmus.tablelib import Table, read_table, iter_table, histtab
 from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
 from rasmus.treelib import *
@@ -88,16 +88,3 @@ def showTree(tree, **options):
     
     return vis
 
-# DEPRECATED
-# Tue Apr 29 23:22:56 EDT 2008
-"""
-# try to setup DATAPATH env
-RASMUS_COMMON_DATAPATH_LOADED = False
-if "DATAPATH" in os.environ:
-    env.addEnvPaths("DATAPATH")
-    RASMUS_COMMON_DATAPATH_LOADED = True
-    
-    print "rasmus.common: loaded data paths from DATAPATH"
-    for path in env.datapaths:
-        print path
-"""    

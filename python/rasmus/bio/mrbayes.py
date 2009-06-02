@@ -2,7 +2,6 @@ import os, StringIO
 
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import exonutil
 from rasmus.bio import fasta
 from rasmus.bio import phylip
 
@@ -119,7 +118,7 @@ end;
 
 
 
-
+'''
 # todo: make slide an argument
 def mrbayesIntrons(aln, genes, lookup, slide=1, filename = "", format="protein", options=None):
     if not options: options = {}
@@ -167,7 +166,7 @@ end;
 """
 
     writeMrbayesOptions(out, options)
-
+'''
 
 def setDefaultOptions(options):
     defaults = {

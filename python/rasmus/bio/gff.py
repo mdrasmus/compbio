@@ -248,7 +248,9 @@ class Gtf (Gff):
         for attr in tokens[:-1]:
             attr = attr.strip()
 
-            pos = attr.index(" ")
+            pos = attr.find(" ")
+            if pos == -1:
+                continue
 
             key = attr[:pos]
             val = attr[pos+1:].split("\"")[1]

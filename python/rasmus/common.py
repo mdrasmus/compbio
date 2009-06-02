@@ -23,15 +23,15 @@ from rasmus.regionlib import *
 
 
 # rasmus modules
-from rasmus import svg, tablelib, treelib
+from rasmus import util, svg, tablelib, treelib
 from rasmus.tablelib import Table, read_table, iter_table, histtab
 from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
 from rasmus.treelib import *
 
 # bio tools
 from rasmus.bio.fasta import *
-from rasmus.bio import muscle, phylip, mrbayes, clustalw, genomeutil, blast, alignlib
-from rasmus.bio import gff, genomeio
+from rasmus.bio import muscle, phylip, mrbayes, blast, alignlib
+from rasmus.bio import gff
 
 
 readTable = read_table
@@ -44,13 +44,6 @@ def ipy():
     ipshell()
 
 
-
-
-def readTree(filename):
-    """Read a newick tree"""
-    tree = Tree()
-    tree.readNewick(filename)
-    return tree
 
 class ListFiles:
     def __call__(self, args=""):
@@ -70,9 +63,9 @@ def strStream(text):
     return StringIO.StringIO(text)
 
 # really quick pretty printing
-pc = printcols
+pc = util.printcols
 pa = alignlib.printAlign
-pd = printDict
+pd = util.print_dict
 
 
 
@@ -81,10 +74,9 @@ def pl(lines, out=sys.stdout):
         print >>out, line
 
 
-def showTree(tree, **options):
+def show_tree(tree, **options):
     from rasmus.vis import treevis
     vis = treevis.TreeViewer(tree, **options)
     vis.show()
     
     return vis
-

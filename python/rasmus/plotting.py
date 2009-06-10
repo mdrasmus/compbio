@@ -9,7 +9,7 @@
 #from rasmus import util
 from rasmus import svg
 
-import sys, os
+import sys, os, copy
 import tempfile as temporaryfile
 
 
@@ -299,19 +299,19 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             labelSpacing=4,
             showVals=False,
             valColor=black):
-    
-    
+
+    from rasmus import util
     
     # determine filename
     if filename == None:
-        filename = tempfile(".", "heatmap", ".svg")
+        filename = util.tempfile(".", "heatmap", ".svg")
         temp = True
     else:
         temp = False
     
     # determine colormap
     if colormap == None:
-        colormap = rainbowColorMap(flatten(matrix))
+        colormap = rainbowColorMap(util.flatten(matrix))
     
     # determine matrix size and orientation
     nrows = len(matrix)
@@ -341,7 +341,6 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     
     
     # begin svg
-    from rasmus import util
     infile = util.open_stream(filename, "w")
     s = svg.Svg(infile)
     s.beginSvg(ncols*width + 2*xmargin, nrows*height + 2*ymargin)
@@ -604,6 +603,8 @@ class Gnuplot:
     def setTerminal(self, filename = "", format="x11"):
         if not self.enable:
             return
+
+        from rasmus import util
         
         # auto detect format from filename
         if filename != "":
@@ -621,7 +622,7 @@ class Gnuplot:
             if filename.endswith(".jpg"):
                 format = "jpg"
         else:
-            tmpfile = tempfile(".", "gnuplot", ".ps")
+            tmpfile = util.tempfile(".", "gnuplot", ".ps")
             print >>self.stream, "set output \"%s\"" % tmpfile
             return tmpfile
         
@@ -642,8 +643,10 @@ class Gnuplot:
     
     def wait(self):
         """Wait until all commands are known to be excuted"""
+
+        from rasmus import util
         
-        tmpfile = tempfile(".", "gnuplot", ".ps")
+        tmpfile = util.tempfile(".", "gnuplot", ".ps")
         print >>self.stream, "set output '%s'" % tmpfile
         print >>self.stream, "set terminal postscript color"
         print >>self.stream, "plot '-'\n0 0\ne\n"
@@ -654,6 +657,9 @@ class Gnuplot:
         
     
     def findRange(self):
+
+        INF = 1e1000
+
         bestLeft = INF
         bestRight = -INF
         bestTop = -INF
@@ -921,6 +927,8 @@ class Gnuplot:
             params - a dictionary of parameters in eqn and their initial values
                    ex: {"a": 1, "b": 3}        
         """
+
+        from rasmus import util
         
         self.set(** options)
     
@@ -946,7 +954,7 @@ class Gnuplot:
        
                 
         # save and read parameters
-        outfile = tempfile(".", "plot", ".txt")        
+        outfile = util.tempfile(".", "plot", ".txt")        
         print >>self.stream, "save var '%s'" % outfile
         print >>self.stream, "print 'done'"
         self.stream.flush()     

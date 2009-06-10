@@ -6,12 +6,6 @@ from rasmus import util
 
 
 
-try:
-    from rasmus import pyparsing
-except:
-    pass
-
-
 def writeGraphviz(mat, out=sys.stdout, format="undirected", 
                   param="overlap=\"false\";"):
     if format == "undirected":

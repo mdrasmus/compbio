@@ -20,7 +20,7 @@ from rasmus.bio.seqlib import *
 
 # TODO: maybe ignore dict alignments altogether?
 
-def newAlign(aln=None):
+def new_align(aln=None):
     """Makes a new alignment object based on the given object
         
        given      return
@@ -43,7 +43,7 @@ def mapalign(aln, keyfunc=lambda x: x, valfunc=lambda x: x):
        very similar to rasmus.util.mapdict()
     """
     
-    aln2 = newAlign(aln)
+    aln2 = new_align(aln)
 
     for key, val in aln.iteritems():
         aln2[keyfunc(key)] = valfunc(val)
@@ -56,14 +56,14 @@ def subalign(aln, cols):
     return mapalign(aln, valfunc=lambda x: "".join(util.mget(x, cols)))
 
 
-def removeEmptyColumns(aln):
+def remove_empty_columns(aln):
     """Removes any column from an alignment 'aln' that contains only gaps
     
        A new alignment is returned
     """
        
     dels = {}
-    aln2 = newAlign(aln)
+    aln2 = new_align(aln)
     
     for i in range(aln.alignlen()):
         col = {}
@@ -81,9 +81,10 @@ def removeEmptyColumns(aln):
     aln2.orderNames(aln)
     
     return aln2
+removeEmptyColumns = remove_empty_columns
 
 
-def removeGappedColumns(aln):
+def remove_gapped_columns(aln):
     """Removes any column form an alignment 'aln' that contains a gap
     
        A new alignment is returned
@@ -91,12 +92,13 @@ def removeGappedColumns(aln):
     cols = zip(* aln.values())
     ind = util.find(lambda col: "-" not in col, cols)
     return subalign(aln, ind)
+removeGappedColumns = remove_gapped_columns
 
 
-def calcConservationString(aln):
+def calc_conservation_string(aln):
     """Returns a string of stars representing the conservation of an alignment"""
     
-    percids = calcConservation(aln)
+    percids = calc_conservation(aln)
     
     # find identity positions
     identity = ""
@@ -111,7 +113,7 @@ def calcConservationString(aln):
     return identity
 
 
-def calcConservation(aln):
+def calc_conservation(aln):
     """Returns a list of percent matching in each column of an alignment"""
 
     length = len(aln.values()[0])
@@ -130,10 +132,10 @@ def calcConservation(aln):
             pid = max(chars.values()) / float(len(aln))
             percids.append(pid)
     return percids
+calcConservation = calc_conservation
 
 
-
-def printAlign(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(), 
+def print_align(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(), 
                out=sys.stdout, order=None):
     """Pretty print an alignment"""
                
@@ -147,7 +149,7 @@ def printAlign(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(),
         name2 += " " * (namewidth - len(name2))
         return name2
 
-    identity = calcConservationString(aln)
+    identity = calc_conservation_string(aln)
     
     # print alignment
     for i in xrange(0, len(aln.values()[0]), seqwidth):
@@ -166,17 +168,19 @@ def printAlign(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(),
         print >>out
 
 
-def revtranslateAlign(aaseqs, dnaseqs, check=False):
+def revtranslate_align(aaseqs, dnaseqs, check=False):
     """Reverse translates aminoacid alignment into DNA alignment
     
        Must supply original ungapped DNA.
     """
     
-    align = newAlign(aaseqs)
+    align = new_align(aaseqs)
     
     for name, seq in aaseqs.iteritems():
-        align[name] = revtranslate(seq, dnaseqs[name], check=check)
-    align.orderNames(aaseqs)
+        try:
+            align[name] = revtranslate(seq, dnaseqs[name], check=check)
+        except TranslateError, e:
+            raise Exception("%s: %s" % (name, str(e)))
     
     return align
 
@@ -238,7 +242,7 @@ def countTransitions(seq1, seq2, counts=None):
 
 
 # TODO: add documentation
-def checkAlignOverlap(aln, overlap):
+def check_align_overlap(aln, overlap):
     mat = aln.values()
     
     for i in range(len(mat)):
@@ -500,7 +504,7 @@ def calcFourFoldDistMatrix(aln):
     return mat
 
 
-def findDegen(aln):
+def find_degen(aln):
     """Determine the degeneracy of each column in an alignment"""
 
     codonInd = findAlignCodons(aln)
@@ -508,7 +512,7 @@ def findDegen(aln):
     
     pepAln = mapalign(aln2, valfunc=translate)
     pep = pepAln.values()[0]
-    identies = calcConservation(pepAln)
+    identies = calc_conservation(pepAln)
     
     degens = [-1] * len(aln.values()[0])
     
@@ -523,12 +527,12 @@ def findDegen(aln):
     return degens
 
 
-def makeDegenStr(aln):
+def make_degen_str(aln):
     """Returns a string containing the degeneracy for each column 
        in an alignment
     """
 
-    degens = findDegen(aln)
+    degens = find_degen(aln)
     degenmap = {-1: " ",
                  0: "0",
                  1: "1",
@@ -539,13 +543,13 @@ def makeDegenStr(aln):
     return "".join(util.mget(degenmap, degens))
     
 
-def printDegen(aln, **args):
+def print_degen(aln, **args):
     """Pretty print an alignment with its degeneracy for each column"""
 
     extra = fasta.FastaDict()
-    extra["DEGEN"] = makeDegenStr(aln)
+    extra["DEGEN"] = make_degen_str(aln)
     
-    printAlign(aln, extra=extra, **args)
+    print_align(aln, extra=extra, **args)
 
 
 #-------------------------------------------------------------------------------
@@ -721,80 +725,5 @@ def global2align(global_coord, start, end, strand, alignLookup):
 def align2global(align_coord, start, end, strand, localLookup):
     local_coord = localLookup[align_coord]
     return local2global(local_coord, start, end, strand)
-
-
-
-'''
-
-# old code
-
-def getAlignLookup(seq):
-    """
-    Returns list of indices of non-gap characters
-    
-    'ATG---CTG-CG' ==> [0,1,2,6,7,8,10,11]
-    
-    Used to go from local -> align space
-    """
-    
-    lookup = []
-    for i in xrange(len(seq)):
-        if seq[i] == "-": continue
-        lookup.append(i)
-    return lookup
-
-
-def getLocalLookup(seq):
-    """
-    Returns list such that 
-    
-    'ATG---CTG-CG' ==> [0,1,2,2,2,3,4,5,5,6,7]
-    
-    Used to go from align -> local space
-    """
-
-    i = -1
-    lookup = []
-    for c in seq:
-        if c != "-":
-            i += 1
-        lookup.append(i)
-    return lookup
-
-
-def global2local(coord, start, end, strand):
-    """Returns local coordinate in a global region"""
-
-    # swap if strands disagree
-    if strand == 1:
-        return coord - start
-    else:
-        return end - coord
-
-
-def local2global(coord, start, end, strand):
-    """Return global coordinate within a region from a local coordinate"""
-    
-    # swap if strands disagree
-    if strand == 1:
-        return coord + start
-    else:
-        return end - coord
-
-
-def global2align(coord, start, end, strand, alignLookup):
-    coord = global2local(coord, start, end, strand)
-    
-    # maybe throw exception for out of bounds
-    if coord < 0: coord = 0
-    if coord >= len(alignLookup): coord = len(alignLookup) - 1
-    
-    return alignLookup[coord]
-
-
-def align2global(coord, start, end, strand, localLookup):
-    coord = localLookup[coord]
-    return local2global(coord, start, end, strand)
-'''
 
 

@@ -194,7 +194,7 @@ else:
     stree = None
     
 if "treecolormap" in conf:
-    treeColormap = treevis.readTreeColorMap(conf["treecolormap"])
+    treeColormap = treevis.read_tree_color_map(conf["treecolormap"])
 else:
     treeColormap = None
 

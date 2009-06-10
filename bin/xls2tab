@@ -28,10 +28,10 @@ options, args = o.parse_args()
 def force_ascii(item):
     """Force item to ascii"""
     
-    if isinstance(text, basestring):
-        return str(text.encode("ascii", "ignore"))
+    if isinstance(item, basestring):
+        return str(item.encode("ascii", "ignore"))
     else:
-        return str(text)
+        return str(item)
 
 
 # process each file

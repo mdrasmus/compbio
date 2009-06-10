@@ -51,7 +51,7 @@ def error(text):
 
 def doublequote(text):
     """Wrap argument in doublequotes with propper escaping"""
-    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$") + '"'
 
 #def quote(text):
 #    return text.replace("\\", "\\\\").replace('"', '\\"').replace(" ", "\\ ")
@@ -59,7 +59,7 @@ def doublequote(text):
 def make_cmd(cmd, **args):
     cmd2 = ""
     for key, val in args.items():
-        cmd2 += '%s=%s; ' % (key, doublequote(val))
+        cmd2 += 'export %s=%s; ' % (key, doublequote(val))
     return "( " + cmd2 + cmd + " )"
 
 
@@ -146,7 +146,7 @@ def main(argv):
 
         # run command
         cmd2 = make_cmd(options.submit + 
-                        doublequote("( " + cmd + " ) > \"$FILE.out\""),
+                        doublequote('( ' + cmd + ' ) > "$FILE.out"'),
                         FILE=fn)
         if options.verbose:
             print >>sys.stderr, cmd2

@@ -39,7 +39,7 @@ class FastaDict (SeqDict):
         key = ""
         value = ""
         
-        if isinstance(filename, str) and useIndex and hasFastaIndex(filename):
+        if isinstance(filename, str) and useIndex and has_fasta_index(filename):
             newkeys = self.index.read(filename)
             
             # store None's for when indexing should be used
@@ -114,17 +114,17 @@ class FastaDict (SeqDict):
 #
     
 
-def readFasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 
+def read_fasta(filename, keyfunc=firstword, valuefunc = lambda x: x, 
               errors=True, useIndex=True):   
     """Read a FASTA file into a sequence dictionary"""
     
     fa = FastaDict()
     fa.read(filename, keyfunc, valuefunc, errors, useIndex=useIndex)
     return fa
+readFasta = read_fasta
 
 
-
-def writeFasta(filename, seqs, order = None, width=None):
+def write_fasta(filename, seqs, order = None, width=None):
     """Write a FASTA dictionary into a file"""
     
     out = util.openStream(filename, "w")
@@ -134,6 +134,8 @@ def writeFasta(filename, seqs, order = None, width=None):
         writeFastaOrdered(out, names, seqs, width)
     else:
         seqs.write(filename, order, width)
+writeFasta = write_fasta
+
 
 _comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
          "a":"t", "c":"g", "g":"c", "t":"a", "n":"n",
@@ -170,10 +172,10 @@ def makeFastaIndex(filename):
     return index
 
 
-def hasFastaIndex(fastaFile):
-    """Check to see if fastaFile has an index"""
+def has_fasta_index(fasta_file):
+    """Check to see if fasta_file has an index"""
 
-    return os.path.exists(fastaFile + ".index")
+    return os.path.exists(fasta_file + ".index")
 
 
 def guessFastaWidth(fastaFile):
@@ -298,6 +300,9 @@ class FastaIndex:
             seq = _revcomp(seq)
         
         return seq
+
+
+    
 
 
 

@@ -12,17 +12,17 @@ import os
 
 
 
-def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
-             labelOffset=None, fontSize=10, labelSize=None,
-             minlen=1, maxlen=util.INF, filename=sys.stdout,
-             rmargin=150, lmargin=10, tmargin=0, bmargin=None,
-             colormap=None,
-             stree=None,
-             gene2species=None,
-             lossColor=(0, 0, 1),
-             dupColor=(1, 0, 0),
-             eventSize=4,
-             legendScale=False, autoclose=None):
+def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
+              labelOffset=None, fontSize=10, labelSize=None,
+              minlen=1, maxlen=util.INF, filename=sys.stdout,
+              rmargin=150, lmargin=10, tmargin=0, bmargin=None,
+              colormap=None,
+              stree=None,
+              gene2species=None,
+              lossColor=(0, 0, 1),
+              dupColor=(1, 0, 0),
+              eventSize=4,
+              legendScale=False, autoclose=None):
     
     # set defaults
     fontRatio = 8. / 11.
@@ -38,7 +38,7 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     
     if sum(x.dist for x in tree.nodes.values()) == 0:
         legendScale = False
-        minlen = yscale * 2
+        minlen = xscale
     
     if colormap == None:
         for node in tree:
@@ -119,10 +119,10 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     walk(tree.root)
         
     if stree and gene2species:
-        drawEvents(canvas, tree, coords, events, losses,
-                   lossColor=lossColor,
-                   dupColor=dupColor,
-                   size=eventSize)
+        draw_events(canvas, tree, coords, events, losses,
+                    lossColor=lossColor,
+                    dupColor=dupColor,
+                    size=eventSize)
     canvas.endTransform()
     
     # draw legend
@@ -140,9 +140,10 @@ def drawTree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         canvas.endSvg()
     
     return canvas
+drawTree = draw_tree
 
 
-def drawEvents(canvas, tree, coords, events, losses,
+def draw_events(canvas, tree, coords, events, losses,
                lossColor=(0, 0, 1),
                dupColor=(1, 0, 0),
                size=4):
@@ -167,6 +168,7 @@ def drawEvents(canvas, tree, coords, events, losses,
 
         for x in util.frange(x1 + step, x2-(step/2.0), step):
             canvas.line(x, y1 - size/2.0, x, y1 + size/2.0, color=lossColor)
+
             
 
 def drawScale(x, y, length, xscale, fontSize, canvas=None):
@@ -226,10 +228,10 @@ def getPairwiseDists(tree, mainsp):
 #=============================================================================
 # additional wrapper functions
 
-def drawEventsTree(tree, stree, gene2species, **options):
-    phylo.initDupLossTree(stree)
-    phylo.countDupLossTree(tree, stree, gene2species)
-    phylo.countAncestralGenes(stree)
+def draw_events_tree(tree, stree, gene2species, **options):
+    phylo.init_dup_loss_tree(stree)
+    phylo.count_dup_loss_tree(tree, stree, gene2species)
+    phylo.count_ancestral_genes(stree)
     
     labels = options.get("labels", {})
     
@@ -250,24 +252,25 @@ def drawEventsTree(tree, stree, gene2species, **options):
             labels[node.name] += ": "
         labels[node.name] += "%d" % node.data['genes']
     
-    drawTree(stree, labels=labels, **options)
+    draw_tree(stree, labels=labels, **options)
 
 
-def drawTreeLens(tree, *args, **kargs):
+def draw_tree_lens(tree, *args, **kargs):
     labels = {}
     for node in tree.nodes.values():
         if node == tree.root:
             continue
         labels[node.name] = "%.3f" % node.dist
     
-    drawTree(tree, labels, *args, **kargs)
-    
+    draw_tree(tree, labels, *args, **kargs)
+drawTreeLens = draw_tree_lens
 
-def showTree(tree, *args, **kargs):
+
+def show_tree(tree, *args, **kargs):
     if not os.fork():
         kargs.setdefault('filename', os.popen("display", "w"))
         kargs.setdefault('legendScale', True)
-        drawTree(tree, *args, **kargs)
+        draw_tree(tree, *args, **kargs)
         sys.exit(0)
-
+showTree = show_tree
     

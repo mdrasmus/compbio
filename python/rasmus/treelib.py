@@ -24,89 +24,14 @@ from rasmus import treelib_parser
     
 try:
     from rasmus import treelib_parser
-    pyparsing = None
-    
 except ImportError:
-
     treelib_parser = None
-
-    # pyparsing parsing support
-    try:
-        from rasmus import pyparsing
-    except ImportError:
-        pyparsing = None
 
 
 
 
 # allow tree reading extra recursion levels
 sys.setrecursionlimit(4000)
-
-#============================================================================
-# Newick parsing
-#
-
-
-#
-# TODO: try D-parser, it might be faster
-#
-if pyparsing:
-    def makeNewickParser():
-        # pyparsing
-        from rasmus.pyparsing import Combine, Optional, Literal, \
-             CaselessLiteral, \
-             Word, alphanums, \
-             nums, oneOf, Group, Dict, Forward, \
-             ParseResults, CharsNotIn, ZeroOrMore
-
-
-        # literals
-        lparen    = Literal("(").suppress()
-        rparen    = Literal(")").suppress()
-        colon     = Literal(":").suppress()
-        semicolon = Literal(":").suppress()
-        comma     = Literal(",").suppress()
-        point     = Literal(".")
-        e         = CaselessLiteral("E")
-
-
-        # terminal rules
-        # name = Word(alphanums + "_" + "-" + "." + "+")
-        name_part  = Word(alphanums + "_" + "-" + "." + "+")
-        name_part2 = Forward()        
-        name_part2 << name_part + Optional(Word(" ") + name_part2)
-        name = Combine(name_part + Optional(Word(" ") + name_part2))
-        fnumber = Combine(Word("+-"+nums, nums) + 
-                          Optional(point + Optional(Word(nums))) +
-                          Optional(e + Word("+-"+nums, nums)))
-        dist      = fnumber
-        bootstrap = fnumber
-
-
-        # recursive rules
-        subtree = Forward()
-        subtreelist = Forward()
-        
-        subtree << \
-            Group(
-                (
-                    (lparen + subtreelist + rparen).setResultsName("subtree") |
-                    name.setResultsName("name")
-                ) +
-                Optional(
-                    CharsNotIn(",);").setResultsName("data")
-                )
-            )
-        subtreelist << subtree + Optional(comma + subtreelist)
-
-
-        # top level rule
-        tree = subtree + Word(";").suppress()
-
-
-        return tree.parseString
-
-    newickParser = makeNewickParser()
 
 
 
@@ -634,13 +559,11 @@ class Tree:
         You can specify a specialized node data reader with 'readData'
         """
     
-        # use simple parsing if pyparsing is not available
+        # use simple parsing if PLY is not available
 
         try:
             if treelib_parser is not None:
                 return self._read_newick(filename, readData)
-            if pyparsing is not None:
-                return self._read_newick_pyparsing(filename, readData)
         except RuntimeError:
             pass
 
@@ -658,6 +581,7 @@ class Tree:
 
         # get parse tree
         text = util.read_until(util.open_stream(filename), ";")[0] + ";"
+        print text
         expr = treelib_parser.yacc.parse(text)
 
 
@@ -691,50 +615,6 @@ class Tree:
                 self.defaultData["boot"] = 0
                 break
         self.setDefaultData()
-
-
-    def _read_newick_pyparsing(self, filename, readData=None):
-        """read with pyparsing"""
-
-        # default data reader
-        if readData == None:
-            readData = self.readData
-
-        # get parse tree
-        text = util.readUntil(util.open_stream(filename), ";")[0] + ";"
-        expr = newickParser(text)[0]
-
-
-        # walk the parse tree and build the tree
-        self.clear()
-
-        def walk(expr):
-            if isinstance(expr, pyparsing.ParseResults):
-                # parse name
-                if "name" in expr:
-                    node = TreeNode(expr["name"])
-                else:
-                    node = TreeNode(self.newName())
-
-                if "data" in expr:
-                    readData(node, expr["data"])
-
-                # recurse
-                for child in expr:
-                    ret = walk(child)
-                    if ret:
-                        self.addChild(node, ret)
-                return node
-
-        self.root = walk(expr)
-
-        # test for boot strap presence
-        for node in self.nodes.itervalues():
-            if "boot" in node.data:
-                self.defaultData["boot"] = 0
-                break
-        self.setDefaultData()
-    
     
     
     def read_big_newick(self, filename):

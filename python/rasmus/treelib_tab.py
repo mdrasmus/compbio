@@ -26,12 +26,12 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> tree","S'",1,None,None,None),
-  ('tree -> branch ;','tree',2,'p_tree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',45),
-  ('subtree -> ( branch_set ) NAME','subtree',4,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',51),
-  ('subtree -> ( branch_set )','subtree',3,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',52),
-  ('subtree -> NAME','subtree',1,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',53),
-  ('branch_set -> branch , branch_set','branch_set',3,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',63),
-  ('branch_set -> branch','branch_set',1,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',64),
-  ('branch -> subtree DATA','branch',2,'p_branch','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',75),
-  ('branch -> subtree','branch',1,'p_branch','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',76),
+  ('tree -> branch ;','tree',2,'p_tree','treelib_parser.py',45),
+  ('subtree -> ( branch_set ) NAME','subtree',4,'p_subtree','treelib_parser.py',51),
+  ('subtree -> ( branch_set )','subtree',3,'p_subtree','treelib_parser.py',52),
+  ('subtree -> NAME','subtree',1,'p_subtree','treelib_parser.py',53),
+  ('branch_set -> branch , branch_set','branch_set',3,'p_branch_set','treelib_parser.py',63),
+  ('branch_set -> branch','branch_set',1,'p_branch_set','treelib_parser.py',64),
+  ('branch -> subtree DATA','branch',2,'p_branch','treelib_parser.py',75),
+  ('branch -> subtree','branch',1,'p_branch','treelib_parser.py',76),
 ]

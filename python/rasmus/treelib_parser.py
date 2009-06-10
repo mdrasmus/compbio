@@ -25,7 +25,7 @@ tokens = (
 """
 
 
-t_NAME = r"[\w\-_\.]+[\w\-_\. ]+[\w\-_\.]+"
+t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
 
 '''
 def t_FLOAT(t):
@@ -109,6 +109,8 @@ yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab")
 
 if __name__ == "__main__":
     print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")
+    print yacc.parse("((xax:1.0,bbx:2));")
+    print yacc.parse("((aa:1.0,bb:2):3,(cc:4,dd:5):6);")
 
 
 

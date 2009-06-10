@@ -4,6 +4,6 @@ _lextokens    = {'DATA': 1, 'NAME': 1}
 _lexreflags   = 0
 _lexliterals  = '+:;(),'
 _lexstateinfo = {'INITIAL': 'inclusive'}
-_lexstatere   = {'INITIAL': [('(?P<t_NAME>[\\w\\-_\\.]+[\\w\\-_\\. ]+[\\w\\-_\\.]+)|(?P<t_DATA>[^,;\\(\\)]+)', [None, (None, 'NAME'), (None, 'DATA')])]}
+_lexstatere   = {'INITIAL': [('(?P<t_NAME>[\\w\\-_\\.]+([\\w\\-_\\. ]*[\\w\\-_\\.])?)|(?P<t_DATA>[^,;\\(\\)]+)', [None, (None, 'NAME'), None, (None, 'DATA')])]}
 _lexstateignore = {'INITIAL': ' \t\n'}
 _lexstateerrorf = {'INITIAL': 't_error'}

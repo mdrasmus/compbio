@@ -57,7 +57,7 @@ conf = util.parseOptions(sys.argv, options)
 
 
 def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
-    #ptree, nodes, nodelookup = treelib.makePtree(tree)
+    #ptree, nodes, nodelookup = treelib.make_ptree(tree)
     #leaves = [x.name for x in nodes if isinstance(x.name, str)]
     #seqs = util.mget(aln, leaves)
     
@@ -85,15 +85,15 @@ def ensure_binary(tree):
         while len(children) > 2:
             left = children.pop()
             right = children.pop()
-            newnode = treelib.TreeNode(tree.newName())
+            newnode = treelib.TreeNode(tree.new_name())
             newnode.data['boot'] = 0
-            tree.addChild(newnode, left)
-            tree.addChild(newnode, right)
+            tree.add_child(newnode, left)
+            tree.add_child(newnode, right)
             children.append(newnode)
         
         # add last two to original node
-        tree.addChild(node, children.pop())
-        tree.addChild(node, children.pop())
+        tree.add_child(node, children.pop())
+        tree.add_child(node, children.pop())
             
                 
             

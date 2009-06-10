@@ -131,7 +131,7 @@ def splitTree(tree, node1, node2):
     assert node1.parent == node2
         
     # create new tree object
-    tree2 = treelib.Tree(nextname = tree.newName())
+    tree2 = treelib.Tree(nextname = tree.new_name())
     tree2.root = node1  
     tree2.copyData(tree)
     
@@ -150,7 +150,7 @@ def splitTree(tree, node1, node2):
         node3 = node2.parent
         tree1.remove(node2)
         for n in node2.children:
-            tree1.addChild(node3, n)
+            tree1.add_child(node3, n)
     else:
         # special case
         assert len(node2.children) == 1
@@ -181,8 +181,8 @@ def regraftTree(tree, subtree, node1, node2):
     assert node1.parent == node2    
 
     # add new node on edge
-    newNode = treelib.TreeNode(tree.newName())
-    tree.addChild(newNode, node1)
+    newNode = treelib.TreeNode(tree.new_name())
+    tree.add_child(newNode, node1)
     node2.children[node2.children.index(node1)] = newNode
     newNode.parent = node2
     
@@ -683,9 +683,9 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
     
     # create initial 2 gene tree (labels[0], labels[1])
     tree = treelib.Tree()
-    tree.makeRoot()
-    tree.addChild(tree.root, treelib.TreeNode(labels[0]))
-    tree.addChild(tree.root, treelib.TreeNode(labels[1]))
+    tree.make_root()
+    tree.add_child(tree.root, treelib.TreeNode(labels[0]))
+    tree.add_child(tree.root, treelib.TreeNode(labels[1]))
     
     
     for ngenes in xrange(2, totalgenes):
@@ -704,17 +704,17 @@ def searchGreedy(conf, distmat, labels, stree, gene2species, params, visited=Non
             node = tree2.nodes[name]
 
             if node == tree2.root:
-                newnode = treelib.TreeNode(tree2.newName())
-                tree2.addChild(newnode, tree2.root)
+                newnode = treelib.TreeNode(tree2.new_name())
+                tree2.add_child(newnode, tree2.root)
                 tree2.root = newnode
-                tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
+                tree2.add_child(newnode, treelib.TreeNode(labels[ngenes]))
             else:
                 parent = node.parent
                 tree2.remove(node)
-                newnode = treelib.TreeNode(tree2.newName())
-                tree2.addChild(parent, newnode)
-                tree2.addChild(newnode, node)
-                tree2.addChild(newnode, treelib.TreeNode(labels[ngenes]))
+                newnode = treelib.TreeNode(tree2.new_name())
+                tree2.add_child(parent, newnode)
+                tree2.add_child(newnode, node)
+                tree2.add_child(newnode, treelib.TreeNode(labels[ngenes]))
             
             #tree2 = phylo.reconRoot(tree2, stree, gene2species)
             Spidir.setTreeDistances(conf, tree2, distmat2, labels2)

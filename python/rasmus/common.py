@@ -64,7 +64,7 @@ def strStream(text):
 
 # really quick pretty printing
 pc = util.printcols
-pa = alignlib.printAlign
+pa = alignlib.print_align
 pd = util.print_dict
 
 

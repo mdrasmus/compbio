@@ -192,17 +192,17 @@ class TreeViewer (sumtree.SumTree):
     
 
 def readTreeColorMap(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     maps = []
     
     for line in infile:
         expr, red, green, blue = line.rstrip().split("\t")
         maps.append([expr, map(float, (red, green, blue))])
     
-    name2color = genomeutil.makeGene2species(maps)
+    name2color = phylo.make_gene2species(maps)
     
     def leafmap(node):
         return name2color(node.name)
 
-    return treelib.treeColorMap(leafmap)
+    return treelib.tree_color_map(leafmap)
     

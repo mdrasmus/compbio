@@ -13,9 +13,22 @@ o.add_option("-S", "--smap", metavar="GENE_TO_SPECIES_MAP",
              dest="smap")
 o.add_option("-c", "--cost", metavar="dup|loss|duploss",
              dest="cost", default="duploss")
-             
+o.add_option("-m", "--midpoint", dest="midpoint", action="store_true")
+
+
 conf, args = o.parse_args()
 
+
+if conf.midpoint:
+    # midpoint rooting
+    for treefile in args:
+        print "rerooting %s..." % treefile
+        tree = treelib.read_tree(treefile)
+        treelib.midpoint_root(tree)
+        tree.write(treefile)
+    sys.exit(0)
+
+# recon rooting
 if conf.stree is None or conf.smap is None:
     o.print_usage()
     sys.exit(1)

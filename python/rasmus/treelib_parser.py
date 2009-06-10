@@ -1,0 +1,161 @@
+
+
+from rasmus.ply import lex, yacc
+reload(lex)
+
+
+literals = ['+', ':', ';', '(',')', ","]
+t_ignore = " \t\n"
+
+tokens = (
+    "NAME",
+    "DATA"
+)
+
+
+"""
+   Tree --> Subtree ";" | Branch ";"
+   Subtree --> Leaf | Internal
+   Leaf --> Name
+   Internal --> "(" BranchSet ")" Name
+   BranchSet --> Branch | Branch "," BranchSet
+   Branch --> Subtree Length
+   Name --> empty | string
+   Length --> empty | ":" number
+"""
+
+
+t_NAME = r"[\w\-_\.]+[\w\-_\. ]+[\w\-_\.]+"
+
+'''
+def t_FLOAT(t):
+    r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
+    t.value = float(t.value)
+    return t
+'''
+
+t_DATA = r"[^,;\(\)]+"
+
+def t_error(t):
+    raise TypeError("Unknown text '%s'" % (t.value,))
+
+
+def p_tree(p):
+    """
+    tree : branch ';'
+    """
+    p[0] = p[1]
+
+
+def p_subtree(p):
+    """subtree : "(" branch_set ")" NAME
+               | "(" branch_set ")" 
+               | NAME"""
+    if len(p) == 5:
+        p[0] = (p[2], p[4])
+    elif len(p) == 4:
+        p[0] = (p[2], "")
+    else:
+        p[0] = ([], p[1])
+
+
+def p_branch_set(p):
+    """branch_set : branch "," branch_set
+                  | branch 
+    """
+
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[0] = [p[1]] + p[3]
+    
+
+def p_branch(p):
+    """
+    branch : subtree DATA
+           | subtree
+    """
+
+    if len(p) == 3:
+        p[0] = p[1] + (p[2],)
+    else:
+        p[0] = p[1] + ("",)
+
+
+'''
+def p_length(p):
+    """
+    length : ':' FLOAT
+           |
+    """
+    if len(p) == 3:
+        p[0] = p[2]
+    else:
+        p[0] = 0.0
+'''
+
+def p_error(p):
+    if p:
+        raise Exception("Syntax error at '%s'" % p.value)
+    else:
+        raise Exception("Syntax error")
+
+
+#lex.lex()
+#yacc.yacc()
+
+lex.lex(debug=0, optimize=1, lextab="treelib_lex")
+yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab")
+
+if __name__ == "__main__":
+    print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")
+
+
+
+#=============================================================================
+# OLD parsing code
+
+'''
+        # literals
+        lparen    = Literal("(").suppress()
+        rparen    = Literal(")").suppress()
+        colon     = Literal(":").suppress()
+        semicolon = Literal(":").suppress()
+        comma     = Literal(",").suppress()
+        point     = Literal(".")
+        e         = CaselessLiteral("E")
+
+
+        # terminal rules
+        # name = Word(alphanums + "_" + "-" + "." + "+")
+        name_part  = Word(alphanums + "_" + "-" + "." + "+")
+        name_part2 = Forward()        
+        name_part2 << name_part + Optional(Word(" ") + name_part2)
+        name = Combine(name_part + Optional(Word(" ") + name_part2))
+        fnumber = Combine(Word("+-"+nums, nums) + 
+                          Optional(point + Optional(Word(nums))) +
+                          Optional(e + Word("+-"+nums, nums)))
+        dist      = fnumber
+        bootstrap = fnumber
+
+
+        # recursive rules
+        subtree = Forward()
+        subtreelist = Forward()
+        
+        subtree << \
+            Group(
+                (
+                    (lparen + subtreelist + rparen).setResultsName("subtree") |
+                    name.setResultsName("name")
+                ) +
+                Optional(
+                    CharsNotIn(",);").setResultsName("data")
+                )
+            )
+        subtreelist << subtree + Optional(comma + subtreelist)
+
+
+        # top level rule
+        tree = subtree + Word(";").suppress()
+'''

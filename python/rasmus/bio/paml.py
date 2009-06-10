@@ -218,7 +218,7 @@ def align2tree(seq, seqtype="dna",
     """)
 
 
-def readTreeData(node, data):
+def read_tree_data(node, data):
     """Note: PAML does not use bootstraps"""
 
     tokens = data.split(":", 1)
@@ -240,7 +240,7 @@ def readTreeData(node, data):
             node.data["label"] = int(label)
 
 
-def writeTreeData(node):
+def write_tree_data(node):
 
     text = ""
 
@@ -251,22 +251,21 @@ def writeTreeData(node):
     return text
     
 
-def readTree(treefile):
+def read_tree(treefile):
     """Read a tree for PAML, includes branch labels"""
 
     tree = treelib.Tree()
-    tree.readNewick(treefile, readData=readTreeData)
+    tree.read_newick(treefile, readData=read_tree_data)
     return tree
 
 
-def writeTree(treefile, tree):
-
-    tree.write(treefile, writeData=writeTreeData)
+def write_tree(treefile, tree):
+    tree.write(treefile, writeData=write_tree_data)
 
 
 class PamlResults (object):
     def __init__(self, resultsFile):
-        self._lines = util.openStream(resultsFile).readlines()
+        self._lines = util.open_stream(resultsFile).readlines()
 
     def setupLines(self, lines):
         if lines is None:

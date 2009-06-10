@@ -41,7 +41,7 @@ for fn in files:
         args = "%s/infile 0 s 1 %d HKY e e %d e %s %s y" % \
                (outdir, conf.boot, nrates, usertree, "ny"[int(conf.opttree)])
     else:
-        args = "%s/infile 1 s 1 %d JTT e e %d e %s %s y" % \
+        args = "%s/infile 1 s 1 %d JTT e %d e %s %s y" % \
                (outdir, conf.boot, nrates, usertree, "ny"[int(conf.opttree)])
     cmd = "phyml " + args + " > '%s/out'" % outdir
     print cmd

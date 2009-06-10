@@ -951,7 +951,7 @@ def read_strings(filename):
        filename may also be a stream
     """
     infile = open_stream(filename)
-    vec = [line.rstrip() for line in infile]
+    vec = [line.rstrip("\n") for line in infile]
     return vec
 readStrings = read_strings
 
@@ -1086,11 +1086,7 @@ class DelimReader:
     
     def next(self):
         line = self.infile.next()
-        fields = self.split(line)
-        return fields
-
-    def split(self, line):
-        return line.rstrip().split(self.delim)
+        return line.rstrip("\n").split(self.delim)
 
 
 def read_delim(filename, delim=None):
@@ -1117,7 +1113,7 @@ def default_justify(val):
         return "right"
     else:
         return "left"
-defaultJustify = default_justify
+
 
 def default_format(val):
     if isinstance(val, int) and \
@@ -1132,10 +1128,10 @@ def default_format(val):
             return "%.4f" % val
     else:
         return str(val)
-defaultFormat = default_format
 
-def printcols(data, width=None, spacing=1, format=defaultFormat, 
-              justify=defaultJustify, out=sys.stdout,
+
+def printcols(data, width=None, spacing=1, format=default_format, 
+              justify=default_justify, out=sys.stdout,
               colwidth=INF, overflow="!"):
     """Prints a list or matrix in aligned columns
         
@@ -1280,8 +1276,8 @@ def str2bool(val):
 def print_dict(dic, key=lambda x: x, val=lambda x: x,
               num=None, cmp=cmp, order=None, reverse=False,
               spacing=4, out=sys.stdout,
-              format=defaultFormat, 
-              justify=defaultJustify):
+              format=default_format, 
+              justify=default_justify):
     """Print s a dictionary in two columns"""
     
     if num == None:
@@ -1453,7 +1449,7 @@ def deldir(path):
     # remove directories
     for i in xrange(len(dirs)):
         # AFS work around
-        afsFiles = listFiles(dirs[-i])
+        afsFiles = list_files(dirs[-i])
         for f in afsFiles:
             os.remove(f)
         

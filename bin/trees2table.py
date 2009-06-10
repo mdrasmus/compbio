@@ -54,7 +54,7 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
     
     
     # initalize counts to zero
-    phylo.initDupLossTree(totalTree)
+    phylo.init_dup_loss_tree(totalTree)
     
     
     util.tic("read trees")
@@ -73,11 +73,11 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         # trees should be rooted before using this program
         #phylo.reconRoot(tree, stree, gene2species, newCopy=False)
 
-        phylo.initDupLossTree(singleTree)
-        dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)
-        dup, loss, appear = phylo.countDupLossTree(tree, totalTree, gene2species)
+        phylo.init_dup_loss_tree(singleTree)
+        dup, loss, appear = phylo.count_dup_loss_tree(tree, singleTree, gene2species)
+        dup, loss, appear = phylo.count_dup_loss_tree(tree, totalTree, gene2species)
 
-        phylo.countAncestralGenes(singleTree)
+        phylo.count_ancestral_genes(singleTree)
         
         row, junk = tree2row(singleTree)
         

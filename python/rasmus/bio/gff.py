@@ -398,7 +398,7 @@ def iter_gff(filename, format=GFF3,
     
     for line in infile:
         lineno += 1
-        line = line.rstrip()
+        line = line.rstrip("\n")
         
         # only continue processing if line is not comment and passes filter
         if len(line) == 0 or line[0] == "#" or not line_filter(line):

@@ -323,7 +323,7 @@ findOrthologs = find_orthologs
 #
 
 
-def initDupLossTree(stree):
+def init_dup_loss_tree(stree):
     # initalize counts to zero
     def walk(node):
         node.data['dup'] = 0
@@ -334,10 +334,11 @@ def initDupLossTree(stree):
     walk(stree.root)
 
 
-
-def countDupLossTree(tree, stree, gene2species):
+def count_dup_loss_tree(tree, stree, gene2species, recon=None):
     """count dup loss"""
-    recon = reconcile(tree, stree, gene2species)
+
+    if recon is None:
+        recon = reconcile(tree, stree, gene2species)
     events = labelEvents(tree, recon)
     losses = findLoss(tree, stree, recon)
     
@@ -365,8 +366,7 @@ def countDupLossTree(tree, stree, gene2species):
     return dup, loss, appear
 
 
-
-def countAncestralGenes(stree):
+def count_ancestral_genes(stree):
     """count ancestral genes"""
     def walk(node):
         if not node.isLeaf():
@@ -382,7 +382,18 @@ def countAncestralGenes(stree):
     walk(stree.root)
 
 
-def writeEventTree(stree, out=sys.stdout):
+def count_dup_loss_trees(trees, stree, gene2species):
+    stree = stree.copy()
+    init_dup_loss_tree(stree)
+
+    for tree in trees:
+        count_dup_loss_tree(tree, stree, gene2species)
+    count_ancestral_genes(stree)
+
+    return stree
+
+
+def write_event_tree(stree, out=sys.stdout):
     labels = {}
     for name, node in stree.nodes.iteritems():
         labels[name] = "[%s]\nD=%d,L=%d;\nG=%d;" % \
@@ -390,9 +401,9 @@ def writeEventTree(stree, out=sys.stdout):
                         node.data['dup'], node.data['loss'],
                         node.data['genes'])
 
-    treelib.drawTree(stree, labels=labels, minlen=15, spacing=4,
-                     labelOffset=-3,
-                     out=out)
+    treelib.draw_tree(stree, labels=labels, minlen=15, spacing=4,
+                      labelOffset=-3,
+                      out=out)
 
 
 #=============================================================================
@@ -1354,10 +1365,10 @@ def findBranchSplits(tree):
     
     return splits2
 
-def findSplits(tree):
+def find_splits(tree):
     """Find branch splits for a tree"""
     
-    allLeaves = set(tree.leafNames())
+    allLeaves = set(tree.leaf_names())
 
     # find descendants
     descendants = []
@@ -1390,6 +1401,7 @@ def findSplits(tree):
             splits.append((set1, set2))
     
     return splits
+findSplits = find_splits
 
 
 def splitString(split, leaves=None, leafDelim=" ", splitDelim="|"):

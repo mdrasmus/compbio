@@ -17,19 +17,19 @@ except:
 
 # read top tree
 tree = algorithms.Tree()
-tree.readNewick(param["tree"][-1])
+tree.read_newick(param["tree"][-1])
 
 if "part" in param:
-    parts = util.readDelim(param["part"][-1])
+    parts = util.read_delim(param["part"][-1])
     
     for i in xrange(len(parts)):
         num = str(i)
         if num in tree.nodes:
             tree2 = algorithms.Tree()
-            tree2.makeRoot()
+            tree2.make_root()
             for gene in parts[i]:
-                tree2.addChild(tree2.root, algorithms.TreeNode(gene))
-            tree.replaceTree(tree.nodes[num], tree2)
+                tree2.add_child(tree2.root, algorithms.TreeNode(gene))
+            tree.replace_tree(tree.nodes[num], tree2)
     
 else:
     # read subtrees

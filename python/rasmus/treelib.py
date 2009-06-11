@@ -167,7 +167,7 @@ class Tree:
         self.nodes = {}
         self.root = None
         self.nextname = nextname
-        self.defaultData = {}
+        self.default_data = {}
         self.data = {}
         self.branch_data = branch_data
 
@@ -220,15 +220,14 @@ class Tree:
     def make_root(self, name = None):
         """Create a new root node"""
         if name == None:
-            name = self.newName()
+            name = self.new_name()
         self.root = TreeNode(name)
         self.add(self.root)
-    makeRoot = make_root
 
 
     def add(self, node):
         """Add a node to the tree
-           Does not add node to any specific location (use addChild instead).
+           Does not add node to any specific location (use add_child instead).
         """
         self.nodes[node.name] = node
 
@@ -240,7 +239,6 @@ class Tree:
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
-    addChild = add_child
 
 
     def remove(self, node):
@@ -294,8 +292,8 @@ class Tree:
         
         # Merge nodes and change the names of childTree names if they conflict
         # with existing names
-        self.mergeNames(childTree)        
-        self.addChild(parent, childTree.root)
+        self.merge_names(childTree)        
+        self.add_child(parent, childTree.root)
     addTree = add_tree
     
     
@@ -304,7 +302,7 @@ class Tree:
     
         # merge nodes and change the names of childTree names if they conflict
         # with existing names
-        self.mergeNames(childTree)
+        self.merge_names(childTree)
         parent = node.parent
         if parent:
             index = parent.children.index(node)
@@ -320,7 +318,7 @@ class Tree:
     
         for name in tree2.nodes:
             if name in self.nodes:
-                name2 = self.newName()
+                name2 = self.new_name()
                 self.nodes[name2] = tree2.nodes[name]
                 self.nodes[name2].name = name2
             else:
@@ -328,7 +326,6 @@ class Tree:
                     if name >= self.nextname:
                         self.nextname = name + 1
                 self.nodes[name] = tree2.nodes[name]
-    mergeNames = merge_names
         
     
     def clear(self):
@@ -355,7 +352,7 @@ class Tree:
 
     def has_data(self, dataname):
         """Does the tree contain 'dataname' in its extra data"""
-        return dataname in self.defaultData
+        return dataname in self.default_data
     hasData = has_data
 
     
@@ -376,8 +373,8 @@ class Tree:
             walk(tree.root)
         
         # copy extra data
-        tree.copyData(self)
-        tree.copyNodeData(self)
+        tree.copy_data(self)
+        tree.copy_node_data(self)
         
         return tree
     
@@ -385,9 +382,8 @@ class Tree:
     def copy_data(self, tree):
         """Copy tree data to another"""
         self.branch_data = tree.branch_data
-        self.defaultData = copy.copy(tree.defaultData)
+        self.default_data = copy.copy(tree.default_data)
         self.data = copy.copy(tree.data)
-    copyData = copy_data
     
     
     def copy_node_data(self, tree):
@@ -395,15 +391,14 @@ class Tree:
         for name, node in self.nodes.iteritems():
             if name in tree.nodes:
                 node.data = copy.copy(tree.nodes[name].data)
-        self.setDefaultData()
-    copyNodeData = copy_node_data
+        self.set_default_data()
+
     
     def set_default_data(self):
         """Set default values in each node's data"""
         for node in self.nodes.itervalues():
-            for key, val in self.defaultData.iteritems():
+            for key, val in self.default_data.iteritems():
                 node.data.setdefault(key, val)
-    setDefaultData = set_default_data
     
     
     def clear_data(self, *keys):
@@ -415,7 +410,7 @@ class Tree:
                 for key in keys:
                     if key in node.data:
                         del node.data[key]
-    clearData = clear_data
+
 
     
     
@@ -529,14 +524,14 @@ class Tree:
             else:
                 out.write("(\n")
             for child in node.children[:-1]:
-                self.writeNewickNode(child, out, depth+1, 
+                self.write_newick_node(child, out, depth+1, 
                                      writeData=writeData, oneline=oneline)
                 if oneline:
                     out.write(",")
                 else:
                     out.write(",\n")
-            self.writeNewickNode(node.children[-1], out, depth+1,
-                                 writeData=writeData, oneline=oneline)
+            self.write_newick_node(node.children[-1], out, depth+1,
+                                   writeData=writeData, oneline=oneline)
             if oneline:
                 out.write(")")
             else:            
@@ -552,7 +547,6 @@ class Tree:
                 out.write(";\n")
         else:
             out.write(writeData(node))
-    writeNewickNode = write_newick_node
     
     
     def read_newick(self, filename, readData=None):
@@ -571,7 +565,7 @@ class Tree:
             pass
 
         # try simpler parser
-        return self.readBigNewick(filename)
+        return self.read_big_newick(filename)
     readNewick = read_newick
 
 
@@ -584,7 +578,6 @@ class Tree:
 
         # get parse tree
         text = util.read_until(util.open_stream(filename), ";")[0] + ";"
-        print text
         expr = treelib_parser.yacc.parse(text)
 
 
@@ -596,7 +589,7 @@ class Tree:
             
             # parse name
             if name == "":
-                node = TreeNode(self.newName())
+                node = TreeNode(self.new_name())
             else:
                 node = TreeNode(name)
 
@@ -615,9 +608,9 @@ class Tree:
         # test for boot strap presence
         for node in self.nodes.itervalues():
             if "boot" in node.data:
-                self.defaultData["boot"] = 0
+                self.default_data["boot"] = 0
                 break
-        self.setDefaultData()
+        self.set_default_data()
     
     
     def read_big_newick(self, filename):
@@ -656,10 +649,10 @@ class Tree:
                 char1 = readchar()
 
                 if char1 == "(":
-                    node = TreeNode(self.newName())
+                    node = TreeNode(self.new_name())
                     depth = closure["opens"]
                     while closure["opens"] == depth:
-                        self.addChild(node, readItem())
+                        self.add_child(node, readItem())
                     
                     token, char = readUntil("):,")
                     if char == ":":
@@ -682,15 +675,14 @@ class Tree:
             
             assert char == "("
             
-            node = TreeNode(self.newName())
+            node = TreeNode(self.new_name())
             depth = closure["opens"]
             while closure["opens"] == depth:
-                self.addChild(node, readItem())
+                self.add_child(node, readItem())
             return node
 
         self.root = readRoot()
         self.add(self.root)
-    readBigNewick = read_big_newick
     
 
     def read_parent_tree(self, treeFile, labelFile=None, labels=None):
@@ -702,7 +694,7 @@ class Tree:
             nitems = (len(open(treeFile).readlines()) + 1)/ 2
             labels = map(str, range(nitems))
         
-        self.makeRoot()
+        self.make_root()
 
         for i, line in enumerate(open(treeFile)):
             parentid = int(line.split(" ")[0])
@@ -718,7 +710,7 @@ class Tree:
             
             if parentid == -1:
                 # keep track of all roots
-                self.addChild(self.root, child)
+                self.add_child(self.root, child)
             else:                
                 if not parentid in self.nodes:
                     parent = TreeNode(parentid)
@@ -727,7 +719,7 @@ class Tree:
                     parent = self.nodes[parentid]
 
                 try:
-                    self.addChild(parent, child)
+                    self.add_child(parent, child)
                 except:
                     print i, parentid
 
@@ -809,7 +801,7 @@ class Tree:
 def read_tree(filename):
     """Read a tree from a newick file"""
     tree = Tree()
-    tree.readNewick(filename)
+    tree.read_newick(filename)
     return tree
 readTree = read_tree
 
@@ -943,11 +935,11 @@ def subtree(tree, node):
     """Return a copy of a subtree of 'tree' rooted at 'node'"""
     
     # make new tree
-    tree2 = Tree(nextname = tree.newName())
+    tree2 = Tree(nextname = tree.new_name())
     
     # copy nodes and data
     tree2.root = node.copy()    
-    tree2.copyData(tree)
+    tree2.copy_data(tree)
     
     # add nodes
     def walk(node):
@@ -1036,7 +1028,7 @@ def graph2tree(mat, root, closedset=None):
             if child not in closedset:
                 childNode = walk(child)
                 childNode.dist = mat[name][child]
-                tree.addChild(node, childNode)
+                tree.add_child(node, childNode)
         return node            
     tree.root = walk(root)
     
@@ -1127,13 +1119,13 @@ def remove_exposed_internal_nodes(tree, leaves=None):
 removeExposedInternalNodes = remove_exposed_internal_nodes
 
 
-def subtree_by_leaf_names(tree, leafNames, newCopy=False):
+def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
         tree = tree.copy()
     
-    remove_set = set(tree.leafNames()) - set(leafNames)
+    remove_set = set(tree.leaf_names()) - set(leaf_names)
     for sp in remove_set:
     	tree.remove(tree.nodes[sp])
     removeExposedInternalNodes(tree)
@@ -1146,7 +1138,7 @@ subtreeByLeafNames = subtree_by_leaf_names
 def reorder_tree(tree, tree2):
     """Reorders the branches of tree to match tree2"""
 
-    leaf_lookup = util.list2lookup(tree2.leafNames())
+    leaf_lookup = util.list2lookup(tree2.leaf_names())
 
     def mean(lst):
         return sum(lst) / float(len(lst))
@@ -1176,7 +1168,7 @@ def reorder_tree(tree, tree2):
 #=============================================================================
 # parent tables
 
-def tree2parent_table(tree, leafNames=None):
+def tree2parent_table(tree, leaf_names=None):
     """Converts tree to a parent table
     
     parent table is a standard format of the Compbio Lab as of 02/01/2007.
@@ -1192,23 +1184,23 @@ def tree2parent_table(tree, leafNames=None):
     * dist is the distance between the node and its parent.
     
     Arguments:
-    leafNames -- specifies that a tree with only a subset of the leaves 
-                 should be used
+    leaf_names -- specifies that a tree with only a subset of the leaves 
+                  should be used
     
     NOTE: root is not given a row, because root does not have a distance
     the nodeid of the root is -1
     """
     
-    if leafNames != None:
-        tree = subtree_by_leaf_names(tree, leafNames, newCopy=True)
+    if leaf_names != None:
+        tree = subtree_by_leaf_names(tree, leaf_names, newCopy=True)
     else:
-        leafNames = tree.leafNames()
+        leaf_names = tree.leaf_names()
 
     # assign a numbering to the leaves as specified
     nodeid = 0
     nodeids = {}
     nodes = []
-    for leaf in leafNames:
+    for leaf in leaf_names:
         nodeids[tree.nodes[leaf]] = leaf
         nodes.append(tree.nodes[leaf])
         nodeid += 1
@@ -1230,7 +1222,6 @@ def tree2parent_table(tree, leafNames=None):
         parentTable.append([nodeids[node], nodeids[node.parent], node.dist])
     
     return parentTable
-tree2parentTable = tree2parent_table
     
 
 def parent_table2tree(parentTable):
@@ -1255,7 +1246,7 @@ def parent_table2tree(parentTable):
     
     # make a root node
     tree.nextname = maxint + 1
-    tree.makeRoot()
+    tree.make_root()
 
     # link up parents
     for name, parent_name, dist in parentTable:
@@ -1263,10 +1254,9 @@ def parent_table2tree(parentTable):
             parent = tree.root
         else:
             parent = tree.nodes[parent_name]
-        tree.addChild(parent, tree.nodes[name])
+        tree.add_child(parent, tree.nodes[name])
     
     return tree
-parentTable2tree = parent_table2tree
 
 
 def write_parent_table(parentTable, out=sys.stdout):
@@ -1279,7 +1269,7 @@ def write_parent_table(parentTable, out=sys.stdout):
     
     for name, parent, dist in parentTable:
         print >>out, "%s\t%d\t%f" % (str(name), parent, dist)
-writeParentTable = write_parent_table
+
 
 
 def read_parent_table(filename):
@@ -1299,7 +1289,7 @@ def read_parent_table(filename):
         parentTable.append([name, int(parent), float(dist)])
     
     return parentTable
-readParentTable = read_parent_table
+
     
 
 #=============================================================================
@@ -1311,6 +1301,7 @@ def is_rooted(tree):
     return len(tree.root.children) <= 2
     #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
 isRooted = is_rooted
+
 
 def unroot(tree, newCopy = True):
     """Return an unrooted copy of tree"""
@@ -1324,7 +1315,7 @@ def unroot(tree, newCopy = True):
         data = tree.merge_branch_data(nodes[0].data, nodes[1].data)
         if len(nodes[0].children) < 2:
             nodes.reverse()
-        tree.addChild(nodes[0], nodes[1])
+        tree.add_child(nodes[0], nodes[1])
         nodes[1].dist = dist
         tree.set_branch_data(nodes[1], data)
         nodes[0].dist = 0
@@ -1358,7 +1349,7 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     
     if onBranch:
         # add new root in middle of branch
-        newNode = TreeNode(tree.newName())
+        newNode = TreeNode(tree.new_name())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
         rootdata1, rootdata2 = tree.split_branch_data(node1)
@@ -1369,8 +1360,8 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
         
         node2 = node1.parent
         node2.children.remove(node1)
-        tree.addChild(newNode, node1)
-        tree.addChild(node2, newNode)
+        tree.add_child(newNode, node1)
+        tree.add_child(node2, newNode)
         
         ptr = node2
         ptr2 = newNode
@@ -1391,7 +1382,7 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     while True:
         nextPtr = ptr.parent
         ptr.children.remove(ptr2)
-        tree.addChild(ptr2, ptr)
+        tree.add_child(ptr2, ptr)
         
         tmp = ptr.dist
         tmpData = tree.get_branch_data(ptr)

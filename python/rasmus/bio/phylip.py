@@ -459,11 +459,11 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     # check for PHYLIP GIVE UP
     if isPhylipGiveUp("outfile"):
         tree = treelib.Tree()
-        tree.makeRoot()
+        tree.make_root()
         
         # make star tree
         for key in seqs:
-            tree.addChild(tree.root, treelib.TreeNode(key))
+            tree.add_child(tree.root, treelib.TreeNode(key))
         
     else:
         # parse tree

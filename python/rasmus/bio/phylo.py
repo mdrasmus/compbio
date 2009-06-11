@@ -856,17 +856,17 @@ def add_spec_node(node, snode, tree, recon, events):
     accordingly
     """
     
-    newnode = treelib.TreeNode(tree.newName())
+    newnode = treelib.TreeNode(tree.new_name())
     parent = node.parent
     
     # find index of node in parent's children
     nodei = parent.children.index(node)
     
     # insert new node into tree
-    tree.addChild(parent, newnode)
+    tree.add_child(parent, newnode)
     parent.children[nodei] = newnode
     parent.children.pop()
-    tree.addChild(newnode, node)
+    tree.add_child(newnode, node)
     
     # add recon and events info
     recon[newnode] = snode
@@ -893,8 +893,8 @@ def add_implied_spec_nodes(tree, stree, recon, events):
             # root of species tree
             if recon[node] == stree.root:                            
                 continue            
-            tree.root = treelib.TreeNode(tree.newName())
-            tree.addChild(tree.root, node)
+            tree.root = treelib.TreeNode(tree.new_name())
+            tree.add_child(tree.root, node)
             recon[tree.root] = stree.root
             events[tree.root] = "spec"
             addedNodes.append(tree.root)
@@ -1062,9 +1062,9 @@ def neighborjoin(distmat, genes, usertree=None):
         
         # join gene1 and gene2
         gene1, gene2 = lowpair
-        parent = treelib.TreeNode(tree.newName())
-        tree.addChild(parent, tree.nodes[gene1])
-        tree.addChild(parent, tree.nodes[gene2])
+        parent = treelib.TreeNode(tree.new_name())
+        tree.add_child(parent, tree.nodes[gene1])
+        tree.add_child(parent, tree.nodes[gene2])
         
         # set distances
         tree.nodes[gene1].dist = (dists[gene1][gene2] + restdists[gene1] - 
@@ -1091,7 +1091,7 @@ def neighborjoin(distmat, genes, usertree=None):
     gene1, gene2 = leaves.keys()
     if type(gene1) != int:
         gene1, gene2 = gene2, gene1
-    tree.addChild(tree.nodes[gene1], tree.nodes[gene2])
+    tree.add_child(tree.nodes[gene1], tree.nodes[gene2])
     tree.nodes[gene2].dist = dists[gene1][gene2]
     tree.root = tree.nodes[gene1]
 

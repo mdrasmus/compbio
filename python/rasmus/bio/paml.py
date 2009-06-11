@@ -468,7 +468,7 @@ class PamlResults (object):
 
         # link up nodes
         for (top, bot), dist in zip(names, dists):
-            tree.addChild(tree.nodes[top], tree.nodes[bot])
+            tree.add_child(tree.nodes[top], tree.nodes[bot])
             tree.nodes[bot].dist = dist
 
         # find root

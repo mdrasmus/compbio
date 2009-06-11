@@ -106,11 +106,11 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None):
     
     # create starting node if one is not given
     if node == None:
-        tree.makeRoot() #root = treelib.TreeNode(tree.newName())
+        tree.make_root() 
         node = tree.root
     else:
-        node2 = treelib.TreeNode(tree.newName())
-        tree.addChild(node, node2)
+        node2 = treelib.TreeNode(tree.new_name())
+        tree.add_child(node, node2)
         node = node2
     
     def walk(tn, node):
@@ -126,12 +126,12 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None):
             assert tn + t < T
             
             # recurse
-            node2 = treelib.TreeNode(tree.newName())
-            tree.addChild(node, node2)
+            node2 = treelib.TreeNode(tree.new_name())
+            tree.add_child(node, node2)
             walk(tn + t, node2)
 
-            node2 = treelib.TreeNode(tree.newName())
-            tree.addChild(node, node2)
+            node2 = treelib.TreeNode(tree.new_name())
+            tree.add_child(node, node2)
             walk(tn + t, node2)
     walk(0.0, node)
 
@@ -145,7 +145,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
     
     # initialize gene tree
     tree = treelib.Tree()
-    tree.makeRoot()
+    tree.make_root()
     recon = {tree.root: stree.root}
     events = {tree.root: "spec"}
     losses = set()

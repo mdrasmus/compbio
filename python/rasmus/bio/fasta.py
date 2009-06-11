@@ -1,6 +1,8 @@
 import sys
 import os
 
+from itertools import izip
+
 from rasmus import util
 from rasmus.bio import seqlib
 from rasmus.bio.seqlib import SeqDict
@@ -48,7 +50,11 @@ class FastaDict (SeqDict):
                     self.names.append(key)
                 dict.__setitem__(self, key, None)
         else:
-            for line in util.openStream(filename):                
+            for key, seq in iter_fasta(filename, keyfunc, valuefunc):
+                self.add(key, value, errors)
+
+            '''
+            for line in util.open_stream(filename):                
                 if len(line) > 0 and line[0] == ">":
                     if key != "":
                         self.add(key, valuefunc(value), errors)
@@ -59,16 +65,17 @@ class FastaDict (SeqDict):
                     value += line.rstrip()
             if key != "":
                 self.add(key, valuefunc(value), errors)
+            '''
     
     
     def write(self, filename=sys.stdout, names=None, width=80):
-        out = util.openStream(filename, "w")
+        out = util.open_stream(filename, "w")
         
         if names == None:
             names = self.names
         
         for key in names:
-            print >>out, ">"+ key
+            print >>out, ">" + key
             util.printwrap(self[key], width, out=out)
     
     
@@ -77,15 +84,11 @@ class FastaDict (SeqDict):
         
         if val == None:
             # if val == None, then we are using fasta indexing
-            #try:
-                val = self.index.get(key)
+            val = self.index.get(key)
                 
-                # cache value
-                self[key] = val
-                return val
-            #except:
-            #    raise KeyError(key)
-
+            # cache value
+            self[key] = val
+            return val
         else:
             return val
     
@@ -127,7 +130,7 @@ readFasta = read_fasta
 def write_fasta(filename, seqs, order = None, width=None):
     """Write a FASTA dictionary into a file"""
     
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     
     if type(seqs) == list:
         names = map(str, range(len(seqs)))
@@ -135,6 +138,24 @@ def write_fasta(filename, seqs, order = None, width=None):
     else:
         seqs.write(filename, order, width)
 writeFasta = write_fasta
+
+
+def iter_fasta(filename, keyfunc=firstword, valuefunc = lambda x: x):
+    """Iterate through the sequences of a FASTA file"""
+    key = ""
+    value = ""
+    
+    for line in util.open_stream(filename):
+        if len(line) > 0 and line[0] == ">":
+            if key != "":
+                yield (key, valuefunc(value))
+            key = keyfunc(line[1:].rstrip())
+            value = ""
+        else:
+            assert key != ""
+            value += line.rstrip()
+    if key != "":
+        yield (key, valuefunc(value))
 
 
 _comp = {"A":"T", "C":"G", "G":"C", "T":"A", "N":"N", 
@@ -161,7 +182,7 @@ def _revcomp(seq):
 def makeFastaIndex(filename):
     """I also have a faster C program called formatfa"""
     
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     
     index = {}
     
@@ -179,7 +200,7 @@ def has_fasta_index(fasta_file):
 
 
 def guessFastaWidth(fastaFile):
-    fafile = util.openStream(fastaFile, "rb")
+    fafile = util.open_stream(fastaFile, "rb")
     
     numlines = 5
     lineno = 0
@@ -234,7 +255,7 @@ class FastaIndex:
     
     def read(self, filename):
         # open fasta
-        infile = util.openStream(filename, "rb")
+        infile = util.open_stream(filename, "rb")
         
         # estimate column width
         self.width = guessFastaWidth(filename)
@@ -346,7 +367,7 @@ def hasBlastIndex(fastaFile):
 def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
     """Read a FASTA file into a 'keys' and 'values' lists"""
     
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     seqs = []
     names = []
     key = ""
@@ -371,9 +392,9 @@ def readFastaOrdered(filename, keyfunc=firstword, valuefunc=lambda x:x):
 def writeFastaOrdered(filename, names, seqs, width=None):
     """Write a FASTA in array style to a file"""
     
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     
-    for name,seq in zip(names,seqs):
+    for name, seq in izip(names, seqs):
         print >>out, ">%s" % name
         util.printwrap(seq, width, out=out)
 

@@ -575,7 +575,6 @@ class Tree:
 
         # get parse tree
         text = util.read_until(util.open_stream(filename), ";")[0] + ";"
-        print text
         expr = treelib_parser.yacc.parse(text)
 
 
@@ -799,7 +798,7 @@ class Tree:
 def read_tree(filename):
     """Read a tree from a newick file"""
     tree = Tree()
-    tree.readNewick(filename)
+    tree.read_newick(filename)
     return tree
 readTree = read_tree
 

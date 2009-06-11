@@ -163,6 +163,7 @@ class SyntenyVisBase:
                  use_controls = False,
                  min_frag     = 0,
                  show_gene_labels = False,
+                 font_size = 8,
  
                  # layout
                  genome_sep = 3,
@@ -178,8 +179,7 @@ class SyntenyVisBase:
                  color_matches    = color(.8, .8, 1, .8),
                  color_arrow      = color(1, .8, 0, .5),
                  color_frag       = color(0, 0, 0, .8),
-                 color_blocks     = [color(.8,.8,1,.5)]
-):
+                 color_blocks     = [color(.8,.8,1,.5)]):
 
         self.win = None
         self.winsize = winsize   
@@ -196,6 +196,7 @@ class SyntenyVisBase:
         self.gene_label = gene_label
         self.draw_gene = draw_gene
         self.gene_color = gene_color
+        self.font_size = font_size
         
         self.region2frags = {}
         self.region_layout = {}
@@ -505,9 +506,10 @@ class SyntenyVisBase:
                                  self.gene_widget(self.db.get_region(reg))))
         
         # draw matches
+        drawn = set()
         for frag in self.frags:
             vis.append(self.draw_matches(frag.genome, frag.chrom,
-                                         frag.start, frag.end))
+                                         frag.start, frag.end, drawn))
         
         util.toc()
 
@@ -515,15 +517,11 @@ class SyntenyVisBase:
         return self.groupid
 
 
-    def draw_matches(self, sp, chrom, start, end, drawn=set()):
-        def getBlockColor(chrom):
-            if not chrom.isdigit():
-                num = 0
-            else:
-                num = int(chrom)
-            return self.colors['blocks'][num % len(self.colors['blocks'])]
-
+    def draw_matches(self, sp, chrom, start, end, drawn=None):
         vis = []
+
+        if drawn is None:
+            drawn = set()
         
         # build list of matches in order of drawing
         
@@ -694,17 +692,21 @@ class SyntenyVisBase:
                           text(name, 0, 0, length, 1, 
                                "middle", "center"))
         elif self.show_gene_labels == "vertical":
+            if gene.species == self.ref_genome:
+                top = 10000000
+            else:
+                top = self.max_genome_sep
             label = rotate(90, color(0, 0, 0),
                            text_clip(name, 0, -100000,
-                                     self.max_genome_sep, 0,
-                                     8, 8,
+                                     top, 0,
+                                     self.font_size, self.font_size,
                                      "left", "top"))
         elif self.show_gene_labels == 'main_only':
             if gene.species == self.ref_genome:
                 label = rotate(90, color(0, 0, 0),
                                text_clip(name, 0, -100000,
                                          10000000, 0,
-                                         8, 8,
+                                         self.font_size, self.font_size,
                                          "left", "top"))
             else:
                 label = group()
@@ -737,6 +739,7 @@ class SyntenyVisBase:
                util.int2pretty(gene.end), 
                util.int2pretty(gene.length()))
         print ";".join("%s=%s" % (a, b) for a,b in gene.data.items())
+        print 
         
     def redraw(self):
         if self.groupid != 0:
@@ -748,9 +751,10 @@ class SyntenyVisBase:
     
     def get_gene_coords(self, gene):
         l = self.region_layout
-        return (l[gene].x, l[gene].y, 
-                l[gene].x + gene.end - gene.start,
-                l[gene].y + 1)
+        name = gene.data["ID"]
+        return (l[name].x, l[name].y, 
+                l[name].x + gene.end - gene.start,
+                l[name].y + 1)
     
         
     def find(self, name):
@@ -758,29 +762,22 @@ class SyntenyVisBase:
             region = self.db.get_region(name)
             
             if region in self.region_layout: 
-                self.win.set_visible(* self.getGeneCoords(region))
+                self.win.set_visible(* self.get_gene_coords(region))
             else:
                 print "gene '%s' is not shown" % name
         except KeyError:
             print "cannot find gene '%s'" % name
-    
-    
-    def mark(self, name, shape="box", col=color(1, 1, 0)):
-        try:
-            region = self.db.get_region(name)            
-            self.markGene(region, shape, col)
-            
-        except KeyError:
-            print "cannot find gene '%s'" % name
 
 
-    def mark_gene(self, gene, shape="box", col=color(0, 0, 1)):
-        if not (gene in self.region_layout): #placedGenes):
-            print "gene '%s' is not shown" % gene.name
+    def mark(self, name, shape="box", col=color(0, 0, 1)):
+        if not (name in self.region_layout): #placedGenes):
+            print "gene '%s' is not shown" % name
             return
+        gene = self.db.get_region(name)
         coords = self.get_gene_coords(gene)
         
-        gid = self.win.add_group(self.draw_marking(shape, col, coords[1], coords[0], coords[2]))
+        gid = self.win.add_group(self.draw_marking(shape, col, coords[1],
+                                                   coords[0], coords[2]))
         self.markids.append(gid)
     
     

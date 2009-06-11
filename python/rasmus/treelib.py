@@ -25,7 +25,10 @@ from rasmus import treelib_parser
 try:
     from rasmus import treelib_parser
 except ImportError:
-    treelib_parser = None
+    try:
+        import treelib_parser
+    except ImportError:
+        treelib_parser = None
 
 
 

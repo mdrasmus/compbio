@@ -1,7 +1,6 @@
 
-
+import os
 from rasmus.ply import lex, yacc
-reload(lex)
 
 
 literals = ['+', ':', ';', '(',')', ","]
@@ -104,8 +103,9 @@ def p_error(p):
 #lex.lex()
 #yacc.yacc()
 
-lex.lex(debug=0, optimize=1, lextab="treelib_lex")
-yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab")
+outdir = os.path.dirname(__file__)
+lex.lex(debug=0, optimize=1, lextab="treelib_lex", outputdir=outdir)
+yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab", outputdir=outdir)
 
 if __name__ == "__main__":
     print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")

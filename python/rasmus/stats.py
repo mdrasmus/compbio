@@ -746,13 +746,13 @@ def poissonCdf(x, params):
 
 def poissonvariate(lambd):
     """Sample from a Poisson distribution"""
-    l = exp(-lambd)
+    l = -lambd
     k = 0
-    p = 1.0
+    p = 0.0
 
     while 1:
         k += 1
-        p *= random.random()
+        p += log(random.random())
         if p < l:
             return k - 1
 
@@ -846,6 +846,12 @@ def betaPdf3(x, params):
         return prod1 * prod2 * (alpha + beta - 1)
     else:
         return 0.0
+
+
+def negbinomPdf(k, r, p):
+    return exp(gammaln(r+k) - gammaln(k+1) - gammaln(r) +
+               r*log(p) + k * log(1-p))
+
 
 
 def gamma(x):

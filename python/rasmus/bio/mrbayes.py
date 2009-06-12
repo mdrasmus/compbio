@@ -79,7 +79,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
 
-def writeNexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
+def write_nexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
     # setup options
     if options is None:
         options = {}
@@ -114,7 +114,7 @@ matrix
 ;
 end;
 """
-    
+writeNexus = write_nexus    
 
 
 

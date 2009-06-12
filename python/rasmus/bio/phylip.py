@@ -163,14 +163,14 @@ def readOutTree(filename, labels, iters=1):
     if iters == 1:
         # parse output
         tree = treelib.Tree()
-        tree.readNewick(infile)
+        tree.read_newick(infile)
         renameTreeWithNames(tree, labels)
         return tree
     else:
         trees = []
         for i in xrange(iters):
             tree = treelib.Tree()
-            tree.readNewick(infile)
+            tree.read_newick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
         infile.close()        
@@ -186,22 +186,22 @@ def writeInTree(filename, tree, labels):
 
 
 def writeBootTrees(filename, trees, counts=None):
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     
     if counts == None:
         counts = [1] * len(trees)
     
     for tree, count in zip(trees, counts):
         for i in range(count):
-            tree.writeNewick(out)
+            tree.write_newick(out)
 
 
 
 def readDistMatrix(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
 
-    size = int(util.readWord(infile))
-    mat = util.makeMatrix(size, size)
+    size = int(util.read_word(infile))
+    mat = util.make_matrix(size, size)
     names = []
     
     """
@@ -294,16 +294,16 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     
     """
     for i in xrange(size):
-        names.append(util.readWord(infile))
+        names.append(util.read_word(infile))
         for j in xrange(size):
-            mat[i][j] = float(util.readWord(infile))
+            mat[i][j] = float(util.read_word(infile))
     """
     
     return names, mat
 
 
 def writeDistMatrix(mat, labels=None, out=sys.stdout):
-    out = util.openStream(out, "w")
+    out = util.open_stream(out, "w")
     
     out.write("%d\n" % len(mat))
     
@@ -325,7 +325,7 @@ def readAlignment(filename):
     returns a FastaDict object.
     """
     
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     
     seqs = fasta.FastaDict()
     
@@ -375,7 +375,7 @@ def writeAlignment(out, seqs):
     Returns order in which sequences were written.
     """
     
-    out = util.openStream(out, "w")
+    out = util.open_stream(out, "w")
     
     validateSeq(seqs)
     
@@ -432,7 +432,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
 
     # create input
     labels = fasta2phylip(file("infile", "w"), seqs)
-    util.writeVector(file("labels", "w"), labels)
+    util.write_list(file("labels", "w"), labels)
 
     # initialize default arguments
     if args == None:
@@ -533,7 +533,7 @@ def bootNeighbor(seqs, iters=100, seed=None, output=None,
         infile = file("outtree")
         for i in xrange(iters):
             tree = treelib.Tree()
-            tree.readNewick(infile)
+            tree.read_newick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
         infile.close()
@@ -752,7 +752,7 @@ def bootNeighbor(seqs, iters=100, seed=1, output=None,
         infile = file("outtree")
         for i in xrange(iters):
             tree = treelib.Tree()
-            tree.readNewick(infile)
+            tree.read_newick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
         infile.close()
@@ -786,7 +786,7 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
         infile = file("outtree")
         for i in xrange(iters):
             tree = treelib.Tree()
-            tree.readNewick(infile)
+            tree.read_newick(infile)
             renameTreeWithNames(tree, labels)
             trees.append(tree)
         infile.close()
@@ -802,7 +802,7 @@ def consenseFromFile(intrees, verbose=True, args="y"):
     execPhylip("consense", args, verbose)
     
     tree = treelib.Tree()
-    tree.readNewick("outtree")
+    tree.read_newick("outtree")
     
     cleanupTempDir(cwd)
     return tree
@@ -815,7 +815,7 @@ def consense(trees, counts=None, verbose=True, args="y"):
     execPhylip("consense", args, verbose)
     
     tree = treelib.Tree()
-    tree.readNewick("outtree")
+    tree.read_newick("outtree")
     
     cleanupTempDir(cwd)
     return tree
@@ -825,7 +825,7 @@ def consense(trees, counts=None, verbose=True, args="y"):
 
 # testing
 if __name__ == "__main__":
-    seqs = fasta.readFasta("test/dna-align.fa")
+    seqs = fasta.read_fasta("test/dna-align.fa")
     del seqs["target"]
 
     tree = protpars(seqs, force=True, verbose=False)

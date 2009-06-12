@@ -23,17 +23,18 @@ options = [
 param = util.parseOptions(sys.argv, options)
 
 if "phylip" in param:
-    seqs = fasta.readFasta(param["fasta"][-1])
+    seqs = fasta.read_fasta(param["fasta"][-1])
     labels = phylip.fasta2phylip(file(param["phylip"][-1], "w"), seqs,
                                  stripNames=not param["nostrip"])
     
     if "label" in param:
-        util.writeVector(param["label"][-1], labels)
+        util.write_list(param["label"][-1], labels)
 
 
 if "nexus" in param:
-    seqs = fasta.readFasta(param["fasta"][-1])
-    mrbayes.writeNexus(file(param["nexus"][-1], "w"), seqs.keys(), seqs.values(),
-                       format=param["seqtype"])
+    seqs = fasta.read_fasta(param["fasta"][-1])
+    mrbayes.write_nexus(file(param["nexus"][-1], "w"),
+                        seqs.keys(), seqs.values(),
+                        format=param["seqtype"])
     
 

@@ -455,7 +455,7 @@ class Table (list):
 
         """
 
-        infile = util.openStream(filename)
+        infile = util.open_stream(filename)
         
         # remember filename for later saving
         if isinstance(filename, str):
@@ -590,7 +590,7 @@ class Table (list):
         if isinstance(filename, str):
             self.filename = filename
     
-        out = util.openStream(filename, "w")
+        out = util.open_stream(filename, "w")
         
         self.write_header(out, delim=delim)
         

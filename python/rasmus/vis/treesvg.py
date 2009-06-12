@@ -64,7 +64,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     
     # initialize canvas
     if canvas == None:
-        canvas = svg.Svg(util.openStream(filename, "w"))
+        canvas = svg.Svg(util.open_stream(filename, "w"))
         width = int(rmargin + maxwidth + lmargin)
         height = int(tmargin + maxheight + bmargin)
         
@@ -191,7 +191,7 @@ def drawDistRuler(names, dists, scale=500,
 
     nameswidth = textsize * max(map(len, names))
     
-    out = svg.Svg(util.openStream(filename, "w"))
+    out = svg.Svg(util.open_stream(filename, "w"))
     out.beginSvg(scale * max(dists) + 2*padding,
                  2*padding+nameswidth + 5*distsize)
 

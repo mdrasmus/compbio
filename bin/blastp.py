@@ -33,15 +33,15 @@ if "resume" in param and \
     
     infile = os.popen("tail -n1 %s" % param["out"][-1], "r")
     resume = infile.next().split()[0]
-    out = util.openStream(param["out"][-1], "a")
+    out = util.open_stream(param["out"][-1], "a")
     infile.close()
 else:
     resume = None
-    out = util.openStream(param["out"][-1], "w")
+    out = util.open_stream(param["out"][-1], "w")
 
 
 if "log" in param:
-    util.globalTimer().addStream(util.openStream(param["log"][-1], "a"))
+    util.globalTimer().addStream(util.open_stream(param["log"][-1], "a"))
 
 
 # execute blast

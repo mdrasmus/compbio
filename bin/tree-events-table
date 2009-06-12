@@ -173,7 +173,7 @@ def main(conf):
             treefiles.append(line.rstrip())
 
 
-    famids = [util.replaceExt(os.path.basename(x), conf["treeext"], "")
+    famids = [util.replace_ext(os.path.basename(x), conf["treeext"], "")
               for x in treefiles]
     
     tab, totalTree = countDupLoss(conf, treefiles, stree, gene2species, params)

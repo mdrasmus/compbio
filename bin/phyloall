@@ -167,19 +167,19 @@ def getFileType(conf, infile):
     
     for ext in conf["fastaext"]:
         if infile.endswith(ext):
-            return "fasta", util.replaceExt(infile, ext, "")
+            return "fasta", util.replace_ext(infile, ext, "")
     
     for ext in conf["alignext"]:
         if infile.endswith(ext):
-            return "align", util.replaceExt(infile, ext, "")
+            return "align", util.replace_ext(infile, ext, "")
 
     for ext in conf["treeext"]:
         if infile.endswith(ext):
-            return "tree", util.replaceExt(infile, ext, "")
+            return "tree", util.replace_ext(infile, ext, "")
     
     for ext in conf["distext"]:
         if infile.endswith(ext):
-            return "dist", util.replaceExt(infile, ext, "")
+            return "dist", util.replace_ext(infile, ext, "")
     
     raise "unknown file type '%s'" % infile
 

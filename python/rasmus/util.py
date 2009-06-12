@@ -980,7 +980,6 @@ def write_list(filename, lst):
     out = open_stream(filename, "w")
     for i in lst:
         print >>out, i
-writeList = write_list
 writeVector = write_list
 
 
@@ -1060,7 +1059,7 @@ def open_stream(filename, mode = "r"):
     # cannot handle other types for filename
     else:
         raise Exception("unknown filename type '%s'" % type(filename))
-openStream = open_stream
+
 
 
 #=============================================================================
@@ -1070,7 +1069,7 @@ openStream = open_stream
 class DelimReader:
     """Reads delimited files"""
 
-    def __init__(self, filename, delim=None):
+    def __init__(self, filename, delim="\t"):
         """Constructor for DelimReader
             
            arguments:
@@ -1330,7 +1329,6 @@ def read_word(infile, delims = [" ", "\t", "\n"]):
         if char == "" or char in delims:
             return word
         word += char
-readWord = read_word
 
 def read_until(stream, chars):
     token = ""
@@ -1339,7 +1337,6 @@ def read_until(stream, chars):
         if char in chars or char == "":
             return token, char
         token += char
-readUntil = read_until
 
 def read_while(stream, chars):
     token = ""
@@ -1348,14 +1345,13 @@ def read_while(stream, chars):
         if char not in chars or char == "":
             return token, char
         token += char
-readWhile = read_while
 
 def skip_comments(infile):
     for line in infile:
         if line.startswith("#") or line.startswith("\n"):
             continue
         yield line
-skipComments = skip_comments
+
 
 
 class IndentStream:
@@ -1469,7 +1465,7 @@ def replace_ext(filename, oldext, newext):
         return filename[:-len(oldext)] + newext
     else:
         raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
-replaceExt = replace_ext
+
 
 
 #=============================================================================
@@ -1488,7 +1484,6 @@ def sortrank(lst, cmp=cmp, key=None, reverse=False):
     
     ind.sort(compare2, reverse=reverse)
     return ind
-sortInd = sortrank
 
 
 def sort_many(lst, *others, **args):
@@ -1510,18 +1505,6 @@ def sort_many(lst, *others, **args):
     
     return lsts
 
-    
-def sort_together(compare, lst, *others):
-    """Sort several lists based on the sorting of 'lst'"""
-
-    ind = sortrank(lst, compare)
-    lsts = [mget(lst, ind)]
-    
-    for other in others:
-        lsts.append(mget(other, ind))
-    
-    return lsts
-sortTogether = sort_together
 
 def invperm(perm):
     """Returns the inverse of a permutation 'perm'"""
@@ -1529,7 +1512,6 @@ def invperm(perm):
     for i in range(len(perm)):
         inv[perm[i]] = i
     return inv
-invPerm = invperm    
 
    
 

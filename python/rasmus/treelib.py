@@ -670,7 +670,7 @@ class Tree:
                 return TreeNode("TOO_DEEP")
         
 
-        def readRoot():
+        def read_root():
             word, char = read_until("(")
             
             assert char == "("
@@ -681,7 +681,7 @@ class Tree:
                 self.add_child(node, read_item())
             return node
 
-        self.root = readRoot()
+        self.root = read_root()
         self.add(self.root)
     
 
@@ -689,7 +689,7 @@ class Tree:
         """Reads a parent array from a file"""
     
         if labelFile:
-            labels = util.readStrings(labelFile)
+            labels = util.read_strings(labelFile)
         elif labels == None:
             nitems = (len(open(treeFile).readlines()) + 1)/ 2
             labels = map(str, range(nitems))
@@ -734,7 +734,6 @@ class Tree:
             self.root = self.root.children[0]
             self.remove(self.root.parent)
             self.root.parent = None
-    readParentTree = read_parent_tree
     
     
     def write_parent_tree(self, treeFile, labels):
@@ -760,8 +759,7 @@ class Tree:
             else:
                 ptree[idname] = -1
         
-        util.writeVector(treeFile, ptree)
-    writeParentTree = write_parent_tree
+        util.write_list(treeFile, ptree)
     
     
     def get_one_line_newick(self):

@@ -16,10 +16,10 @@ newext = sys.argv[2]
 
 for filename in sys.argv[3:]:
     print filename
-    tree = treelib.readTree(filename)
+    tree = treelib.read_tree(filename)
     phylo.hashOrderTree(tree)
     
-    filename2 = util.replaceExt(filename, oldext, newext)
+    filename2 = util.replace_ext(filename, oldext, newext)
     tree.write(filename2)
 
     

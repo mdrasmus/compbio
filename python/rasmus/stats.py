@@ -375,7 +375,7 @@ def smooth2(x, y, xradius, minsize=0, sort=False):
         return [], []
     
     if sort:
-        x, y = util.sortTogether(cmp, x, y)
+        x, y = util.sort_many(x, y)
     
     x2 = []
     y2 = []

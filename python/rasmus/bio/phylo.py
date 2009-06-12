@@ -69,8 +69,8 @@ def read_gene2species(* filenames):
     for filename in filenames:
         maps = []
         for filename in filenames:
-            maps.extend(util.read_delim(util.skipComments(
-                util.openStream(filename))))
+            maps.extend(util.read_delim(util.skip_comments(
+                util.open_stream(filename))))
     return make_gene2species(maps)    
 readGene2species = read_gene2species
 

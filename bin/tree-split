@@ -95,17 +95,17 @@ for filename in conf["REST"]:
     split, subtrees = splitTree(tree, stree, gene2species)
     
     if split:
-        partfilename = util.replaceExt(filename, conf["treeext"], conf["partext"])
+        partfilename = util.replace_ext(filename, conf["treeext"], conf["partext"])
         partfile = open(partfilename, "w")
         
         print "splitting", filename
         print "  ",
         for i, subtree in enumerate(subtrees):
             print (i+1),
-            subtreename = util.replaceExt(filename, conf["treeext"],
+            subtreename = util.replace_ext(filename, conf["treeext"],
                                           "." + str(i+1) + conf["subtreeext"])
             subtree.write(subtreename)
-            partfile.write("\t".join(subtree.leafNames()) + "\n")
+            partfile.write("\t".join(subtree.leaf_names()) + "\n")
         print
         partfile.close()
 

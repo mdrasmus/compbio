@@ -24,7 +24,7 @@ class Domain (object):
 
 
 def iterPfam(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     
     
     def getQuery(infile):

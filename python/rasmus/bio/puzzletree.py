@@ -22,7 +22,7 @@ def getDistMatrix(seqs, output=None, verbose=True, force = False, args=None):
     
     # create input
     labels = phylip.writePhylipAlign(file("infile", "w"), seqs)
-    util.writeVector(file("labels", "w"), labels)
+    util.write_list(file("labels", "w"), labels)
     
     # run phylip
     phylip.execPhylip("puzzle infile", args, verbose)

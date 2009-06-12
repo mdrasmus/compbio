@@ -56,7 +56,7 @@ class HtmlTable (object):
 
     def write(self, out, fullpage=False):
         """Write HTML table"""
-        out = util.openStream(out, "w")
+        out = util.open_stream(out, "w")
 
         if fullpage:
             out.write("<html>")

@@ -98,7 +98,7 @@ def readLabels(filename):
 
 
 def writeTreeDistrib(out, lengths):
-    out = util.openStream(out, "w")
+    out = util.open_stream(out, "w")
 
     for node, lens in lengths.items():
         if len(lens) == 0 or max(lens) == min(lens):
@@ -145,7 +145,7 @@ def treeDistrib2table(lengths, filenames=None):
 
 
 def readTreeDistrib(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     lengths = {}
     
     for line in infile:

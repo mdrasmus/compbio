@@ -43,14 +43,14 @@ def filterAlign(aln, ratio):
 for alignfile in conf["REST"]:
     print alignfile
     
-    aln = fasta.readFasta(alignfile)
+    aln = fasta.read_fasta(alignfile)
     ind = filterAlign(aln, conf["ratio"])
     
     aln2 = alignlib.subalign(aln, ind)
 
-    alignfile2 = util.replaceExt(alignfile, conf["alignext"], conf["alignext2"])    
-    indfile = util.replaceExt(alignfile, conf["alignext"], conf["alignind"])    
+    alignfile2 = util.replace_ext(alignfile, conf["alignext"], conf["alignext2"])    
+    indfile = util.replace_ext(alignfile, conf["alignext"], conf["alignind"])    
     aln2.write(alignfile2)
-    util.writeList(indfile, ind)
+    util.write_list(indfile, ind)
     
     

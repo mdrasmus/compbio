@@ -97,7 +97,7 @@ def countDupLoss(conf, treefiles, stree, gene2species, params):
         """
         
         if "treeext" in conf:
-            row["partid"] = util.replaceExt(os.path.basename(f), conf["treeext"], "")
+            row["partid"] = util.replace_ext(os.path.basename(f), conf["treeext"], "")
         else:
             row["partid"] = i
         
@@ -235,7 +235,7 @@ def main(conf):
             treefiles.append(line.rstrip())
 
 
-    #names = [util.replaceExt(os.path.basename(x), conf["treeext"], "")
+    #names = [util.replace_ext(os.path.basename(x), conf["treeext"], "")
     #         for x in treefiles]
     
     tab, totalTree = countDupLoss(conf, treefiles, stree, gene2species, params)

@@ -622,12 +622,12 @@ class Tree:
         def readchar():
             while True:
                 char = infile.read(1)
-                if char != " " and char != "\n": break
+                if char not in " \t\n": break
             if char == "(": closure["opens"] += 1
             if char == ")": closure["opens"] -= 1
             return char
         
-        def readUntil(chars):
+        def read_until(chars):
             token = ""
             while True:
                 char = readchar()
@@ -635,7 +635,7 @@ class Tree:
                     return [token, char]
                 token += char
         
-        def readDist():
+        def read_dist():
             word = ""
             while True:
                 char = readchar()
@@ -644,7 +644,7 @@ class Tree:
                 else:
                     word += char
 
-        def readItem():
+        def read_item():
             try:
                 char1 = readchar()
 
@@ -652,18 +652,18 @@ class Tree:
                     node = TreeNode(self.new_name())
                     depth = closure["opens"]
                     while closure["opens"] == depth:
-                        self.add_child(node, readItem())
+                        self.add_child(node, read_item())
                     
-                    token, char = readUntil("):,")
+                    token, char = read_until("):,")
                     if char == ":":
-                        node.dist = readDist()
+                        node.dist = read_dist()
                     return node
                 else:                   
-                    word, char = readUntil(":),")
+                    word, char = read_until(":),")
                     word = char1 + word.rstrip()
                     node = TreeNode(word)
                     if char == ":":
-                        node.dist = readDist()
+                        node.dist = read_dist()
                     return node
             except:
                 print sys.exc_type, ": Tree too deep to read"
@@ -671,14 +671,14 @@ class Tree:
         
 
         def readRoot():
-            word, char = readUntil("(")
+            word, char = read_until("(")
             
             assert char == "("
             
             node = TreeNode(self.new_name())
             depth = closure["opens"]
             while closure["opens"] == depth:
-                self.add_child(node, readItem())
+                self.add_child(node, read_item())
             return node
 
         self.root = readRoot()

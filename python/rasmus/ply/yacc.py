@@ -2545,6 +2545,11 @@ class LRGeneratedTable(LRTable):
     def write_table(self,modulename,outputdir='',signature=""):
         basemodulename = modulename.split(".")[-1]
         filename = os.path.join(outputdir,basemodulename) + ".py"
+
+        # do not write if table exists
+        if os.path.exists(filename):
+            return
+        
         try:
             f = open(filename,"w")
 

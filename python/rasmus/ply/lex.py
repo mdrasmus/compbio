@@ -173,6 +173,11 @@ class Lexer:
             return
         basetabfilename = tabfile.split(".")[-1]
         filename = os.path.join(outputdir,basetabfilename)+".py"
+
+        # do not write to an existing file
+        if os.path.exists(filename):
+            return
+        
         tf = open(filename,"w")
         tf.write("# %s.py. This file automatically created by PLY (version %s). Don't edit!\n" % (tabfile,__version__))
         tf.write("_tabversion   = %s\n" % repr(__version__))

@@ -742,19 +742,20 @@ def poissonCdf(x, params):
     else:
         return (gamma(floor(x+1)) - gammainc(floor(x + 1), lambd)) / \
                factorial(floor(x))
-    
+
 
 def poissonvariate(lambd):
     """Sample from a Poisson distribution"""
-    l = exp(-lambd)
+    l = -lambd
     k = 0
-    p = 1.0
+    p = 0.0
 
     while 1:
         k += 1
-        p *= random.random()
+        p += log(random.random())
         if p < l:
             return k - 1
+
 
 def exponentialPdf(x, params):
     lambd = params[0]

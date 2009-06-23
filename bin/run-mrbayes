@@ -11,8 +11,11 @@ from rasmus.bio import phylorun as phy
 
 o = optparse.OptionParser()
 phy.add_common_options(o)
+o.add_option("-n", "--ngen", dest="ngen", default=10000,
+             type="int")
 conf, files = phy.parse_common_options(o)
 
+result = 0
 
 for fn in files:
     basename = phy.get_basename(fn, conf)
@@ -31,7 +34,7 @@ for fn in files:
         usertree = None
 
     nexfilename = outdir + "/infile.nex"    
-    options = {}
+    options = {"ngen": conf.ngen}
     mrbayes.setDefaultOptions(options)
     
     options["burninfrac"] = .25
@@ -53,9 +56,12 @@ for fn in files:
     out = open(outdir + "/cmd", "w")
     out.write(cmd)
     out.close()
-    assert os.system(cmd) == 0
+    if os.system(cmd) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+    else:
+        tree = mrbayes.readNexusConTree(file(nexfilename + ".con"))
+        tree.write(basename + conf.treeext)
 
-    tree = mrbayes.readNexusConTree(file(nexfilename + ".con"))
 
-    tree.write(basename + conf.treeext)
-
+sys.exit(result)

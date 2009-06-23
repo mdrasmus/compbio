@@ -13,13 +13,13 @@ o = optparse.OptionParser()
 phy.add_common_options(o)
 conf, files = phy.parse_common_options(o)
 
-
+result = 0
 for fn in files:
     basename = phy.get_basename(fn, conf)
 
     outdir = basename + conf.outputext
     phy.make_output_dir(outdir)
-    align = fasta.readFasta(basename + conf.alignext)
+    align = fasta.read_fasta(basename + conf.alignext)
     labels = phylip.writePhylipAlign(file(outdir + "/infile", "w"), align,
                                      False)
     util.write_list(file(outdir + "/labels", "w"), labels)
@@ -48,10 +48,12 @@ for fn in files:
     out = open(outdir + "/cmd", "w")
     out.write(cmd)
     out.close()
-    assert os.system(cmd) == 0
+    if os.system(cmd) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+    else:
+        #tree = phylip.readOutTree(outdir + "/infile_phyml_tree.txt", labels)
+        tree = treelib.read_tree(outdir + "/infile_phyml_tree.txt")
+        tree.write(basename + conf.treeext)
 
-    #tree = phylip.readOutTree(outdir + "/infile_phyml_tree.txt", labels)
-    tree = treelib.readTree(outdir + "/infile_phyml_tree.txt")
-
-    tree.write(basename + conf.treeext)
-
+sys.exit(result)

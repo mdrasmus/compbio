@@ -310,8 +310,8 @@ def list2lookup(lst):
     """
     
     lookup = {}
-    for i in xrange(len(lst)):
-        lookup[lst[i]] = i
+    for i, elm in enumerate(lst):
+        lookup[elm] = i
     return lookup
 
 

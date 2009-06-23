@@ -8,8 +8,6 @@ from rasmus.bio import seqlib
 from rasmus.bio.seqlib import SeqDict
 
 
-# TODO: add a fasta file iterator, can always use indexing as well
-
 
 def removestar(value):
     return value.replace("*", "")
@@ -38,8 +36,7 @@ class FastaDict (SeqDict):
     
     def read(self, filename, keyfunc=firstword, valuefunc = lambda x: x, 
               errors=True, useIndex=False):
-        key = ""
-        value = ""
+        """Read sequences from a Fasta file"""
         
         if isinstance(filename, str) and useIndex and has_fasta_index(filename):
             newkeys = self.index.read(filename)
@@ -51,24 +48,12 @@ class FastaDict (SeqDict):
                 dict.__setitem__(self, key, None)
         else:
             for key, seq in iter_fasta(filename, keyfunc, valuefunc):
-                self.add(key, value, errors)
-
-            '''
-            for line in util.open_stream(filename):                
-                if len(line) > 0 and line[0] == ">":
-                    if key != "":
-                        self.add(key, valuefunc(value), errors)
-                    key = keyfunc(line[1:].rstrip())
-                    value = ""
-                else:
-                    assert key != ""
-                    value += line.rstrip()
-            if key != "":
-                self.add(key, valuefunc(value), errors)
-            '''
+                self.add(key, seq, errors)
     
     
     def write(self, filename=sys.stdout, names=None, width=80):
+        """Write sequences in Fasta format"""
+        
         out = util.open_stream(filename, "w")
         
         if names == None:
@@ -80,6 +65,8 @@ class FastaDict (SeqDict):
     
     
     def __getitem__(self, key):
+        """Get a sequence by key"""
+        
         val = SeqDict.__getitem__(self, key) 
         
         if val == None:
@@ -94,6 +81,8 @@ class FastaDict (SeqDict):
     
     
     def getseq(self, key, start=1, end=None, strand=1):
+        """Get a sequence (or subsequence) by key"""
+        
         val = SeqDict.__getitem__(self, key) 
         
         if val == None:

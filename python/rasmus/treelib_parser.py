@@ -38,15 +38,16 @@ t_DATA = r"[^,;\(\)]+"
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
 
-
-def p_tree(p):
+'''
+def _tree(p):
     """
     tree : branch ';'
     """
     p[0] = p[1]
 
 
-def p_subtree(p):
+
+def subtree(p):
     """subtree : "(" branch_set ")" NAME
                | "(" branch_set ")" 
                | NAME"""
@@ -58,7 +59,16 @@ def p_subtree(p):
         p[0] = ([], p[1])
 
 
-def p_branch_set(p):
+def _subtree(p):
+    """subtree : "(" branch_set ")"
+               | NAME"""
+    if len(p) == 4:
+        p[0] = (p[2], "")
+    else:
+        p[0] = ([], p[1])
+
+
+def _branch_set(p):
     """branch_set : branch "," branch_set
                   | branch 
     """
@@ -69,7 +79,7 @@ def p_branch_set(p):
         p[0] = [p[1]] + p[3]
     
 
-def p_branch(p):
+def _branch(p):
     """
     branch : subtree DATA
            | subtree
@@ -79,19 +89,47 @@ def p_branch(p):
         p[0] = p[1] + (p[2],)
     else:
         p[0] = p[1] + ("",)
-
-
 '''
-def p_length(p):
+
+#=============================================================================
+
+def p_tree(p):
     """
-    length : ':' FLOAT
-           |
+    tree : subtree ';'
     """
-    if len(p) == 3:
-        p[0] = p[2]
+    p[0] = p[1]
+
+
+def p_subtree(p):
+    """subtree : "(" branch_set ")" NAME DATA
+               | "(" branch_set ")" NAME
+               | "(" branch_set ")" DATA
+               | "(" branch_set ")"
+               | NAME DATA
+               | NAME
+    """
+    if len(p) == 6:
+        p[0] = (p[2], "", p[4] + p[5])
+    elif len(p) == 5:
+        p[0] = (p[2], "", p[4])
+    elif len(p) == 4:
+        p[0] = (p[2], "", "")
+    elif len(p) == 3:
+        p[0] = ([], p[1], p[2])
+    elif len(p) == 2:
+        p[0] = ([], p[1], "")
+
+
+def p_branch_set(p):
+    """branch_set : subtree "," branch_set
+                  | subtree
+    """
+
+    if len(p) == 2:
+        p[0] = [p[1]]
     else:
-        p[0] = 0.0
-'''
+        p[0] = [p[1]] + p[3]
+    
 
 def p_error(p):
     if p:
@@ -110,7 +148,7 @@ yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab", outputdir=outdir)
 if __name__ == "__main__":
     print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")
     print yacc.parse("((xax:1.0,bbx:2));")
-    print yacc.parse("((aa:1.0,bb:2):3,(cc:4,dd:5):6);")
+    print yacc.parse("((aa:1.0,bb:2)x:33,(cc:4,dd:5):6);")
 
 
 

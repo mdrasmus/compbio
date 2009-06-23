@@ -185,7 +185,7 @@ def writeInTree(filename, tree, labels):
     tree2.writeNewick(filename)
 
 
-def writeBootTrees(filename, trees, counts=None):
+def write_boot_trees(filename, trees, counts=None):
     out = util.open_stream(filename, "w")
     
     if counts == None:
@@ -193,7 +193,7 @@ def writeBootTrees(filename, trees, counts=None):
     
     for tree, count in zip(trees, counts):
         for i in range(count):
-            tree.write_newick(out)
+            out.write(tree.get_one_line_newick() + "\n")
 
 
 
@@ -794,23 +794,29 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
         return trees
 
 
-def consenseFromFile(intrees, verbose=True, args="y"):
+def consense_from_file(intrees, verbose=True, args="y"):
     cwd = createTempDir()
-    
-    shutil.copy(os.path.join("..", intrees), "intree")
+
+    ntrees = 0
+    out = open("intree", "w")
+    for line in util.open_stream(intrees):
+        out.write(line)
+        ntrees += 1
+    out.close()
     
     execPhylip("consense", args, verbose)
     
-    tree = treelib.Tree()
-    tree.read_newick("outtree")
+    tree = treelib.read_tree("outtree")
     
     cleanupTempDir(cwd)
-    return tree
+    return tree, ntrees
+consenseFromFile =  consense_from_file
+
 
 def consense(trees, counts=None, verbose=True, args="y"):
     cwd = createTempDir()
     
-    writeBootTrees("intree", trees, counts=counts)
+    write_boot_trees("intree", trees, counts=counts)
     
     execPhylip("consense", args, verbose)
     

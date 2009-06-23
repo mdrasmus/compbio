@@ -5,9 +5,9 @@ _tabversion = '3.2'
 
 _lr_method = 'LALR'
 
-_lr_signature = '\x06\xf2\x8b\xed\x0f\xda@\xff[\x8f\x15\xad?6U\xb5'
+_lr_signature = '\xeeI\xa1\xda\xe8\xad\xc1c\xdb\xa8\n\xf1\x05\x1cI\x82'
     
-_lr_action_items = {'NAME':([0,2,10,11,],[1,1,12,1,]),')':([1,4,6,7,8,10,12,13,],[-4,-8,10,-6,-7,-3,-2,-5,]),'(':([0,2,11,],[2,2,2,]),',':([1,4,7,8,10,12,],[-4,-8,11,-7,-3,-2,]),';':([1,4,5,8,10,12,],[-4,-8,9,-7,-3,-2,]),'DATA':([1,4,10,12,],[-4,8,-3,-2,]),'$end':([3,9,],[0,-1,]),}
+_lr_action_items = {'NAME':([0,2,9,10,],[1,1,12,1,]),')':([1,5,6,7,9,11,12,13,14,],[-7,-6,9,-9,-5,-4,-3,-8,-2,]),'(':([0,2,10,],[2,2,2,]),',':([1,5,7,9,11,12,14,],[-7,-6,10,-5,-4,-3,-2,]),';':([1,4,5,9,11,12,14,],[-7,8,-6,-5,-4,-3,-2,]),'DATA':([1,9,12,],[5,11,14,]),'$end':([3,8,],[0,-1,]),}
 
 _lr_action = { }
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'branch_set':([2,11,],[6,13,]),'tree':([0,],[3,]),'subtree':([0,2,11,],[4,4,4,]),'branch':([0,2,11,],[5,7,7,]),}
+_lr_goto_items = {'branch_set':([2,10,],[6,13,]),'tree':([0,],[3,]),'subtree':([0,2,10,],[4,7,7,]),}
 
 _lr_goto = { }
 for _k, _v in _lr_goto_items.items():
@@ -26,12 +26,13 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> tree","S'",1,None,None,None),
-  ('tree -> branch ;','tree',2,'p_tree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',44),
-  ('subtree -> ( branch_set ) NAME','subtree',4,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',50),
-  ('subtree -> ( branch_set )','subtree',3,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',51),
-  ('subtree -> NAME','subtree',1,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',52),
-  ('branch_set -> branch , branch_set','branch_set',3,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',62),
-  ('branch_set -> branch','branch_set',1,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',63),
-  ('branch -> subtree DATA','branch',2,'p_branch','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',74),
-  ('branch -> subtree','branch',1,'p_branch','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',75),
+  ('tree -> subtree ;','tree',2,'p_tree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',98),
+  ('subtree -> ( branch_set ) NAME DATA','subtree',5,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',104),
+  ('subtree -> ( branch_set ) NAME','subtree',4,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',105),
+  ('subtree -> ( branch_set ) DATA','subtree',4,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',106),
+  ('subtree -> ( branch_set )','subtree',3,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',107),
+  ('subtree -> NAME DATA','subtree',2,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',108),
+  ('subtree -> NAME','subtree',1,'p_subtree','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',109),
+  ('branch_set -> subtree , branch_set','branch_set',3,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',124),
+  ('branch_set -> subtree','branch_set',1,'p_branch_set','/home/radon00/rasmus/projects/rasmus/python/rasmus/treelib_parser.py',125),
 ]

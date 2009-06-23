@@ -26,7 +26,7 @@ o = optparse.OptionParser()
 phy.add_common_options(o)
 conf, files = phy.parse_common_options(o)
 
-
+result = 0
 for fn in files:
     basename = phy.get_basename(fn, conf)
     
@@ -60,5 +60,9 @@ for fn in files:
     out = open(outdir + "/cmd", "w")
     out.write(cmd)
     out.close()
-    assert os.system(cmd) == 0
+    if os.system(cmd) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
 
+
+sys.exit(result)

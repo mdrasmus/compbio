@@ -670,11 +670,6 @@ def qvalues(pvals):
     ret = rpy.r.p_adjust(pvals, "fdr")
     return ret
 
-def qvalues2(pvals):
-    import rpy
-    rpy.r.library('qvalue')
-    ret = rpy.r.qvalue(pvals)
-    return ret['qvalues']
 
 
 #=============================================================================
@@ -786,13 +781,20 @@ def gammaPdf(x, params):
         return (exp(-x * beta) * (x ** (alpha - 1)) * (beta ** alpha)) / \
            gamma(alpha)
 
+
+def loggammaPdf(x, params):
+    alpha, beta = params
+    if x <= 0.0 or alpha <= 0.0 or beta <= 0.0:
+        return -util.INF
+    else:
+        return -x*beta + (alpha - 1)*log(x) + alpha*log(beta) - gammaln(alpha)
+
 def gammaPdf2(x, params):
     alpha, beta = params
     if x <= 0 or alpha <= 0 or beta <= 0:
         return 0.0
     else:
-        return exp(- x * beta + (alpha - 1)*log(x) + alpha * log(beta) -
-                   gammaln(alpha))
+        return exp(loggammaPdf(x, params))
 
 
 def gammaCdf(x, params):
@@ -801,6 +803,23 @@ def gammaCdf(x, params):
         return 0
     else:
         return gammainc(alpha, x * beta) / gamma(alpha)
+
+def invgammaPdf(x, params):
+    a, b = params
+
+    if x <=0 or a <= 0 or b <= 0:
+        return 0.0
+    else:
+        return (b**a) / gamma(a) * (1.0/x)**(a + 1) * exp(-b/x)
+
+def loginvgammaPdf(x, params):
+    a, b = params
+    if x < 0 or a < 0 or b < 0:
+        return -util.INF
+    else:
+        return a*log(b) - gammaln(a) + (a+1)*log(1.0/x) -b/x
+
+
 
 
 def betaPdf2(x, params):
@@ -977,7 +996,7 @@ def make_expected(rows):
 
 def chiSquareFit(xbins, ybins, func, nsamples, nparams, minsamples=5):
     sizes = [xbins[i+1] - xbins[i] for i in xrange(len(xbins)-1)]
-    sizes.append(sizes[-1])
+    sizes.append(sizes[-1]) # NOTE: assumes bins are of equal size
     
     # only focus on bins that are large enough
     counts = [ybins[i] * sizes[i] * nsamples for i in xrange(len(xbins)-1)]
@@ -1176,7 +1195,81 @@ def plotdistribFit(func, paramsInit, data, start, end, step, plot = None,
                        **options)
 
 
+
+
+def chi_square_fit(cdf, params, data, ndivs=20, minsamples=5, plot=False,
+                   start=-util.INF, end=util.INF):
+
+    import scipy
+    import scipy.stats
+
+    # determine ndiv and binsize
+    binsize = len(data) / ndivs
+    if binsize < minsamples:
+        ndivs = len(data) / minsamples
+        binsize = len(data) / ndivs
+
+    data = sorted(data)
+    bins = [data[i:i+binsize] for i in xrange(0, len(data), binsize)]
+    obs = scipy.array(map(len, bins))
+    ind = util.find(lambda x: x[-1] >= start and x[0] <= end, bins)
+    obs = util.mget(obs, ind)
     
+    x = [bin[0] for bin in bins]
+    expected = [len(data) * cdf(x[1], params)]
+    expected.extend([len(data) *
+                     (cdf(x[i+1], params) - cdf(x[i], params))
+                     for i in range(1, len(x)-1)])
+    expected.append(len(data) * (1.0 - cdf(x[-1], params)))
+    expected = scipy.array(util.mget(expected, ind))
+    
+    chi2, pval = scipy.stats.chisquare(obs, expected)
+
+    if plot:        
+        p = util.plot(util.mget(x, ind), obs)
+        p.plot(util.mget(x, ind), expected)
+    
+    return chi2, pval
+
+
+def fit_distrib(cdf, params_init, data, ndivs=20, minsamples=5,
+                start=-util.INF, end=util.INF):
+
+    import scipy
+    import scipy.optimize
+    import scipy.stats
+
+    # determine ndiv and binsize
+    binsize = len(data) / ndivs
+    if binsize < minsamples:
+        ndivs = len(data) / minsamples
+        binsize = len(data) / ndivs
+
+    data = sorted(data)
+    bins = [data[i:i+binsize] for i in xrange(0, len(data), binsize)]
+    obs = scipy.array(map(len, bins))
+    ind = find(lambda x: x[-1] >= start and x[0] <= end, bins)
+    obs = util.mget(obs, ind)
+    
+    def optfunc(params):
+        x = [bin[0] for bin in bins]
+        expected = [len(data) * cdf(x[1], params)]
+        expected.extend([len(data) *
+                         (cdf(x[i+1], params) - cdf(x[i], params))
+                         for i in range(1, len(x)-1)])
+        expected.append(len(data) * (1.0 - cdf(x[-1], params)))
+        expected = scipy.array(util.mget(expected, ind))
+        
+        chi2, pval = scipy.stats.chisquare(obs, expected)
+        return chi2
+
+    params = scipy.optimize.fmin(optfunc, params_init, disp=False)
+    chi2, pval = chi_square_fit(cdf, params, data, ndivs, minsamples)
+
+    return list(params), pval
+
+    
+
 
 
 def solveCubic(a, b, c, real=True):

@@ -8,33 +8,39 @@ def color2string(color):
 
 def colorFields(strokeColor, fillColor):
 
-    if isinstance(strokeColor, str):
-        stroke_str = strokeColor
-        stroke_op = None
-    else:
-        stroke_str = color2string(strokeColor)
-        if len(strokeColor) > 3:
-            stroke_op = strokeColor[3]
-        else:
-            stroke_op = None
+    txt = ""
 
-    if isinstance(fillColor, str):
-        fill_str = fillColor
-        fill_op = None
-    else:
-        fill_str = color2string(fillColor)
-        if len(fillColor) > 3:
-            fill_op = fillColor[3]
+    if strokeColor:
+        if isinstance(strokeColor, str):
+            stroke_str = strokeColor
+            stroke_op = None
         else:
+            stroke_str = color2string(strokeColor)
+            if len(strokeColor) > 3:
+                stroke_op = strokeColor[3]
+            else:
+                stroke_op = None
+
+        txt += "stroke='%s' " % stroke_str
+        if stroke_op is not None:
+            txt += "stroke-opacity='%f' " % stroke_op
+
+    if fillColor:
+        if isinstance(fillColor, str):
+            fill_str = fillColor
             fill_op = None
+        else:
+            fill_str = color2string(fillColor)
+            if len(fillColor) > 3:
+                fill_op = fillColor[3]
+            else:
+                fill_op = None
+
+        txt += "fill='%s' " % fill_str
+        if fill_op is not None:
+            txt += "fill-opacity='%f' " % fill_op    
     
     
-    txt = "stroke='%s' fill='%s' " % (stroke_str, fill_str)
-    
-    if stroke_op is not None:
-        txt += "stroke-opacity='%f' " % stroke_op
-    if fill_op is not None:
-        txt += "fill-opacity='%f' " % fill_op
     return txt
 
 # common colors
@@ -231,7 +237,7 @@ class Svg:
 
 def convert(filename, outfilename = None):
     if outfilename == None:
-        outfilename = filename.replace(".svg", ".gif")
+        outfilename = filename.replace(".svg", ".png")
     os.system("convert " +filename+ " " +outfilename)
     #os.system("rm " + filename)
     

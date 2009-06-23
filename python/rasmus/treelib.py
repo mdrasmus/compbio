@@ -16,12 +16,13 @@ import os
 import StringIO
 
 # rasmus libs
-from rasmus import util
+try:
+    from rasmus import util
+except ImportError:
+    import util
 
 
 # ply parsing support
-from rasmus import treelib_parser
-    
 try:
     from rasmus import treelib_parser
 except ImportError:
@@ -447,7 +448,7 @@ class Tree:
     
     def read_data(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
-        
+
         if ":" in data:
             boot, dist = data.split(":")
             node.dist = float(dist)
@@ -465,9 +466,9 @@ class Tree:
                             node.name = name
         else:
             data = data.strip()
-            
+
             # treat as name
-            if data and not node.is_leaf():
+            if data:
                 node.name = data
     readData = read_data
     
@@ -574,7 +575,7 @@ class Tree:
         
         # default data reader
         if readData == None:
-            readData = self.readData
+            readData = self.read_data
 
         # get parse tree
         text = util.read_until(util.open_stream(filename), ";")[0] + ";"
@@ -611,6 +612,7 @@ class Tree:
                 self.default_data["boot"] = 0
                 break
         self.set_default_data()
+
     
     
     def read_big_newick(self, filename):
@@ -807,7 +809,7 @@ def parse_newick(newick):
     """Read a tree from newick notation stored in a string"""
     tree = Tree()
     stream = StringIO.StringIO(newick)
-    tree.readNewick(stream)
+    tree.read_newick(stream)
     return tree
 parseNewick = parse_newick
 
@@ -1166,8 +1168,85 @@ def reorder_tree(tree, tree2):
 #=============================================================================
 # parent tables
 
-def tree2parent_table(tree, leaf_names=None):
+def tree2parent_table(tree, data_cols=[]):
     """Converts tree to a parent table
+
+    This parent table will have a special numbering for the internodes,
+    such that their id is also their row in the table.
+    
+    parent table is a standard format of the Compbio Lab as of 02/01/2007.
+    It is a list of triples (node_name, parent_name, dist, ...)
+        
+    * parent_name indicates the parent of the node.  If the node is a root
+      (has no parent), then parent_name is -1
+    
+    * dist is the distance between the node and its parent.
+
+    * additional columns can be added using the data_cols argument.  The
+      values are looked up from node.data[col]
+    """
+
+    ptable = []
+
+    for node in tree:
+        if node.parent:
+            pname = node.parent.name
+        else:
+            pname = -1
+        row = [node.name, pname, node.dist]
+        for col in data_cols:
+            row.append(node.data[col])
+        ptable.append(row)
+    
+    return ptable
+
+
+def parent_table2tree(ptable, data_cols=[], convert_names=True):
+    """Converts a parent table to a Tree
+
+    if convert_names is True, names that are strings that look like integers
+    are converted to ints.
+    
+    See tree2parent_table for details
+    """
+    
+    tree = Tree()
+
+    parents = {}
+
+    # create nodes
+    for row in ptable:
+        name, parent = row[:2]
+        if name.isdigit():
+            name = int(name)
+        if parent.isdigit() or parent == "-1":
+            parent = int(parent)
+        
+        node = TreeNode(name)
+        node.dist = row[2]
+        tree.add(node)
+        parents[node] = parent
+
+        for col, val in zip(data_cols, row[3:]):
+            node.data[col] = val
+            
+    # link up parents
+    for node, parent_name in parents.iteritems():
+        if parent_name == -1:
+            tree.root = node
+        else:
+            parent = tree.nodes[parent_name]
+            tree.add_child(parent, node)
+    
+    return tree
+
+
+
+def tree2parent_table_ordered(tree, leaf_names=None):
+    """Converts tree to a parent table
+
+    This parent table will have a special numbering for the internodes,
+    such that their id is also their row in the table.
     
     parent table is a standard format of the Compbio Lab as of 02/01/2007.
     It is a list of triples (node_name, parent_name, dist)
@@ -1222,7 +1301,7 @@ def tree2parent_table(tree, leaf_names=None):
     return parentTable
     
 
-def parent_table2tree(parentTable):
+def parent_table2tree_ordered(ptable):
     """Converts a parent table to a Tree
     
     See tree2parentTable for details
@@ -1257,16 +1336,15 @@ def parent_table2tree(parentTable):
     return tree
 
 
-def write_parent_table(parentTable, out=sys.stdout):
+def write_parent_table(ptable, out=sys.stdout):
     """Writes a parent table to out
     
     out can be a filename or file stream
     """
     
     out = util.open_stream(out, "w")
-    
-    for name, parent, dist in parentTable:
-        print >>out, "%s\t%d\t%f" % (str(name), parent, dist)
+    for row in ptable:
+        out.write("\t".join(map(str, row)) + "\n")
 
 
 
@@ -1276,17 +1354,21 @@ def read_parent_table(filename):
     filename can also be an open file stream
     """
     
-    infile = util.open_stream(filename)    
-    parentTable = []
+    infile = util.open_stream(filename)
+    ptable = []
     
     for line in infile:
-        name, parent, dist = line.split("\t")
+        row = line.rstrip("\n").split("\t")
+        name, parent, dist = row[:3]
         
         if name.is_digit():
             name = int(name)
-        parentTable.append([name, int(parent), float(dist)])
+        if parent.is_digit() or parent == "-1":
+            parent = int(parent)
+            
+        ptable.append([name, parent, float(dist)] + row[3:])
     
-    return parentTable
+    return ptable
 
     
 
@@ -1298,7 +1380,6 @@ def read_parent_table(filename):
 def is_rooted(tree):
     return len(tree.root.children) <= 2
     #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
-isRooted = is_rooted
 
 
 def unroot(tree, newCopy = True):
@@ -1491,20 +1572,18 @@ def make_ptree(tree):
     assert nodes[-1] == tree.root
     
     return ptree, nodes, nodelookup
-makePtree = make_ptree
+
 
 #=============================================================================
 # Tree visualization
    
-def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
+def layout_tree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
                rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.
     
     Branch lengths are determined by node.dist
-    """
-    
-    coords = {}
+    """    
     
     """
        /-----   ] 
@@ -1516,6 +1595,7 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
     """
     
     # first determine sizes and nodepts
+    coords = {}
     sizes = {}          # number of descendants (leaves have size 1)
     nodept = {}         # distance between node y-coord and top bracket y-coord
     def walk(node):
@@ -1551,16 +1631,18 @@ def layoutTree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
     walk(tree.root, rootx, rooty)
     
     return coords
+layoutTree = layout_tree
 
 
-def layoutTreeHierarchical(tree, xscale, yscale, rootx=0, rooty=0):
+def layout_tree_hierarchical(tree, xscale, yscale,
+                             minlen=-util.INF, maxlen=util.INF,
+                             rootx=0, rooty=0,
+                             use_dists=True):
     """\
     Determines the x and y coordinates for every branch in the tree.
     
     Leaves are drawn to line up.  Best used for hierarchical clustering.
     """
-    
-    coords = {}
     
     """
        /-----   ] 
@@ -1572,13 +1654,14 @@ def layoutTreeHierarchical(tree, xscale, yscale, rootx=0, rooty=0):
     """
     
     # first determine sizes and nodepts
+    coords = {}
     sizes = {}          # number of descendants (leaves have size 1)
     depth = {}          # how deep in tree is node
     nodept = {}         # distance between node y-coord and top bracket y-coord
     def walk(node):
         # calculate new y-coordinate for node
         
-        # compute node sizes
+        # recurse: compute node sizes
         sizes[node] = 0        
         for child in node.children:
             sizes[node] += walk(child)
@@ -1611,6 +1694,8 @@ def layoutTreeHierarchical(tree, xscale, yscale, rootx=0, rooty=0):
     walk(tree.root, rootx, rooty)
     
     return coords
+layoutTreeHierarchical = layout_tree_hierarchical
+
 
 #=============================================================================
 # Tree color map
@@ -1854,9 +1939,15 @@ drawTreeNameLens = draw_tree_name_lens
 if __name__ == "__main__":
     from StringIO import StringIO
     
-    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)r;")
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
     tree = read_tree(infile)
     tree.write(rootData=True)
+
+    
+    infile = StringIO("((a:1,b:2)60:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    print tree.nodes['b'].parent.data
+
 
     infile = StringIO("((d:1,c:2)x:3,(b:4,a:5)y:6)r;")
     tree2 = read_tree(infile)

@@ -27,6 +27,7 @@ o.add_option("-o", "--orth", dest="orth", metavar="ORTHOLOG_FILE",
 o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
              action="append",
              help="genes are regions to compute synteny")
+o.add_option("-G", "--gff-format", dest="gff-format", metavar="(gff,gtf,gff3)")
 o.add_option("-f", "--features", dest="features", metavar="FEATURES",
              help="features to use from GFF files")
 
@@ -36,10 +37,10 @@ o.add_option("-f", "--features", dest="features", metavar="FEATURES",
 
 
 def read_regions(gff_file, species1, species2, regions1, regions2,
-                 features=set()):
+                 features=set(), format=gff.GFF):
     """Read a GFF file and segregate regions by species"""
     
-    for region in gff.iterGff(gff_file):
+    for region in gff.iter_gff(gff_file, format=format):
         if len(features) > 0 and region.feature not in features:
             continue
         
@@ -66,12 +67,17 @@ def main(argv):
     else:
         features = set(conf.features.split(","))
 
+        
+    format = {"gff": gff.GFF,
+              "gtf": gff.GTF,
+              "gff3": gff.GFF3}[conf.format]
+
     # read gff regions
     regions1 = []
     regions2 = []
     for gff_file in conf.gff:
         read_regions(gff_file, species1, species2, regions1, regions2,
-                     features=features)
+                     features=features, format=format)
 
     if len(regions1) == 0 or len(regions2) == 0:
         print >>sys.stderr, "no regions for one of the species"

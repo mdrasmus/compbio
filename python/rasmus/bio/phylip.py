@@ -197,7 +197,7 @@ def write_boot_trees(filename, trees, counts=None):
 
 
 
-def readDistMatrix(filename):
+def read_dist_matrix(filename):
     infile = util.open_stream(filename)
 
     size = int(util.read_word(infile))
@@ -300,9 +300,10 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     """
     
     return names, mat
+readDistMatrix = read_dist_matrix
 
 
-def writeDistMatrix(mat, labels=None, out=sys.stdout):
+def write_dist_matrix(mat, labels=None, out=sys.stdout):
     out = util.open_stream(out, "w")
     
     out.write("%d\n" % len(mat))
@@ -316,6 +317,7 @@ def writeDistMatrix(mat, labels=None, out=sys.stdout):
         for val in mat[i]:
             out.write("%10f " % val)
         out.write("\n")
+writeDistMatrix = write_dist_matrix
 
 
 def readAlignment(filename):

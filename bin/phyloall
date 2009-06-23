@@ -10,7 +10,6 @@ import shutil
 
 # rasmus libs
 from rasmus import depend
-from rasmus import env
 from rasmus import stats
 from rasmus import tablelib
 from rasmus import treelib

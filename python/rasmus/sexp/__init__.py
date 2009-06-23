@@ -197,7 +197,7 @@ if __name__ == "__main__":
     write_pretty(s)
     print
 
-    print parse('''(hello there (dict (a 1) ("bb" 222.0) (8 #f)
+    print parse('''(hello there () (dict (a 1) ("bb" 222.0) (8 #f)
                                       (more (dict (u v))))
                     ("dict" (a b) (c d)))''')
     print parse('''(hello there (dict (a 1) ("bb" 222.0) (8 #f)
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     write_pretty(dict2sexp({"aaa": 111, 
                             True: (((22, "abc", "adcd"), 9999),
                                    "www",
-                                   (Sym("hello"), ("hi", 
+                                   (Sym("hello"), [], ("hi", 
                                                    5555,
                                                    "---")
                                      )), 

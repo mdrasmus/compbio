@@ -17,17 +17,16 @@ class Sym (str):
 #=============================================================================
 # grammar
 
-literals = ['(',')', "[", "]"]
+
+
+literals = ['(',')', "[", "]", "{", "}"]
 t_ignore = " \t\r\n"
 t_ignore_COMMENT = r";[^\n]*\n"
 
 tokens = (
-#    "WHITE",
     "SYMBOL",
     "STRING",
     "NUMBER",
-#    "FLOAT",
-#    "INT",
     "BOOL"
 )
 
@@ -36,24 +35,18 @@ def quote(s):
     return s.replace('\\', '\\\\').replace(r'"', r'\"')
 
 def unquote(s):
+    # fix, use proper unquote
     return s.replace(r'\"', r'"').replace('\\\\', '\\')
 
-#t_WHITE = r"([ \t\r\n]+|;.*\n)+"
-
 def t_STRING(t):
-    r'"(\\"|[^"\\]+)*"'
+    r'"(\\\\|\\"|[^"\\]+)*"'
     t.value = unquote(t.value[1:-1])
     return t
 
 def t_SYMBOL(t):
-    r'[^()" \t\r\n#0-9;][^()" \t\r\n]*'
+    r'[^()\[\]{}" \#\t\r\n0-9;][^()\[\]{}" \t\r\n]*'
     t.value = Sym(t.value)
     return t
-
-#def t_INT(t):
-#    r"[0-9]+"
-#    t.value = int(t.value)
-#    return t
 
 def t_NUMBER(t):
     r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
@@ -86,20 +79,15 @@ def p_item_list(p):
               |
     """
     if len(p) > 1:
-        p[0] = [p[1]] + p[2]
+        p[0] = [p[1]]
+        p[0].extend(p[2])
     else:
         p[0] = []
 
 def p_item(p):
     """
     item : sexp
-         | word
-    """
-    p[0] = p[1]
-
-def p_word(p):
-    """
-    word : SYMBOL
+         | SYMBOL
          | STRING
          | NUMBER
          | BOOL
@@ -121,6 +109,11 @@ outdir = os.path.dirname(__file__)
 lex.lex(debug=0, optimize=1, lextab="sexp_lex", outputdir=outdir)
 yacc.yacc(debug=0, optimize=1, tabmodule="sexp_tab", outputdir=outdir)
 
+#outdir = os.path.dirname(__file__)
+#lex.lex(debug=1, optimize=0, lextab="sexp_lex", outputdir=outdir)
+#yacc.yacc(debug=1, optimize=0, tabmodule="sexp_tab", outputdir=outdir)
+
+
 parse = yacc.parse
 
 
@@ -128,5 +121,5 @@ parse = yacc.parse
 
 if __name__ == "__main__":
     print yacc.parse('(+ 223 36.6 (aaa) bbb \"ccc\")')
-    print yacc.parse(r'(if (> 2 var) (cons a b) (display "no \"quoted\" " 22) )')
+    print yacc.parse(r'(if (> 2 var) (cons a b) (display "no \\ \"quoted\" \\ " 22) )')
     #print yacc.parse("(7:subject(3:ref5:alice6:mother))")

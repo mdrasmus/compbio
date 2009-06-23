@@ -115,7 +115,7 @@ def clustalwProfiles(aln1, aln2, verbose=True, removetmp=True, options=""):
 
 
 def readClustalwAlign(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     
     seqs = fasta.FastaDict()
     

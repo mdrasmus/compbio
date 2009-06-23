@@ -122,11 +122,11 @@ def main(conf):
                                     
             else:
                 # create new fasta with new gene names
-                fafile = util.replaceExt(alignfile, conf["alignext"], 
+                fafile = util.replace_ext(alignfile, conf["alignext"], 
                                          conf["fastaext"])
-                faoldfile = util.replaceExt(alignfile, conf["alignext"], 
+                faoldfile = util.replace_ext(alignfile, conf["alignext"], 
                                          conf["fastaoldext"])
-                alignoldfile = util.replaceExt(alignfile, conf["alignext"], 
+                alignoldfile = util.replace_ext(alignfile, conf["alignext"], 
                                          conf["alignoldext"])
 
                 os.rename(fafile, faoldfile)

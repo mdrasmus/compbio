@@ -25,7 +25,7 @@ def phyml(seqs, verbose=True, args=None,
 
     # create input
     labels = phylip.fasta2phylip(file("infile", "w"), seqs)
-    util.writeVector(file("labels", "w"), labels)
+    util.write_list(file("labels", "w"), labels)
     
     options = "y"
     

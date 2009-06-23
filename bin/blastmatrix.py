@@ -77,13 +77,13 @@ for hit in hits:
     mat3[j][i] = length / float(max(seqlengths[i], seqlengths[j]))
 blasthits.close()
 
-blastmat = util.replaceExt(conf["fasta"], conf["fastaext"], conf["distext"])
+blastmat = util.replace_ext(conf["fasta"], conf["fastaext"], conf["distext"])
 phylip.writeDistMatrix(mat, out=blastmat)
 
-blastmat2 = util.replaceExt(conf["fasta"], conf["fastaext"], conf["bitsiteext"])
+blastmat2 = util.replace_ext(conf["fasta"], conf["fastaext"], conf["bitsiteext"])
 phylip.writeDistMatrix(mat2, out=blastmat2)
 
-blastmat3 = util.replaceExt(conf["fasta"], conf["fastaext"], conf["coverageext"])
+blastmat3 = util.replace_ext(conf["fasta"], conf["fastaext"], conf["coverageext"])
 phylip.writeDistMatrix(mat3, out=blastmat3)
 
 util.toc()

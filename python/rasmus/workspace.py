@@ -15,10 +15,10 @@ _varset = {}
 
 
 def binsave(filename, var):
-    cPickle.dump(var, util.openStream(filename, "w"), 2)
+    cPickle.dump(var, util.open_stream(filename, "w"), 2)
 
 def binload(filename):
-    return cPickle.load(util.openStream(filename))
+    return cPickle.load(util.open_stream(filename))
 
 def varset():
     globals _varset

@@ -35,7 +35,7 @@ class BibHandler(xml.sax.handler.ContentHandler):
 
 
 def readBibXml(filename):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
 
     # Create a parser
     parser = make_parser()

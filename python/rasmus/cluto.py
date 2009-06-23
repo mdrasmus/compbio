@@ -17,21 +17,21 @@ from rasmus import treelib
 def writeDenseMatrix(filename, mat):
     """Write a CLUTO formatted dense matrix file"""
     
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     matrixlib.write_dmat(out, mat)
 
 
 def writeSquareMatrix(filename, mat):
     """Write a CLUTO formatted square matrix file"""
     
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     matrixlib.write_dmat(out, mat, square=True)
 
 
 def readDenseMatrix(filename):
     """Read a CLUTO formatted dense matrix file"""
     
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     nrows, ncols, nnz, mat = matrixlib.read_dmat(infile, header=True)
     return mat
 
@@ -140,8 +140,8 @@ def clusterTree(mat, nclusters=10, prog="vcluster", options="", verbose=False,
         os.system("%s %s %d %s -fulltree > /dev/null" % (prog, matfile, nclusters, options))
     
     tree = treelib.Tree()
-    tree.readParentTree(treefile)
-    partids = util.readInts(partfile)
+    tree.read_parent_tree(treefile)
+    partids = util.read_ints(partfile)
     
     # clean up
     if tmpfile != None:
@@ -169,7 +169,7 @@ def reorderTree(tree, mat, prog="vcluster"):
         writeSquareMatrix(matfile, mat)
     else:
         writeDenseMatrix(matfile, mat)
-    tree.writeParentTree(treefile, map(str, range(len(tree.leaves()))))
+    tree.write_parent_tree(treefile, map(str, range(len(tree.leaves()))))
 
     permfile = os.popen("cluto_reorder_tree %s %s 2>/dev/null" % 
                         (matfile, treefile))
@@ -203,7 +203,7 @@ def reorderPartids(partids, mat, prog="vcluster"):
         writeSquareMatrix(matfile, mat)
     else:
         writeDenseMatrix(matfile, mat)
-    util.writeVector(partidsfile, partids)
+    util.write_list(partidsfile, partids)
 
     permfile = os.popen("cluto_reorder %s %s full 2>/dev/null" % 
                         (matfile, partidsfile))

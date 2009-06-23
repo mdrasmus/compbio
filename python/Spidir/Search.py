@@ -44,7 +44,7 @@ def proposeNni(tree, node1, node2, change=0):
         node1, node2 = node2, node1  
     
     # try to see if edge is one branch (not root edge)
-    if treelib.isRooted(tree) and \
+    if treelib.is_rooted(tree) and \
        node2 == tree.root:
         # special case of specifying root edge
         if node2.children[0] == node1:

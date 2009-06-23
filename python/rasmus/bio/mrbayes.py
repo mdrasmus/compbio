@@ -1,4 +1,5 @@
 import os, StringIO
+from itertools import chain
 
 from rasmus import util
 from rasmus import treelib
@@ -79,7 +80,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
 
-def writeNexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
+def write_nexus(out, names, seqs, format="pep", options=None, seqwidth=1000):
     # setup options
     if options is None:
         options = {}
@@ -114,7 +115,7 @@ matrix
 ;
 end;
 """
-    
+writeNexus = write_nexus    
 
 
 
@@ -256,3 +257,31 @@ def readNexusConTree(infile):
     raise Exception("No tree found in output file")
 
  
+
+def read_nexus_trees(infile):
+    """Iterate over trees from trees run file"""
+    
+    infile = iter(infile)
+
+    # skip until translate
+    for line in infile:
+        if "translate" in line:
+            break
+
+    # read translate
+    names = {}
+    for line in infile:
+        if "tree rep" in line:
+            break
+        num, name = line.strip().replace(",", "").replace(";", "").split()
+        names[num] = name
+
+    # read trees
+    for line in chain([line], infile):
+        if "tree rep" not in line:
+            break
+
+        tree = treelib.parse_newick(line.split("=")[1])
+        for oldname in tree.leaf_names():
+            tree.rename(oldname, names[oldname])
+        yield tree

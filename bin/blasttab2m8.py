@@ -54,7 +54,7 @@ conversion = [0, 1, 2, 3, 9, 8, 4, 5, 6, 7, 12, 11]
 
 
 for tabfile in conf["REST"]:
-    m8file = util.replaceExt(tabfile, conf["oldext"], conf["newext"])
+    m8file = util.replace_ext(tabfile, conf["oldext"], conf["newext"])
     
     print tabfile, "==>", m8file
     

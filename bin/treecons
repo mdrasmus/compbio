@@ -56,19 +56,6 @@ conf = util.parseOptions(sys.argv, options)
 
 
 
-def mlhkydist(aln, tree, bgfreq, ratio, maxiter):
-    #ptree, nodes, nodelookup = treelib.make_ptree(tree)
-    #leaves = [x.name for x in nodes if isinstance(x.name, str)]
-    #seqs = util.mget(aln, leaves)
-    
-    #dists, logl = pyspidir.mlhkydist(ptree, seqs, bgfreq, ratio, maxiter)
-
-    return 
-    #for i in xrange(len(dists)):
-    #    nodes[i].dist = dists[i]    
-    #return logl
-
-
 def ensure_binary(tree):
     
     multibranches = [node for node in tree
@@ -105,15 +92,8 @@ for filename in conf["REST"]:
 
     if conf["rooted"]:
         args = "r\n" + args
-    
-    ntrees = len(open(filename).readlines())    
-    
-    if "numtrees" in conf and ntrees != conf["numtrees"]:
-        print >>sys.stderr, "wrong number of trees present (%d != %d)" % \
-            (ntrees, conf["numtrees"])
-        sys.exit(1)    
-    
-    tree = phylip.consenseFromFile(filename, False, args)
+
+    tree, ntrees = phylip.consense_from_file(filename, False, args)
     
     if "align" in conf:
         aln = fasta.readFasta(conf["align"])

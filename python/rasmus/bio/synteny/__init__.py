@@ -72,7 +72,7 @@ def write_synteny_blocks(out, blocks):
 
 
 def read_synteny_blocks(filename, feature="synteny"):
-    infile = util.openStream(filename)
+    infile = util.open_stream(filename)
     blocks = []
     
     for line in infile:

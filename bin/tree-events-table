@@ -3,7 +3,7 @@
 import os, sys
 
 from rasmus import treelib, tablelib, util
-from rasmus.bio import genomeutil, phylo
+from rasmus.bio import phylo
 
 import Spidir
 import Spidir.Likelihood
@@ -156,8 +156,8 @@ def addDupLossTree(stree, row):
 
 def main(conf):
     # read data
-    gene2species = genomeutil.readGene2species(conf["smap"])
-    stree = treelib.readTree(conf["stree"])
+    gene2species = phylo.read_gene2species(conf["smap"])
+    stree = treelib.read_tree(conf["stree"])
 
     if "params" in conf:
         params = Spidir.readParams(conf["params"])
@@ -173,7 +173,7 @@ def main(conf):
             treefiles.append(line.rstrip())
 
 
-    famids = [util.replaceExt(os.path.basename(x), conf["treeext"], "")
+    famids = [util.replace_ext(os.path.basename(x), conf["treeext"], "")
               for x in treefiles]
     
     tab, totalTree = countDupLoss(conf, treefiles, stree, gene2species, params)

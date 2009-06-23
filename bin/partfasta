@@ -31,8 +31,8 @@ conf, fa_files = o.parse_args()
 
 #=============================================================================
 # create a fasta for each family
-if not os.path.join(conf.outdir):
-    shutil.makedirs(conf.outdir)
+if not os.path.exists(conf.outdir):
+    os.makedirs(conf.outdir)
 
 
 # read partition

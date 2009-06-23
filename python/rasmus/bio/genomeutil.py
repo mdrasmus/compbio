@@ -206,7 +206,7 @@ def makeGenomeMultiBlocks(conf, matching, refGenome):
 
 
 def writeMultiBlocks(filename, multiblocks):
-    out = util.openStream(filename, "w")
+    out = util.open_stream(filename, "w")
     
     for multiblock in multiblocks:
         if len(multiblock.segments) > 0:
@@ -233,7 +233,7 @@ def iterMultiBlocks(filename):
     But currently this read is incompatiable with writeMultiBlocks
     """
     
-    infile = util.openStream(filename, "r")
+    infile = util.open_stream(filename, "r")
     
     for line in infile:
         tokens = line.split("\t")
@@ -804,7 +804,7 @@ class Matching:
     
     
     def readCoordFile(self, filename, gene2species):
-        infile = util.openStream(filename)
+        infile = util.open_stream(filename)
         for line in infile:
             geneName, chromName, start, end, strand = line.rstrip().split("\t")
             genomeName = gene2species(geneName)

@@ -69,8 +69,8 @@ def read_gene2species(* filenames):
     for filename in filenames:
         maps = []
         for filename in filenames:
-            maps.extend(util.read_delim(util.skipComments(
-                util.openStream(filename))))
+            maps.extend(util.read_delim(util.skip_comments(
+                util.open_stream(filename))))
     return make_gene2species(maps)    
 readGene2species = read_gene2species
 
@@ -182,7 +182,7 @@ def find_loss_node(node, recon):
     
     # determine whether node.parent is a dup
     # if so, send (species end) is part of species path
-    if labelEventsNode(node.parent, recon) == "dup":
+    if label_events_node(node.parent, recon) == "dup":
         spath.append(send)
     
     # go up species path (skip starting species)
@@ -254,9 +254,9 @@ countDup = count_dup
 def count_dup_loss(gtree, stree, recon, events=None):
     """Returns the number of duplications + losses in a gene tree"""
     if events is None:
-        events = labelEvents(gtree, recon)
+        events = label_events(gtree, recon)
     
-    nloss = len(findLoss(gtree, stree, recon))
+    nloss = len(find_loss(gtree, stree, recon))
     ndups = countDup(gtree, events)
     return nloss + ndups
 countDupLoss = count_dup_loss
@@ -340,7 +340,7 @@ def count_dup_loss_tree(tree, stree, gene2species, recon=None):
     if recon is None:
         recon = reconcile(tree, stree, gene2species)
     events = labelEvents(tree, recon)
-    losses = findLoss(tree, stree, recon)
+    losses = find_loss(tree, stree, recon)
     
     dup = 0
     loss = 0
@@ -383,6 +383,10 @@ def count_ancestral_genes(stree):
 
 
 def count_dup_loss_trees(trees, stree, gene2species):
+    """
+    Returns new species tree with dup,loss,appear,genes counts in node's data
+    """
+    
     stree = stree.copy()
     init_dup_loss_tree(stree)
 
@@ -423,7 +427,7 @@ def recon_root(gtree, stree, gene2species = gene2species,
         
     treelib.unroot(gtree, newCopy=False)
     treelib.reroot(gtree, 
-                   gtree.nodes[util.sort(gtree.leafNames())[0]].parent.name, 
+                   gtree.nodes[sorted(gtree.leaf_names())[0]].parent.name, 
                    onBranch=False, newCopy=False)
     
     
@@ -431,40 +435,40 @@ def recon_root(gtree, stree, gene2species = gene2species,
     # TODO: there is the possibility of ties, they are currently broken
     # arbitrarily.  In order to make comparison of reconRooted trees with 
     # same gene names accurate, hashOrdering must be done, for now.
-    hashOrderTree(gtree, gene2species)
+    hash_order_tree(gtree, gene2species)
     
     # get list of edges to root on
     edges = []
     def walk(node):
         edges.append((node, node.parent))
-        if not node.isLeaf():
+        if not node.is_leaf():
             node.recurse(walk)
             edges.append((node, node.parent))
     for child in gtree.root.children:
         walk(child)
-    
+
     
     # try initial root and recon    
     treelib.reroot(gtree, edges[0][0].name, newCopy=False)
     recon = reconcile(gtree, stree, gene2species)
-    events = labelEvents(gtree, recon)     
+    events = label_events(gtree, recon)
     
     # find reconciliation that minimizes loss
     minroot = edges[0]
     rootedge = sorted(edges[0])
     if rootby == "dup": 
-        cost = countDup(gtree, events)
+        cost = count_dup(gtree, events)
     elif rootby == "loss":
-        cost = len(findLoss(gtree, stree, recon))
+        cost = len(find_loss(gtree, stree, recon))
     elif rootby == "duploss":
-        cost = countDupLoss(gtree, stree, recon, events)
+        cost = count_dup_loss(gtree, stree, recon, events)
     else:
         raise "unknown rootby value '%s'"  % rootby
     mincost = cost
     
     
     # try rooting on everything
-    for edge in edges[1:-1]:
+    for edge in edges[1:]:
         if sorted(edge) == rootedge:
             continue
         rootedge = sorted(edge)
@@ -489,8 +493,8 @@ def recon_root(gtree, stree, gene2species = gene2species,
         
         recon[node2] = reconcile_node(node2, stree, recon)
         recon[gtree.root] = reconcile_node(gtree.root, stree, recon)
-        events[node2] = labelEventsNode(node2, recon)
-        events[gtree.root] = labelEventsNode(gtree.root, recon)
+        events[node2] = label_events_node(node2, recon)
+        events[gtree.root] = label_events_node(gtree.root, recon)
         
         if rootby in ["dup", "duploss"]:
             if events[node2] ==  "dup":
@@ -505,6 +509,7 @@ def recon_root(gtree, stree, gene2species = gene2species,
         if cost < mincost:
             mincost = cost
             minroot = edge
+
     
     # root tree by minroot
     if edge != minroot:
@@ -958,7 +963,7 @@ def propose_nni(tree, node1, node2, change=0):
         node1, node2 = node2, node1  
     
     # try to see if edge is one branch (not root edge)
-    if treelib.isRooted(tree) and \
+    if treelib.is_rooted(tree) and \
        node2 == tree.root:
         # special case of specifying root edge
         if node2.children[0] == node1:
@@ -1096,7 +1101,7 @@ def neighborjoin(distmat, genes, usertree=None):
     tree.root = tree.nodes[gene1]
 
     # root tree according to usertree    
-    if usertree != None and treelib.isRooted(usertree):
+    if usertree != None and treelib.is_rooted(usertree):
         roots = set([newnames[usertree.root.children[0]],
                      newnames[usertree.root.children[1]]])
         newroot = None
@@ -1134,7 +1139,7 @@ def least_square_error(tree, distmat, genes, forcePos=True, weighting=False):
             return array
             
     
-    if treelib.isRooted(tree):
+    if treelib.is_rooted(tree):
         rootedge = sorted([x.name for x in tree.root.children])
         treelib.unroot(tree, newCopy=False)
     else:
@@ -1355,7 +1360,7 @@ def findBranchSplits(tree):
         splits2[edge] = s
     
     # if tree is rooted, remove duplicate edge
-    if treelib.isRooted(tree):
+    if treelib.is_rooted(tree):
         edge1 = tuple(sorted([tree.root.name, tree.root.children[0].name]))
         edge2 = tuple(sorted([tree.root.name, tree.root.children[1].name]))
         if edge1 > edge2:

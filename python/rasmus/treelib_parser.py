@@ -1,6 +1,10 @@
 
 import os
-from rasmus.ply import lex, yacc
+
+try:
+    from rasmus.ply import lex, yacc
+except ImportError:
+    from ply import lex, yacc
 
 
 literals = ['+', ':', ';', '(',')', ","]

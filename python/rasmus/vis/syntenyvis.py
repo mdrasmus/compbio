@@ -364,7 +364,8 @@ class SyntenyVisBase:
                                                         frag.chrom),
                                     other.start, other.end):
                 block_lookup[gene2] = block
-
+                
+        self.block_lookup = block_lookup
         
         
         # find all genes that will be drawn
@@ -377,7 +378,7 @@ class SyntenyVisBase:
                 if gene2 in block_lookup:
                     frag_lookup[block_lookup[gene2]].genes.append(gene2)
                     refLookup[gene2] = gene
-        
+        self.refLookup = refLookup
         
         # determine fragment dimensions
         for frag in frag_lookup.itervalues():

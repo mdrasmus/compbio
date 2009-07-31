@@ -1445,7 +1445,7 @@ def splitBitString(split, leaves=None, char1="*", char2=".", nochar=" "):
     
 
 
-def robinsonFouldsError(tree1, tree2):
+def robinson_foulds_error(tree1, tree2):
     splits1 = findBranchSplits(tree1)
     splits2 = findBranchSplits(tree2)
 
@@ -1459,7 +1459,7 @@ def robinsonFouldsError(tree1, tree2):
         return 0.0
     else:
         return 1 - (len(overlap) / denom)
-
+robinsonFouldsError = robinson_foulds_error
 
 
 #=============================================================================

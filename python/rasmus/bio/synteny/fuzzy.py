@@ -89,7 +89,7 @@ def iter_chroms(hits):
 
         running[0] = False
                 
-    list(inner_iter())
+    list(inner_iter()) # initiate last_sp, last_chrom
     while running[0]:
         yield inner_iter()
         

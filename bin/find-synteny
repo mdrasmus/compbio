@@ -27,7 +27,7 @@ o.add_option("-o", "--orth", dest="orth", metavar="ORTHOLOG_FILE",
 o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
              action="append",
              help="genes are regions to compute synteny")
-o.add_option("-G", "--gff-format", dest="gff-format", metavar="(gff,gtf,gff3)")
+o.add_option("-G", "--gff-format", dest="gff_format", metavar="(gff,gtf,gff3)")
 o.add_option("-f", "--features", dest="features", metavar="FEATURES",
              help="features to use from GFF files")
 
@@ -70,7 +70,7 @@ def main(argv):
         
     format = {"gff": gff.GFF,
               "gtf": gff.GTF,
-              "gff3": gff.GFF3}[conf.format]
+              "gff3": gff.GFF3}[conf.gff_format]
 
     # read gff regions
     regions1 = []
@@ -82,20 +82,21 @@ def main(argv):
     if len(regions1) == 0 or len(regions2) == 0:
         print >>sys.stderr, "no regions for one of the species"
 
-    all_regions = set(x.data["ID"] for x in chain(regions1, regions2))
+    all_regions = dict((x.data["ID"], x.species)
+                       for x in chain(regions1, regions2))
 
     # read orthologs
     orths = []
     for f in conf.orth:
         for row in util.DelimReader(f):
-            if ((row[0] == species1 and 
-                 row[1] == species2) or \
-                (row[0] == species2 and 
-                 row[1] == species1)) and \
-                row[2] in all_regions and \
-                row[3] in all_regions:
-                orths.append((row[2], row[3]))
-
+            s1 = all_regions.get(row[0], None)
+            s2 = all_regions.get(row[1], None)            
+            if ((s1 == species1 and
+                 s2 == species2) or 
+                (s1 == species2 and 
+                 s2 == species1)):
+                orths.append((row[0], row[1]))
+                
     blocks = synteny.strict.find_synteny(species1, species2,
                                          regions1, regions2, orths)
 

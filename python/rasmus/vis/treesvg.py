@@ -13,6 +13,7 @@ import os
 
 
 def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
+              leafPadding=10,
               labelOffset=None, fontSize=10, labelSize=None,
               minlen=1, maxlen=util.INF, filename=sys.stdout,
               rmargin=150, lmargin=10, tmargin=0, bmargin=None,
@@ -107,7 +108,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         
         if node.isLeaf():
             canvas.text(str(node.name), 
-                        x + fontSize, y+fontSize/2., fontSize,
+                        x + leafPadding, y+fontSize/2., fontSize,
                         fillColor=node.color)
         else:
             top = coords[node.children[0]][1]
@@ -160,7 +161,7 @@ def draw_events(canvas, tree, coords, events, losses,
                         size, size,  fillColor=dupColor, strokeColor=(0,0,0,0))
 
     # draw losses
-    losses_per_branch = util.histDict([node for node, schild in losses])
+    losses_per_branch = util.hist_dict([node for node, schild in losses])
 
     for node, nlosses in losses_per_branch.iteritems():
         if node.parent == None:
@@ -171,7 +172,7 @@ def draw_events(canvas, tree, coords, events, losses,
         step = (x2 - x1) / float(nlosses + 1)
 
         for x in util.frange(x1 + step, x2-(step/2.0), step):
-            canvas.line(x, y1 - size/2.0, x, y1 + size/2.0, color=lossColor)
+            canvas.line(x, y1 - size, x, y1 + size, color=lossColor)
 
             
 

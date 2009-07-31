@@ -297,8 +297,15 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             xmargin=0, ymargin=0,
             labelPadding=2,
             labelSpacing=4,
+            mincutoff=None,
+            maxcutoff=None,
             showVals=False,
-            valColor=black):
+            formatVals=str,
+            valColor=black,
+            clabelsAngle=270,
+            clabelsPadding=None,
+            rlabelsAngle=0,
+            rlabelsPadding=None):
 
     from rasmus import util
     
@@ -348,6 +355,10 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     # draw matrix
     for i in xrange(nrows):
         for j in xrange(ncols):
+
+            if mincutoff and matrix[i][j] < mincutoff: continue
+            if maxcutoff and matrix[i][j] > maxcutoff: continue
+            
             color = colormap.get(matrix[i][j])
             s.rect(xstart + xdir*j*width, 
                    ystart + ydir*i*height, 
@@ -362,16 +373,28 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
         textsize = []
         for i in xrange(nrows):
             for j in xrange(ncols):
-                strval = "%.2f" % matrix[i][j]
-                textsize.append(min(height, width/(float(len(strval)) * fontwidth)))
+
+                if mincutoff and matrix[i][j] < mincutoff: continue
+                if maxcutoff and matrix[i][j] > maxcutoff: continue
+                
+                strval = formatVals(matrix[i][j])
+                if len(strval) > 0:
+                    textsize.append(min(height,
+                                        width/(float(len(strval)) * fontwidth)))
         textsize = min(textsize)
-    
+
+
+        yoffset = int(ydir == -1)
         for i in xrange(nrows):
             for j in xrange(ncols):
-                strval = "%.2f" % matrix[i][j]
+
+                if mincutoff and matrix[i][j] < mincutoff: continue
+                if maxcutoff and matrix[i][j] > maxcutoff: continue
+                
+                strval = formatVals(matrix[i][j])
                 s.text(strval, 
                        xstart + xdir*j*width, 
-                       ystart + ydir*i*height + 
+                       ystart + ydir*(i+yoffset)*height + 
                        height/2.0 + textsize/2.0, 
                        textsize,
                        fillColor=valColor)
@@ -380,20 +403,28 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     if rlabels != None:
         assert len(rlabels) == nrows, \
             "number of row labels does not equal number of rows"
+
+        if rlabelsPadding is None:
+            rlabelsPadding = labelPadding
         
         for i in xrange(nrows):
-            x = xstart - xdir*labelPadding
+            x = xstart - xdir*rlabelsPadding
             y = ystart + roffset + ydir*i*height - labelSpacing/2.
-            s.text(rlabels[i], x, y, height-labelSpacing, anchor=ranchor)
+            s.text(rlabels[i], x, y, height-labelSpacing, anchor=ranchor,
+                   angle=rlabelsAngle)
     
     if clabels != None:
         assert len(clabels) == ncols, \
             "number of col labels does not equal number of cols"
+
+        if clabelsPadding is None:
+            clabelsPadding = labelPadding
         
         for j in xrange(ncols):
             x = xstart + coffset + xdir*j*width - labelSpacing/2.
-            y = ystart - ydir*labelPadding
-            s.text(clabels[j], x, y, width-labelSpacing, anchor=canchor, angle=270)
+            y = ystart - ydir*clabelsPadding
+            s.text(clabels[j], x, y, width-labelSpacing, anchor=canchor,
+                   angle=clabelsAngle)
     
     # end svg
     s.endSvg()
@@ -402,7 +433,10 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     
     # display matrix
     if display:
-        os.system("display %s" % filename)
+        #if temp:
+            os.system("display %s" % filename)
+        #else:
+        #    os.spawnl(os.P_NOWAIT, "display", "display", filename)
     
     # clean up temp files
     if temp:

@@ -40,6 +40,14 @@ gene2species = phylo.read_gene2species(conf.smap)
 for treefile in args:
     print "rerooting %s..." % treefile
     tree = treelib.read_tree(treefile)
+
+    if (treelib.is_rooted(tree) and
+        (tree.root.children[0].is_leaf() or
+         tree.root.children[1].is_leaf())):
+        tree.root.children[0].data["boot"] = 0.0
+        tree.root.children[1].data["boot"] = 0.0
+        
+    
     phylo.recon_root(tree, stree, gene2species, 
                      rootby=conf.cost, newCopy=False)
     tree.write(treefile)

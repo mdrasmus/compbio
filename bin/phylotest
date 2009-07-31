@@ -91,8 +91,9 @@ def get_speciations(tree, events):
 
 
 def get_losses(tree, stree, recon):
-    return set((loss[0].name, loss[1].name)
-               for loss in phylo.findLoss(tree, stree, recon))
+    return set((tuple(sorted(loss[0].leaf_names())),
+                loss[1].name)
+               for loss in phylo.find_loss(tree, stree, recon))
          
 
 def get_orths(tree, events):
@@ -102,9 +103,9 @@ def get_orths(tree, events):
              if events[node] == "spec"]
     
     return set(tuple(sorted((a, b)))
-               for x in specs
-               for a in x[0]
-               for b in x[1])
+               for s in specs
+               for a in s[0]
+               for b in s[1])
 
 
 def report_test(argv):
@@ -227,7 +228,7 @@ def report_test(argv):
             dups_tp = len(data_dups & eval_dups)
             losses_tp = len(data_losses & eval_losses)
             orths_tp = len(data_orths & eval_orths)
-                
+
 
             # get general stats
             ngenes = len(evaltree.leaves())
@@ -246,7 +247,7 @@ def report_test(argv):
             ntrees += 1
             total_branches += nbranches
             total_branches_correct += branches_correct
-
+            
             tab.write_row(out2,
                 {"tree": name,
                  "ngenes": ngenes,

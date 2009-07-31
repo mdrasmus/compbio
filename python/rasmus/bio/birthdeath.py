@@ -151,7 +151,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
     losses = set()
     
     def walk(snode, node):
-        if snode.isLeaf():
+        if snode.is_leaf():
             tree.rename(node.name, genename(snode.name, node.name))
             events[node] = "gene"
         else:
@@ -182,15 +182,16 @@ def sample_birth_death_gene_tree(stree, birth, death,
                     walk(child, leaf)
             
             # if no child for node then it is a loss
-            if node.isLeaf():
+            if node.is_leaf():
                 losses.add(node)
     walk(stree.root, tree.root)
     
     
     # remove lost nodes
     if removeloss:
-        treelib.removeExposedInternalNodes(tree, set(tree.leaves()) - losses)
-        treelib.removeSingleChildren(tree)
+        treelib.remove_exposed_internal_nodes(tree,
+                                              set(tree.leaves()) - losses)
+        treelib.remove_single_children(tree)
         
         delnodes = set()
         for node in recon:

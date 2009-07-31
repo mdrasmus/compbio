@@ -51,6 +51,12 @@ o.add_option("--len", dest="len",
              action="store_true",
              default=False,
              help="display branch lengths")
+o.add_option("", "--hideboot", dest="hideboot",
+             action="store_true")
+o.add_option("", "--hidelegend", dest="hidelegend",
+             action="store_true")
+o.add_option("", "--eventsize", dest="eventsize",
+             metavar="<pixels>", default=10, type="int")
 o.add_option("-r", "--reroot", dest="reroot",
              metavar="<branch to root tree>")
 o.add_option("", "--midpoint_root", dest="midpoint_root",
@@ -148,7 +154,8 @@ def get_branch_labels(tree):
             labels[node.name] += "%f" % node.dist
 
         # label bootstraps
-        if "boot" in node.data and node.data["boot"] != 0:
+        if (not options.hideboot and
+            "boot" in node.data and node.data["boot"] != 0):
             if isinstance(node.data["boot"], int):
                 labels[node.name] = "(%d) %s" % (node.data["boot"], 
                                                  labels[node.name])
@@ -200,10 +207,11 @@ def display_tree(tree, options, labels=None,
                               xscale=options.scale,
                               minlen=options.minlen,
                               maxlen=options.maxlen,
-                              legendScale=True,
+                              legendScale=not options.hidelegend,
                               colormap=colormap,
                               stree=stree,
                               fontSize=12,
+                              eventSize=options.eventsize,
                               gene2species=gene2species)
         else:
             treesvg.draw_tree(tree, labels=labels,
@@ -211,10 +219,11 @@ def display_tree(tree, options, labels=None,
                               minlen=options.minlen,
                               maxlen=options.maxlen,
                               filename=options.graphical,
-                              legendScale=True,
+                              legendScale=not options.hidelegend,
                               colormap=colormap,
                               stree=stree,
                               fontSize=12,
+                              eventSize=options.eventsize,
                               gene2species=gene2species)
     elif options.newick:
         # write newick notation

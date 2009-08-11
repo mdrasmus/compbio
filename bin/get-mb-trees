@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+# convert a mrbayes trees file into a simple trees file
+
+import sys
+from rasmus import treelib
+from rasmus.bio.mrbayes import read_nexus_trees
+
+
+for tree in read_nexus_trees(sys.stdin):
+    print tree.get_one_line_newick()
+

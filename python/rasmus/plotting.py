@@ -9,6 +9,7 @@
 #from rasmus import util
 from rasmus import svg
 
+
 import sys, os, copy
 import tempfile as temporaryfile
 
@@ -260,9 +261,10 @@ def rainbowColorMap(data=None, low=None, high=None):
 # svg plotting
     
 def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
-    l, h = hist2(x, y, ndivs1, ndivs2)
-    bwidth = bucketSize(x)
-    bheight = bucketSize(y)
+    from rasmus import util
+    l, h = util.hist2(x, y, ndivs1, ndivs2)
+    bwidth = util.bucket_size(x)
+    bheight = util.bucket_size(y)
     
     #width *= bwidth/bheight
     
@@ -1048,21 +1050,23 @@ def plotfunc(func, start, end, step, **options):
 
 def plothist(array, ndivs=None, low=None, width=None, **options):
     """Plot a histogram of array"""
-    h = hist(array, ndivs, low, width)
+    from rasmus import util
+    h = util.hist(array, ndivs, low, width)
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes fill solid")
     
-    p.plot(histbins(h[0]), h[1], **options)
+    p.plot(util.histbins(h[0]), h[1], **options)
     return p
 
 
 def plotdistrib(array, ndivs=None, low=None, width=None, **options):
     """Plot a distribution of array"""
-    d = distrib(array, ndivs, low, width)
+    from rasmus import util
+    d = util.distrib(array, ndivs, low, width)
     p = options.setdefault("plot", Gnuplot())
     options.setdefault("style", "boxes")
     
-    p.plot(histbins(d[0]), d[1], **options)
+    p.plot(util.histbins(d[0]), d[1], **options)
     return p
 
 

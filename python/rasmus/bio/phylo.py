@@ -410,6 +410,34 @@ def write_event_tree(stree, out=sys.stdout):
                       out=out)
 
 
+def dup_consistency(tree, recon, events):
+    """
+    Calculate duplication consistency scores for a reconcilied tree
+
+    See Vilella2009 (Ensembl)
+    """
+    
+    spset = {}
+    def walk(node):
+        for child in node.children:
+            walk(child)
+        if node.is_leaf():
+            spset[node] = set([recon[node]])
+        else:
+            spset[node] = (spset[node.children[0]] |
+                           spset[node.children[1]])
+    walk(tree.root)
+    
+    conf = {}
+    for node in tree:
+        if events[node] == "dup":
+            conf[node] = (len(spset[node.children[0]] &
+                              spset[node.children[1]]) /
+                          float(len(spset[node])))
+
+    return conf
+
+
 #=============================================================================
 # tree rooting
 

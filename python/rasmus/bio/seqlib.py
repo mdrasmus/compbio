@@ -302,7 +302,7 @@ INT2BASE = ["A", "C", "G", "T"]
 #
 
 class TranslateError (Exception):
-    def __init__(self, msg, aa, dna, a, codon):
+    def __init__(self, msg, aa=None, dna=None, a=None, codon=None):
         Exception.__init__(self, msg)
         self.aa = aa
         self.dna = dna
@@ -332,6 +332,13 @@ def revtranslate(aa, dna, check=False):
     
        Must supply original ungapped DNA.
     """
+
+    a = len(dna.replace("-", ""))
+    b = len(aa.replace("-", "")) * 3
+
+    if a != b:
+        raise TranslateError("sequences have wrong lengths (%d != %d)" %
+                             (a, b), aa, dna, None, None)
 
     seq = []
     i = 0

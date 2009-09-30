@@ -37,12 +37,12 @@ from rasmus import treelib
 # managing input, output, and execution of PHYLIP-like programs
 #
 
-def validateSeq(seqs):
+def validate_seqs(seqs):
     """Ensures sequences are all same size"""
     
     sizes = map(len, seqs.values())
     assert util.equal(* sizes), "sequences are not same length"
-
+validateSeq = validate_seqs
 
 def checkTempFiles(force=False):
     """Ensure PHYLIP tempfiles do not already exist in current directory"""
@@ -116,8 +116,8 @@ def saveTempDir(directory, newname):
 #    
 
 
-def writePhylipAlign(out, seqs, stripNames=True):
-    validateSeq(seqs)
+def write_phylip_align(out, seqs, stripNames=True):
+    validate_seqs(seqs)
     
     if stripNames:
         print >>out, len(seqs), len(seqs.values()[0])
@@ -132,7 +132,7 @@ def writePhylipAlign(out, seqs, stripNames=True):
                 print >>out, "%s  %s" % (name, seqs[name])
 
     return seqs.keys()
-
+writePhylipAlign = write_phylip_align
 
 def fasta2phylip(out, seqs, stripNames=True):
     """DEPRECATED use writePhylipAlign()"""
@@ -379,7 +379,7 @@ def writeAlignment(out, seqs):
     
     out = util.open_stream(out, "w")
     
-    validateSeq(seqs)
+    validate_seqs(seqs)
     
     i = 0
     print >>out, len(seqs), len(seqs.values()[0])
@@ -427,7 +427,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
                bootiter=1,
                seed=1,
                jumble=1):
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
 
     util.tic("%s on %d of length %d" % (prog, len(seqs), len(seqs.values()[0])))
@@ -508,7 +508,7 @@ def bootNeighbor(seqs, iters=100, seed=None, output=None,
     if seed == None:
         seed = random.randInt(0, 1000) * 2 + 1
     
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
     util.tic("bootNeighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
@@ -589,7 +589,7 @@ def dnapars(seqs, verbose=True, force = False, args="y",
 
 
 def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
-    validateSeq(aln)
+    validate_seqs(aln)
     cwd = createTempDir()
 
     util.tic("proml on %d of length %d" % (len(aln), len(aln.values()[0])))
@@ -650,7 +650,7 @@ def protdist(seqs, output=None, verbose=True, force = False, args=None):
     if args == None:
         args = "y"
 
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
     util.tic("protdist on %d of length %d" % (len(seqs), len(seqs.values()[0])))
     
@@ -677,7 +677,7 @@ def dnadist(seqs, output=None, verbose=True, force = False, args=None):
     if args == None:
         args = "y"
     
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
     util.tic("dnadist on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
@@ -727,7 +727,7 @@ def correctDistMatrix(distmat, maxdist=40, fardist=None):
 
 def bootNeighbor(seqs, iters=100, seed=1, output=None, 
                  verbose=True, force=False):
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
     util.tic("bootNeighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
@@ -764,7 +764,7 @@ def bootNeighbor(seqs, iters=100, seed=1, output=None,
 
 def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None, 
                  verbose=True, force = False):
-    validateSeq(seqs)
+    validate_seqs(seqs)
     cwd = createTempDir()
     util.tic("bootProml on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 

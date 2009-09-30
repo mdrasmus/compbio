@@ -86,7 +86,7 @@ def pamp(seqs, tree, seqtype="dna", saveOutput="", verbose=False, safe=True):
 
     # create input
     nex = nexus.Nexus("align", "w")
-    nex.writeMatrix(seqs.keys(), seqs.values(), seqtype, seqs.alignlen())
+    nex.write_matrix(seqs.keys(), seqs.values(), seqtype, seqs.alignlen())
     nex.close()
     treefile = open("tree", "w")
     treefile.write("%d 1\n" % len(tree.leaves()))

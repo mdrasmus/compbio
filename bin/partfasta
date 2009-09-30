@@ -36,7 +36,6 @@ if not os.path.exists(conf.outdir):
 
 
 # read partition
-assert conf.part
 parts = util.read_delim(conf.part)
 
 # get famids

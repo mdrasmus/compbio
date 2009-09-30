@@ -6,7 +6,7 @@
  Plotting classes and functions: R plotting, GNUPLOT wrapper, svg, heatmaps
 """
 
-#from rasmus import util
+#from rasmus import util # will not allow from plotting import * inside util
 from rasmus import svg
 
 

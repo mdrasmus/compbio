@@ -2,14 +2,14 @@
 
 class Nexus (object):
     
-    def __init__(self, filename=None, mod=""):
+    def __init__(self, filename=None, mod="w"):
         self.out = None
         
         if filename is not None and mod == "w":
-            self.write(filename)
+            self.write_header(filename)
             
     
-    def write(self, filename):
+    def write_header(self, filename):
         if isinstance(filename, basestring):
             self.out = open(filename, "w")
         else:
@@ -18,7 +18,7 @@ class Nexus (object):
         self.out.write("#NEXUS\n")
     
     
-    def writeMatrix(self, names, seqs, format, seqwidth=1000):
+    def write_matrix(self, names, seqs, format, seqwidth=1000):
         
         if format == "pep":
             format = "protein"
@@ -40,7 +40,11 @@ matrix
             size += seqwidth
 
         self.out.write(";\nend;\n")
-        
+
+
+    def write(self, data):
+        self.out.write(data)
+
     
     def close(self):
         self.out.close()

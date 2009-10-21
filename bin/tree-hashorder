@@ -17,7 +17,7 @@ newext = sys.argv[2]
 for filename in sys.argv[3:]:
     print filename
     tree = treelib.read_tree(filename)
-    phylo.hashOrderTree(tree)
+    phylo.hash_order_tree(tree)
     
     filename2 = util.replace_ext(filename, oldext, newext)
     tree.write(filename2)

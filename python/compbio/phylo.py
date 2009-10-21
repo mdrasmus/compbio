@@ -62,7 +62,6 @@ def make_gene2species(maps):
         
         raise Exception("Cannot map gene '%s' to any species" % gene)
     return gene2species
-makeGene2species = make_gene2species
 
 
 def read_gene2species(* filenames):
@@ -71,8 +70,7 @@ def read_gene2species(* filenames):
         for filename in filenames:
             maps.extend(util.read_delim(util.skip_comments(
                 util.open_stream(filename))))
-    return make_gene2species(maps)    
-readGene2species = read_gene2species
+    return make_gene2species(maps)
 
 
 #=============================================================================
@@ -675,7 +673,7 @@ def get_orthologs(tree, events):
 
 def hash_tree_compose(child_hashes):
     return "(%s)" % ",".join(child_hashes)
-hashTreeCompose = hash_tree_compose
+
 
 def hash_tree(tree, smap = lambda x: x):
     def walk(node):
@@ -692,7 +690,6 @@ def hash_tree(tree, smap = lambda x: x):
         return walk(tree)
     else:
         raise Exception("Expected Tree object")
-hashTree = hash_tree
 
 
 def hash_order_tree(tree, smap = lambda x: x):
@@ -706,7 +703,6 @@ def hash_order_tree(tree, smap = lambda x: x):
             node.children = util.mget(node.children, ind)
             return hash_tree_compose(child_hashes)
     walk(tree.root)
-hashOrderTree = hash_order_tree
 
 
 
@@ -906,7 +902,6 @@ def add_spec_node(node, snode, tree, recon, events):
     events[newnode] = "spec"
 
     return newnode
-addSpecNode = add_spec_node
 
 
 def add_implied_spec_nodes(tree, stree, recon, events):
@@ -957,7 +952,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
             addedNodes.append(add_spec_node(node, send, tree, recon, events))
 
     return addedNodes
-addImpliedSpecNodes = add_implied_spec_nodes
+
 
 
 #=============================================================================
@@ -1025,7 +1020,7 @@ def propose_nni(tree, node1, node2, change=0):
     # swap child pointers
     node2.children[uncle], node1.children[change] = \
         node1.children[change], node2.children[uncle]
-proposeNni = propose_nni
+
 
 
 #=============================================================================
@@ -1671,7 +1666,7 @@ def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
     
     phylip.writePhylipAlign(file(infile, "w"), aln)
     phylip.execPhylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.readDistMatrix(outfile)
+    labels, distmat = phylip.read_dist_matrix(outfile)
 
     if madePhylip:
         os.remove("outfile")

@@ -16,25 +16,25 @@ def getDistMatrix(seqs, output=None, verbose=True, force = False, args=None):
     args = "k\nk\nk\n" + args
     
 
-    phylip.validateSeq(seqs)
-    cwd = phylip.createTempDir()
+    phylip.validate_seqs(seqs)
+    cwd = phylip.create_temp_dir()
     util.tic("puzzle on %d of length %d" % (len(seqs), len(seqs.values()[0])))
     
     # create input
-    labels = phylip.writePhylipAlign(file("infile", "w"), seqs)
+    labels = phylip.write_phylip_align(file("infile", "w"), seqs)
     util.write_list(file("labels", "w"), labels)
     
     # run phylip
-    phylip.execPhylip("puzzle infile", args, verbose)
+    phylip.exec_phylip("puzzle infile", args, verbose)
     
     util.toc()
     
     # parse output
     if output != None:
         os.rename("infile.dist", "../" + output)
-        phylip.cleanupTempDir(cwd)
+        phylip.cleanup_temp_dir(cwd)
         return labels
     else:
-        name, mat = phylip.readDistMatrix("infile.dist")
-        phylip.cleanupTempDir(cwd)
+        name, mat = phylip.read_dist_matrix("infile.dist")
+        phylip.cleanup_temp_dir(cwd)
         return labels, mat

@@ -22,14 +22,14 @@ if len(conf["REST"]) != 2:
     print >>sys.stderr, "must give two trees"
     sys.exit(1)
 
-tree1, tree2 = map(treelib.readTree, conf["REST"])
+tree1, tree2 = map(treelib.read_tree, conf["REST"])
 
 if conf["unroot"]:
     treelib.reroot(tree1, sorted(tree1.leafNames())[0], newCopy=False)
     treelib.reroot(tree2, sorted(tree1.leafNames())[0], newCopy=False)
 
-hash1 = phylo.hashTree(tree1)
-hash2 = phylo.hashTree(tree2)
+hash1 = phylo.hash_tree(tree1)
+hash2 = phylo.hash_tree(tree2)
 
 print hash1 == hash2
 

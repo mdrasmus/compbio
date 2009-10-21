@@ -1,3 +1,12 @@
+"""
+
+    Dotplot visualization
+
+
+"""
+
+
+
 # python libs
 import math
 import itertools
@@ -9,14 +18,27 @@ import summon
 from summon import shapes, colors
 
 # rasmus libs
-from rasmus import algorithms
 from rasmus import util
 from rasmus import regionlib
-from rasmus.bio import clustalw
-from rasmus.bio import fasta
 from rasmus.bio.synteny import SyntenyBlock
-from rasmus.bio.synteny import read_synteny_blocks as readSyntenyBlocks
+#from rasmus.bio.synteny import read_synteny_blocks as readSyntenyBlocks
 
+
+def make_chroms(genes):
+    """Make default chromosomes for a set of genes"""
+    
+    chroms = {}
+    for gene in genes:
+        if gene.seqname in chroms:
+            chrom = chroms[gene.seqname]
+            chrom.end = max(chrom.end, gene.end)
+        else:
+            chrom = regionlib.Region(gene.species, gene.seqname, "chromosome",
+                                     1, gene.end)
+            chroms[gene.seqname] = chrom
+
+    return sorted(chroms.values(), key=lambda x: x.end, reverse=True)
+   
 
 
 

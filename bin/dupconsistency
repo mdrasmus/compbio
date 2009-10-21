@@ -29,11 +29,12 @@ for filename in sys.stdin:
     events = phylo.label_events(tree, recon)
     dupcons = phylo.dup_consistency(tree, recon, events)
 
-    scores = [(node.name, score) for (node, score) in dupcons.items()]
+    scores = [(node, score) for (node, score) in dupcons.items()]
     scores.sort()
 
-    for name, score in scores:
-        print "\t".join([filename, str(name), str(score)])
+    for node, score in scores:
+        print "\t".join([filename, str(node.name),
+                         str(recon[node].name), str(score)])
 
 
         

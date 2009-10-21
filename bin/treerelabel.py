@@ -15,14 +15,11 @@ param = util.parseOptions(sys.argv, options, quit=True)
 
 
 if file(param["label"][-1]).read()[0] == ">":
-    labels = fasta.readFasta(param["label"][-1]).keys()
+    labels = fasta.read_fasta(param["label"][-1]).keys()
 else:
-    labels = util.readStrings(param["label"][-1])
+    labels = util.read_strings(param["label"][-1])
     
-tree = treelib.Tree()
-tree.readNewick(param["tree"][-1])
-
-phylip.renameTreeWithNames(tree, labels)
-
-tree.writeNewick(sys.stdout)
+tree = treelib.read_tree(param["tree"][-1])
+phylip.rename_tree_with_names(tree, labels)
+tree.write(sys.stdout)
 

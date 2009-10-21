@@ -43,19 +43,19 @@ util.tic("perform blast")
 hits = blast.iterBestHitPerTarget(
             blast.blastp(conf["fasta"], conf["fasta"], split=100))
 
-seqs = fasta.readFasta(conf["fasta"])
+seqs = fasta.read_fasta(conf["fasta"])
 
 # store hits in a matrix ordered to match alignment
 if "align" in conf:
-    aln = fasta.readFasta(conf["align"])
+    aln = fasta.read_fasta(conf["align"])
     #aln = alignlib.mapalign(aln, valfunc=lambda seq: filter(lambda x: x != '-', seq))
     keys = aln.keys()
 else:
     keys = seqs.keys()
 
-mat = util.makeMatrix(len(keys), len(keys))
-mat2 = util.makeMatrix(len(keys), len(keys))
-mat3 = util.makeMatrix(len(keys), len(keys))
+mat = util.make_matrix(len(keys), len(keys))
+mat2 = util.make_matrix(len(keys), len(keys))
+mat3 = util.make_matrix(len(keys), len(keys))
 lookup = util.list2lookup(keys)
 seqlengths = [len(x) for x in util.mget(seqs, keys)]
 
@@ -78,12 +78,12 @@ for hit in hits:
 blasthits.close()
 
 blastmat = util.replace_ext(conf["fasta"], conf["fastaext"], conf["distext"])
-phylip.writeDistMatrix(mat, out=blastmat)
+phylip.write_dist_matrix(mat, out=blastmat)
 
 blastmat2 = util.replace_ext(conf["fasta"], conf["fastaext"], conf["bitsiteext"])
-phylip.writeDistMatrix(mat2, out=blastmat2)
+phylip.write_dist_matrix(mat2, out=blastmat2)
 
 blastmat3 = util.replace_ext(conf["fasta"], conf["fastaext"], conf["coverageext"])
-phylip.writeDistMatrix(mat3, out=blastmat3)
+phylip.write_dist_matrix(mat3, out=blastmat3)
 
 util.toc()

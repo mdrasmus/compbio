@@ -32,7 +32,7 @@ for fn in files:
     
     outdir = basename + conf.outputext
     phy.make_output_dir(outdir)
-    align = fasta.readFasta(basename + conf.alignext)    
+    align = fasta.read_fasta(basename + conf.alignext)    
 
     if len(align) <= 2:
         continue
@@ -50,7 +50,7 @@ for fn in files:
     else:
         labels = phylip.dnadist(align, distfile, verbose=True)
 
-    labels_junk, distmat = phylip.readDistMatrix(distfile)
+    labels_junk, distmat = phylip.read_dist_matrix(distfile)
     write_dist_matrix(distmat, labels, distfile)
 
     

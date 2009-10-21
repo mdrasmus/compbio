@@ -1,11 +1,20 @@
+"""
+
+    Module for working with FASTA files
+
+"""
+
+# python imports
 import sys
 import os
-
 from itertools import izip
 
+# rasmus imports
 from rasmus import util
-from rasmus.bio import seqlib
-from rasmus.bio.seqlib import SeqDict
+
+# seqlib imports
+from . import seqlib
+from seqlib import SeqDict
 
 
 

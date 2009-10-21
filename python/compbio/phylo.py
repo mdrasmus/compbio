@@ -19,9 +19,10 @@ from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
-from rasmus.bio import blast
-from rasmus.bio import fasta
-from rasmus.bio import phylip
+# compbio imports
+from . import blast
+from . import fasta
+from . import phylip
 
 
 # NOTE: camelCase names are DEPRECATED
@@ -32,7 +33,7 @@ from rasmus.bio import phylip
 
 
 def gene2species(genename):
-    """default gene2species mapping"""
+    """Default gene2species mapping"""
     return genename
 
 
@@ -65,6 +66,12 @@ def make_gene2species(maps):
 
 
 def read_gene2species(* filenames):
+    """
+    Reads a gene2species file
+
+    Returns a function that will map gene names to species names.
+    """
+    
     for filename in filenames:
         maps = []
         for filename in filenames:
@@ -78,7 +85,11 @@ def read_gene2species(* filenames):
 #
     
 
-def reconcile(gtree, stree, gene2species = gene2species):
+def reconcile(gtree, stree, gene2species=gene2species):
+    """
+    Returns a reconciliation dict for a gene tree 'gtree' and species tree 'stree'
+    """
+    
     recon = {}
     
     # determine the preorder traversal of the stree
@@ -132,7 +143,7 @@ def reconcile_lca(stree, order, nodes):
 
 def reconcile_node(node, stree, recon):
     """Reconcile a single gene node to a species node"""
-    return treelib.lca(util.mget(recon, node.children))
+    return treelib.lca([recon[x] for x in node.children])
 
 
 def label_events(gtree, recon):
@@ -161,6 +172,7 @@ labelEventsNode = label_events_node
 
 
 def find_loss_node(node, recon):
+    """Finds the loss events for a branch in a reconciled gene tree"""
     loss = []
     
     # if not parent, then no losses

@@ -1,8 +1,13 @@
+
+# python imports
 import os
 
+# rasmus imports
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import fasta
+
+# compbio imports
+from . import fasta
 
 
 

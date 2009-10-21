@@ -27,10 +27,12 @@ import shutil
 import sys
 
 # rasmus imports
-from rasmus.bio import fasta
 from rasmus import util
 from rasmus import treelib
 
+
+# compbio imports
+from . import fasta
 
 
 #=============================================================================

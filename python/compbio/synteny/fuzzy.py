@@ -11,7 +11,8 @@ from rasmus import util
 from rasmus.linked_list import LinkedList
 from rasmus.algorithms import UnionFind
 from rasmus.regionlib import Region
-from rasmus.bio.synteny import SyntenyBlock
+
+from . import SyntenyBlock
 
 
 def iter_windows(hits, radius):

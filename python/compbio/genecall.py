@@ -3,7 +3,7 @@ from rasmus import regionlib
 from rasmus import graph
 from rasmus import util
 
-from rasmus.bio import alignlib
+from . import alignlib
 
     
 def findFragments(regiondb, aln, overlapCutoff=.10):

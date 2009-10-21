@@ -1,8 +1,10 @@
+
+# python imports
 import copy
 import math
 import random
 
-
+# rasmus imports
 from rasmus import util
 
 
@@ -379,6 +381,8 @@ def gcContent(seq):
 #=============================================================================
 # Kimura sequence mutation model
 #
+# TODO: maybe move to phylo module
+
 
 KIMURA_MATRIX = [
     ['r', 's', 'u', 's'],

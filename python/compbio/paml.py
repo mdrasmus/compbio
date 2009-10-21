@@ -4,8 +4,10 @@ import os, re
 
 # rasmus libs
 from rasmus import util, tablelib, treelib
-from rasmus.bio import alignlib, seqlib
-from rasmus.bio import fasta, phylip, nexus
+
+# compbio imports
+from . import alignlib, seqlib
+from . import fasta, phylip, nexus
 
 
 def removeStopCodons(seq, stops=None):

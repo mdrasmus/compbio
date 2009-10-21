@@ -21,8 +21,8 @@ for fn in files:
     outdir = basename + conf.outputext
     phy.make_output_dir(outdir)
     align = fasta.read_fasta(basename + conf.alignext)
-    labels = phylip.writePhylipAlign(file(outdir + "/infile", "w"), align,
-                                     False)
+    labels = phylip.write_phylip_align(file(outdir + "/infile", "w"), align,
+                                       False)
     util.write_list(file(outdir + "/labels", "w"), labels)
 
     # require minimium size of alignment

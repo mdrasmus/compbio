@@ -1,6 +1,10 @@
+
+
 from rasmus import util
 from rasmus import tablelib
-from rasmus.bio import fasta, alignlib
+
+
+from . import fasta, alignlib
 
 
 
@@ -15,7 +19,7 @@ class GenomeAlign (object):
     
     
     def read(self, masterFile):
-        for row in tablelib.iterTable(masterFile):
+        for row in tablelib.iter_table(masterFile):
             self.lookup[(row['species'], row['chromosome'])].append(row)
 
 
@@ -45,7 +49,7 @@ class GenomeAlign (object):
         # read alignments
         alns = []
         for record in records:
-            aln = fasta.readFasta(record["filename"])
+            aln = fasta.read_fasta(record["filename"])
             
             # collapse alignment
             if collapse:

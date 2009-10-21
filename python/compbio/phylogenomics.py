@@ -3,7 +3,8 @@ import sys, os, re
 from pysqlite2 import dbapi2 as sqlite
 
 from rasmus import tablelib, stats, treelib, util
-from rasmus.bio import genecluster, genomeutil, fasta, gff
+
+from . import genecluster, genomeutil, fasta, gff
 
 
 def tableExists(cur, tablename):

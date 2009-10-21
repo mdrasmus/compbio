@@ -7,10 +7,12 @@
 import os
 import sys
 
-from rasmus.bio import phylip
-from rasmus.bio import fasta
 from rasmus import util
 from rasmus import treelib
+
+from . import phylip
+from . import fasta
+
 
 
 

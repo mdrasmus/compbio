@@ -1,10 +1,11 @@
 
 
-from rasmus.bio.synteny import SyntenyBlock, make_orth
+
+
 from rasmus import regionlib
 from rasmus import util
 
-
+from . import SyntenyBlock, make_orth
 
 
 

@@ -3,8 +3,10 @@ import os
 
 # rasmus libs
 from rasmus import util
-from rasmus.bio import fasta
-from rasmus.bio import phylip
+
+# compbio libs
+from . import fasta
+from . import phylip
 
 
 

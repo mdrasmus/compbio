@@ -2,10 +2,16 @@
 # python wrapper for BIONJ
 #
 
+
+# python imports
 import os
+
+# rasmus imports
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import phylip
+
+# compbio imports
+from . import phylip
 
 
 

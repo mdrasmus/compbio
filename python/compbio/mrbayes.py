@@ -3,8 +3,8 @@ from itertools import chain
 
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import fasta
-from rasmus.bio import phylip
+from . import fasta
+from . import phylip
 
 
 

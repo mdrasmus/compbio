@@ -15,8 +15,8 @@ from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
-from rasmus.bio import fasta
-from rasmus.bio import gff, phylo
+from . import fasta
+from . import gff, phylo
 
 
 #

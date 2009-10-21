@@ -20,7 +20,7 @@ from rasmus import regionlib
 from rasmus import tablelib
 from rasmus.cluster import *
 
-from rasmus.bio import blast
+from . import blast
 
 
 

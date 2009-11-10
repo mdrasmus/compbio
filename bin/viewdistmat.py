@@ -2,9 +2,10 @@
 
 import sys
 
-from rasmus import fasta
 from rasmus import util
-from rasmus import phylip
+
+from compbio import phylip
+from compbio import fasta
 
 options = [
     ["d:", "dist=", "dist", "<distance matrix>", 

@@ -340,12 +340,20 @@ def write_imat(out, nrows, ncols, nnz, imat):
 def iter_rmat(infile):
     """
     Read an compressed-row matrix
-    Columns are 1 indexed
+    Columns are 1 indexed in file, but 0 index in memory
     Returns nrows, ncols, nnz, imat (index matrix iterator)    
     """
 
     line = infile.next()
-    nrows, ncols, nnz = map(int, line.rstrip().split())
+    tokens = map(int, line.rstrip().split())
+
+    if len(tokens) == 2:
+        nrows, nnz = tokens
+        ncols = nrows
+    elif len(tokens) == 3:
+        nrows, ncols, nnz = tokens
+    else:
+        raise Exception("wrong number of fields in header (must 2 or 3)")
 
     def data():
         for i, line in enumerate(infile):
@@ -360,7 +368,7 @@ def iter_rmat(infile):
 def read_rmat(infile):
     """
     Read an compressed-row matrix
-    Columns are 1 indexed
+    Columns are 1 indexed in file, but 0 index in memory
     Returns nrows, ncols, nnz, rmat (list of dicts)
     """
 
@@ -368,10 +376,17 @@ def read_rmat(infile):
     return nrows, ncols, nnz, imat2rmat(nrows, ncols, nnz, data)
 
 
-def write_rmat(out, nrows, ncols, nnz, rmat):
-    """Write a compressed-row matrix"""
-    
-    out.write("%d\t%d\t%d\n" % (nrows, ncols, nnz))
+def write_rmat(out, nrows, ncols, nnz, rmat, square=False):
+    """
+    Write a compressed-row matrix
+    Columns are 1 indexed in file, but 0 index in memory
+    """
+
+    if square:
+        assert nrows == ncols
+        out.write("%d\t%d\n" % (nrows, nnz))
+    else:
+        out.write("%d\t%d\t%d\n" % (nrows, ncols, nnz))
 
     for row in rmat:
         items = row.items()

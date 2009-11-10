@@ -349,7 +349,7 @@ def count_dup_loss_tree(tree, stree, gene2species, recon=None):
 
     if recon is None:
         recon = reconcile(tree, stree, gene2species)
-    events = labelEvents(tree, recon)
+    events = label_events(tree, recon)
     losses = find_loss(tree, stree, recon)
     
     dup = 0

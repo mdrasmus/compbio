@@ -21,13 +21,15 @@ for fn in files:
     outdir = basename + conf.outputext
     phy.make_output_dir(outdir)
     align = fasta.read_fasta(basename + conf.alignext)
-    labels = phylip.writePhylipAlign(file(outdir + "/infile", "w"), align,
-                                     False)
+    labels = phylip.write_phylip_align(file(outdir + "/infile", "w"), align,
+                                       False)
     util.write_list(file(outdir + "/labels", "w"), labels)
 
+    # require minimium size of alignment
     if len(align) <= 2:
         continue
 
+    # set user tree
     if conf.usertreeext:
         tree = treelib.read_tree(basename + conf.usertreeext)
         treelib.unroot(tree, newCopy=False)
@@ -41,13 +43,13 @@ for fn in files:
     if conf.seqtype == "dna":
         if not conf.model:
             model = "HKY"
-        args = "%s/infile 0 s 1 %d %s e e %d e %s %s y" % \
+        args = "'%s/infile' 0 s 1 %d %s e e %d e %s %s y" % \
                (outdir, conf.boot, conf.model, nrates, usertree,
                 "ny"[int(conf.opttree)])
     else:
         if not conf.model:
             conf.model = "JTT"
-        args = "%s/infile 1 s 1 %d %s e %d e %s %s y" % \
+        args = "'%s/infile' 1 s 1 %d %s e %d e %s %s y" % \
                (outdir, conf.boot, conf.model, nrates, usertree,
                 "ny"[int(conf.opttree)])
     cmd = "phyml " + args + " > '%s/out'" % outdir
@@ -59,7 +61,6 @@ for fn in files:
         open(outdir + "/error", "w").close()
         result = 1
     else:
-        #tree = phylip.readOutTree(outdir + "/infile_phyml_tree.txt", labels)
         tree = treelib.read_tree(outdir + "/infile_phyml_tree.txt")
         tree.write(basename + conf.treeext)
 

@@ -24,8 +24,9 @@ param = util.parseOptions(sys.argv, options)
 
 if "phylip" in param:
     seqs = fasta.read_fasta(param["fasta"][-1])
-    labels = phylip.fasta2phylip(file(param["phylip"][-1], "w"), seqs,
-                                 stripNames=not param["nostrip"])
+    labels = phylip.write_phylip_align(
+        file(param["phylip"][-1], "w"), seqs,
+        strip_names=not param["nostrip"])
     
     if "label" in param:
         util.write_list(param["label"][-1], labels)

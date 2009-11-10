@@ -19,9 +19,10 @@ from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
-from rasmus.bio import blast
-from rasmus.bio import fasta
-from rasmus.bio import phylip
+# compbio imports
+from . import blast
+from . import fasta
+from . import phylip
 
 
 # NOTE: camelCase names are DEPRECATED
@@ -32,7 +33,7 @@ from rasmus.bio import phylip
 
 
 def gene2species(genename):
-    """default gene2species mapping"""
+    """Default gene2species mapping"""
     return genename
 
 
@@ -62,17 +63,21 @@ def make_gene2species(maps):
         
         raise Exception("Cannot map gene '%s' to any species" % gene)
     return gene2species
-makeGene2species = make_gene2species
 
 
 def read_gene2species(* filenames):
+    """
+    Reads a gene2species file
+
+    Returns a function that will map gene names to species names.
+    """
+    
     for filename in filenames:
         maps = []
         for filename in filenames:
             maps.extend(util.read_delim(util.skip_comments(
                 util.open_stream(filename))))
-    return make_gene2species(maps)    
-readGene2species = read_gene2species
+    return make_gene2species(maps)
 
 
 #=============================================================================
@@ -80,7 +85,11 @@ readGene2species = read_gene2species
 #
     
 
-def reconcile(gtree, stree, gene2species = gene2species):
+def reconcile(gtree, stree, gene2species=gene2species):
+    """
+    Returns a reconciliation dict for a gene tree 'gtree' and species tree 'stree'
+    """
+    
     recon = {}
     
     # determine the preorder traversal of the stree
@@ -134,7 +143,7 @@ def reconcile_lca(stree, order, nodes):
 
 def reconcile_node(node, stree, recon):
     """Reconcile a single gene node to a species node"""
-    return treelib.lca(util.mget(recon, node.children))
+    return treelib.lca([recon[x] for x in node.children])
 
 
 def label_events(gtree, recon):
@@ -163,6 +172,7 @@ labelEventsNode = label_events_node
 
 
 def find_loss_node(node, recon):
+    """Finds the loss events for a branch in a reconciled gene tree"""
     loss = []
     
     # if not parent, then no losses
@@ -339,7 +349,7 @@ def count_dup_loss_tree(tree, stree, gene2species, recon=None):
 
     if recon is None:
         recon = reconcile(tree, stree, gene2species)
-    events = labelEvents(tree, recon)
+    events = label_events(tree, recon)
     losses = find_loss(tree, stree, recon)
     
     dup = 0
@@ -408,6 +418,34 @@ def write_event_tree(stree, out=sys.stdout):
     treelib.draw_tree(stree, labels=labels, minlen=15, spacing=4,
                       labelOffset=-3,
                       out=out)
+
+
+def dup_consistency(tree, recon, events):
+    """
+    Calculate duplication consistency scores for a reconcilied tree
+
+    See Vilella2009 (Ensembl)
+    """
+    
+    spset = {}
+    def walk(node):
+        for child in node.children:
+            walk(child)
+        if node.is_leaf():
+            spset[node] = set([recon[node]])
+        else:
+            spset[node] = (spset[node.children[0]] |
+                           spset[node.children[1]])
+    walk(tree.root)
+    
+    conf = {}
+    for node in tree:
+        if events[node] == "dup":
+            conf[node] = (len(spset[node.children[0]] &
+                              spset[node.children[1]]) /
+                          float(len(spset[node])))
+
+    return conf
 
 
 #=============================================================================
@@ -647,7 +685,7 @@ def get_orthologs(tree, events):
 
 def hash_tree_compose(child_hashes):
     return "(%s)" % ",".join(child_hashes)
-hashTreeCompose = hash_tree_compose
+
 
 def hash_tree(tree, smap = lambda x: x):
     def walk(node):
@@ -664,7 +702,6 @@ def hash_tree(tree, smap = lambda x: x):
         return walk(tree)
     else:
         raise Exception("Expected Tree object")
-hashTree = hash_tree
 
 
 def hash_order_tree(tree, smap = lambda x: x):
@@ -678,7 +715,6 @@ def hash_order_tree(tree, smap = lambda x: x):
             node.children = util.mget(node.children, ind)
             return hash_tree_compose(child_hashes)
     walk(tree.root)
-hashOrderTree = hash_order_tree
 
 
 
@@ -878,7 +914,6 @@ def add_spec_node(node, snode, tree, recon, events):
     events[newnode] = "spec"
 
     return newnode
-addSpecNode = add_spec_node
 
 
 def add_implied_spec_nodes(tree, stree, recon, events):
@@ -929,7 +964,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
             addedNodes.append(add_spec_node(node, send, tree, recon, events))
 
     return addedNodes
-addImpliedSpecNodes = add_implied_spec_nodes
+
 
 
 #=============================================================================
@@ -997,7 +1032,7 @@ def propose_nni(tree, node1, node2, change=0):
     # swap child pointers
     node2.children[uncle], node1.children[change] = \
         node1.children[change], node2.children[uncle]
-proposeNni = propose_nni
+
 
 
 #=============================================================================
@@ -1643,7 +1678,7 @@ def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
     
     phylip.writePhylipAlign(file(infile, "w"), aln)
     phylip.execPhylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.readDistMatrix(outfile)
+    labels, distmat = phylip.read_dist_matrix(outfile)
 
     if madePhylip:
         os.remove("outfile")

@@ -1,11 +1,20 @@
+"""
+
+    Module for working with FASTA files
+
+"""
+
+# python imports
 import sys
 import os
-
 from itertools import izip
 
+# rasmus imports
 from rasmus import util
-from rasmus.bio import seqlib
-from rasmus.bio.seqlib import SeqDict
+
+# seqlib imports
+from . import seqlib
+from seqlib import SeqDict
 
 
 
@@ -56,7 +65,7 @@ class FastaDict (SeqDict):
         
         out = util.open_stream(filename, "w")
         
-        if names == None:
+        if names is None:
             names = self.names
         
         for key in names:
@@ -69,7 +78,7 @@ class FastaDict (SeqDict):
         
         val = SeqDict.__getitem__(self, key) 
         
-        if val == None:
+        if val is None:
             # if val == None, then we are using fasta indexing
             val = self.index.get(key)
                 
@@ -85,7 +94,7 @@ class FastaDict (SeqDict):
         
         val = SeqDict.__getitem__(self, key) 
         
-        if val == None:
+        if val is None:
             # if val == None, then we are using fasta indexing
             return self.index.get(key, start, end, strand)
 

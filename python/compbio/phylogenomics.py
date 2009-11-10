@@ -1,9 +1,13 @@
-import sys, os, re
 
+# python imports
+import sys, os, re
 from pysqlite2 import dbapi2 as sqlite
 
+# rasmus imports
 from rasmus import tablelib, stats, treelib, util
-from rasmus.bio import genecluster, genomeutil, fasta, gff
+
+# compbio imports
+from . import genecluster, phylo, fasta, gff
 
 
 def tableExists(cur, tablename):
@@ -20,10 +24,10 @@ class PhyloDb:
                  treeFileExt=None,
                  fastaFileExt=None):
         self.fams = genecluster.FamilyDb(famfile)
-        self.gene2species = genomeutil.readGene2species(smapfile)
-        self.genenames_tab = tablelib.readTable(genenamefile)
+        self.gene2species = phylo.read_gene2species(smapfile)
+        self.genenames_tab = tablelib.read_table(genenamefile)
         self.gene2name = self.genenames_tab.lookup("id")
-        self.stree = treelib.readTree(streefile)
+        self.stree = treelib.read_tree(streefile)
         self.baseDir = baseDir
         self.treeFileExt = treeFileExt
         self.fastaFileExt = fastaFileExt
@@ -79,7 +83,7 @@ class PhyloDb:
         
         util.tic("add genes")
         for sp, gff_file in zip(species, gff_files):
-            for region in gff.readGff(gff_file, regionFilter=region_filter):
+            for region in gff.read_gff(gff_file, regionFilter=region_filter):
                 gene = region.data["ID"]
                 #gene = row["name"]
 
@@ -153,7 +157,7 @@ class PhyloDb:
             self.makeFamiliesTable()
     
         util.tic("add families")
-        events_tab = tablelib.readTable(eventsfile)
+        events_tab = tablelib.read_table(eventsfile)
         events_lookup = events_tab.lookup("partid")
         familyGeneNames = self.makeFamilyGeneNames()
         discard = set(discard)
@@ -164,9 +168,9 @@ class PhyloDb:
                 util.logger("discarding '%s'" % famid)
                 continue
             
-            tree = treelib.readTree(self.getTreeFile(famid))
+            tree = treelib.read_tree(self.getTreeFile(famid))
             treelen = sum(x.dist for x in tree)
-            seqs = fasta.readFasta(self.getFastaFile(famid))
+            seqs = fasta.read_fasta(self.getFastaFile(famid))
             seqlen = stats.median(map(len, seqs.values()))
 
             self.cur.execute("""INSERT INTO Families VALUES 
@@ -196,7 +200,7 @@ class PhyloDb:
             descs.extend(d.split("; "))
         descs = filter(lambda x: x not in rmdesc, descs)
 
-        items = util.histDict(descs).items()
+        items = util.hist_dict(descs).items()
         items.sort(key=lambda x: x[1], reverse=True)
 
         desc = "; ".join(["%s[%d]" % item for item in items])
@@ -258,7 +262,7 @@ class PhyloDb:
             self.makeEventsTable()
         
         util.tic("add events")
-        events_tab = tablelib.readTable(eventsfile)
+        events_tab = tablelib.read_table(eventsfile)
         events_lookup = events_tab.lookup("partid")
         
         self.cur.execute("SELECT famid FROM Families;")
@@ -322,7 +326,7 @@ class PhyloDb:
             self.makeGoTermsTable()
         
         util.tic("add go terms")
-        goterms = tablelib.readTable(gofile)
+        goterms = tablelib.read_table(gofile)
         goterms_lookup = goterms.groupby("orf")
         goterms_bygoid = goterms.groupby("goid")
         
@@ -384,7 +388,7 @@ class PhyloDb:
         if not tableExists(self.cur, "PfamDomains"):
             self.makePfamTable()
         
-        pfams = tablelib.readTable(pfamfile)
+        pfams = tablelib.read_table(pfamfile)
         
         for row in pfams:         
             self.cur.execute("""INSERT INTO PfamDomains VALUES ("%s", "%s", "%s");""" %
@@ -403,7 +407,7 @@ class PhyloDb:
 
         util.tic("add pfam domains")
 
-        pfams = tablelib.readTable(pfamfile)
+        pfams = tablelib.read_table(pfamfile)
         
         for row in pfams:
             name = re.sub("\..*$", "", row["pfam_acc"])

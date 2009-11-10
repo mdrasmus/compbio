@@ -7,10 +7,12 @@
 import os
 import sys
 
-from rasmus.bio import phylip
-from rasmus.bio import fasta
 from rasmus import util
 from rasmus import treelib
+
+from . import phylip
+from . import fasta
+
 
 
 
@@ -18,13 +20,13 @@ def phyml(seqs, verbose=True, args=None,
           usertree=None, seqtype="pep", saveOutput="", bootiter=0,
           opttree=True, optbranches=True, nrates=4):
     
-    phylip.validateSeq(seqs)
-    cwd = phylip.createTempDir()
+    phylip.validate_seqs(seqs)
+    cwd = phylip.create_temp_dir()
     
     util.tic("phyml on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = phylip.fasta2phylip(file("infile", "w"), seqs)
+    labels = phylip.write_phylip_align(file("infile", "w"), seqs)
     util.write_list(file("labels", "w"), labels)
     
     options = "y"
@@ -35,7 +37,7 @@ def phyml(seqs, verbose=True, args=None,
     
     if usertree != None:
         usertree = treelib.unroot(usertree)
-        phylip.writeInTree("intree", usertree, labels)
+        phylip.write_in_tree("intree", usertree, labels)
         treefile = "intree"
     else:
         treefile = "BIONJ"
@@ -64,18 +66,18 @@ def phyml(seqs, verbose=True, args=None,
             assert False, "unknown sequence type '%s'" % seqtype
     
     
-    phylip.execPhylip("phyml %s" % args, options, verbose)
+    phylip.exec_phylip("phyml %s" % args, options, verbose)
     
     # parse tree
-    tree = phylip.readOutTree("infile_phyml_tree.txt", labels)
+    tree = phylip.read_out_tree("infile_phyml_tree.txt", labels)
     
     # parse likelihood
     tree.data["logl"] = float(file("infile_phyml_lk.txt").read())
     
     if saveOutput != "":
-        phylip.saveTempDir(cwd, saveOutput)
+        phylip.save_temp_dir(cwd, saveOutput)
     else:
-        phylip.cleanupTempDir(cwd)
+        phylip.cleanup_temp_dir(cwd)
     util.toc()
     
     return tree

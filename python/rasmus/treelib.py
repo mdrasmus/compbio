@@ -454,8 +454,8 @@ class Tree:
     def write(self, out = sys.stdout, writeData=None, oneline=False,
               rootData=False):
         """Write the tree in newick notation"""
-        self.writeNewick(util.open_stream(out, "w"), writeData=writeData, 
-                         oneline=oneline, rootData=rootData)
+        self.write_newick(util.open_stream(out, "w"), writeData=writeData, 
+                          oneline=oneline, rootData=rootData)
     
     def read_data(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
@@ -473,7 +473,7 @@ class Tree:
                     except ValueError:
                         # treat as node name
                         name = boot.strip()
-                        if name and isinstance(node.name, int):
+                        if name and isinstance(node.name, int): #not node.is_leaf():
                             node.name = name
         else:
             data = data.strip()
@@ -784,10 +784,10 @@ class Tree:
         util.write_list(treeFile, ptree)
     
     
-    def get_one_line_newick(self):
+    def get_one_line_newick(self, root_data=False):
         """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
-        self.write(stream, oneline=True)
+        self.write(stream, oneline=True, rootData=root_data)
         return stream.getvalue()
     getOnelineNewick = get_one_line_newick
     
@@ -1973,4 +1973,4 @@ if __name__ == "__main__":
     tree2 = read_tree(infile)
 
     reorder_tree(tree, tree2)
-    draw_tree(tree, maxlen=5)
+    draw_tree_names(tree2, maxlen=5)

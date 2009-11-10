@@ -454,7 +454,7 @@ def align2tree(conf, prog, alignfile, basename):
 
 
 def dist2tree(conf, prog, distfile, labelfile, basename):
-    labels, mat = phylip.readDistMatrix(distfile)
+    labels, mat = phylip.read_dist_matrix(distfile)
     treefile = getTreeFile(conf, basename)
     usertree = getUserTree(conf, basename)
     
@@ -521,17 +521,17 @@ def align2dist(conf, prog, alignfile, basename):
     
     elif prog == "fourfold":
         mat = alignlib.calcFourFoldDistMatrix(aln)
-        phylip.writeDistMatrix(mat, out=distfile)
+        phylip.write_dist_matrix(mat, out=distfile)
     
     elif prog == "ds":
         dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
                                  saveOutput=conf["extraoutput"])
-        phylip.writeDistMatrix(ds[1], out=distfile)
+        phylip.write_dist_matrix(ds[1], out=distfile)
 
     elif prog == "dn":
         dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
                                  saveOutput=conf["extraoutput"])
-        phylip.writeDistMatrix(dn[1], out=distfile)
+        phylip.write_dist_matrix(dn[1], out=distfile)
     
     elif prog == "dnds":
         distfiles = getDistFiles(conf, basename)
@@ -540,8 +540,8 @@ def align2dist(conf, prog, alignfile, basename):
         
         dn, ds = paml.dndsMatrix(aln, verbose=conf["verbose"],
                                  saveOutput=conf["extraoutput"])
-        phylip.writeDistMatrix(dn[1], out=distfiles[0])
-        phylip.writeDistMatrix(ds[1], out=distfiles[1])
+        phylip.write_dist_matrix(dn[1], out=distfiles[0])
+        phylip.write_dist_matrix(ds[1], out=distfiles[1])
     
     elif prog == "lapd":
         if conf["args"] == None:
@@ -566,11 +566,11 @@ def tree2dist(conf, prog, treefile, labelfile, distfile, basename):
     if prog == "tree2dist":
         mat = phylo.tree2distmat(tree, labels)
         
-    phylip.writeDistMatrix(mat, out=distfile)
+    phylip.write_dist_matrix(mat, out=distfile)
 
 
 def dist2dist(conf, prog, distfile, backupext, basename):
-    labels, distmat = phylip.readDistMatrix(distfile)
+    labels, distmat = phylip.read_dist_matrix(distfile)
     #labels = fasta.readFasta(labelfile).keys()
     
     # backup distance matrix
@@ -579,7 +579,7 @@ def dist2dist(conf, prog, distfile, backupext, basename):
     if prog == "fixdist":
         distmat = phylip.correctDistMatrix(distmat)
     
-    phylip.writeDistMatrix(distmat, labels=labels, out=distfile)
+    phylip.write_dist_matrix(distmat, labels=labels, out=distfile)
     
     
 

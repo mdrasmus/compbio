@@ -52,7 +52,7 @@ util.toc()
 
 if conf.transmap:
     transmap = {}
-    for row in util.DelimReader(conf.transmap):
+    for row in util.delim_reader(conf.transmap):
         transmap[row[0]] = row[1]
     seqs = SeqMap(seqs, transmap)
     
@@ -64,7 +64,7 @@ for aln_file in args:
         util.log("skipping '%s', does not exist" % aln_file)
         continue
         
-    newfile = aln_file.replace(conf.oldext, conf.newext)
+    newfile = util.replace_ext(aln_file, conf.oldext, conf.newext)
     util.log(aln_file, "===>", newfile)
     aln = fasta.read_fasta(aln_file)
         

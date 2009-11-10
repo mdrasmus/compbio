@@ -6,7 +6,7 @@
  Plotting classes and functions: R plotting, GNUPLOT wrapper, svg, heatmaps
 """
 
-#from rasmus import util
+#from rasmus import util # will not allow from plotting import * inside util
 from rasmus import svg
 
 
@@ -229,8 +229,9 @@ class ColorMap:
             return newcolor
     
     
-    def getInt(self, value):
+    def get_int(self, value):
         return [int(x*255) for x in self.get(value)]
+    getInt = get_int
     
 
 def get_webcolor(color, maxval=1):
@@ -244,7 +245,7 @@ def get_webcolor(color, maxval=1):
     return colstr
 
 
-def rainbowColorMap(data=None, low=None, high=None):
+def rainbow_color_map(data=None, low=None, high=None):
     if data != None:
         low = min(data)
         high = max(data)
@@ -254,7 +255,7 @@ def rainbowColorMap(data=None, low=None, high=None):
                      [.5*low+.5*high, green],
                      [.25*low + .75*high, yellow],
                      [high, red]])
-   
+rainbowColorMap = rainbow_color_map
 
 
 #=============================================================================
@@ -272,7 +273,7 @@ def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
 
 
 
-def makeColorLegend(filename, colormap, start, end, step, 
+def make_color_legend(filename, colormap, start, end, step, 
                     width=100, height=10):
     from rasmus import util
     s = svg.Svg(util.open_stream(filename, "w"))    
@@ -288,9 +289,9 @@ def makeColorLegend(filename, colormap, start, end, step,
                color, color)
     
     s.endSvg()
-    
-    
-    
+makeColorLegend = make_color_legend
+
+
 
 
 def heatmap(matrix, width=20, height=20, colormap=None, filename=None,

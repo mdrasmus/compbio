@@ -176,7 +176,7 @@ def rareEventsLikelihood(conf, tree, stree, recon, events):
 
 
 def countMidpointParameters(node, events):
-    this = util.Closure(nvars = 0)
+    this = util.Bundle(nvars = 0)
 
     def walk(node):
         # determine this node's midpoint
@@ -200,7 +200,7 @@ def subtreeLikelihood(conf, root, recon, events, stree, params, baserate,
     midpoints = {}
     extraBranches = getExtraBranches(root, recon, events, stree)
     
-    this = util.Closure(ncalls=0, depth=0, printing=0)    
+    this = util.Bundle(ncalls=0, depth=0, printing=0)    
     
     
     if integration == "fastsampling":
@@ -369,6 +369,7 @@ def branchLikelihood(dist, node, k, startparams, startfrac,
     #    pass
     
     if totvar <= 0.0:
+        return 0.0
         print "!!!!"
         print k[node], k[node.parent]
         print startfrac, startparams, midparams, endfrac, endparams
@@ -386,7 +387,7 @@ def branchLikelihood(dist, node, k, startparams, startfrac,
     try:
         return log(stats.normalPdf(dist, [totmean, math.sqrt(totvar)]))
     except:
-        print >>sys.stderr, dist, node.name, \
+        print >>sys.stderr, totmean, totvar, dist, node.name, \
                   k, startparams, startfrac, midparams, endparams, endfrac
         raise
 
@@ -457,9 +458,9 @@ def treeLogLikelihood_python(conf, tree, stree, gene2species, params,
         util.tic("find logl")
     
     # derive relative branch lengths
-    tree.clearData("logl", "extra", "fracs", "params", "unfold")
+    tree.clear_data("logl", "extra", "fracs", "params", "unfold")
     recon = phylo.reconcile(tree, stree, gene2species)
-    events = phylo.labelEvents(tree, recon)
+    events = phylo.label_events(tree, recon)
     
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
@@ -471,11 +472,11 @@ def treeLogLikelihood_python(conf, tree, stree, gene2species, params,
     if baserate == None:
         baserate = getBaserate(tree, stree, params, recon=recon)
 
-    phylo.midrootRecon(tree, stree, recon, events, params, baserate)
+    phylo.midroot_recon(tree, stree, recon, events, params, baserate)
     
     # top branch is "free"
     params[stree.root.name] = [0,0]
-    this = util.Closure(logl=0.0)
+    this = util.Bundle(logl=0.0)
     
     # recurse through indep sub-trees
     def walk(node):

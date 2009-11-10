@@ -4,8 +4,10 @@ import os, re
 
 # rasmus libs
 from rasmus import util, tablelib, treelib
-from rasmus.bio import alignlib, seqlib
-from rasmus.bio import fasta, phylip, nexus
+
+# compbio imports
+from . import alignlib, seqlib
+from . import fasta, phylip, nexus
 
 
 def removeStopCodons(seq, stops=None):
@@ -31,13 +33,13 @@ def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
     if safe:
         seqs = alignlib.mapalign(seqs, valfunc=removeStopCodons)
     
-    phylip.validateSeq(seqs)
-    cwd = phylip.createTempDir()
+    phylip.validate_seqs(seqs)
+    cwd = phylip.create_temp_dir()
 
     util.tic("yn00 on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = phylip.fasta2phylip(file("seqfile.phylip", "w"), seqs)
+    labels = phylip.write_phylip_align(file("seqfile.phylip", "w"), seqs)
     util.write_list(file("labels", "w"), labels)    
     
     # create control file
@@ -53,8 +55,8 @@ def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
         os.system("yn00 yn00.ctl > /dev/null")
     
     try:
-        dnmat = phylip.readDistMatrix("2YN.dN")
-        dsmat = phylip.readDistMatrix("2YN.dS")
+        dnmat = phylip.read_dist_matrix("2YN.dN")
+        dsmat = phylip.read_dist_matrix("2YN.dS")
     except:
         # could not make distance matrix
         if safe:
@@ -65,9 +67,9 @@ def dndsMatrix(seqs, saveOutput="", verbose=False, safe=True):
             raise Exception("could not read dn or ds matrices")
     
     if saveOutput != "":
-        phylip.saveTempDir(cwd, saveOutput)
+        phylip.save_temp_dir(cwd, saveOutput)
     else:
-        phylip.cleanupTempDir(cwd)
+        phylip.cleanup_temp_dir(cwd)
     
     util.toc()
     
@@ -86,7 +88,7 @@ def pamp(seqs, tree, seqtype="dna", saveOutput="", verbose=False, safe=True):
 
     # create input
     nex = nexus.Nexus("align", "w")
-    nex.writeMatrix(seqs.keys(), seqs.values(), seqtype, seqs.alignlen())
+    nex.write_matrix(seqs.keys(), seqs.values(), seqtype, seqs.alignlen())
     nex.close()
     treefile = open("tree", "w")
     treefile.write("%d 1\n" % len(tree.leaves()))
@@ -183,7 +185,7 @@ def align2tree(seq, seqtype="dna",
         seqs = alignlib.mapalign(seqs, valfunc=removeStopCodons)
     
     # create input
-    labels = phylip.fasta2phylip(file("seqfile.phylip", "w"), seqs)
+    labels = phylip.write_phylip_align(file("seqfile.phylip", "w"), seqs)
     
     # set verbose level
     if verbose:

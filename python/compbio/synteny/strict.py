@@ -1,20 +1,12 @@
 
 
-from rasmus.bio.synteny import SyntenyBlock
+
+
 from rasmus import regionlib
 from rasmus import util
 
+from . import SyntenyBlock, make_orth
 
-def make_orth(db, genes1, genes2):
-    """Returns a gene names as a tuple of two sorted lists (by start pos)"""
-    
-    genes1 = list(genes1)
-    genes2 = list(genes2)
-    genes1.sort(key=lambda x: db.get_region(x).start)
-    genes2.sort(key=lambda x: db.get_region(x).start)
-    return (genes1, genes2)
-
-        
 
 
 def is_contig(db, genes):

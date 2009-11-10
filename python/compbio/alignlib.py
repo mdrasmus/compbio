@@ -9,8 +9,8 @@ import sys
 import copy
 
 # rasmus libs
-from rasmus.bio import fasta
-from rasmus.bio.seqlib import *
+from . import fasta, seqlib
+from seqlib import *
 
 
 
@@ -180,7 +180,7 @@ def revtranslate_align(aaseqs, dnaseqs, check=False):
         try:
             align[name] = revtranslate(seq, dnaseqs[name], check=check)
         except TranslateError, e:
-            raise Exception("%s: %s" % (name, str(e)))
+            raise TranslateError("%s: %s" % (name, str(e)))
     
     return align
 

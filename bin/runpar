@@ -26,18 +26,18 @@ o.add_option("-g", "--groupsize", dest="groupsize",
              help="size of each group")
 o.add_option("-t", "--tmpprefix", dest="tmpprefix",
              help="temp output prefix")
-o.add_option("-k", "--clean", dest="clean",
+o.add_option("-k", "--no-clean", dest="no_clean",
              action="store_true",
-             help="clean temp output")
+             help="do not clean tempdir prior to run")
 o.add_option("-s", "--submit", dest="submit",
              default='bsub -o "$FILE.bout" -K ',
              help="submit command")
 o.add_option("-d", "--cleanup", dest="cleanup",
              default='rm -f "$FILE" "$FILE.out" "$FILE.bout"',
-             help="cleanup command")
+             help="cleanup command after run")
 o.add_option("-D", "--no-cleanup", dest="no_cleanup",
              action="store_true",
-             help="Do not clean up temp files")
+             help="Do not clean up temp files after run")
 o.add_option("-v", "--verbose", dest="verbose",
              action="store_true", default=False)
 
@@ -60,7 +60,7 @@ def make_cmd(cmd, **args):
     cmd2 = ""
     for key, val in args.items():
         cmd2 += 'export %s=%s; ' % (key, doublequote(val))
-    return "( " + cmd2 + cmd + " )"
+    return cmd2 + cmd
 
 
 def main(argv):
@@ -78,8 +78,9 @@ def main(argv):
 
     # ensure temp space exists
     if not os.path.isdir(options.tmpprefix):
-        # tmpprefix might contain a filename prefix
-        tmpdir = os.path.dirname(options.tmpprefix)
+        # XXX: tmpprefix might contain a filename prefix
+        # tmpdir = os.path.dirname(options.tmpprefix)
+        tmpdir = options.tmpprefix
         if not os.path.exists(tmpdir):
             if options.verbose:
                 print >>sys.stderr, "making temp directory '%s'" % tmpdir
@@ -87,12 +88,12 @@ def main(argv):
         
 
     # clean all previous tempfiles, if requested
-    if options.clean:
-        for fn in os.glob(options.tmpprefix + "*"):
+    if not options.no_clean:
+        for fn in os.listdir(options.tmpprefix):
+            fn2 = os.path.join(options.tmpprefix, fn)
             if options.verbose:
-                print >>sys.stderr, "removing", fn
-            os.remove(fn)
-        return 0
+                print >>sys.stderr, "removing", fn2
+            os.remove(fn2)
 
 
     # determine map command
@@ -134,7 +135,7 @@ def main(argv):
     outfiles = []
     infiles = []
     for i in xrange(0, len(lines), options.groupsize):
-        fn = options.tmpprefix + str(i)
+        fn = os.path.join(options.tmpprefix, str(i))
         infiles.append(fn)
         outfiles.append(fn + ".out")
 
@@ -145,9 +146,15 @@ def main(argv):
         out.close()
 
         # run command
-        cmd2 = make_cmd(options.submit + 
-                        doublequote('( ' + cmd + ' ) > "$FILE.out"'),
+        #cmd2 = make_cmd(options.submit + 
+        #                doublequote('( ' + cmd + ' ) > "$FILE.out"'),
+        #                FILE=fn)
+        
+        cmd2 = make_cmd(options.submit + doublequote(
+            make_cmd('( ' + cmd + ' ) > "$FILE.out"', FILE=fn)),
                         FILE=fn)
+
+        
         if options.verbose:
             print >>sys.stderr, cmd2
 

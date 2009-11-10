@@ -10,29 +10,29 @@ import sys
 class UnionFind:
     """An implementation of the UNINON/FIND algorithm"""
 
-    def __init__(self, items):
-        self.parent = None    
-        self.items = dict.fromkeys(items, 1)
+    def __init__(self, items=[]):
+        self._parent = None    
+        self._items = set(items)
 
     def __contains__(self):
-        return item in self.root().items
+        return item in self.root()._items
 
     def __len__(self):
-        return len(self.root().items)
+        return len(self.root()._items)
     
     def __iter__(self):
-        return iter(self.root().items)
+        return iter(self.root()._items)
     
     
     def add(self, item):
-        self.root().items[item] = 1
+        self.root()._items.add(item)
     
     def root(self):
         node = self
-        while node.parent:
-            node = node.parent
+        while node._parent:
+            node = node._parent
         if node != self:
-            self.parent = node
+            self._parent = node
         return node
     
     def same(self, other):
@@ -44,12 +44,12 @@ class UnionFind:
         if root1 == root2:
             return
         
-        root1.items.update(root2.items)
-        root2.items = {}
-        root2.parent = root1
+        root1._items.update(root2._items)
+        root2._items = set()
+        root2._parent = root1
     
     def members(self):
-        return self.root().items.keys()
+        return self.root()._items
     
     
     # old function DON'T USE
@@ -60,7 +60,7 @@ class UnionFind:
     
     def size(self):
         """DEPRECATED: use len(set)"""
-        return len(self.root().items)
+        return len(self.root()._items)
 
 
 #=============================================================================
@@ -240,20 +240,20 @@ if __name__ == "__main__":
 
         set1.add(1)
         set1.add(2)
-        print set1.size()
+        print len(set1)
         set2.add(3)
         set2.add(4)
         set2.add(5)    
-        print set2.size()
+        print len(set2)
         set3.add(5)
         set3.add(6)
         set3.add(7)
-        print set3.size()    
-        print set1.same(set2)    
+        print len(set3)
+        print set1.same(set2)
         set1.union(set2)
         print set1.same(set2)
+        
         set1.union(set3)
-
         print set1.members()
-        print set1.size(), set2.size()
+        print len(set1), len(set2)
 

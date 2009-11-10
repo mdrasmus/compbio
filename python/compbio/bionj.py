@@ -2,10 +2,16 @@
 # python wrapper for BIONJ
 #
 
+
+# python imports
 import os
+
+# rasmus imports
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import phylip
+
+# compbio imports
+from . import phylip
 
 
 
@@ -16,7 +22,7 @@ def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):
     
     # find distances and then NJ tree
     if distmat != None:
-        phylip.writeDistMatrix(distmat, out=distfile)
+        phylip.write_dist_matrix(distmat, out=distfile)
         
         if labels == None:
             labels = aln.keys()
@@ -27,9 +33,8 @@ def bionj(aln=None, labels=None, distmat=None, seqtype="pep", verbose=True):
             labels = phylip.dnadist(aln, distfile, verbose=verbose)
     
     os.system("echo -n '%s\n%s' | bionj > /dev/null" % (distfile, treefile))
-    tree = treelib.Tree()
-    tree.readNewick(treefile)
-    phylip.renameTreeWithNames(tree, labels)
+    tree = treelib.read_tree(treefile)
+    phylip.rename_tree_with_names(tree, labels)
     
     # clean up
     os.remove(distfile)

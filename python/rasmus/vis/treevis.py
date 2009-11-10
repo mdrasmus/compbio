@@ -191,7 +191,7 @@ class TreeViewer (sumtree.SumTree):
     
     
 
-def readTreeColorMap(filename):
+def read_tree_color_map(filename):
     infile = util.open_stream(filename)
     maps = []
     
@@ -204,5 +204,5 @@ def readTreeColorMap(filename):
     def leafmap(node):
         return name2color(node.name)
 
-    return treelib.tree_color_map(leafmap)
-    
+    return treelib.tree_color_map(leafmap)    
+readTreeColorMap = read_tree_color_map

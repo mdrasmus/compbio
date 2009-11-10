@@ -27,7 +27,8 @@ o.add_option("-o", "--orth", dest="orth", metavar="ORTHOLOG_FILE",
 o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
              action="append",
              help="genes are regions to compute synteny")
-o.add_option("-G", "--gff-format", dest="gff_format", metavar="(gff,gtf,gff3)")
+o.add_option("-G", "--gff-format", dest="gff_format", metavar="(gff,gtf,gff3)",
+             default="gff3")
 o.add_option("-f", "--features", dest="features", metavar="FEATURES",
              help="features to use from GFF files")
 

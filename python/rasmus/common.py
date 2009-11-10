@@ -29,9 +29,12 @@ from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
 from rasmus.treelib import *
 
 # bio tools
-from rasmus.bio.fasta import *
-from rasmus.bio import muscle, phylip, mrbayes, blast, alignlib
-from rasmus.bio import gff
+try:
+    from rasmus.bio.fasta import *
+    from rasmus.bio import muscle, phylip, mrbayes, blast, alignlib
+    from rasmus.bio import gff, phylo
+except ImportError:
+    pass
 
 
 readTable = read_table

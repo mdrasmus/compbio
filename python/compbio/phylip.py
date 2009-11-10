@@ -27,24 +27,26 @@ import shutil
 import sys
 
 # rasmus imports
-from rasmus.bio import fasta
 from rasmus import util
 from rasmus import treelib
 
+
+# compbio imports
+from . import fasta
 
 
 #=============================================================================
 # managing input, output, and execution of PHYLIP-like programs
 #
 
-def validateSeq(seqs):
+def validate_seqs(seqs):
     """Ensures sequences are all same size"""
     
     sizes = map(len, seqs.values())
     assert util.equal(* sizes), "sequences are not same length"
+validateSeq = validate_seqs
 
-
-def checkTempFiles(force=False):
+def check_temp_files(force=False):
     """Ensure PHYLIP tempfiles do not already exist in current directory"""
     
     if force:
@@ -53,6 +55,7 @@ def checkTempFiles(force=False):
          os.path.isfile("outfile") or \
          os.path.isfile("outtree"):
         raise Exception("Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!")
+checkTempFiles = check_temp_files
 
 
 def exec_phylip(cmd, args, verbose=False):
@@ -76,7 +79,7 @@ execPhylip = exec_phylip
 def cleanup(files=["infile", "outfile", "outtree"]):
     """Remove PHYLIP tempfiles from current directory
     
-       THIS FUNCTION IS COMMONLY NOT USED.  SEE createTempDir()/cleanupTempDir()
+       THIS FUNCTION IS COMMONLY NOT USED.  SEE createTempDir()/cleanup_temp_dir()
     """
     
     for f in files:
@@ -84,25 +87,27 @@ def cleanup(files=["infile", "outfile", "outtree"]):
             os.remove(f)
 
 
-def createTempDir(prefix="tmpphylip_"):
+def create_temp_dir(prefix="tmpphylip_"):
     """Create a temporary directory for executing PHYLIP"""
     
     directory = os.path.split(util.tempfile(".", prefix, ""))[1]
     os.mkdir(directory)
     os.chdir(directory)
     return directory
+createTempDir = create_temp_dir
 
 
-def cleanupTempDir(directory):
+def cleanup_temp_dir(directory):
     """Exit and delete a temporary directory for executing PHYLIP"""
 
     os.chdir("..")
     assert "/" not in directory
     assert os.path.isdir(directory)
     util.deldir(directory)
+cleanupTempDir = cleanup_temp_dir
 
 
-def saveTempDir(directory, newname):
+def save_temp_dir(directory, newname):
     """Exit and save a temporary directory for executing PHYLIP"""
 
     os.chdir("..")
@@ -113,20 +118,67 @@ def saveTempDir(directory, newname):
         util.deldir(newname)
     
     os.rename(directory, newname)
-    
+saveTempDir = save_temp_dir
 
 #=============================================================================
 # common input/output
 #    
 
 
-def writePhylipAlign(out, seqs, stripNames=True):
-    validateSeq(seqs)
+def read_phylip_align(filename):
+    """
+    Read a PHYLIP alignment.  Can be interleaved or not.
     
-    if stripNames:
+    returns a FastaDict object.
+    """
+    
+    infile = util.open_stream(filename)
+    
+    seqs = fasta.FastaDict()
+    
+    # read sequences and length
+    nseq, seqlen = infile.next().split()
+    nseq = int(nseq)
+    
+    i = 0
+    first = True
+    names = []
+    
+    # parse remaining lines
+    for line in infile:
+        line = line.rstrip()
+    
+        if len(line) > 0:
+            if first:
+                name = line[:10].strip()
+                seq = line[10:].strip().replace(" ", "")
+                names.append(name)
+            else:
+                seq = line.strip().replace(" ", "")
+                name = names[i]
+            i += 1                
+        
+            if not name in seqs:
+                seqs[name] = seq
+            else:
+                seqs[name] += seq
+        else:
+            i = 0
+            first = False
+    return seqs
+
+
+def write_phylip_align(out, seqs, strip_names=True):
+    """
+    Write a PHYLIP alignment
+    """
+    
+    validate_seqs(seqs)
+    
+    if strip_names:
         print >>out, len(seqs), len(seqs.values()[0])
         for i, name in enumerate(seqs.keys()):
-            print >>out, "%8s  %s" % (phylipPadding(str(i), 8), seqs[name])
+            print >>out, "%8s  %s" % (phylip_padding(str(i), 8), seqs[name])
     else:
         print >>out, len(seqs), len(seqs.values()[0])
         for i, name in enumerate(seqs.keys()):
@@ -136,14 +188,10 @@ def writePhylipAlign(out, seqs, stripNames=True):
                 print >>out, "%s  %s" % (name, seqs[name])
 
     return seqs.keys()
+writePhylipAlign = write_phylip_align
 
 
-def fasta2phylip(out, seqs, stripNames=True):
-    """DEPRECATED use writePhylipAlign()"""
-    return writePhylipAlign(out, seqs, stripNames=stripNames)
-
-
-def readLogl(filename):
+def read_logl(filename):
     # parse logl
     logl = None
     for line in file(filename):
@@ -154,7 +202,7 @@ def readLogl(filename):
     return logl
 
 
-def readOutTree(filename, labels, iters=1):
+def read_out_tree(filename, labels, iters=1):
     infile = file(filename)
     
     # skip any numbers that may appear on the first line
@@ -168,25 +216,27 @@ def readOutTree(filename, labels, iters=1):
         # parse output
         tree = treelib.Tree()
         tree.read_newick(infile)
-        renameTreeWithNames(tree, labels)
+        rename_tree_with_name(tree, labels)
         return tree
     else:
         trees = []
         for i in xrange(iters):
             tree = treelib.Tree()
             tree.read_newick(infile)
-            renameTreeWithNames(tree, labels)
+            rename_tree_with_name(tree, labels)
             trees.append(tree)
         infile.close()        
         return trees
+readOutTree = read_out_tree
 
 
-def writeInTree(filename, tree, labels):
+def write_in_tree(filename, tree, labels):
     tree2 = tree.copy()
-    renameTreeWithIds(tree2, labels)
+    rename_tree_with_ids(tree2, labels)
     for node in tree2.nodes.values():
         node.dist = 0
     tree2.writeNewick(filename)
+writeInTree = write_in_tree
 
 
 def write_boot_trees(filename, trees, counts=None):
@@ -314,7 +364,7 @@ def write_dist_matrix(mat, labels=None, out=sys.stdout):
     
     for i in range(len(mat)):
         if labels == None:
-            out.write("%8s  " % phylipPadding(str(i)))
+            out.write("%8s  " % phylip_padding(str(i)))
         else:
             out.write("%8s  " % labels[i])
         
@@ -324,74 +374,7 @@ def write_dist_matrix(mat, labels=None, out=sys.stdout):
 writeDistMatrix = write_dist_matrix
 
 
-def readAlignment(filename):
-    """
-    Read a PHYLIP alignment.  Can be interleaved or not.
-    
-    returns a FastaDict object.
-    """
-    
-    infile = util.open_stream(filename)
-    
-    seqs = fasta.FastaDict()
-    
-    # read sequences and length
-    nseq, seqlen = infile.next().split()
-    nseq = int(nseq)
-    
-    i = 0
-    first = True
-    names = []
-    
-    # parse remaining lines
-    for line in infile:
-        line = line.rstrip()
-    
-        if len(line) > 0:
-            if first:
-                name = line[:10].strip()
-                seq = line[10:].strip().replace(" ", "")
-                names.append(name)
-            else:
-                seq = line.strip().replace(" ", "")
-                name = names[i]
-            i += 1                
-        
-            if not name in seqs:
-                seqs[name] = seq
-            else:
-                seqs[name] += seq
-        else:
-            i = 0
-            first = False
-    return seqs
 
-
-def writeAlignment(out, seqs):
-    """
-    Write a PHYLIP alignment.
-    
-    out - filestream or filename
-    seqs - dict (FastaDict) of sequences
-    
-    Sequence names CANNOT be longer than 8 characters for full compatibility.
-    Use fasta2phylip to convert names to numbers '_______0', '_______1', ...
-    Then use another file to store names in corresponding order.
-    
-    Returns order in which sequences were written.
-    """
-    
-    out = util.open_stream(out, "w")
-    
-    validateSeq(seqs)
-    
-    i = 0
-    print >>out, len(seqs), len(seqs.values()[0])
-    for name in seqs.keys():
-        print >>out, "%8s  %s" % (name, seqs[name])
-        i += 1
-
-    return seqs.keys()
 
 
 
@@ -399,26 +382,25 @@ def writeAlignment(out, seqs):
 # common conversions
 #
 
-def phylipPadding(name, width=8):
+def phylip_padding(name, width=8):
     return "_" * (width - len(name)) + name
 
 
-def renameTreeWithNames(tree, labels):
+def rename_tree_with_names(tree, labels):
     names = tree.nodes.keys()
     for name in names:
-        if tree.nodes[name].isLeaf():
+        if tree.nodes[name].is_leaf():
             num = int(name.replace("_", ""))
             tree.rename(name, labels[num])
 
 
-def renameTreeWithIds(tree, labels):
+def rename_tree_with_ids(tree, labels):
     lookup = util.list2lookup(labels)
     
     names = tree.nodes.keys()
     for name in names:
-        if tree.nodes[name].isLeaf():
-            tree.rename(name, phylipPadding(str(lookup[name])))
-
+        if tree.nodes[name].is_leaf():
+            tree.rename(name, phylip_padding(str(lookup[name])))
 
 
 
@@ -431,13 +413,13 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
                bootiter=1,
                seed=1,
                jumble=1):
-    validateSeq(seqs)
-    cwd = createTempDir()
+    validate_seqs(seqs)
+    cwd = create_temp_dir()
 
     util.tic("%s on %d of length %d" % (prog, len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
+    labels = write_phylip_align(file("infile", "w"), seqs)
     util.write_list(file("labels", "w"), labels)
 
     # initialize default arguments
@@ -452,7 +434,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     
     # bootstrap alignment if needed
     if bootiter > 1:
-    	execPhylip("seqboot", "r\n%d\ny\n%d" % (bootiter, seed), verbose)
+    	exec_phylip("seqboot", "r\n%d\ny\n%d" % (bootiter, seed), verbose)
         os.rename("outfile", "infile")    
     	
     	# add bootstrap arguments
@@ -460,10 +442,10 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
         
     
     # run phylip
-    execPhylip(prog, args, verbose)
+    exec_phylip(prog, args, verbose)
     
     # check for PHYLIP GIVE UP
-    if isPhylipGiveUp("outfile"):
+    if is_phylip_give_up("outfile"):
         tree = treelib.Tree()
         tree.make_root()
         
@@ -474,20 +456,20 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     else:
         # parse tree
         if bootiter == 1:
-            tree = readOutTree("outtree", labels, bootiter)
+            tree = read_out_tree("outtree", labels, bootiter)
 
             # parse likelihood
             if prog in ["dnaml", "proml"]:
-                tree.data["logl"] = readLogl("outfile")
+                tree.data["logl"] = read_logl("outfile")
 
         else:
-            trees = readOutTree("outtree", labels, bootiter)
+            trees = read_out_tree("outtree", labels, bootiter)
     
     
     if saveOutput != "":
-        saveTempDir(cwd, saveOutput)
+        save_temp_dir(cwd, saveOutput)
     else:
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
     
     util.toc()
     
@@ -498,7 +480,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
         return trees
 
 
-def isPhylipGiveUp(filename):
+def is_phylip_give_up(filename):
     for line in file(filename):
         if "0 trees in all found" in line:
             return True
@@ -506,45 +488,6 @@ def isPhylipGiveUp(filename):
     
 
 
-def bootNeighbor(seqs, iters=100, seed=None, output=None, 
-                 verbose=True, force=False):
-    
-    if seed == None:
-        seed = random.randInt(0, 1000) * 2 + 1
-    
-    validateSeq(seqs)
-    cwd = createTempDir()
-    util.tic("bootNeighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))
-
-    # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
-    
-    execPhylip("seqboot", "r\n%d\ny\n%d" % (iters, seed), verbose)
-    
-    os.rename("outfile", "infile")
-    execPhylip("protdist", "m\nd\n%d\ny" % iters, verbose)
-    
-    os.rename("outfile", "infile")
-    execPhylip("neighbor", "m\n%d\n%d\ny" % (iters, seed), verbose)
-
-    util.toc()        
-    
-    # read tree samples
-    if output != None:
-        os.rename("outtree", "../" + output)
-        cleanupTempDir(cwd)
-        return labels
-    else:
-        trees = []
-        infile = file("outtree")
-        for i in xrange(iters):
-            tree = treelib.Tree()
-            tree.read_newick(infile)
-            renameTreeWithNames(tree, labels)
-            trees.append(tree)
-        infile.close()
-        cleanupTempDir(cwd)
-        return trees
 
 
 def protpars(seqs, verbose=True, force = False, args="y", 
@@ -593,32 +536,32 @@ def dnapars(seqs, verbose=True, force = False, args="y",
 
 
 def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
-    validateSeq(aln)
-    cwd = createTempDir()
+    validate_seqs(aln)
+    cwd = create_temp_dir()
 
     util.tic("proml on %d of length %d" % (len(aln), len(aln.values()[0])))
 
     # create input
-    labels = fasta2phylip(file("infile", "w"), aln)
+    labels = write_phylip_align(file("infile", "w"), aln)
     writeInTree("intree", tree, labels)
     
     # run phylip
-    execPhylip("proml", args, verbose)
+    exec_phylip("proml", args, verbose)
     
     # parse logl
-    logl = readLogl("outfile")
+    logl = read_logl("outfile")
     
     # parse tree
-    tree = readOutTree("outtree", labels)
+    tree = read_out_tree("outtree", labels)
     
-    cleanupTempDir(cwd)
+    cleanup_temp_dir(cwd)
     util.toc()
     
     return logl, tree
 
 
 def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
-    cwd = createTempDir()
+    cwd = create_temp_dir()
     
     fontfile = os.popen("which font4", "r").read().rstrip()
     
@@ -630,14 +573,14 @@ def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
         args = "%s\nv\nn\ny" % fontfile
     
     # run phylip
-    execPhylip("drawgram", args, verbose)
+    exec_phylip("drawgram", args, verbose)
     
     os.rename("plotfile", "../" + plotfile)
     
     if saveOutput != "":
-        saveTempDir(cwd, saveOutput)
+        save_temp_dir(cwd, saveOutput)
     else:
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
     
     
 
@@ -654,26 +597,26 @@ def protdist(seqs, output=None, verbose=True, force = False, args=None):
     if args == None:
         args = "y"
 
-    validateSeq(seqs)
-    cwd = createTempDir()
+    validate_seqs(seqs)
+    cwd = create_temp_dir()
     util.tic("protdist on %d of length %d" % (len(seqs), len(seqs.values()[0])))
     
     # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
+    labels = write_phylip_align(file("infile", "w"), seqs)
     
     # run phylip
-    execPhylip("protdist", args, verbose)
+    exec_phylip("protdist", args, verbose)
     
     util.toc()    
     
     # parse output
     if output != None:
         os.rename("outfile", "../" + output)
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return labels
     else:
-        name, mat = readDistMatrix("outfile")    
-        cleanupTempDir(cwd)
+        name, mat = read_dist_matrix("outfile")    
+        cleanup_temp_dir(cwd)
         return labels, mat
 
 
@@ -681,26 +624,26 @@ def dnadist(seqs, output=None, verbose=True, force = False, args=None):
     if args == None:
         args = "y"
     
-    validateSeq(seqs)
-    cwd = createTempDir()
+    validate_seqs(seqs)
+    cwd = create_temp_dir()
     util.tic("dnadist on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
+    labels = write_phylip_align(file("infile", "w"), seqs)
     
     # run phylip
-    execPhylip("dnadist", args, verbose)
+    exec_phylip("dnadist", args, verbose)
     
     util.toc()    
     
     # parse output
     if output != None:
         os.rename("outfile", "../" + output)
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return labels
     else:
-        name, mat = readDistMatrix("outfile")    
-        cleanupTempDir(cwd)
+        name, mat = read_dist_matrix("outfile")    
+        cleanup_temp_dir(cwd)
         return labels, mat
 
 
@@ -728,30 +671,33 @@ def correctDistMatrix(distmat, maxdist=40, fardist=None):
     return distmat2
     
 
-
-def bootNeighbor(seqs, iters=100, seed=1, output=None, 
+def boot_neighbor(seqs, iters=100, seed=None, output=None, 
                  verbose=True, force=False):
-    validateSeq(seqs)
-    cwd = createTempDir()
-    util.tic("bootNeighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))
+    
+    if seed == None:
+        seed = random.randInt(0, 1000) * 2 + 1
+    
+    validate_seqs(seqs)
+    cwd = create_temp_dir()
+    util.tic("boot_neighbor on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
+    labels = write_phylip_align(file("infile", "w"), seqs)
     
-    execPhylip("seqboot", "y\n%d" % seed, verbose)
-    
-    os.rename("outfile", "infile")
-    execPhylip("protdist", "m\nd\n%d\ny" % iters, verbose)
+    exec_phylip("seqboot", "r\n%d\ny\n%d" % (iters, seed), verbose)
     
     os.rename("outfile", "infile")
-    execPhylip("neighbor", "m\n%d\n%d\ny" % (iters, seed), verbose)
+    exec_phylip("protdist", "m\nd\n%d\ny" % iters, verbose)
+    
+    os.rename("outfile", "infile")
+    exec_phylip("neighbor", "m\n%d\n%d\ny" % (iters, seed), verbose)
 
     util.toc()        
     
     # read tree samples
     if output != None:
         os.rename("outtree", "../" + output)
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return labels
     else:
         trees = []
@@ -759,33 +705,34 @@ def bootNeighbor(seqs, iters=100, seed=1, output=None,
         for i in xrange(iters):
             tree = treelib.Tree()
             tree.read_newick(infile)
-            renameTreeWithNames(tree, labels)
+            rename_tree_with_name(tree, labels)
             trees.append(tree)
         infile.close()
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return trees
 
 
-def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None, 
-                 verbose=True, force = False):
-    validateSeq(seqs)
-    cwd = createTempDir()
+
+def boot_proml(seqs, iters = 100, seed = 1, jumble=5, output=None, 
+               verbose=True, force = False):
+    validate_seqs(seqs)
+    cwd = create_temp_dir()
     util.tic("bootProml on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
     # create input
-    labels = fasta2phylip(file("infile", "w"), seqs)
+    labels = write_phylip_align(file("infile", "w"), seqs)
     
-    execPhylip("seqboot", "y\n%d" % seed, verbose)
+    exec_phylip("seqboot", "y\n%d" % seed, verbose)
     
     os.rename("outfile", "infile")
-    execPhylip("proml", "m\nD\n%d\n%d\n%d\ny" % (iters, seed, jumble), verbose)
+    exec_phylip("proml", "m\nD\n%d\n%d\n%d\ny" % (iters, seed, jumble), verbose)
     
     util.toc()        
     
     # read tree samples
     if output != None:
         os.rename("outtree", "../" + output)
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return labels
     else:
         trees = []
@@ -793,15 +740,15 @@ def bootProml(seqs, iters = 100, seed = 1, jumble=5, output=None,
         for i in xrange(iters):
             tree = treelib.Tree()
             tree.read_newick(infile)
-            renameTreeWithNames(tree, labels)
+            rename_tree_with_names(tree, labels)
             trees.append(tree)
         infile.close()
-        cleanupTempDir(cwd)
+        cleanup_temp_dir(cwd)
         return trees
 
 
 def consense_from_file(intrees, verbose=True, args="y"):
-    cwd = createTempDir()
+    cwd = create_temp_dir()
 
     ntrees = 0
     out = open("intree", "w")
@@ -810,26 +757,25 @@ def consense_from_file(intrees, verbose=True, args="y"):
         ntrees += 1
     out.close()
     
-    execPhylip("consense", args, verbose)
+    exec_phylip("consense", args, verbose)
     
     tree = treelib.read_tree("outtree")
     
-    cleanupTempDir(cwd)
+    cleanup_temp_dir(cwd)
     return tree, ntrees
-consenseFromFile =  consense_from_file
 
 
 def consense(trees, counts=None, verbose=True, args="y"):
-    cwd = createTempDir()
+    cwd = create_temp_dir()
     
     write_boot_trees("intree", trees, counts=counts)
     
-    execPhylip("consense", args, verbose)
+    exec_phylip("consense", args, verbose)
     
     tree = treelib.Tree()
     tree.read_newick("outtree")
     
-    cleanupTempDir(cwd)
+    cleanup_temp_dir(cwd)
     return tree
 
 

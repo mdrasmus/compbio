@@ -40,66 +40,14 @@ http://song.sourceforge.net/gff3.shtml
 
 """
 
+
+# python imports
 import sys
 
-from rasmus import algorithms
+# rasmus imports
 from rasmus import regionlib
 from rasmus import util
 
-
-
-TEST_GTF = \
-"""
-140\tTwinscan\tinter\t5141\t8522\t.\t-\t.\tgene_id ""; transcript_id "";
-140\tTwinscan\tinter_CNS\t8523\t9711\t.\t-\t.\tgene_id ""; transcript_id "";
-"""
-
-
-TEST_GFF3 = \
-"""
-chr2\tTwinscan\tmRNA\t5141\t8522\t.\t-\t.\tID=gene1;
-chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon1; Parent=gene1;
-chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon2; Parent=gene1;
-chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon3; Parent=gene1;
-"""
-
-if __name__ == "__main__":
-    import re
-    TEST_GFF3_2 = \
-re.sub(" +", "\t", """
-##gff-version   3
-##sequence-region   ctg123 1 1497228       
-ctg123	. gene            1000  9000  .  +  .  ID=gene00001;Name=EDEN
-
-ctg123	. TF_binding_site 1000  1012  .  +  .  ID=tfbs00001;Parent=gene00001
-
-ctg123	. mRNA            1050  9000  .  +  .  ID=mRNA00001;Parent=gene00001;Name=EDEN.1
-ctg123	. mRNA            1050  9000  .  +  .  ID=mRNA00002;Parent=gene00001;Name=EDEN.2
-ctg123	. mRNA            1300  9000  .  +  .  ID=mRNA00003;Parent=gene00001;Name=EDEN.3
-
-ctg123	. exon            1300  1500  .  +  .  ID=exon00001;Parent=mRNA00003
-ctg123	. exon            1050  1500  .  +  .  ID=exon00002;Parent=mRNA00001,mRNA00002
-ctg123	. exon            3000  3902  .  +  .  ID=exon00003;Parent=mRNA00001,mRNA00003
-ctg123	. exon            5000  5500  .  +  .  ID=exon00004;Parent=mRNA00001,mRNA00002,mRNA00003
-ctg123	. exon            7000  9000  .  +  .  ID=exon00005;Parent=mRNA00001,mRNA00002,mRNA00003
-
-ctg123	. CDS             1201  1500  .  +  0  ID=cds000011;Parent=mRNA00001;Name=edenprotein.1
-ctg123	. CDS             3000  3902  .  +  0  ID=cds000012;Parent=mRNA00001;Name=edenprotein.1
-ctg123	. CDS             5000  5500  .  +  0  ID=cds000013;Parent=mRNA00001;Name=edenprotein.1
-ctg123	. CDS             7000  7600  .  +  0  ID=cds000014;Parent=mRNA00001;Name=edenprotein.1
-
-ctg123	. CDS             1201  1500  .  +  0  ID=cds000021;Parent=mRNA00002;Name=edenprotein.2
-ctg123	. CDS             5000  5500  .  +  0  ID=cds000022;Parent=mRNA00002;Name=edenprotein.2
-ctg123	. CDS      7000  7600  .  +  0  ID=cds000023;Parent=mRNA00002;Name=edenprotein.2
-
-ctg123	. CDS             3301  3902  .  +  0  ID=cds000031;Parent=mRNA00003;Name=edenprotein.3
-ctg123	. CDS    5000   5500   . +  2  ID=cds000032;Parent=mRNA00003;Name=edenprotein.3
-ctg123	. CDS    7000  7600  .  +  2  ID=cds000033;Parent=mRNA00003;Name=edenprotein.3
-
-ctg123	. CDS      3391  3902  .  +  0  ID=cds000041;Parent=mRNA00003;Name=edenprotein.4
-ctg123	. CDS         5000  5500  .  +  2  ID=cds000042;Parent=mRNA00003;Name=edenprotein.4
-Ctg123	. CDS      7000  7600    .  +  2  ID=cds000043;Parent=mRNA00003;Name=edenprotein.4
-""")
 
 
 #=============================================================================
@@ -422,15 +370,63 @@ iterGff = iter_gff
 #
 if __name__ == "__main__":
     from rasmus.common import *
-    
+    import re
+
+    TEST_GTF = \
+"""
+140\tTwinscan\tinter\t5141\t8522\t.\t-\t.\tgene_id ""; transcript_id "";
+140\tTwinscan\tinter_CNS\t8523\t9711\t.\t-\t.\tgene_id ""; transcript_id "";
+"""
+
+
+    TEST_GFF3 = \
+"""
+chr2\tTwinscan\tmRNA\t5141\t8522\t.\t-\t.\tID=gene1;
+chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon1; Parent=gene1;
+chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon2; Parent=gene1;
+chr2\tTwinscan\texon\t8523\t9711\t.\t-\t.\tID=exon3; Parent=gene1;
+"""
+
+    TEST_GFF3_2 = \
+re.sub(" +", "\t", """
+##gff-version   3
+##sequence-region   ctg123 1 1497228       
+ctg123	. gene            1000  9000  .  +  .  ID=gene00001;Name=EDEN
+
+ctg123	. TF_binding_site 1000  1012  .  +  .  ID=tfbs00001;Parent=gene00001
+
+ctg123	. mRNA            1050  9000  .  +  .  ID=mRNA00001;Parent=gene00001;Name=EDEN.1
+ctg123	. mRNA            1050  9000  .  +  .  ID=mRNA00002;Parent=gene00001;Name=EDEN.2
+ctg123	. mRNA            1300  9000  .  +  .  ID=mRNA00003;Parent=gene00001;Name=EDEN.3
+
+ctg123	. exon            1300  1500  .  +  .  ID=exon00001;Parent=mRNA00003
+ctg123	. exon            1050  1500  .  +  .  ID=exon00002;Parent=mRNA00001,mRNA00002
+ctg123	. exon            3000  3902  .  +  .  ID=exon00003;Parent=mRNA00001,mRNA00003
+ctg123	. exon            5000  5500  .  +  .  ID=exon00004;Parent=mRNA00001,mRNA00002,mRNA00003
+ctg123	. exon            7000  9000  .  +  .  ID=exon00005;Parent=mRNA00001,mRNA00002,mRNA00003
+
+ctg123	. CDS             1201  1500  .  +  0  ID=cds000011;Parent=mRNA00001;Name=edenprotein.1
+ctg123	. CDS             3000  3902  .  +  0  ID=cds000012;Parent=mRNA00001;Name=edenprotein.1
+ctg123	. CDS             5000  5500  .  +  0  ID=cds000013;Parent=mRNA00001;Name=edenprotein.1
+ctg123	. CDS             7000  7600  .  +  0  ID=cds000014;Parent=mRNA00001;Name=edenprotein.1
+
+ctg123	. CDS             1201  1500  .  +  0  ID=cds000021;Parent=mRNA00002;Name=edenprotein.2
+ctg123	. CDS             5000  5500  .  +  0  ID=cds000022;Parent=mRNA00002;Name=edenprotein.2
+ctg123	. CDS      7000  7600  .  +  0  ID=cds000023;Parent=mRNA00002;Name=edenprotein.2
+
+ctg123	. CDS             3301  3902  .  +  0  ID=cds000031;Parent=mRNA00003;Name=edenprotein.3
+ctg123	. CDS    5000   5500   . +  2  ID=cds000032;Parent=mRNA00003;Name=edenprotein.3
+ctg123	. CDS    7000  7600  .  +  2  ID=cds000033;Parent=mRNA00003;Name=edenprotein.3
+
+ctg123	. CDS      3391  3902  .  +  0  ID=cds000041;Parent=mRNA00003;Name=edenprotein.4
+ctg123	. CDS         5000  5500  .  +  2  ID=cds000042;Parent=mRNA00003;Name=edenprotein.4
+Ctg123	. CDS      7000  7600    .  +  2  ID=cds000043;Parent=mRNA00003;Name=edenprotein.4
+""")
+
     regions = read_gff(strStream(TEST_GFF3_2), format=GFF3)
     regions2 = GFF3.build_hierarchy(regions)
     
     print regions2
     print regions2[0]
     
-    if 0:
-        pc(read_gff(strStream(TEST_GTF)))
-
-
-
+    pc(read_gff(strStream(TEST_GTF)))

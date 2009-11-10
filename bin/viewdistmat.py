@@ -2,9 +2,10 @@
 
 import sys
 
-from rasmus import fasta
 from rasmus import util
-from rasmus import phylip
+
+from compbio import phylip
+from compbio import fasta
 
 options = [
     ["d:", "dist=", "dist", "<distance matrix>", 
@@ -19,15 +20,15 @@ options = [
 
 
 def main(conf):
-    label, distmat = phylip.readDistMatrix(conf["dist"])
+    label, distmat = phylip.read_dist_matrix(conf["dist"])
     
     if "label" in conf:
         if conf["label"].endswith(".align") or \
            conf["label"].endswith(".aln") or \
            conf["label"].endswith(".afa"):
-            label = fasta.readFasta(conf["label"]).keys()
+            label = fasta.read_fasta(conf["label"]).keys()
         else:
-            label = util.readStrings(conf["label"])
+            label = util.read_strings(conf["label"])
     
     util.heatmap(distmat, rlabels=label, clabels=label, 
                  xmargin=conf["margin"], ymargin=conf["margin"], 

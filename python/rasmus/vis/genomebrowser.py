@@ -7,6 +7,7 @@ import summon
 from summon import multiwindow
 from summon import select
 from summon import hud
+from summon.multiscale import Multiscale
 
 from rasmus.vis import visual
 from rasmus import util, stats, regionlib
@@ -650,7 +651,7 @@ class RulerTrack (Track):
         else:
             self.coords = None
         
-        self.multiscale = visual.Multiscale(marginx=.5, marginy=.5, scalex=10, scaley=10)
+        self.multiscale = Multiscale(marginx=.5, marginy=.5, scalex=10, scaley=10)
        
     
     def draw(self):
@@ -675,7 +676,7 @@ class RulerTrack (Track):
         else:
             self.shown = True
             
-            if not self.multiscale.sameView():
+            if not self.multiscale.same_view():
                 if self.coords == None:
                     g = self.drawRuler(self.pos, 
                                        self.start, 
@@ -799,7 +800,7 @@ class SeqTrack (Track):
         
         self.seqs = seqs
         self.shown = False
-        self.multiscale = visual.Multiscale(marginx=.5, marginy=.5)
+        self.multiscale = Multiscale(marginx=.5, marginy=.5)
 
     
     def draw(self):
@@ -822,7 +823,7 @@ class SeqTrack (Track):
         
         if self.multiscale.atleast(4, .1, view=view):
             if not self.shown or \
-               not self.multiscale.sameView(view):
+               not self.multiscale.same_view(view):
                 self.shown = True
                 start = max(int(self.multiscale.worldx1 - x + self.view.start), 
                             int(self.view.start))
@@ -855,7 +856,7 @@ class CurveTrack (Track):
         
         self.xdata = xdata
         self.ydata = ydata
-        self.multiscale = visual.Multiscale(marginx=.25, marginy=.25, 
+        self.multiscale = Multiscale(marginx=.25, marginy=.25, 
                                             scalex=4.0, scaley=4.0)
         self.shown = False
         
@@ -874,7 +875,7 @@ class CurveTrack (Track):
         
         win = self.getWindow()
     
-        if not self.shown or not self.multiscale.sameView():
+        if not self.shown or not self.multiscale.same_view():
             self.shown = True
             x, y = self.pos
             
@@ -1113,7 +1114,7 @@ class AlignTrack (Track):
                  **options):
         Track.__init__(self, **options)
         self.size = [aln.alignlen(), len(aln)]
-        self.multiscale = visual.Multiscale(marginx=.5, marginy=.5)
+        self.multiscale = Multiscale(marginx=.5, marginy=.5)
         self.collapse = collapse
         
         self.showColorBases = showColorBases
@@ -1275,7 +1276,7 @@ class AlignTrack (Track):
         if self.multiscale.atleast(minblockSize, .1, 
                                    view=view, size=size):
             if not self.textShown or \
-               not self.multiscale.sameView(view):
+               not self.multiscale.same_view(view):
                 self.textShown = True
                 
                 start = max(int(self.multiscale.worldx1 - x - 1), 

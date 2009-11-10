@@ -33,7 +33,7 @@ simultaneously.
     ["a:", "align=", "align", "<fasta alignment>"],
     ["t:", "tree=", "tree", "<newick file>"],
     ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
-    ["b:", "blast=", "blast", "<blast hit -m8 format>"],
+    ["l:", "lmat=", "lmat", "<labeled sparse matrix>"],
     
     ["s:", "stree=", "stree", "<species tree newick file>",
         {"single": True}],
@@ -49,7 +49,7 @@ simultaneously.
         {"default": []}],
     ["D:", "distmatext=", "distmatext", "<phylip distance matrix extension>",
         {"default": []}],
-    ["B:", "blastext=", "blastext", "<blast hit -m8 format extension>",
+    ["L:", "lmatext=", "lmatext", "<labeled sparse matrix extension>",
         {"default": []}],
     
     "optional",
@@ -64,13 +64,26 @@ simultaneously.
 
 conf = util.parseOptions(sys.argv, options)
 
-      
 
-def read_blast_matrix(blastfile, order=None):
-    """Reads a BLAST file (-m8 format) into a sparse SUMMON Matrix"""
+# TODO: turn into lmat file reading
+#  process_lmat(infile,  mat)  
+
+def read_lmat_matrix(lmatfile, order=None):
+    """Reads a labeled sparse matrix into a sparse SUMMON Matrix"""
     
     mat = matrix.Matrix()
+    matrix.open_matrix(lmatfile, mat, format="lmat")
 
+    mat.colormap = util.ColorMap([[0, (0, 0, 0)],
+                                  [100, (0, 0, 1)],
+                                  [300, (0, 1, 0)],
+                                  [500, (1, 1, 0)],
+                                  [1000, (1, 0, 0)]])
+    
+    return mat
+
+
+    '''
     qnames = []
     snames = []
     qseen = set()
@@ -129,7 +142,7 @@ def read_blast_matrix(blastfile, order=None):
                                   [1000, (1, 0, 0)]])
 
     return mat
-
+    '''
 
 
 
@@ -139,13 +152,13 @@ def read_blast_matrix(blastfile, order=None):
 
 treefiles = []
 distmatfiles = []
-blastfiles = []
+lmatfiles = []
 alignfiles = []
 fastafiles = []
 
 treefiles.extend(conf.get("tree", []))
 distmatfiles.extend(conf.get("distmat", []))
-blastfiles.extend(conf.get("blast", []))
+lmatfiles.extend(conf.get("lmat", []))
 alignfiles.extend(conf.get("align", []))
 
 # add explicit filenames
@@ -163,8 +176,8 @@ if len(conf["REST"]) > 0:
     for ext in conf["distmatext"]:
         distmatfiles.append(basename + ext)
     
-    for ext in conf["blastext"]:
-        blastfiles.append(basename + ext)
+    for ext in conf["lmatext"]:
+        lmatfiles.append(basename + ext)
     
     for ext in conf["alignext"]:
         alignfiles.append(basename + ext)
@@ -213,11 +226,11 @@ for matfile in distmatfiles:
     distmatNames.append(matfile)    
 
 # read in multiple blast hits
-for blastfile in blastfiles:
-    mat = read_blast_matrix(blastfile)
+for lmatfile in lmatfiles:
+    mat = read_lmat_matrix(lmatfile)
     distmats.append(mat)
-    distmatLabels.append(label)
-    distmatNames.append(blastfile)        
+    distmatLabels.append(mat.rowlabels)
+    distmatNames.append(lmatfile)
 
 # setup color map
 if "maxdist" in conf:

@@ -151,6 +151,7 @@ class PhyloViewer (object):
                                          gene2species=self.gene2species,
                                          winsize=self.treeWinSize,
                                          colormap=self.treeColormap)
+            self.vistree.setTree(self.currentTree)
             self.order = self.currentTree.leafNames()
         else:
             self.vistree = None
@@ -318,7 +319,7 @@ class PhyloViewer (object):
     def nextTree(self):
         treeindex = self.trees.index(self.currentTree)
         treeindex = (treeindex + 1) % len(self.trees)
-        self.currentTree = self.trees[treeindex]
+        self.currentTree = self.trees[treeindex]        
         self.vistree.setTree(self.currentTree)
         self.vistree.win.set_name(self.treeNames[treeindex])
         self.vistree.show()
@@ -384,3 +385,13 @@ class PhyloTreeViewer (treevis.TreeViewer):
 
     def onReorderLeaves(self):
         self.phyloViewer.onReorderLeaves()
+
+
+    def setTree(self, tree):
+
+        if max(node.dist for node in tree) == 0.0:
+            self.xscale = 0.0
+        else:
+            self.xscale = 100.0
+            
+        treevis.TreeViewer.setTree(self, tree)

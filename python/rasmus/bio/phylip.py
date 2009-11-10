@@ -55,8 +55,12 @@ def checkTempFiles(force=False):
         raise Exception("Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!")
 
 
-def execPhylip(cmd, args, verbose=False):
+def exec_phylip(cmd, args, verbose=False):
     """Execute a phylip-like program that expects arguments from stdin"""
+
+    util.logger("exec: %s" % cmd)
+    util.logger("args: %s" % args)
+
 
     if verbose:
         util.logger("exec: %s" % cmd)
@@ -66,7 +70,7 @@ def execPhylip(cmd, args, verbose=False):
     else:
         assert os.system("""cat <<EOF | %s >/dev/null 2>&1
 %s""" % (cmd, args)) == 0
-
+execPhylip = exec_phylip
 
 
 def cleanup(files=["infile", "outfile", "outtree"]):

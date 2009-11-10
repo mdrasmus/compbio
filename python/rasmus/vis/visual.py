@@ -6,10 +6,11 @@ from summon.plot import ScatterPlot
 from rasmus import util
 
 from summon import VisObject
+from summon.multiscale import Multiscale
 
 
 # TODO: make multiscale also track y-axis
-
+'''
 class Multiscale (object):
     """Manage detecting when the zoom and scroll of the visualization is 
        sufficently different to justify a redraw"""
@@ -100,7 +101,7 @@ class Multiscale (object):
                (worldheight == 0 or 
                 screenheight / worldheight > yminres)
 
-
+'''
 
 
 class Ruler (summon.VisObject):
@@ -131,7 +132,7 @@ class Ruler (summon.VisObject):
         
     
     def update(self):
-        if not self.multiscale.sameView():
+        if not self.multiscale.same_view():
             g = drawRuler(self.win,
                           self.pos, 
                           self.start, 

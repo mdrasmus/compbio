@@ -10,6 +10,7 @@ from rasmus.bio import phylorun as phy
 
 
 o = optparse.OptionParser()
+o.add_option("-m", "--model", dest="model", metavar="MODEL")
 phy.add_common_options(o)
 conf, files = phy.parse_common_options(o)
 
@@ -38,11 +39,17 @@ for fn in files:
 
     nrates = 4
     if conf.seqtype == "dna":
-        args = "%s/infile 0 s 1 %d HKY e e %d e %s %s y" % \
-               (outdir, conf.boot, nrates, usertree, "ny"[int(conf.opttree)])
+        if not conf.model:
+            model = "HKY"
+        args = "%s/infile 0 s 1 %d %s e e %d e %s %s y" % \
+               (outdir, conf.boot, conf.model, nrates, usertree,
+                "ny"[int(conf.opttree)])
     else:
-        args = "%s/infile 1 s 1 %d JTT e %d e %s %s y" % \
-               (outdir, conf.boot, nrates, usertree, "ny"[int(conf.opttree)])
+        if not conf.model:
+            conf.model = "JTT"
+        args = "%s/infile 1 s 1 %d %s e %d e %s %s y" % \
+               (outdir, conf.boot, conf.model, nrates, usertree,
+                "ny"[int(conf.opttree)])
     cmd = "phyml " + args + " > '%s/out'" % outdir
     print cmd
     out = open(outdir + "/cmd", "w")

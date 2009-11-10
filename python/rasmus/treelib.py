@@ -286,7 +286,18 @@ class Tree:
         self.nextname += 1
         return name
     newName = new_name
+
     
+    def unique_name(self, name, names, sep="_"):
+        """Create a new unique name not already in names"""
+        i = 1
+        name2 = name
+        while name2 in names:
+            name2 = name + sep + str(i)
+            i += 1
+        names.add(name2)
+        return name2
+
     
     def add_tree(self, parent, childTree):
         """Add a subtree to the tree."""
@@ -462,7 +473,7 @@ class Tree:
                     except ValueError:
                         # treat as node name
                         name = boot.strip()
-                        if name and not node.is_leaf():
+                        if name and isinstance(node.name, int):
                             node.name = name
         else:
             data = data.strip()
@@ -585,6 +596,8 @@ class Tree:
         # walk the parse tree and build the tree
         self.clear()
 
+        names = set()
+
         def walk(expr):
             children, name, data = expr
             
@@ -596,6 +609,9 @@ class Tree:
 
             # parse data
             readData(node, data)
+
+            # ensure unique name
+            node.name = self.unique_name(node.name, names)
 
             # recurse
             for child in children:
@@ -620,6 +636,7 @@ class Tree:
     
         infile = file(filename)    
         closure = {"opens": 0}
+        names = set()
 
         def readchar():
             while True:
@@ -663,7 +680,10 @@ class Tree:
                 else:                   
                     word, char = read_until(":),")
                     word = char1 + word.rstrip()
-                    node = TreeNode(word)
+
+                    name = self.unique_name(word, names)
+                    
+                    node = TreeNode(name)
                     if char == ":":
                         node.dist = read_dist()
                     return node

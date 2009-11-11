@@ -26,18 +26,18 @@ class PhyloViewer (object):
     def __init__(self, trees=[], distmats=[], aligns=[],
                        stree=None,
                        gene2species=None,
-                       treeColormap=lambda x: (0, 0, 0),
+                       tree_colormap=lambda x: (0, 0, 0),
                        
-                       distlabels=None, 
-                       matrixColormap=None,
-                       distlabelsFromAlign=True,
+                       dist_labels=None, 
+                       matrix_colormap=None,
+                       dist_labels_from_align=True,
                        seqs=None,
                        
-                       treeWinSize=(350, 500),
-                       distmatWinSize=None,
-                       alignWinSize=(580, 500),
+                       tree_win_size=(350, 500),
+                       distmat_win_size=None,
+                       align_win_size=(580, 500),
                        
-                       treeNames=None, distmatNames=None, alignNames=None):
+                       tree_names=None, distmat_names=None, align_names=None):
         """
         arguments:
         
@@ -52,27 +52,27 @@ class PhyloViewer (object):
         gene2species -- gene name to species name mapping function
                        
         * Distance matrix configuration
-        distlabels      -- a list of row/col labels (one for each matrix)
-        matrixColormap  -- default colormap for matrices
-        distlabelsFromAlign -- distlabelsFromAlign (bool) determines whether a
-                               distance matrix  should ignore its own labels
-                               (which are probably dummy labels) and  assume its
-                               rows and columns are ordered the same as the
-                               given alignment.
+        dist_labels      -- a list of row/col labels (one for each matrix)
+        matrix_colormap  -- default colormap for matrices
+        dist_labels_from_align -- distlabelsFromAlign (bool) determines
+                               whether a distance matrix  should ignore its
+                               own labels (which are probably dummy labels)
+                               and  assume its rows and columns are ordered
+                               the same as the given alignment.
         seqs            -- a dict of sequences for visualizing BLAST matrices
                        
         * Window sizes
-        treeWinSize    -- tree visualization window size. default: (350, 500),
-        distmatWinSize -- matrix visualization window size. 
-        alignWinSize   -- alignment visualization window size. default: (580, 500)
+        tree_win_size    -- tree visualization window size. default: (350, 500),
+        distmat_win_size -- matrix visualization window size. 
+        align_win_size   -- alignment visualization window size. default: (580, 500)
         
         * Window titles (optional)
-        treeNames    -- a list of tree names (one for each tree) to be used in 
-                        tree window title. default: None
-        distmatNames -- a list fo matric names (one for each matrix) to be used
-                        in matrix window title. default: None
-        alignNames   -- a list of alignment names (one for each alignment) to 
-                        be used in alignment window title. default: None
+        tree_names    -- a list of tree names (one for each tree) to be used in 
+                         tree window title. default: None
+        distmat_names -- a list fo matric names (one for each matrix) to be used
+                         in matrix window title. default: None
+        align_names   -- a list of alignment names (one for each alignment) to 
+                         be used in alignment window title. default: None
         """
         
         # data
@@ -83,16 +83,16 @@ class PhyloViewer (object):
         # optional data
         self.stree = stree
         self.gene2species = gene2species
-        self.treeColormap = treeColormap
-        self.distlabels = distlabels
-        self.distlabelsFromAlign = distlabelsFromAlign
+        self.treeColormap = tree_colormap
+        self.distlabels = dist_labels
+        self.distlabelsFromAlign = dist_labels_from_align
         self.seqs = seqs
         self.matrices = []
         
         # names
-        self.treeNames = treeNames
-        self.distmatNames = distmatNames
-        self.alignNames = alignNames
+        self.treeNames = tree_names
+        self.distmatNames = distmat_names
+        self.alignNames = align_names
         
         # default name
         if self.treeNames == None and len(self.trees) > 0:
@@ -112,17 +112,17 @@ class PhyloViewer (object):
         self.currentAlign = None
         
         # window sizes
-        self.treeWinSize = treeWinSize
-        self.distmatWinSize = distmatWinSize
-        self.alignWinSize = alignWinSize
+        self.treeWinSize = tree_win_size
+        self.distmatWinSize = distmat_win_size
+        self.alignWinSize = align_win_size
         
         # window ensemble properties
         self.windows = []
         self.coords = []
         
         # colormap
-        if matrixColormap != None:
-            self.matrixColormap = matrixColormap
+        if matrix_colormap != None:
+            self.matrixColormap = matrix_colormap
         else:
             # setup default
             self.matrixColormap = util.ColorMap([[-1e-10, (1, .7, .8)],

@@ -68,7 +68,7 @@ class TreeViewer (sumtree.SumTree):
         self.win.set_binding(input_key("S", "shift"), lambda: self.swap(self.tree.root))
         
         # build sidebar menu
-        if self.bar == None:
+        if self.bar is None:
             self.bar = hud.SideBar(self.win, width=150)
             self.bar.addItem(hud.MenuItem("gene mode (g)", lambda: self.setMode("gene")))
             self.bar.addItem(hud.MenuItem("events mode (e)", lambda: self.setMode("events")))

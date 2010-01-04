@@ -3,6 +3,8 @@
     
     This module contains functions for creating and manipulating 
     clusterings/partitionings.
+
+    Generally useful piece of code
     
 """
 

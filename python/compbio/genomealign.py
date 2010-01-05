@@ -10,16 +10,16 @@ from . import fasta, alignlib
 
 
 class GenomeAlign (object):
-    def __init__(self, masterFile=None, seq2species=lambda x: x):
+    def __init__(self, master_file=None, seq2species=lambda x: x):
         self.lookup = util.Dict(default=[])
         self.seq2species = seq2species
         
-        if masterFile != None:
-            self.read(masterFile)
+        if master_file != None:
+            self.read(master_file)
     
     
-    def read(self, masterFile):
-        for row in tablelib.iter_table(masterFile):
+    def read(self, master_file):
+        for row in tablelib.iter_table(master_file):
             self.lookup[(row['species'], row['chromosome'])].append(row)
 
 
@@ -33,11 +33,11 @@ class GenomeAlign (object):
         return records
 
 
-    def getFiles(self, species, chrom, start, end):
+    def get_files(self, species, chrom, start, end):
         return [x['filename'] for x in self.get(species, chrom, start, end)]
     
     
-    def getAligns(self, species, chrom, start, end, 
+    def get_aligns(self, species, chrom, start, end, 
                   mainspecies=lambda keys: keys[0],
                   collapse=False):
         """By default assumes main species is 1st sequence"""
@@ -82,14 +82,14 @@ class GenomeAlign (object):
         return alns
         
     
-    def getAlign(self, species, chrom, start, end,
+    def get_align(self, species, chrom, start, end,
                  mainspecies=lambda keys: keys[0],
                  collapse=False):
         # NOTE: assume one2one alignment
         
         cataln = fasta.FastaDict()
-        alns = self.getAligns(species, chrom, start, end,
-                              mainspecies=mainspecies, collapse=collapse)
+        alns = self.get_aligns(species, chrom, start, end,
+                               mainspecies=mainspecies, collapse=collapse)
         
         if len(alns) == 0:
             return cataln

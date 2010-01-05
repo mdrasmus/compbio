@@ -17,9 +17,10 @@ import summon
 
 # rasmus libs
 from rasmus import treelib, util, matrixlib
-from rasmus.bio import alignlib, blast, fasta, phylip, phylo
 from rasmus.vis import phylovis, treevis
+from compbio import alignlib, blast, fasta, phylip, phylo
 
+#=============================================================================
 
 usage = """\
 usage: %prog [options] [basenames...]
@@ -97,14 +98,17 @@ conf, args = o.parse_args()
 def read_lmat_matrix(lmatfile, order=None):
     """Reads a labeled sparse matrix into a sparse SUMMON Matrix"""
 
+    # read lmat and get basic stats
     lmat = list(matrixlib.iter_lmat(open(lmatfile)))
     labels = util.unique(util.cget(lmat, 0) + util.cget(lmat, 1))
     lookup = util.list2lookup(labels)
     nrows = len(labels)
-    
+
+    # create Summon Matrix
     mat = matrix.Matrix()
     mat.setup(nrows, nrows, len(lmat))
 
+    # populate matrix
     for r, c, v in lmat:
         i = lookup[r]
         j = lookup[c]
@@ -171,9 +175,7 @@ for filename in treefiles:
     trees.append(treelib.read_tree(filename))
 
 
-
 # read species information
-
 if conf.smap:
     gene2species = phylo.read_gene2species(conf.smap)
 else:
@@ -188,6 +190,7 @@ if conf.treecolormap:
     tree_colormap = treevis.read_tree_color_map(conf.treecolormap)
 else:
     tree_colormap = None
+
 
 #=============================================================================
 # read distance matrix

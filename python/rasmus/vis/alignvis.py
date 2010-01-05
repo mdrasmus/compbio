@@ -22,7 +22,7 @@ from summon import hud
 class AlignViewer (object):
     def __init__(self, aln, title="alignviewer",
                  winsize=[580, 500], winpos=None, 
-                 showColorBases=True, colorBases=True, showBases=True,
+                 show_color_bases=True, color_bases=True, show_bases=True,
                  **options):
         
         self.aln = aln
@@ -31,29 +31,29 @@ class AlignViewer (object):
         self.winpos = winpos
         
         # config options
-        self.showColorBases = showColorBases
-        self.colorBases = colorBases
-        self.showBases = showBases
+        self.show_color_bases = show_color_bases
+        self.color_bases = color_bases
+        self.show_bases = show_bases
         
         view = gb.Region("", "", "", 1, aln.alignlen())
         self.vis = gb.GenomeStackBrowser(view=view, winsize=winsize, 
                                          winpos=winpos,
                                          **options)
-        self.vis.addTrack(gb.RulerTrack(bottom=-len(aln)))
+        self.vis.add_track(gb.RulerTrack(bottom=-len(aln)))
         self.alntrack = None
-        self.setAlign(aln)
+        self.set_align(aln)
         self.bar = None
         
 
-    def setAlign(self, aln):
+    def set_align(self, aln):
         if self.alntrack != None:
-            self.vis.removeTrack(self.alntrack)
+            self.vis.remove_track(self.alntrack)
         
         self.aln = aln        
-        self.alntrack = gb.AlignTrack(aln, colorBases=self.colorBases,
-                                      showColorBases=self.showColorBases,
-                                      showBases=self.showBases)
-        self.vis.addTrack(self.alntrack)
+        self.alntrack = gb.AlignTrack(aln, color_bases=self.color_bases,
+                                      show_color_bases=self.show_color_bases,
+                                      show_bases=self.show_bases)
+        self.vis.add_track(self.alntrack)
         
         
     
@@ -71,27 +71,29 @@ class AlignViewer (object):
         if self.bar == None:
             # build sidebar menu
             self.bar = hud.SideBar(self.win, width=150)
-            self.bar.addItem(hud.MenuItem("toggle color (c)", self.toggleColorBases))
-            self.bar.addItem(hud.MenuItem("toggle leftwin (l)", self.toggleLeftWindow))
-            self.bar.addItem(hud.MenuItem("always color", 
-                lambda: self.setMinColorBases(0)))
+            self.bar.add_item(hud.MenuItem("toggle color (c)",
+                                           self.toggle_color_bases))
+            self.bar.add_item(hud.MenuItem("toggle leftwin (l)",
+                                           self.toggle_left_window))
+            self.bar.add_item(hud.MenuItem("always color", 
+                lambda: self.set_min_color_bases(0)))
         
         # register key bindings
-        self.win.set_binding(input_key("c"), self.toggleColorBases)
-        self.win.set_binding(input_key("l"), self.toggleLeftWindow)
+        self.win.set_binding(input_key("c"), self.toggle_color_bases)
+        self.win.set_binding(input_key("l"), self.toggle_left_window)
     
-    def enableColorBases(self, enabled=True):
-        self.alntrack.showColorBases = enabled
+    def enable_color_bases(self, enabled=True):
+        self.alntrack.show_color_bases = enabled
         self.vis.update()
     
     
-    def toggleColorBases(self):
-        self.enableColorBases(not self.alntrack.showColorBases)
+    def toggle_color_bases(self):
+        self.enable_color_bases(not self.alntrack.show_color_bases)
     
-    def toggleLeftWindow(self):
+    def toggle_left_window(self):
         self.vis.enableSideWindows(left=not self.vis.showLeftWindow)
 
-    def setMinColorBases(self, size):
+    def set_min_color_bases(self, size):
         #self.alntrack.min_base_width = size
         pass
 

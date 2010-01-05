@@ -19,7 +19,7 @@ from summon import hud
 
 class TreeViewer (sumtree.SumTree):
     def __init__(self, tree, stree=None, gene2species=None, recon=None,
-                 dupColor=(1, 0, 0), lossColor=(0, 0, 1), 
+                 dup_color=(1, 0, 0), loss_color=(0, 0, 1), 
                  **options):
         sumtree.SumTree.__init__(self, tree, **options)
         
@@ -30,18 +30,18 @@ class TreeViewer (sumtree.SumTree):
         self.bar = None
         
         # colors
-        self.dupColor = dupColor
-        self.lossColor = lossColor
+        self.dup_color = dup_color
+        self.loss_color = loss_color
         
-        self.setupRecon(recon)
+        self.setup_recon(recon)
     
     
-    def setTree(self, tree):
-        sumtree.SumTree.setTree(self, tree)
-        self.setupRecon()
+    def set_tree(self, tree):
+        sumtree.SumTree.set_tree(self, tree)
+        self.setup_recon()
                     
     
-    def setupRecon(self, recon=None):
+    def setup_recon(self, recon=None):
         # construct default reconciliation
         if recon == None and self.stree and self.gene2species:
             self.recon = phylo.reconcile(self.tree, self.stree, self.gene2species)
@@ -61,28 +61,28 @@ class TreeViewer (sumtree.SumTree):
         sumtree.SumTree.show(self)
         
         # set bindings
-        self.win.set_binding(input_key("g"), lambda: self.setMode("gene"))
-        self.win.set_binding(input_key("e"), lambda: self.setMode("events"))
-        self.win.set_binding(input_key("r"), lambda: self.setMode("reroot"))
-        self.win.set_binding(input_key("s"), lambda: self.setMode("swap"))
+        self.win.set_binding(input_key("g"), lambda: self.set_mode("gene"))
+        self.win.set_binding(input_key("e"), lambda: self.set_mode("events"))
+        self.win.set_binding(input_key("r"), lambda: self.set_mode("reroot"))
+        self.win.set_binding(input_key("s"), lambda: self.set_mode("swap"))
         self.win.set_binding(input_key("S", "shift"), lambda: self.swap(self.tree.root))
         
         # build sidebar menu
         if self.bar is None:
             self.bar = hud.SideBar(self.win, width=150)
-            self.bar.addItem(hud.MenuItem("gene mode (g)", lambda: self.setMode("gene")))
-            self.bar.addItem(hud.MenuItem("events mode (e)", lambda: self.setMode("events")))
-            self.bar.addItem(hud.MenuItem("reroot mode (r)", lambda: self.setMode("reroot")))
-            self.bar.addItem(hud.MenuItem("swap mode (s,S)", lambda: self.setMode("swap")))
+            self.bar.add_item(hud.MenuItem("gene mode (g)", lambda: self.set_mode("gene")))
+            self.bar.add_item(hud.MenuItem("events mode (e)", lambda: self.set_mode("events")))
+            self.bar.add_item(hud.MenuItem("reroot mode (r)", lambda: self.set_mode("reroot")))
+            self.bar.add_item(hud.MenuItem("swap mode (s,S)", lambda: self.set_mode("swap")))
         
         if self.events:
-            self.win.add_group(self.drawEvents())
+            self.win.add_group(self.draw_events())
     
     
-    def drawEvents(self):
+    def draw_events(self):
 
         # draw duplications
-        dups = [color(*self.dupColor)]        
+        dups = [color(*self.dup_color)]        
         for node in self.tree:
             if self.events[node] == "dup":
                 dups.append(
@@ -98,7 +98,7 @@ class TreeViewer (sumtree.SumTree):
         # draw losses
         losses_per_branch = util.histDict([node for node, schild in self.losses])
         
-        losses = [color(*self.lossColor)]
+        losses = [color(*self.loss_color)]
         for node, nlosses in losses_per_branch.iteritems():
             if node.parent == None:
                 continue
@@ -113,24 +113,24 @@ class TreeViewer (sumtree.SumTree):
         return group(group(*dups), group(*losses))
 
 
-    def setMode(self, mode):
+    def set_mode(self, mode):
         print "mode is now '%s'" % mode
         self.mode = mode
         
 
-    def nodeClick(self, node):
+    def node_click(self, node):
         """Node click callback"""
         
         if self.mode == "gene":
             # print gene names
-            #sumtree.SumTree.nodeClick(self, node)
+            #sumtree.SumTree.node_click(self, node)
             print "node: %s\t%f" % (str(node.name), node.dist)
             for key, val in node.data.iteritems():
                 print "%s:\t%s" % (key, str(val))
             print
             
         elif self.mode == "events":
-            self.printEvents(node)
+            self.print_events(node)
         elif self.mode == "reroot":
             self.reroot(node)
         elif self.mode == "swap":
@@ -140,12 +140,12 @@ class TreeViewer (sumtree.SumTree):
     def swap(self, node):
         if len(node.children) > 1:
             node.children = node.children[1:] + [node.children[0]]
-        self.setTree(self.tree)
+        self.set_tree(self.tree)
         self.show()
-        self.onReorderLeaves()        
+        self.on_reorder_leaves()        
         
     
-    def printEvents(self, node):
+    def print_events(self, node):
         """Prints the events that occur on a node"""
         
         print "-" * 20
@@ -179,13 +179,13 @@ class TreeViewer (sumtree.SumTree):
         except e:
             print e
         print "rerooted on node", node.name
-        self.setTree(self.tree)
+        self.set_tree(self.tree)
         
         self.show()
-        self.onReorderLeaves()
+        self.on_reorder_leaves()
     
     
-    def onReorderLeaves(self):
+    def on_reorder_leaves(self):
         """callback for when leaves are reordered"""
         pass
     

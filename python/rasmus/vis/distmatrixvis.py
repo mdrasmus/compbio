@@ -30,7 +30,7 @@ class DistMatrixViewer (matrix.MatrixViewer):
         if isinstance(distmat, list):
             # create sparse matrix from dense matrix
             mat = Matrix()
-            mat.from2DList(data, cutoff=cutoff)
+            mat.from_dmat(data, cutoff=cutoff)
         else:
             # already sparse
             mat = distmat
@@ -46,7 +46,7 @@ class DistMatrixViewer (matrix.MatrixViewer):
         if colormap != None:
             mat.colormap = colormap
         
-        matrix.MatrixViewer.__init__(self, mat, onClick=self.onClick,
+        matrix.MatrixViewer.__init__(self, mat, on_click=self.on_click,
                                      style=style, drawzeros=True,
                                      **options)
         
@@ -62,29 +62,29 @@ class DistMatrixViewer (matrix.MatrixViewer):
         
         # build sidebar menu
         self.bar = hud.SideBar(self.win, width=150)
-        self.bar.addItem(hud.MenuItem("align gene (a)", self.showAlign))
-        self.bar.addItem(hud.MenuItem("clear genes (d)", self.clearSelection))
-        self.bar.addItem(hud.MenuItem("show genes (s)", self.showSelection))
-        self.bar.addItem(hud.MenuItem("toggle labels (l)", self.toggleLabelWindows))
+        self.bar.add_item(hud.MenuItem("align gene (a)", self.show_align))
+        self.bar.add_item(hud.MenuItem("clear genes (d)", self.clear_selection))
+        self.bar.add_item(hud.MenuItem("show genes (s)", self.show_selection))
+        self.bar.add_item(hud.MenuItem("toggle labels (l)", self.toggle_label_windows))
         
         # register key bindings
-        self.win.set_binding(input_key("a"), self.showAlign)
-        self.win.set_binding(input_key("d"), self.clearSelection)        
-        self.win.set_binding(input_key("s"), self.showSelection)
+        self.win.set_binding(input_key("a"), self.show_align)
+        self.win.set_binding(input_key("d"), self.clear_selection)        
+        self.win.set_binding(input_key("s"), self.show_selection)
     
     
-    def onClick(self, row, col, i, j, val):
+    def on_click(self, row, col, i, j, val):
         self.selgenes.add(row)
         self.selgenes.add(col)
 
         print "%s %s (%d, %d) = %f" % (row, col, i, j, val)
 
-    def clearSelection(self):
+    def clear_selection(self):
         self.selgenes.clear()
         print "clear selection"
 
 
-    def showSelection(self):
+    def show_selection(self):
         # sort genes by order in matrix
         genes = list(self.selgenes)
         lookup = util.list2lookup(self.mat.rowlabels)
@@ -96,7 +96,7 @@ class DistMatrixViewer (matrix.MatrixViewer):
             print "%3d %s" % (i+1, gene)
     
     
-    def showAlign(self):
+    def show_align(self):
         if self.seqs == None:
             print "cannot build alignment: no sequences are loaded"
             return
@@ -111,5 +111,5 @@ class DistMatrixViewer (matrix.MatrixViewer):
         self.aln = muscle.muscle(self.seqs.get(genes))
         self.aln.names.sort(key=lambda x: lookup[x])
         
-        self.visaln = genomebrowser.showAlign(self.aln)
+        self.visaln = genomebrowser.show_align(self.aln)
         self.visaln.win.set_name("alignment")

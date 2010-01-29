@@ -516,7 +516,7 @@ def sample(weights):
     item i will be chosen with probability weights[i]/sum(weights)
     """
     
-    probs = util.oneNorm(weights)
+    probs = util.one_norm(weights)
     
     cdf = [0]
     for i in range(1, len(probs)):

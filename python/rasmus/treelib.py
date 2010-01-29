@@ -1158,6 +1158,31 @@ subtreeByLeafNames = subtree_by_leaf_names
 def reorder_tree(tree, tree2):
     """Reorders the branches of tree to match tree2"""
 
+    # reroot tree to match tree2
+    root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+
+    def walk(node):
+        if node.is_leaf():
+            leaves = set([node.name])
+        else:
+            leaves = set()
+            for child in node.children:
+                l = walk(child)
+                if l is None:
+                    return None
+                leaves = leaves.union(l)
+
+        if leaves in root_branches:
+            # root found, terminate search
+            reroot(tree, node.name, newCopy=False)
+            return None
+            
+        return leaves
+    walk(tree.root)
+
+    
+
+    # reorder tree to match tree2
     leaf_lookup = util.list2lookup(tree2.leaf_names())
 
     def mean(lst):
@@ -1963,14 +1988,32 @@ if __name__ == "__main__":
     tree = read_tree(infile)
     tree.write(rootData=True)
 
-    
-    infile = StringIO("((a:1,b:2)60:3,(c:4,d:5)y:6)rra;")
+
+    # reorder test1
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
     tree = read_tree(infile)
     print tree.nodes['b'].parent.data
-
 
     infile = StringIO("((d:1,c:2)x:3,(b:4,a:5)y:6)r;")
     tree2 = read_tree(infile)
 
+    draw_tree_names(tree, maxlen=5)
     reorder_tree(tree, tree2)
-    draw_tree_names(tree2, maxlen=5)
+    draw_tree_names(tree, maxlen=5)
+
+
+    # reorder test2
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    print tree.nodes['b'].parent.data
+
+    infile = StringIO("(a:0.5,(b:2,(d:5,c:4)y:9)x:0.5);")
+    tree2 = read_tree(infile)
+
+    draw_tree_names(tree, maxlen=5)
+    reorder_tree(tree, tree2)
+    draw_tree_names(tree, maxlen=5)
+
+
+
+

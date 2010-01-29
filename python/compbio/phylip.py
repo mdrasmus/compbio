@@ -748,13 +748,15 @@ def boot_proml(seqs, iters = 100, seed = 1, jumble=5, output=None,
 
 
 def consense_from_file(intrees, verbose=True, args="y"):
-    cwd = create_temp_dir()
 
-    ntrees = 0
+    # read all trees
+    trees = util.open_stream(intrees).readlines()
+    ntrees = len(trees)
+
+    cwd = create_temp_dir()
     out = open("intree", "w")
-    for line in util.open_stream(intrees):
-        out.write(line)
-        ntrees += 1
+    for tree in trees:
+        out.write(tree)
     out.close()
     
     exec_phylip("consense", args, verbose)

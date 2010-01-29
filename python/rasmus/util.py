@@ -1519,10 +1519,10 @@ def invperm(perm):
 # histograms, distributions
 #
 
-def oneNorm(vals):
+def one_norm(vals):
     """Normalize values so that they sum to 1"""
     s = float(sum(vals))
-    return map(lambda x: x/s, vals)
+    return [x/s for x in vals]
 
 
 def bucketSize(array, ndivs=None, low=None, width=None):

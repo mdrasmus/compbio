@@ -10,12 +10,12 @@
 import sys, os
 
 # rasmus libs
-from rasmus import env, treelib
+from rasmus import treelib
 from rasmus import util
 from rasmus import stats
 
 import spidir
-from rasmus.bio import phylip, phyml, fasta, phylo
+from compbio import phylip, fasta, phylo
 
 def parseBgFreq(txt):
     return map(float, txt.split(","))
@@ -31,13 +31,12 @@ options = [
      {"single": True}],
     ["b:", "bgfreq=", "bgfreq", "<A>,<C>,<G>,<T>",
      {"single": True,
-      "parser": parseBgFreq,
-      "default": [.25,.25,.25,.25]}],
+      "parser": parseBgFreq}],
     ["n:", "numtrees=", "numtrees", "<expected number of trees>",
         {"single": True,
          "parser": int,
          "help": "if given, require a certain number of trees to be present"}],
-    ["t:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
+    ["k:", "kappa=", "kappa", "<transition/transversion ratio>",
      {"single": True,
       "parser": float,
       "default": 1.0}],
@@ -84,7 +83,16 @@ def ensure_binary(tree):
             
                 
             
-            
+def est_bgfreq(aln):
+    hist = {"A": 1, "C": 1, "G": 1, "T": 1}
+    for seq in aln:
+        for c in seq.upper():
+            hist[c] = hist.get(c, 0) + 1
+
+    bgfreq = [hist[i] for i in "ACGT"]
+    tot = float(sum(bgfreq))
+    bgfreq = [i/tot for i in bgfreq]
+    return bgfreq
 
 
 for filename in conf["REST"]:
@@ -94,9 +102,17 @@ for filename in conf["REST"]:
         args = "r\n" + args
 
     tree, ntrees = phylip.consense_from_file(filename, False, args)
+
+    if "numtrees" in conf:
+        if ntrees < conf["numtrees"]:
+            print "SKIP: %d < %d trees" % (ntrees, conf["numtrees"])
+            continue
     
     if "align" in conf:
-        aln = fasta.readFasta(conf["align"])
+        aln = fasta.read_fasta(conf["align"])
+
+        if "bgfreq" not in conf:
+            conf["bgfreq"] = est_bgfreq(aln)
 
         ensure_binary(tree)
         
@@ -106,9 +122,9 @@ for filename in conf["REST"]:
         
         # find actual branch lengths
         spidir.find_ml_branch_lengths_hky(tree,
-                                          util.mget(aln, tree.leafNames()),
+                                          util.mget(aln, tree.leaf_names()),
                                           conf["bgfreq"],
-                                          conf["tsvratio"],
+                                          conf["kappa"],
                                           maxiter=conf["maxiter"],
                                           parsinit=True)
 

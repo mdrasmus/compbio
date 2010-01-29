@@ -114,6 +114,8 @@ def report_test(argv):
     o = optparse.OptionParser()
     o.add_option("-S", "--smap", metavar="GENE_TO_SPECIES", dest="smap")
     o.add_option("-s", "--stree", metavar="SPECIES_TREE", dest="stree")
+    o.add_option("--suffix", metavar="STRING", dest="suffix",
+                 default="")
     
     # parse options
     conf, args = o.parse_args(argv[2:])
@@ -124,9 +126,9 @@ def report_test(argv):
           "<datadir> <data tree ext> <inputdir> <input tree ext>")
 
     datadir, dataext, evaldir, evalext = args
-    resultext = ".result"
-    allresultext = ".result.tab"
-    summaryext = ".summary"
+    resultext = conf.suffix + ".result"
+    allresultext = conf.suffix + ".result.tab"
+    summaryext = conf.suffix + ".summary"
 
     if conf.stree and conf.smap:
         stree = treelib.read_tree(conf.stree)

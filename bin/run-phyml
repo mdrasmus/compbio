@@ -31,26 +31,36 @@ for fn in files:
 
     # set user tree
     if conf.usertreeext:
-        tree = treelib.read_tree(basename + conf.usertreeext)
-        treelib.unroot(tree, newCopy=False)
-        usertree = outdir + "/usertree"
-        tree.write(usertree)
+        usertree = treelib.read_tree(basename + conf.usertreeext)
+
+        # save data
+        data = dict((n.name, n.data) for n in usertree)
+
+        # prepare usertree
+        usertree2 = treelib.unroot(usertree, newCopy=True)
+        for n in usertree2:
+            n.data = {}
+        
+        usertree_file = outdir + "/usertree"
+        usertree2.write(usertree_file)
     else:
-        usertree = "BIONJ"
+        usertree = None
+        usertree_file = "BIONJ"
+        data = None
     
 
     nrates = 4
     if conf.seqtype == "dna":
-        if not conf.model:
-            model = "HKY"
+        if conf.model is None:
+            conf.model = "HKY"
         args = "'%s/infile' 0 s 1 %d %s e e %d e %s %s y" % \
-               (outdir, conf.boot, conf.model, nrates, usertree,
+               (outdir, conf.boot, conf.model, nrates, usertree_file,
                 "ny"[int(conf.opttree)])
     else:
-        if not conf.model:
+        if conf.model is None:
             conf.model = "JTT"
         args = "'%s/infile' 1 s 1 %d %s e %d e %s %s y" % \
-               (outdir, conf.boot, conf.model, nrates, usertree,
+               (outdir, conf.boot, conf.model, nrates, usertree_file,
                 "ny"[int(conf.opttree)])
     cmd = "phyml " + args + " > '%s/out'" % outdir
     print cmd
@@ -62,6 +72,20 @@ for fn in files:
         result = 1
     else:
         tree = treelib.read_tree(outdir + "/infile_phyml_tree.txt")
+
+        # reorder tree
+        if usertree:
+            treelib.reorder_tree(tree, usertree)
+
+        # restore data
+        if data:
+            tree.write(basename + conf.treeext)
+            tree = treelib.read_tree(basename + conf.treeext)
+
+            # copy over data
+            for name, val in data.items():
+                tree.nodes[name] = val
+
         tree.write(basename + conf.treeext)
 
 sys.exit(result)

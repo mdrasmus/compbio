@@ -383,12 +383,12 @@ class Table (list):
             
         
             
-    def clear(self, headers=[], delim="\t", nheaders=1, types=None):
+    def clear(self, headers=None, delim="\t", nheaders=1, types=None):
         """Clears the contents of the table"""
         
         self[:] = []
         self.headers = copy.copy(headers)
-        if types == None:
+        if types is None:
             self.types = {}
         else:
             self.types = copy.copy(types)
@@ -427,15 +427,15 @@ class Table (list):
     #
     
     def read(self, filename, delim="\t", nheaders=1,
-                   headers=None, types=None, guessTypes=False):
+                   headers=None, types=None, guess_types=False):
         for row in self.read_iter(filename, delim=delim, nheaders=nheaders,
                                   headers=headers, types=types,
-                                  guessTypes=guessTypes):
+                                  guess_types=guess_types):
             self.append(row)
             
     
     def read_iter(self, filename, delim="\t", nheaders=1,
-                 headers=None, types=None, guessTypes=False):
+                 headers=None, types=None, guess_types=False):
         """Reads a character delimited file and returns a list of dictionaries
             
            notes:
@@ -464,7 +464,7 @@ class Table (list):
 
         # clear table
         self.clear(headers, delim, nheaders, types)
-        
+
                 
         # temps for reading only
         self.tmptypes = None
@@ -547,7 +547,8 @@ class Table (list):
         
         if self.nheaders == 0:
             # default headers are numbers
-            self.headers = range(len(tokens))
+            if self.headers is None:
+                self.headers = range(len(tokens))
 
         else:
             self.headers = tokens
@@ -565,7 +566,8 @@ class Table (list):
             self.types = dict(zip(self.headers, self.tmptypes))
         else:
             # default to strings
-            self.types = dict.fromkeys(self.headers, str)
+            for header in self.headers:
+                self.types.setdefault(header, str)
 
 
         # populate defaults
@@ -576,6 +578,7 @@ class Table (list):
         else:        
             self.defaults = util.mapdict(self.types,
                                          valfunc=lambda x: x())
+
 
     
     
@@ -1124,13 +1127,15 @@ class Table (list):
 # convenience functions
 #
 
-def read_table(filename, delim="\t", nheaders=1, type_lookup=None, types=None,
-              guessTypes=False):
+def read_table(filename, delim="\t", headers=None,
+               nheaders=1, type_lookup=None, types=None,
+               guess_types=False):
     """Read a Table from a file written in PTF"""
     
     table = Table(type_lookup=type_lookup)
-    table.read(filename, delim=delim, nheaders=nheaders, types=types,
-               guessTypes=guessTypes)
+    table.read(filename, delim=delim, headers=headers,
+               nheaders=nheaders, types=types,
+               guess_types=guess_types)
     return table
 
 # NOTE: back-compat

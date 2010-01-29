@@ -709,16 +709,19 @@ class Tree:
 
     def read_parent_tree(self, treeFile, labelFile=None, labels=None):
         """Reads a parent array from a file"""
+
+        lines = util.open_stream(treeFile).readlines()
     
         if labelFile:
             labels = util.read_strings(labelFile)
-        elif labels == None:
-            nitems = (len(open(treeFile).readlines()) + 1)/ 2
+            
+        elif labels is None:
+            nitems = (len(lines) + 1)/ 2
             labels = map(str, range(nitems))
         
         self.make_root()
 
-        for i, line in enumerate(open(treeFile)):
+        for i, line in enumerate(lines):
             parentid = int(line.split(" ")[0])
             
             # determine current child
@@ -758,9 +761,12 @@ class Tree:
             self.root.parent = None
     
     
-    def write_parent_tree(self, treeFile, labels):
-        """Writes tree to the  parent array format"""
+    def write_parent_tree(self, treeFile, labels=None):
+        """Writes tree to the parent array format"""
         ids = {}
+
+        if labels is None:
+            labels = self.leaf_names()
         
         # assign ids to leaves
         for leafname in labels:

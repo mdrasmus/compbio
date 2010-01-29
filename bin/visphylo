@@ -5,8 +5,10 @@
 #
 
 
+
+
 # python libs
-import sys
+import sys, optparse
 
 # summon libs
 from summon.core import *
@@ -14,135 +16,117 @@ from summon import matrix, sumtree
 import summon
 
 # rasmus libs
-from rasmus import treelib, util
-from rasmus.bio import alignlib, blast, fasta, phylip, phylo
+from rasmus import treelib, util, matrixlib
 from rasmus.vis import phylovis, treevis
+from compbio import alignlib, blast, fasta, phylip, phylo
 
+#=============================================================================
 
+usage = """\
+usage: %prog [options] [basenames...]
 
-options = [
-"""\
 Visualizes phylogenetic trees, distance matrices, and sequence alignments
-simultaneously.
-
+simultaneously.\
 """
+o = optparse.OptionParser(usage=usage)
 
-    "data files",
-    ["f:", "fasta=", "fasta", "<fasta sequences>",
-        {"single": True}],
-    ["a:", "align=", "align", "<fasta alignment>"],
-    ["t:", "tree=", "tree", "<newick file>"],
-    ["d:", "distmat=", "distmat", "<phylip distance matrix>"],
-    ["l:", "lmat=", "lmat", "<labeled sparse matrix>"],
-    
-    ["s:", "stree=", "stree", "<species tree newick file>",
-        {"single": True}],
-    ["S:", "smap=", "smap", "<gene to species mapping>",
-        {"single": True}],
-    
-    "data file extensions",
-    ["F:", "fastaext=", "fastaext", "<fasta sequences extension>",
-        {"default": []}],
-    ["A:", "alignext=", "alignext", "<alignment extension>",
-        {"default": []}],
-    ["T:", "treeext=", "treeext", "<tree file extension>",
-        {"default": []}],
-    ["D:", "distmatext=", "distmatext", "<phylip distance matrix extension>",
-        {"default": []}],
-    ["L:", "lmatext=", "lmatext", "<labeled sparse matrix extension>",
-        {"default": []}],
-    
-    "optional",
-    ["M:", "maxdist=", "maxdist", "<maximum distance>",
-        {"single": True,
-         "parser": float,
-         "help": "set max distance in matrix colormap"}],
-    ["", "treecolormap=", "treecolormap", "<tree color map file>",
-        {"single": True}]
-    ]
+g = optparse.OptionGroup(o, "Data files")
+o.add_option_group(g)
+g.add_option("-a", "--align", dest="align", metavar="FILE",
+             action="append", default=[],
+             help="FILE is a FASTA alignment")
+g.add_option("-t", "--tree=", dest="tree", metavar="FILE",
+             action="append", default=[],
+             help="FILE is a tree stored in newick format")
+g.add_option("-d", "--distmat", dest="distmat",
+             metavar="FILE", action="append",
+             default=[],
+             help="FILE is PHYLIP formatted distance matrix")
+g.add_option("-m", "--lmat", dest="lmat", metavar="FILE",
+             action="append", default=[],
+             help="FILE is a labeled sparse matrix (lmat)")
+g.add_option("-f", "--fasta", dest="fasta", metavar="FILE",
+             help="FILE is a FASTA file of unaligned sequences")
+g.add_option("-s", "--stree", dest="stree",
+             metavar="FILE",
+             help="FILE is a species tree newick file")
+g.add_option("-S", "--smap", dest="smap", metavar="FILE",
+             help="FILE is a gene-to-species mapping (smap)")
 
 
-conf = util.parseOptions(sys.argv, options)
+g = optparse.OptionGroup(
+    o, "Data file extensions",
+    "You can specify common extension for filetypes and load several files "
+    "at once by simply giving a basename as the last argument. For example:"
+    "   'visphylo -A .align -T .tree mydataset' "
+    "will load the alignment 'mydataset.align' and tree 'mydataset.tree'.")
+o.add_option_group(g)
+g.add_option("-F", "--fastaext", dest="fastaext",
+             metavar="EXT",
+             action="append", default=[],
+             help="EXT is an extension for fasta sequence files")
+g.add_option("-A", "--alignext", dest="alignext",
+             metavar="", action="append", default=[],
+             help="EXT is an extension for alignment files")
+g.add_option("-T", "--treeext", dest="treeext",
+             metavar="EXT", action="append", default=[],
+             help="EXT is an extension for newick tree files")
+g.add_option("-D", "--distmatext", dest="distmatext",
+             metavar="EXT", action="append",
+             default=[],
+             help="EXT is an extension for PHYLIP distance matrices")
+g.add_option("-M", "--lmatext", dest="lmatext",
+             metavar="EXT", action="append",
+             default=[],
+             help="EXT is an extension for labeled sparse matrices (lmat)")
 
 
-# TODO: turn into lmat file reading
-#  process_lmat(infile,  mat)  
+g = optparse.OptionGroup(o, "Optional")
+o.add_option_group(g)
+g.add_option("", "--maxdist", dest="maxdist", metavar="MAXDIST",
+             type="float",
+             help="set max distance to MAXDIST in matrix colormap")
+g.add_option("", "--treecolormap", dest="treecolormap",
+             metavar="FILE",
+             help="FILE is a tree color map file")
+
+
+conf, args = o.parse_args()
+
+#=============================================================================
 
 def read_lmat_matrix(lmatfile, order=None):
     """Reads a labeled sparse matrix into a sparse SUMMON Matrix"""
-    
-    mat = matrix.Matrix()
-    matrix.open_matrix(lmatfile, mat, format="lmat")
 
-    mat.colormap = util.ColorMap([[0, (0, 0, 0)],
-                                  [100, (0, 0, 1)],
-                                  [300, (0, 1, 0)],
-                                  [500, (1, 1, 0)],
-                                  [1000, (1, 0, 0)]])
-    
-    return mat
-
-
-    '''
-    qnames = []
-    snames = []
-    qseen = set()
-    sseen = set()
-    
-    queries = []
-    subjects = []
-    vals = []
-    
-    for hit in blast.BlastReader(blastfile):
-        q = hit[0]
-        s = hit[1]
-        v = blast.bitscore(hit)
-        
-        # record label order
-        if q not in qseen:
-            qnames.append(q)
-            qseen.add(q)
-        if s not in sseen:
-            snames.append(s)
-            sseen.add(s)
-        
-        # store data
-        queries.append(q)
-        subjects.append(s)
-        vals.append(v)
-
-    # determine label order
-    if order:
-        labels = order
-    else:
-        labels = qnames + filter(lambda x: x not in sseen, snames)
-    # set label names    
-    mat.rowlabels = labels
-    mat.collabels = labels
-    
-    
-    # populate matrix        
+    # read lmat and get basic stats
+    lmat = list(matrixlib.iter_lmat(open(lmatfile)))
+    labels = util.unique(util.cget(lmat, 0) + util.cget(lmat, 1))
     lookup = util.list2lookup(labels)
-    
-    rows, cols, vals2 = mat.rows, mat.cols, mat.vals
-    for i in xrange(len(vals)):
-        r = lookup[queries[i]]
-        c = lookup[subjects[i]]
-        rows.append(r)
-        cols.append(c)
-        vals2.append(vals[i])
-        mat[r][c] = vals[i]
-    mat.setup(len(labels), len(labels), len(vals))
-    
-    # blast hits have their own color map
+    nrows = len(labels)
+
+    # create Summon Matrix
+    mat = matrix.Matrix()
+    mat.setup(nrows, nrows, len(lmat))
+
+    # populate matrix
+    for r, c, v in lmat:
+        i = lookup[r]
+        j = lookup[c]
+        mat.rows.append(i)
+        mat.cols.append(j)
+        mat.vals.append(v)
+        mat[i][j] = v
+        
+    mat.rowlabels = labels
+    mat.collabels = labels    
+
     mat.colormap = util.ColorMap([[0, (0, 0, 0)],
                                   [100, (0, 0, 1)],
                                   [300, (0, 1, 0)],
                                   [500, (1, 1, 0)],
                                   [1000, (1, 0, 0)]])
-
+    
     return mat
-    '''
 
 
 
@@ -156,33 +140,31 @@ lmatfiles = []
 alignfiles = []
 fastafiles = []
 
-treefiles.extend(conf.get("tree", []))
-distmatfiles.extend(conf.get("distmat", []))
-lmatfiles.extend(conf.get("lmat", []))
-alignfiles.extend(conf.get("align", []))
+treefiles.extend(conf.tree)
+distmatfiles.extend(conf.distmat)
+lmatfiles.extend(conf.lmat)
+alignfiles.extend(conf.align)
 
 # add explicit filenames
-if "fasta" in conf:
-    fastafiles.append(conf["fasta"])
+if conf.fasta:
+    fastafiles.append(conf.fasta)
 
 
 # add any implicit files with matching extension
-if len(conf["REST"]) > 0:
-    basename = conf["REST"][0]
-    
-    for ext in conf["treeext"]:
+for basename in args:    
+    for ext in conf.treeext:
         treefiles.append(basename + ext)
     
-    for ext in conf["distmatext"]:
+    for ext in conf.distmatext:
         distmatfiles.append(basename + ext)
     
-    for ext in conf["lmatext"]:
+    for ext in conf.lmatext:
         lmatfiles.append(basename + ext)
     
-    for ext in conf["alignext"]:
+    for ext in conf.alignext:
         alignfiles.append(basename + ext)
         
-    for ext in conf["fastaext"]:
+    for ext in conf.fastaext:
         fastafiles.append(basename + ext)
     
     
@@ -193,49 +175,48 @@ for filename in treefiles:
     trees.append(treelib.read_tree(filename))
 
 
-
 # read species information
-
-if "smap" in conf:
-    gene2species = phylo.read_gene2species(conf["smap"])
+if conf.smap:
+    gene2species = phylo.read_gene2species(conf.smap)
 else:
     gene2species = None
 
-if "stree" in conf:
-    stree = treelib.read_tree(conf["stree"])
+if conf.stree:
+    stree = treelib.read_tree(conf.stree)
 else:
     stree = None
     
-if "treecolormap" in conf:
-    treeColormap = treevis.read_tree_color_map(conf["treecolormap"])
+if conf.treecolormap:
+    tree_colormap = treevis.read_tree_color_map(conf.treecolormap)
 else:
-    treeColormap = None
+    tree_colormap = None
+
 
 #=============================================================================
 # read distance matrix
 distmats = []
-distmatNames = []
-distmatLabels = []
+distmat_names = []
+distmat_labels = []
     
         
 # read in multiple distance matrices
 for matfile in distmatfiles:
     label, mat = phylip.read_dist_matrix(matfile)
     distmats.append(mat)
-    distmatLabels.append(label)
-    distmatNames.append(matfile)    
+    distmat_labels.append(label)
+    distmat_names.append(matfile)    
 
 # read in multiple blast hits
 for lmatfile in lmatfiles:
     mat = read_lmat_matrix(lmatfile)
     distmats.append(mat)
-    distmatLabels.append(mat.rowlabels)
-    distmatNames.append(lmatfile)
+    distmat_labels.append(mat.rowlabels)
+    distmat_names.append(lmatfile)
 
 # setup color map
-if "maxdist" in conf:
+if conf.maxdist:
     low = 0
-    high = conf["maxdist"]
+    high = conf.maxdist
     colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
                               [0, util.black],
                               [1e-10, util.blue],
@@ -268,15 +249,15 @@ vis = phylovis.PhyloViewer(trees, distmats, aligns,
                            # tree config
                            stree=stree,
                            gene2species=gene2species,
-                           treeColormap=treeColormap,
+                           tree_colormap=tree_colormap,
 
                            # distmat config
-                           distlabels=distmatLabels, 
-                           matrixColormap=colormap,
+                           dist_labels=distmat_labels, 
+                           matrix_colormap=colormap,
                            seqs=seqs,
 
                            # filenames
-                           treeNames=treefiles,
-                           distmatNames=distmatNames,                  
-                           alignNames=alignfiles)
+                           tree_names=treefiles,
+                           distmat_names=distmat_names,                  
+                           align_names=alignfiles)
 vis.show()

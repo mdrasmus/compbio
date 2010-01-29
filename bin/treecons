@@ -95,18 +95,47 @@ def est_bgfreq(aln):
     return bgfreq
 
 
+def read_trees(filename):
+    infile = open(filename)
+    trees = []
+    try:
+        while 1:
+            trees.append(treelib.read_tree(infile))
+    except:
+        pass
+    infile.close()
+
+    return trees
+
+
+def rename_trees_with_ids(trees):
+
+    names = trees[0].leaf_names()
+    for tree in trees:
+        phylip.rename_tree_with_ids(tree, names)
+    return names
+
+
 for filename in conf["REST"]:
     args = "y"
 
     if conf["rooted"]:
         args = "r\n" + args
 
-    tree, ntrees = phylip.consense_from_file(filename, False, args)
+    # use id numbers, because phylip crashes on long gene names
+    trees = read_trees(filename)
+    names = rename_trees_with_ids(trees)
+    ntrees = len(trees)
 
     if "numtrees" in conf:
         if ntrees < conf["numtrees"]:
             print "SKIP: %d < %d trees" % (ntrees, conf["numtrees"])
             continue
+
+    # run phylip
+    tree = phylip.consense(trees, verbose=False, args=args)
+    phylip.rename_tree_with_names(tree, names)
+    
     
     if "align" in conf:
         aln = fasta.read_fasta(conf["align"])

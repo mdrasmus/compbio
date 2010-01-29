@@ -235,7 +235,7 @@ def write_in_tree(filename, tree, labels):
     rename_tree_with_ids(tree2, labels)
     for node in tree2.nodes.values():
         node.dist = 0
-    tree2.writeNewick(filename)
+    tree2.write(filename)
 writeInTree = write_in_tree
 
 

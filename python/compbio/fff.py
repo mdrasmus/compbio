@@ -1,7 +1,3 @@
-from rasmus import util
-from rasmus import algorithms
-
-
 """
 
 FFF (Frequent Feature Format)
@@ -13,6 +9,11 @@ FFI (Frequent Feature Index)
 <feature name> <species> <chrom> <len> <start> <character pos>
 
 """
+
+from rasmus import util
+from rasmus import algorithms
+
+
 
 
 class FeatureRef:

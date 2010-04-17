@@ -123,11 +123,11 @@ def calc_conservation(aln):
     # find identity positions
     identity = ""
     for i in xrange(length):
-        chars = util.histDict(util.cget(seqs, i))
+        chars = util.hist_dict(util.cget(seqs, i))
         if "-" in chars: del chars["-"]
         
         if len(chars) == 0:
-            percids.append(0)
+            percids.append(0.0)
         else:
             pid = max(chars.values()) / float(len(aln))
             percids.append(pid)
@@ -198,7 +198,7 @@ def tsitTver(seq1, seq2):
     assert len(seq1) == len(seq2), "sequences are not same length"
     
     subs = map(substitutionType, seq1, seq2)
-    counts = util.histInt(subs)
+    counts = util.hist_int(subs)
     
     return counts[SUB_TSIT] / float(counts[SUB_TVER])
 
@@ -209,7 +209,7 @@ def calcTransitionMatrix(seq1, seq2):
     assert len(seq1) == len(seq2), "sequences are not same length"
     seq1, seq2 = seq1.upper(), seq2.upper()
     
-    c = util.histDict(map("".join, zip(seq1, seq2)))
+    c = util.hist_dict(map("".join, zip(seq1, seq2)))
     keys = filter(lambda x: "-" not in x, c.keys())
     total = float(sum(util.mget(c, keys)))
     c = util.mapdict(c, valfunc=lambda x: x/total)
@@ -365,7 +365,7 @@ def findFourFold(aln):
         
         # compute the histogram of the column.
         # ignore gaps '-' and non-translated 'X'
-        hist = util.histDict(col)
+        hist = util.hist_dict(col)
         if "-" in hist:
             del hist["-"]
         if "X" in hist:
@@ -416,7 +416,7 @@ def findAlignCodons(aln):
     """find all columns of aligned codons"""
     
     codonAln = mapalign(aln, valfunc=markCodonPos)
-    cols = map(util.histDict, zip(* codonAln.values()))
+    cols = map(util.hist_dict, zip(* codonAln.values()))
 
     ind = []
     codon = []
@@ -456,7 +456,7 @@ def findFourFold(aln):
     pepcons = []
     for i in xrange(pepAln.alignlen()):
         col = [seq[i] for seq in pepAln.itervalues()]
-        hist = util.histDict(col)
+        hist = util.hist_dict(col)
         if "-" in hist:
             del hist["-"]
         if "X" in hist:

@@ -23,6 +23,8 @@ o.add_option("-o", "--outdir", dest="outdir", metavar="<output directory>")
 o.add_option("-F", "--outext=", dest="fastaext",
              metavar="<output fasta extension>",
              default= ".fasta")
+o.add_option("--no-clear", dest="no_clear", action="store_true",
+             help="do not clear old files beforehand")
 
 
 # parse options
@@ -47,18 +49,19 @@ else:
     
 
 # clear fasta files
-util.tic("clearing old sequence files")
-for famid in famids:
+if not conf.no_clear:
+    util.tic("clearing old sequence files")
+    for famid in famids:
 
-    # make family directory
-    famdir = os.path.join(conf.outdir, famid)
-    if not os.path.exists(famdir):
-        os.mkdir(famdir)
+        # make family directory
+        famdir = os.path.join(conf.outdir, famid)
+        if not os.path.exists(famdir):
+            os.mkdir(famdir)
 
-    seqfile = os.path.join(famdir, famid + conf.fastaext)
-    if os.path.exists(seqfile):
-        os.remove(seqfile)
-util.toc()
+        seqfile = os.path.join(famdir, famid + conf.fastaext)
+        if os.path.exists(seqfile):
+            os.remove(seqfile)
+    util.toc()
 
 #=============================================================================
 # read sequences
@@ -71,8 +74,7 @@ for f in fa_files:
     
     seqs = fasta.read_fasta(f, useIndex=False)
    
-    for famid, part in izip(famids, parts):    
-
+    for famid, part in izip(famids, parts):
         seqfile = os.path.join(conf.outdir, famid, famid + conf.fastaext)
         util.logger(seqfile)
         seqs2 = seqs.get(part)
@@ -81,6 +83,7 @@ for f in fa_files:
             out = open(seqfile, "a")
             seqs2.write(out)
             out.close()
+
     
     util.toc()
 util.toc()

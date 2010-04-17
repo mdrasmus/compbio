@@ -204,3 +204,30 @@ def sample_birth_death_gene_tree(stree, birth, death,
     return tree, recon, events
 
 
+def get_tree_timestamps(tree):
+    """
+    Use the branch lengths of a tree to set timestamps for each node
+    Assumes ultrametric tree.
+    """
+
+    esp = .001
+    times = {}
+
+    def walk(node):
+        if node.is_leaf():
+            t = 0.0
+        else:
+            t2 = None
+            for child in node.children:
+                t = walk(child)
+
+                # ensure branch lengths are ultrametrix
+                if t2:                    
+                    assert abs(t - t2) < esp
+
+        times[node] = t
+        return t + node.dist
+    walk(tree.root)
+    
+    return times
+

@@ -1153,7 +1153,8 @@ def svg2rlg(path):
     try:
         doc = xml.dom.minidom.parse(path)
         svg = doc.documentElement
-    except:
+    except Exception, e:
+        print e
         print "Failed to load input file!"
         #return
 

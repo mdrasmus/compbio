@@ -213,6 +213,58 @@ def logadd(lna, lnb):
         return lna
 
 
+def logsub(lna, lnb):
+    """
+    subtracting numbers in log-space
+
+    must have lna > lnb
+     """
+
+    diff = lna - lnb
+    if diff < 500:
+        diff2 = exp(diff) - 1.0
+        if diff2 == 0.0:
+            return -util.INF
+        else:
+            return log(diff2) + lnb
+    else:
+        return lna
+    
+
+def logadd_sign(sa, lna, sb, lnb):
+    """Adding numbers in log-space"""
+
+    if sa > 0 and sb > 0:
+        return 1, logadd(lna, lnb)
+
+    elif sa == 0:
+        return sb, lnb
+
+    elif sb == 0:
+        return sa, lna
+
+    elif sa < 0 and sb < 0:
+        return -1, logadd(lna, lnb)
+
+    elif sa > 0 and sb < 0:
+        if lna > lnb:
+            return 1, logsub(lna, lnb)
+        elif lna == lnb:
+            return 0, -util.INF
+        else:
+            return -1, logsub(lnb, lna)
+
+    elif sa < 0 and sb > 0:
+        if lna > lnb:
+            return -1, logsub(lna, lnb)
+        elif lna == lnb:
+            return 0, -util.INF
+        else:
+            return 1, logsub(lnb, lna)
+
+    else:
+        raise Exception("unhandled case")
+
 
 def smooth(vals, radius):
     """

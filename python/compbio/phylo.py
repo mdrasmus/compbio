@@ -12,17 +12,13 @@ import sys
 
 
 # rasmus imports
-from rasmus import cluster
-from rasmus import graph
 from rasmus import tablelib
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
 
 # compbio imports
-from . import blast
 from . import fasta
-from . import phylip
 
 
 # NOTE: camelCase names are DEPRECATED
@@ -1552,7 +1548,14 @@ def findRootedSubtrees(tree):
 
 
 def findOrthoNeighbors(parts, hits):
-    lookup = cluster.item2part(parts)
+
+    from . import blast
+
+    lookup = {}
+    for i in xrange(len(parts)):
+        for item in parts[i]:
+            lookup[item] = i
+
     mat = util.Dict(1, (0, None))
     
     # find unidirectional best hits at partition level

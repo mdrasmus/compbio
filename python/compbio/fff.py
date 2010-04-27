@@ -11,8 +11,6 @@ FFI (Frequent Feature Index)
 """
 
 from rasmus import util
-from rasmus import algorithms
-
 
 
 
@@ -69,9 +67,9 @@ class FeatureIndex:
             lookups = []
             
             for feature, sites in features.iteritems():
-                first, junk = algorithms.binsearch(sites, start, 
-                                                  lambda x, coord:
-                                                    cmp(x.start, coord))
+                first, junk = util.binsearch(sites, start, 
+                                             lambda x, coord:
+                                             cmp(x.start, coord))
                 
                 if first == None:
                     first = 0

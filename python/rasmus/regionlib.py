@@ -3,7 +3,6 @@ import copy
 
 # rasmus lib
 from rasmus import util
-from rasmus import algorithms
 
 
 
@@ -107,14 +106,14 @@ class Region (object):
 
 def find_region_pos(regions, pos):
     """Find the first region that starts after 'pos' in a sorted list of 'regions'"""
-    low, top = algorithms.binsearch(regions, pos-1, lambda a,b: cmp(a.start, b))
+    low, top = util.binsearch(regions, pos-1, lambda a,b: cmp(a.start, b))
     return top
     
 
 
 def find_region(regions, region):
     """Find a region in a sorted list of 'regions'"""
-    low, ind = algorithms.binsearch(regions, region.start-1, 
+    low, ind = util.binsearch(regions, region.start-1, 
                                     lambda a,b: cmp(a.start, b))
     if ind == None:
         return None

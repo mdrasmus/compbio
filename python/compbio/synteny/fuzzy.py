@@ -9,7 +9,7 @@ from itertools import chain
 import rasmus
 from rasmus import util
 from rasmus.linked_list import LinkedList
-from rasmus.algorithms import UnionFind
+from rasmus.sets import UnionFind
 from rasmus.regionlib import Region
 
 from . import SyntenyBlock

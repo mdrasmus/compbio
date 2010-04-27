@@ -1153,7 +1153,7 @@ iterTable = iter_table
 
 
 def histtab(items, headers=["item", "count", "percent"]):
-    h = util.histDict(items)
+    h = util.hist_dict(items)
     tab = Table(headers=headers)
     tot = float(len(items))
 

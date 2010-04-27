@@ -18,7 +18,7 @@ from rasmus.symbolic import *
 def prob_coal(t, k, n):
     """
     Returns the probability density of observing the first coalesce of 'k'
-    individuals in a population size of 'n' at generation 't'    
+    individuals in a population size of 'n' at generation 't' 
     """
 
     # k choose 2
@@ -38,72 +38,27 @@ def sample_coal(k, n):
     return random.expovariate(k2n)
 
 
-
-def sample_coal_tree(k, n):
+def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
     """
-    Returns a simulated coalescence tree for k leaves from a population n.
+    Returns a Tree from a list of divergence times.
+
+    The topology is choosen by randomly choosing pairs of leaves.
     """
 
-    times = [0]
-    for j in xrange(k, 1, -1):
-        times.append(times[-1] + sample_coal(j, n))
-
-    tree = treelib.Tree()
-
-    # initialize k children
-    children = set(treelib.TreeNode(tree.new_name()) for i in xrange(k))
-    for child in children:
-        child.data["time"] = 0.0
-
-    # perform k - 1 random merges
-    for i in xrange(1, len(times)):
-        # make new parent and merge children
-        parent = treelib.TreeNode(tree.new_name())
-        parent.data["time"] = times[i]
-        a, b = random.sample(children, 2)
-        
-        tree.add_child(parent, a)
-        tree.add_child(parent, b)
-
-        # adjust children set
-        children.remove(a)
-        children.remove(b)
-        children.add(parent)
-
-
-    # set branch lengths
-    for node in tree:
-        if not node.parent:
-            node.dist = 0.0
+    # initialize k
+    if k is None:
+        if leaves is not None:
+            k = len(leaves)
         else:
-            node.dist = node.parent.data["time"] - node.data["time"]
-        
-    tree.root = children.pop()
-
-    return tree
-        
-
-
-
-def sample_coal_tree_fixed(k, n, t, capped=False):
-    """
-    Returns a simulated coalescence tree for k leaves from a population n
-    with a fixed maximum time t.
-
-    The return value is the tuple (tree, lineages)
-    """
-
-    times = [0]
-    for j in xrange(k, 1, -1):
-        times.append(times[-1] + sample_coal(j, n))
-        if times[-1] > t:
-            times.pop()
-            break
-
+            k = len(times)
+            
     tree = treelib.Tree()
 
     # initialize k children
-    children = set(treelib.TreeNode(tree.new_name()) for i in xrange(k))
+    if leaves is None:
+        children = set(treelib.TreeNode(tree.new_name()) for i in xrange(k))
+    else:
+        children = set(treelib.TreeNode(name) for name in leaves)
     for child in children:
         tree.add(child)
         child.data["time"] = 0.0
@@ -127,19 +82,270 @@ def sample_coal_tree_fixed(k, n, t, capped=False):
     # set branch lengths
     for node in tree:
         if not node.parent:
-            node.dist = t - node.data["time"]
+            if t is not None:
+                node.dist = t - node.data["time"]
+            else:
+                node.dist = 0.0
         else:
             node.dist = node.parent.data["time"] - node.data["time"]
-
 
     # for convenience cap the tree for easy drawing/manipulation
     if capped:
         tree.make_root()
         for node in children:
             tree.add_child(tree.root, node)
-            
+    else:
+        # set root
+        if len(children) == 1:
+            tree.root = list(children)[0]
+    
+    # return tree and remaining lineages
     return tree, children
+    
 
+
+def sample_coal_tree(k, n):
+    """
+    Returns a simulated coalescence tree for k leaves from a population n.
+    """
+
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal(j, n))
+    return make_tree_from_times(times)[0]
+
+
+def sample_coal_times(k, n):
+    """
+    Returns a sampling of (k-1) coalescences for 'k' lineages in a
+    population of size 'n'.
+    """
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal(j, n))
+    return times[1:]
+
+
+def sample_coal_tree_bounded(k, n, T, capped=False):
+    """
+    Returns a simulated coalescence tree for k leaves from a populations n
+    with fixed maximum time t.  The simulation is conditioned on returning
+    a tree that completely coaleces before time T.
+    """    
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal_bounded(j, n, T - times[-1]))
+
+    return make_tree_from_times(times, t=T, capped=capped)[0]
+
+
+def sample_coal_tree_bounded_reject(k, n, T, capped=False):
+    """
+    Returns a simulated coalescence tree for k leaves from a populations n
+    with fixed maximum time t.  The simulation is conditioned on returning
+    a tree that completely coaleces before time T.
+    """
+
+    # sample times with rejection sampling
+    while True:
+        times = [0]
+        for j in xrange(k, 1, -1):
+            times.append(times[-1] + sample_coal(j, n))
+        if times[-1] < t:
+            break
+
+    return make_tree_from_times(times, t=T, capped=capped)[0]
+
+
+def sample_coal_tree_fixed(k, n, t, capped=False):
+    """
+    Returns a simulated coalescence tree for k leaves from a population n
+    with a fixed maximum time t.
+
+    The return value is the tuple (tree, lineages)
+    """
+
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal(j, n))
+        if times[-1] > t:
+            times.pop()
+            break
+    
+    return make_tree_from_times(times, k, t, capped=capped)
+
+
+
+def prob_mrca(t, k, n):
+    """
+    Probability density the age 't' of the most recent common ancestor (MRCA)
+    of 'k' lineages in a population size 'n'
+    """
+
+    s = 0.0
+    for i in xrange(1, k):
+        lam = (i+1) * i / 2.0 / n
+        s += lam * exp(- lam * t) * mrca_const(i, 1, k-1)
+    return s
+
+
+def cdf_mrca(t, k, n):
+    """
+    Cumulative probability density the age 't' of the most recent common
+    ancestor (MRCA) of 'k' lineages in a population size 'n'
+    """
+
+    if k == 1:
+        return 1.0
+    
+    s = 0.0
+    for i in xrange(1, k):
+        lam = (i+1) * i / 2.0 / n
+        s += (1 - exp(- lam * t)) * mrca_const(i, 1, k-1)
+    return s
+
+
+
+def prob_coal_bounded(t, k, n, T):
+    """
+    Probability density function of seeing a coalescence at 't' from
+    'k' lineages in a population of size 'n' with bounding time 'T'
+    """
+
+    if t > T:
+        return 0.0
+
+    #i = k - 1
+    #consts = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
+    #x = sum(consts)
+    #y = sum(mrca_const(j, 1, i-1) * exp(-((j+1) * j / 2.0 / n) * (T - t))
+    #        for j in xrange(1, i))
+
+    if k == 2:
+        prob_coal(t, k, n)
+    return prob_coal(t, k, n) * cdf_mrca(T-t, k-1, n) / \
+           cdf_mrca(T, k, n)
+
+
+def cdf_coal_bounded(t, k, n, T):
+
+    i = k - 1
+
+    lam_i = (i+1)*i/2.0 / n
+    C = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
+    A = lam_i / n / cdf_mrca(T, k, n)
+    B = sum(C) / lam_i
+    F = [C[j-1] * exp(-(j+1)*j/2.0/n * T) / ((j+1)*j/2.0/n - lam_i)
+         for j in xrange(1, i)]
+    
+    return (lam_i / cdf_mrca(T, k, n) *
+            (B * (1-exp(-lam_i * t))
+             - sum(F[j-1] * (exp(((j+1)*j/2.0/n - lam_i)*t)-1)
+                   for j in xrange(1, i))))
+
+    
+
+def sample_coal_bounded(k, n, T):
+    """
+    Sample a coalescent time 't' for 'k' lineages and population 'n'
+    on the condition that the MRCA is before 'T'
+    """
+
+    # special case
+    if k == 2:
+        return sample_coal_bounded2(n, T)
+
+    # this code solves this equation for t
+    #   cdf(t) - p = 0
+    # where p ~ U(0, 1)
+
+    import scipy.optimize
+
+    i = k - 1
+    p = random.random()
+
+    # compute constants
+    lam_i = (i+1)*i/2.0 / n
+    C = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
+    A = lam_i / cdf_mrca(T, k, n)
+    B = sum(C) / lam_i
+    F = [C[j-1] * exp(-(j+1)*j/2.0/n * T) / ((j+1)*j/2.0/n - lam_i)
+         for j in xrange(1, i)]
+
+    # CDF(t) - p
+    def f(t):
+        if t <= 0:
+            return t - p
+        if t >= T:
+            return 1.0 - p + (t - T)
+
+        return (A * (B * (1-exp(-lam_i * t))
+             - sum(F[j-1] * (exp(((j+1)*j/2.0/n - lam_i)*t)-1)
+                   for j in xrange(1, i)))) - p
+    
+    return scipy.optimize.brentq(f, 0.0, T, disp=False)
+
+
+
+def sample_coal_bounded2(n, T):
+    """
+    Sample a coalescent time 't' for 'k=2' lineages and population 'n'
+    on the condition that the MRCA is before 'T'
+    """
+
+    # sample from a truncated expontial distribution
+
+    # k choose 2
+    lam = 1 / n
+    p = exp(-lam * T)
+    return - log(random.uniform(p, 1.0)) / lam
+
+
+def sample_coal_bounded_reject(k, n, T):
+    """
+    Sample a coalescent time 't' for 'k' lineages and population 'n'
+    on the condition that the MRCA is before 'T'
+
+    Uses rejection samping.
+    """
+
+    i = k - 1
+
+    consts = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
+    x = sum(consts)
+
+    while True:
+        while True:
+            t = sample_coal(k, n)
+            if t < T:
+                break
+
+        if i == 1:
+            return t
+
+        y = sum(mrca_const(j, 1, i-1) * exp(-((j+1) * j / 2.0 / n) * (T - t))
+                for j in xrange(1, i))
+
+        r = 1 - y / x
+
+        if random.random() < r:
+            return t
+
+
+def mrca_const(i, a, b):
+    """A constant used in calculating MCRA"""
+
+    # i+1 choose 2
+    y = (i+1) * i / 2.0
+    prod = 1.0
+
+    for j in xrange(a, b+1):
+        if j == i:
+            continue
+        # j+1 choose 2
+        x = (j+1) * j / 2.0
+        prod *= x / (x - y)
+    return prod
 
 
 def sample_multicoal_tree(stree, n, leaf_counts=None,
@@ -174,15 +380,17 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     counts = dict((n.name, 0) for n in stree)
     counts.update(leaf_counts)
 
-    # init reconciliation, events
+    # init reconciliation
     recon = {}
 
+    # subtrees
     subtrees = {}
 
     # loop through species tree
     for snode in stree.postorder():        
         # simulate population for one branch
         k = counts[snode.name]
+        
         if snode.parent:
             # non basal branch
             subtree, lineages = sample_coal_tree_fixed(k, popsizes[snode.name],
@@ -205,7 +413,7 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     # add all nodes to total tree
     for subtree, lineages in subtrees.values():
         tree.merge_names(subtree)
-        tree.remove(subtree.root)    
+        tree.remove(subtree.root)
     
     for snode in stree:
         if not snode.is_leaf():
@@ -236,6 +444,8 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
 
 
 
+#=============================================================================
+# allele frequency
 
 def sample_allele_freq(p, n):
     """
@@ -491,58 +701,58 @@ if __name__ == "__main__":
     util.toc()
     
 
-if 0:
-    p0 = .5
-    k=30
+    if 0:
+        p0 = .5
+        k=30
 
-    p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 100, k=k),
-                 .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 200, k=k),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 500, k=k),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 1000, k=k),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 2000, k=k),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 3000, k=k),
-               .01, .99, .01, style="lines")
-    p.enableOutput(True)
-    p.replot()
+        p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 100, k=k),
+                     .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 200, k=k),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 500, k=k),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 1000, k=k),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 2000, k=k),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 3000, k=k),
+                   .01, .99, .01, style="lines")
+        p.enableOutput(True)
+        p.replot()
 
-    #p.plotfunc(lambda x: normalPdf(x, (.5, .1135)),
-    #           .01, .99, .01, style="lines")
-
-
-
-if 0:
-    p0 = .1
-
-    p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 100, k=25),
-                 .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 200, k=25),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 500, k=25),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 1000, k=25),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 2000, k=25),
-               .01, .99, .01, style="lines")
-    p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 3000, k=25),
-               .01, .99, .01, style="lines")
-    p.enableOutput(True)
-    p.replot()
-
-    #p.plotfunc(lambda x: freq_pdf3(x, .5, 1000, 1000/10, k=40),
-    #             .01, .99, .01, style="lines")
+        #p.plotfunc(lambda x: normalPdf(x, (.5, .1135)),
+        #           .01, .99, .01, style="lines")
 
 
-if 1:
-    p0 = .5
-    k=30
 
-    p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 30, k=k),
-                 .01, .99, .01, style="lines")
-    p.enableOutput(True)
-    p.replot()
+    if 0:
+        p0 = .1
+
+        p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 100, k=25),
+                     .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 200, k=25),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 500, k=25),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 1000, k=25),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 2000, k=25),
+                   .01, .99, .01, style="lines")
+        p.plotfunc(lambda x: freq_pdf(x, p0, 1000, 3000, k=25),
+                   .01, .99, .01, style="lines")
+        p.enableOutput(True)
+        p.replot()
+
+        #p.plotfunc(lambda x: freq_pdf3(x, .5, 1000, 1000/10, k=40),
+        #             .01, .99, .01, style="lines")
+
+
+    if 0:
+        p0 = .5
+        k=30
+
+        p = plotfunc(lambda x: freq_pdf(x, p0, 1000, 30, k=k),
+                     .01, .99, .01, style="lines")
+        p.enableOutput(True)
+        p.replot()
 

@@ -1,0 +1,140 @@
+#!/usr/bin/env python
+# run RAxML with standard command-line interface
+
+
+import sys, os, shutil, time
+import optparse
+import subprocess
+
+from rasmus import util, treelib
+from rasmus.bio import phylip, fasta
+from rasmus.bio import phylorun as phy
+
+
+o = optparse.OptionParser()
+o.add_option("-m", "--model", dest="model", metavar="MODEL")
+o.add_option("-x", "--random", dest="random", action="store_true")
+o.add_option("", "--fastboot", dest="fastboot", metavar="NUMBER")
+phy.add_common_options(o)
+conf, files = phy.parse_common_options(o)
+
+PROG = "raxmlHPC"
+
+
+def run(args, outdir):
+    curdir = os.getcwd()
+    os.chdir(outdir)    
+    ret = subprocess.call(args)
+    os.chdir(curdir)
+    return ret
+
+
+result = 0
+for fn in files:
+    basename = phy.get_basename(fn, conf)
+
+    outdir = basename + conf.outputext
+    phy.make_output_dir(outdir)
+    align = fasta.read_fasta(basename + conf.alignext)
+    labels = phylip.write_phylip_align(file(outdir + "/infile", "w"), align,
+                                       False)
+
+    # require minimium size of alignment
+    if len(align) <= 2:
+        continue
+
+    # set user tree
+    if conf.usertreeext:
+        usertree = treelib.read_tree(basename + conf.usertreeext)
+
+        # save data
+        data = dict((n.name, n.data) for n in usertree)
+
+        # prepare usertree
+        usertree2 = treelib.unroot(usertree, newCopy=True)
+        for n in usertree2:
+            n.data = {}
+        
+        usertree_file = "usertree"
+        usertree2.write(outdir +"/usertree")
+    else:
+        usertree = None
+        usertree_file = None
+        data = None
+    
+
+    # default model
+    if conf.seqtype == "dna":
+        if conf.model is None:
+            conf.model = "GTRGAMMA"       
+    else:
+        if conf.model is None:
+            conf.model = "PROTGAMMAJTT"
+
+    # basic arguments
+    args = [PROG, "-s", "infile",
+                  "-n", "out",
+                  "-m", conf.model]
+
+    # user tree
+    if usertree_file:
+        args.extend(["-t", usertree_file])
+
+    # bootstrapping
+    if conf.boot:
+        args.extend(["-b", str(int(time.time())), "-N", str(conf.boot)])
+
+    if conf.random:
+        args.extend(["-x", str(int(time.time()))])
+
+    if conf.fastboot:
+        args.extend(["-f", "a",
+                     "-N", str(conf.fastboot),
+                     "-x", str(int(time.time()))])
+
+    if conf.extra:
+        args.extend(conf.extra)
+
+    # record command
+    cmd = " ".join(args)
+    print cmd
+    out = open(outdir + "/cmd", "w")
+    out.write(cmd)
+    out.close()
+
+    # run program
+    if run(args, outdir) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+    else:
+
+        if conf.boot or conf.fastboot:
+            # perform consensus
+            if subprocess.call(
+                ["treecons", 
+                 "-o", outdir + "/RAxML_result.out",
+                 "--binary",
+                 "-a", basename + conf.alignext,
+                 outdir+"/RAxML_bootstrap.out"]) != 0:
+                result = 1
+                continue
+        
+        tree = treelib.read_tree(outdir + "/RAxML_result.out")
+        
+        # reorder tree
+        if usertree:
+            treelib.reorder_tree(tree, usertree)
+
+        # restore data
+        if data:
+            tree.write(basename + conf.treeext)
+            tree = treelib.read_tree(basename + conf.treeext)
+
+            # copy over data
+            for name, val in data.items():
+                tree.nodes[name] = val
+
+        tree.write(basename + conf.treeext)
+
+
+sys.exit(result)

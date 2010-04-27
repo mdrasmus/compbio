@@ -918,7 +918,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
     because of gene losses
     """
     
-    addedNodes = []
+    added_nodes = []
 
     for node in list(tree):
         # process this node and the branch above it
@@ -933,7 +933,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
             tree.add_child(tree.root, node)
             recon[tree.root] = stree.root
             events[tree.root] = "spec"
-            addedNodes.append(tree.root)
+            added_nodes.append(tree.root)
 
         # determine starting and ending species
         sstart = recon[node]
@@ -949,7 +949,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
         snode = sstart.parent
 
         while snode != send:
-            addedNodes.append(add_spec_node(node, snode, tree, recon, events))
+            added_nodes.append(add_spec_node(node, snode, tree, recon, events))
             node = node.parent
             snode = snode.parent
         
@@ -957,9 +957,9 @@ def add_implied_spec_nodes(tree, stree, recon, events):
         # determine whether node.parent is a dup
         # if so, send (a.k.a. species end) is part of species path
         if events[parent] == "dup":
-            addedNodes.append(add_spec_node(node, send, tree, recon, events))
+            added_nodes.append(add_spec_node(node, send, tree, recon, events))
 
-    return addedNodes
+    return added_nodes
 
 
 

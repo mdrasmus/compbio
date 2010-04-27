@@ -1,3 +1,10 @@
+"""
+
+   Common statistics library
+
+"""
+
+
 # python libs
 from math import *
 import cmath
@@ -6,7 +13,6 @@ import os
 
 # rasmus libs
 from rasmus import util
-from rasmus import algorithms
 from rasmus import tablelib
 
 
@@ -576,7 +582,7 @@ def sample(weights):
     
     pick = random.random()
     
-    low,top = algorithms.binsearch(cdf, pick)
+    low,top = util.binsearch(cdf, pick)
     
     assert low != None
     

@@ -1,5 +1,5 @@
 
-import optparse, shutil, sys, os
+import optparse, shutil, sys, os, shlex
 from rasmus import util
 
 
@@ -32,7 +32,9 @@ def add_common_options(o, align=True, tree=True, dist=False):
         o.add_option("--no-opttree", dest="opttree", action="store_false",
                      default=True)
 
-    
+
+    o.add_option("-e", "--extra", dest="extra", metavar="EXTRA_ARGS",
+                 help="extra arguments to pass to program")
     o.add_option("-O", "--outputext", dest="outputext",
                  metavar="OUTPUT_DIR_EXT",
                  default=".output")
@@ -44,7 +46,11 @@ def add_common_options(o, align=True, tree=True, dist=False):
                  help="verbose output")
     
 def parse_common_options(o):
-    conf, files = o.parse_args()    
+    conf, files = o.parse_args()
+
+    if conf.extra:
+        conf.extra = shlex.split(conf.extra)
+    
     return conf, files
 
 

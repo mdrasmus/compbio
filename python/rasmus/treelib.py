@@ -33,7 +33,7 @@ except ImportError:
 
 
 
-
+# TODO: I should generalize this
 # allow tree reading extra recursion levels
 sys.setrecursionlimit(4000)
 
@@ -334,7 +334,8 @@ class Tree:
                 self.nodes[name2] = tree2.nodes[name]
                 self.nodes[name2].name = name2
             else:
-                if type(name) == int:
+                # make sure I do not issue a name that matches this one
+                if isinstance(name, int):
                     if name >= self.nextname:
                         self.nextname = name + 1
                 self.nodes[name] = tree2.nodes[name]
@@ -634,7 +635,7 @@ class Tree:
     def read_big_newick(self, filename):
         """Reads a big newick file with a custom parser"""
     
-        infile = file(filename)    
+        infile = util.open_stream(filename) #file(filename)    
         closure = {"opens": 0}
         names = set()
 

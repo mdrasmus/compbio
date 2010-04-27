@@ -5,7 +5,27 @@
 
 from math import *
 import random
-from rasmus import stats, treelib
+from rasmus import util, stats, treelib
+
+
+def prob_birth_death1(ngenes, t, birth, death):
+    """
+    Returns the probability that one lineage leaves 'ngenes' genes
+    after time 't'
+    """
+    
+    l = birth
+    u = death
+    r = l - u
+    a = u / l
+
+    ut = (1.0 - exp(-r*t)) / (1.0 - a * exp(-r*t))
+    p0 = a*ut
+    
+    if ngenes == 0:
+        return p0
+    
+    return (1.0 - p0)*(1.0 - ut) * (ut**(ngenes-1))
 
 
 def prob_birth_death(genes1, genes2, t, birth, death):
@@ -70,6 +90,40 @@ def prob_no_birth(n, T, birth, death):
 
     return (1.0 - (l*(1.0 - exp(-r * T))) / \
                   (l - u * exp(-r * T))) ** n
+
+
+
+def num_topology_histories(node, leaves=None):
+    """
+    Returns the number of labeled histories for a topology
+
+    The topology is specified by a root 'node' and a set of leaves 'leaves'.
+    If leaves are not specified, the leaves of 'node' will be used.
+    """
+
+    # TODO: can simplify
+    
+    if leaves is None:
+        leaves = node.leaves()
+    leaves = set(leaves)
+
+    prod = [1.0]
+
+    def walk(node):        
+        if node in leaves:
+            return 0
+        else:
+            internals = map(walk, node.children)
+            prod[0] *= stats.choose(sum(internals), internals[0])
+            return 1 + sum(internals)
+    walk(node)
+
+    return prod[0]
+
+
+
+#=============================================================================
+# sampling
 
 
 def sample_birth_wait_time(n, T, birth, death):
@@ -200,6 +254,11 @@ def sample_birth_death_gene_tree(stree, birth, death,
         for node in delnodes:
             del recon[node]
             del events[node]
+
+    if len(tree.nodes) <= 1:
+        tree.nodes = {tree.root.name : tree.root}
+        recon = {tree.root: stree.root}
+        events = {tree.root: "spec"}
     
     return tree, recon, events
 
@@ -231,3 +290,101 @@ def get_tree_timestamps(tree):
     
     return times
 
+
+
+
+#=============================================================================
+# testing functions
+# These are functions that are not efficient but implement the distributions
+# in a more literal way, thus they are handy to test against.
+
+
+
+def sample_birth1_literal(T, birth, death):
+    """
+    Sample the next birth from a reconstructed birth death process
+    starting with only 1 lineage.
+
+    This function does not condition on the survival of the lineage.    
+
+    T     -- stopping time
+    birth -- rate of birth
+    death -- rate of death
+
+    Returns (t, alive)
+    t is a float of the first birth or None if none occurs.
+    alive is True if the lineage is still alive, False if extinct.
+
+    NOTE: This function uses a very literal way of performing the sampling.
+    It is only good for testing purposes.
+    """
+    
+    # sample events
+    t1 = random.expovariate(birth)
+    t2 = random.expovariate(death)
+
+    # both events occur after stopping time T, simulation is done
+    if t1 >= T and t2 >= T:
+        return None, True
+
+    if t2 < t1:
+        # death occurs
+        return None, False
+    else:
+        # birth occurs
+
+        # recurse
+        t3, alive3 = sample_birth1_literal(T - t1, birth, death)
+        t4, alive4 = sample_birth1_literal(T - t1, birth, death)
+
+        if alive3 and alive4:
+            # if both lineages are alive then our birth is in the
+            # reconstructed process
+            return t1, True
+        elif alive3:
+            # lineage 3 contains the first birth of the recon proc
+            if t3 is not None:
+                return t1 + t3, True
+            else:
+                return None, True
+        elif alive4:
+            # lineage 4 contains the first birth of the recon proc
+            if t4 is not None:
+                return t1 + t4, True
+            else:
+                return None, True
+        else:
+            # both lineages died, so we are dead
+            return None, False
+
+
+
+
+def sample_birth_literal(n, T, birth, death):
+    """
+    Sample the next birth from a reconstructed birth death process
+    
+    n     -- number of current lineages
+    T     -- stopping time
+    birth -- rate of birth
+    death -- rate of death
+    """
+
+    while True:
+        tmin = util.INF
+        
+        for i in xrange(n):
+            # require each lineage to be alive
+            while True:
+                t, alive = sample_birth1_literal(T, birth, death)
+                if alive:
+                    break
+
+            if t is not None:
+                tmin = min(tmin, t)
+
+
+        if tmin < T:
+            return tmin
+        else:
+            return None

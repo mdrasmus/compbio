@@ -697,7 +697,7 @@ def binsearch(lst, val, compare=cmp, order=1):
         return (None, low)
     
     while top - low > 1:
-        ptr = (top + low) / 2
+        ptr = (top + low) // 2
         
         comp = compare(lst[ptr], val) * order
         

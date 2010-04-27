@@ -6,7 +6,7 @@ import sys
 import os
 import optparse
 import math
-from glob import glob
+
 
 
 o = optparse.OptionParser()
@@ -53,8 +53,6 @@ def doublequote(text):
     """Wrap argument in doublequotes with propper escaping"""
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$") + '"'
 
-#def quote(text):
-#    return text.replace("\\", "\\\\").replace('"', '\\"').replace(" ", "\\ ")
 
 def make_cmd(cmd, **args):
     cmd2 = ""

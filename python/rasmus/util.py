@@ -133,6 +133,7 @@ class Dict (dict):
 
 
 class Percent (float):
+    """Representation of a percentage"""
     digits = 1
     
     def __str__(self):
@@ -173,13 +174,6 @@ class PushIter (object):
         return next
         
        
-
-def exceptDefault(func, val, exc=Exception):
-    """Specify a default value for when an exception occurs"""
-    try:
-        return func()
-    except exc:
-        return val
 
 
 #=============================================================================
@@ -671,6 +665,61 @@ def islands(lst):
         counts.setdefault(last, []).append((start, i+1))
     
     return counts
+
+
+
+def binsearch(lst, val, compare=cmp, order=1):
+    """Performs binary search for val in lst using compare
+    
+       if val in lst:
+          Returns (i, i) where lst[i] == val
+       if val not in lst  
+          Returns index i,j where
+            lst[i] < val < lst[j]
+        
+       runs in O(log n)
+    """
+
+    #TODO: make a funtion based linear search
+    
+    assert order == 1 or order == -1
+    
+    low = 0
+    top = len(lst) - 1
+    
+    if len(lst) == 0:
+        return None, None
+    
+    if compare(lst[-1], val) * order == -1:
+        return (top, None)
+    
+    if compare(lst[0], val) * order == 1:
+        return (None, low)
+    
+    while top - low > 1:
+        ptr = (top + low) // 2
+        
+        comp = compare(lst[ptr], val) * order
+        
+        if comp == 0:
+            # have we found val exactly?
+            return ptr, ptr
+        elif comp == -1:
+            # is val above ptr?
+            low = ptr
+        else:
+            top = ptr
+            
+    
+    # check top and low for exact hits
+    if compare(lst[low], val) == 0:
+        return low, low
+    elif compare(lst[top], val) == 0:
+        return top, top
+    else:
+        return low, top
+
+
 
 
 
@@ -1467,6 +1516,15 @@ def replace_ext(filename, oldext, newext):
         raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
 
 
+def makedirs(filename):
+    """
+    Makes a path of directories.
+    Does not fail if filename already exists
+    """
+
+    if not os.path.isdir(filename):
+        os.makedirs(filename)
+
 
 #=============================================================================
 # sorting
@@ -1519,10 +1577,10 @@ def invperm(perm):
 # histograms, distributions
 #
 
-def oneNorm(vals):
+def one_norm(vals):
     """Normalize values so that they sum to 1"""
     s = float(sum(vals))
-    return map(lambda x: x/s, vals)
+    return [x/s for x in vals]
 
 
 def bucketSize(array, ndivs=None, low=None, width=None):

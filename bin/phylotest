@@ -114,6 +114,10 @@ def report_test(argv):
     o = optparse.OptionParser()
     o.add_option("-S", "--smap", metavar="GENE_TO_SPECIES", dest="smap")
     o.add_option("-s", "--stree", metavar="SPECIES_TREE", dest="stree")
+    o.add_option("--suffix", metavar="STRING", dest="suffix",
+                 default="")
+    o.add_option("--rooted", dest="rooted", action="store_true",
+                 default=False)
     
     # parse options
     conf, args = o.parse_args(argv[2:])
@@ -124,9 +128,9 @@ def report_test(argv):
           "<datadir> <data tree ext> <inputdir> <input tree ext>")
 
     datadir, dataext, evaldir, evalext = args
-    resultext = ".result"
-    allresultext = ".result.tab"
-    summaryext = ".summary"
+    resultext = conf.suffix + ".result"
+    allresultext = conf.suffix + ".result.tab"
+    summaryext = conf.suffix + ".summary"
 
     if conf.stree and conf.smap:
         stree = treelib.read_tree(conf.stree)
@@ -233,13 +237,14 @@ def report_test(argv):
             # get general stats
             ngenes = len(evaltree.leaves())
             nbranches = len(evaltree.nodes) - ngenes - 1
-            correct = int(topology_equal(datatree, evaltree, unroot=True))
+            correct = int(topology_equal(datatree, evaltree,
+                                         unroot=not conf.rooted))
             
             if len(datatree.leaves()) <= 3:
                 branches = 0
                 branches_correct = 0
             else:
-                rf = phylo.robinsonFouldsError(datatree, evaltree)
+                rf = phylo.robinson_foulds_error(datatree, evaltree)
                 branches_correct = int((1.0 - rf) * nbranches)            
 
             # compute totals

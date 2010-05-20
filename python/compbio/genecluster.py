@@ -13,7 +13,7 @@ import time
 from itertools import izip
 
 # rasmus libs
-from rasmus import algorithms
+from rasmus import sets
 from rasmus import graph
 from rasmus import util
 from rasmus import regionlib
@@ -100,7 +100,7 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
     util.tic("determine clusters")
     sets = {}
     for gene in best:
-        sets[gene] = algorithms.UnionFind([gene])
+        sets[gene] = sets.UnionFind([gene])
     
     for blastfile, order in blastfiles:
         util.tic("read hits '%s'" % os.path.basename(blastfile))
@@ -268,9 +268,9 @@ def mergeAvg(conf, genes, parts1, parts2, blastfiles, outblastfiles):
     util.tic("determine clusters")
     sets = {}
     for i in xrange(len(parts1)):
-        sets[(0, i)] = algorithms.UnionFind([(0, i)])
+        sets[(0, i)] = sets.UnionFind([(0, i)])
     for i in xrange(len(parts2)):
-        sets[(1, i)] = algorithms.UnionFind([(1, i)])
+        sets[(1, i)] = sets.UnionFind([(1, i)])
 
     
     # merge top avg hits

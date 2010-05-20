@@ -281,7 +281,7 @@ def make_color_legend(filename, colormap, start, end, step,
     
     xscale =  float(width) / (end + step - start)
     
-    for i in frange(start, end + step, step):
+    for i in util.frange(start, end + step, step):
         color = colormap.get(i)
         s.rect((i-start) * xscale, 
                0, 

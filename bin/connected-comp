@@ -3,7 +3,7 @@
 
 from rasmus.common import *
 
-from rasmus.algorithms import UnionFind
+from rasmus.sets import UnionFind
 
 sets = {}
 

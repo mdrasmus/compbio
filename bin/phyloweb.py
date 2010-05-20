@@ -6,11 +6,11 @@ import math
 
 
 
-from rasmus import util, env, treelib, progress
+from rasmus import util, treelib, progress
 #from rasmus.vis import treesvg
 from rasmus import svg, tablelib
 
-from rasmus.bio import fasta, genomeutil, phylip, phylo
+from rasmus.bio import fasta, phylip, phylo
 
 import Spidir
 
@@ -309,7 +309,7 @@ def getTreeNames(conf, datadir):
 
 
 def generateGeneTreeTables(conf, datadir, resultdirs):
-    genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"]))
+    genes = readGeneCoords(conf["mainspeciesCoords"])
     
     chroms = genes.groupby(lambda x: x["chrom"])
     chromnames = sorted(chroms.keys())
@@ -471,7 +471,7 @@ def generateGeneTreeTable(conf, filename, treenames, datadir, resultdirs):
     treeStats = conf["treeStatsLookup"]
     topNames = conf["topNamesLookup"]
     if "mainspeciesCoords" in conf:
-        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+        genes = readGeneCoords(conf["mainspeciesCoords"]).lookup("gene")
     else:
         genes = None
     
@@ -577,7 +577,7 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
     treeStats = conf["treeStatsLookup"]
     topNames = conf["topNamesLookup"]
     if "mainspeciesCoords" in conf:
-        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+        genes = readGeneCoords(conf["mainspeciesCoords"]).lookup("gene")
     else:
         genes = None
     
@@ -697,7 +697,7 @@ def generateGeneRatesTable(conf, filename, treenames, datadir, resultdirs):
     
     treeStats = conf["treeStatsLookup"]
     if "mainspeciesCoords" in conf:
-        genes = readGeneCoords(env.findFile(conf["mainspeciesCoords"])).lookup("gene")
+        genes = readGeneCoords(conf["mainspeciesCoords"]).lookup("gene")
     else:
         genes = None
     
@@ -974,7 +974,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
         
         row = {"treeid": treename, "gene": gene, "common": commonName}
         
-        tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
+        tree = treelib.read_tree(getCorrectTreeFile(conf, datadir, treename))
         row["treelen"] = sum(x.dist for x in tree.nodes.values())
         
         aln = fasta.readFasta(alnfile)
@@ -982,8 +982,8 @@ def generateTopologyTable(conf, datadir, resultdirs):
         
         for prog, resultdir, resulturl in resultdirs:
             #treefile = getResultTreeFile(conf, resultdir, treename)
-            #tree = treelib.readTree(treefile)
-            #thash = phylo.hashTree(tree, conf["gene2species"])
+            #tree = treelib.read_tree(treefile)
+            #thash = phylo.hash_tree(tree, conf["gene2species"])
             thash = results[prog][treename]["species_hash"]
             
             row[prog] = thash
@@ -1053,9 +1053,9 @@ def generateRateTable(conf, datadir):
         row = {"treeid": treename}
         row2 = {"treeid": treename}
         
-        tree = treelib.readTree(getCorrectTreeFile(conf, datadir, treename))
+        tree = treelib.read_tree(getCorrectTreeFile(conf, datadir, treename))
         recon = phylo.reconcile(tree, conf["stree"], conf["gene2species"])
-        events = phylo.labelEvents(tree, recon)
+        events = phylo.label_events(tree, recon)
         
         
         assert len(util.unique(recon.values())) == len(recon)
@@ -1145,9 +1145,8 @@ def writeFooter(out):
 
 def main(conf):
     # read data
-    env.addEnvPaths("DATAPATH")
-    conf['gene2species'] = genomeutil.readGene2species(env.findFile(conf['smap']))
-    conf['stree'] = treelib.readTree(env.findFile(conf['stree']))
+    conf['gene2species'] = phylo.read_gene2species(conf['smap'])
+    conf['stree'] = treelib.read_tree(conf['stree'])
     
     # produce filter for trees to ignore    
     if "filterNames" in conf:
@@ -1162,12 +1161,12 @@ def main(conf):
     generateTopologyTable(conf, conf["datadir"], conf["resultdirs"])    
     
     # load tree stats and names
-    conf["treeStats"] = tablelib.readTable(conf["treeStats"])
+    conf["treeStats"] = tablelib.read_table(conf["treeStats"])
     conf["treeStatsLookup"] = conf["treeStats"].lookup("treeid")
-    conf["topNamesLookup"] = tablelib.readTable(conf["treeNames"]).lookup("tree")
+    conf["topNamesLookup"] = tablelib.read_table(conf["treeNames"]).lookup("tree")
     
     if "familyStats" in conf:
-        conf["familyStatsLookup"] = tablelib.readTable(conf["familyStats"]).lookup("partid")
+        conf["familyStatsLookup"] = tablelib.read_table(conf["familyStats"]).lookup("partid")
     
     
     if "rateTable" in conf:

@@ -39,28 +39,31 @@ class QuadTree:
             
             if len(self.nodes) > self.MAX and self.depth < self.MAX_DEPTH:
                 self.split()
+                return node
         else:
-            self.insert_into_children(item, rect)
+            return self.insert_into_children(item, rect)
     
     def insert_into_children(self, item, rect):
 
         # if rect spans center then insert here
         if ((rect[0] <= self.center[0] and rect[2] > self.center[0]) and
             (rect[1] <= self.center[1] and rect[3] > self.center[1])):
-            self.nodes.append(QuadNode(item, rect))
+            node = QuadNode(item, rect)
+            self.nodes.append(node)
+            return node
         else:
 
             # try to insert into children
             if rect[0] <= self.center[0]:
                 if rect[1] <= self.center[1]:
-                    self.children[0].insert(item, rect)
+                    return self.children[0].insert(item, rect)
                 if rect[3] > self.center[1]:
-                    self.children[1].insert(item, rect)
+                    return self.children[1].insert(item, rect)
             if rect[2] > self.center[0]:
                 if rect[1] <= self.center[1]:
-                    self.children[2].insert(item, rect)
+                    return self.children[2].insert(item, rect)
                 if rect[3] > self.center[1]:
-                    self.children[3].insert(item, rect)
+                    return self.children[3].insert(item, rect)
 
                    
     def split(self):
@@ -76,7 +79,7 @@ class QuadTree:
                          QuadTree(self.center[0] + self.size/2,
                                   self.center[1] + self.size/2,
                                   self.size/2, self.depth + 1)]
-
+        
         nodes = self.nodes
         self.nodes = []
         for node in nodes:
@@ -88,6 +91,7 @@ class QuadTree:
         if results is None:
             rect = normalize_rect(rect)
             results = set()
+
 
         # search children
         if len(self.children) > 0:

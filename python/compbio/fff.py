@@ -1,7 +1,3 @@
-from rasmus import util
-from rasmus import algorithms
-
-
 """
 
 FFF (Frequent Feature Format)
@@ -13,6 +9,9 @@ FFI (Frequent Feature Index)
 <feature name> <species> <chrom> <len> <start> <character pos>
 
 """
+
+from rasmus import util
+
 
 
 class FeatureRef:
@@ -68,9 +67,9 @@ class FeatureIndex:
             lookups = []
             
             for feature, sites in features.iteritems():
-                first, junk = algorithms.binsearch(sites, start, 
-                                                  lambda x, coord:
-                                                    cmp(x.start, coord))
+                first, junk = util.binsearch(sites, start, 
+                                             lambda x, coord:
+                                             cmp(x.start, coord))
                 
                 if first == None:
                     first = 0

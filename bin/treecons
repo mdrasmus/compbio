@@ -10,49 +10,38 @@
 import sys, os
 
 # rasmus libs
-from rasmus import env, treelib
+from rasmus import treelib
 from rasmus import util
 from rasmus import stats
+import optparse
 
 import spidir
-from rasmus.bio import phylip, phyml, fasta, phylo
+from compbio import phylip, fasta, phylo
 
-def parseBgFreq(txt):
-    return map(float, txt.split(","))
 
-options = [
-    ["o:", "outfile=", "outfile", "<output file>",
-     {"single": True,
-      "help": "if specified, write output to file"}],
-    ["r", "rooted", "rooted", "",
-     {"single": True,
-      "help": "treat trees as rooted"}],
-    ["a:", "align=", "align", "<fasta alignment>",
-     {"single": True}],
-    ["b:", "bgfreq=", "bgfreq", "<A>,<C>,<G>,<T>",
-     {"single": True,
-      "parser": parseBgFreq,
-      "default": [.25,.25,.25,.25]}],
-    ["n:", "numtrees=", "numtrees", "<expected number of trees>",
-        {"single": True,
-         "parser": int,
-         "help": "if given, require a certain number of trees to be present"}],
-    ["t:", "tsvratio=", "tsvratio", "<transition/transversion ratio>",
-     {"single": True,
-      "parser": float,
-      "default": 1.0}],
-    ["i:", "maxiter=", "maxiter", "<max iterations for ML>",
-     {"single": True,
-      "parser": int,
-      "default": 20}],
-    ["", "binary", "binary", "",
-     {"single": True,
-      "help": "ensure consensus tree is binary"}],
-    ["v", "verbose", "verbose", "",
-     {"help": "verbose output"}]
-]
 
-conf = util.parseOptions(sys.argv, options)
+o = optparse.OptionParser()
+o.add_option("-o", "--output", dest="outfile", metavar="OUTPUT_FILE",
+             help="if specified, write output to file")
+o.add_option("-r", "--rooted", dest="rooted",
+             action="store_true",
+             help="treat trees as rooted")
+o.add_option("-a", "--align", dest="align", metavar="FASTA_ALIGNMENT")
+o.add_option("-n", "--numtrees", dest="numtrees", metavar="NUMBER",
+             type="int",
+             help="if given, require a certain number of trees to be present")
+o.add_option("-k", "--kappa", dest="kappa", metavar="RATIO",
+             type="float",
+             default=1.0,
+             help="transitition/transversion")
+o.add_option("-i", "--maxiter", dest="maxiter", metavar="NUMBER",
+             type="int",
+             default=20, help="max iterations for ML")
+o.add_option("--binary", dest="binary",
+             action="store_true",
+             help="ensure consensus tree is binary")
+
+conf, files = o.parse_args()
 
 
 
@@ -84,19 +73,64 @@ def ensure_binary(tree):
             
                 
             
-            
+def est_bgfreq(aln):
+    hist = {"A": 1, "C": 1, "G": 1, "T": 1}
+    for seq in aln:
+        for c in seq.upper():
+            hist[c] = hist.get(c, 0) + 1
+
+    bgfreq = [hist[i] for i in "ACGT"]
+    tot = float(sum(bgfreq))
+    bgfreq = [i/tot for i in bgfreq]
+    return bgfreq
 
 
-for filename in conf["REST"]:
+def read_trees(filename):
+    infile = open(filename)
+    trees = []
+    try:
+        while 1:
+            trees.append(treelib.read_tree(infile))
+    except:
+        pass
+    infile.close()
+
+    return trees
+
+
+def rename_trees_with_ids(trees):
+
+    names = trees[0].leaf_names()
+    for tree in trees:
+        phylip.rename_tree_with_ids(tree, names)
+    return names
+
+
+
+for filename in files:
     args = "y"
 
-    if conf["rooted"]:
+    if conf.rooted:
         args = "r\n" + args
 
-    tree, ntrees = phylip.consense_from_file(filename, False, args)
+    # use id numbers, because phylip crashes on long gene names
+    trees = read_trees(filename)
+    names = rename_trees_with_ids(trees)
+    ntrees = len(trees)
+
+    if conf.numtrees:
+        if ntrees < conf.numtrees:
+            print "SKIP: %d < %d trees" % (ntrees, conf.numtrees)
+            continue
+
+    # run phylip
+    tree = phylip.consense(trees, verbose=False, args=args)
+    phylip.rename_tree_with_names(tree, names)
     
-    if "align" in conf:
-        aln = fasta.readFasta(conf["align"])
+    
+    if conf.align:
+        aln = fasta.read_fasta(conf.align)
+        bgfreq = est_bgfreq(aln)
 
         ensure_binary(tree)
         
@@ -106,23 +140,23 @@ for filename in conf["REST"]:
         
         # find actual branch lengths
         spidir.find_ml_branch_lengths_hky(tree,
-                                          util.mget(aln, tree.leafNames()),
-                                          conf["bgfreq"],
-                                          conf["tsvratio"],
-                                          maxiter=conf["maxiter"],
+                                          util.mget(aln, tree.leaf_names()),
+                                          bgfreq,
+                                          conf.kappa,
+                                          maxiter=conf.maxiter,
                                           parsinit=True)
 
     else:
-        if conf["binary"]:
+        if conf.binary:
             ensure_binary(tree)
     
         for node in tree:
             node.data["boot"] = node.dist / ntrees
             node.dist = 0
     
-    if conf["rooted"]:
-        if tree.root.children[0].isLeaf() or \
-           tree.root.children[1].isLeaf():
+    if conf.rooted:
+        if tree.root.children[0].is_leaf() or \
+           tree.root.children[1].is_leaf():
             tree.root.children[0].data["boot"] =  0
             tree.root.children[1].data["boot"] =  0
         else:
@@ -131,26 +165,9 @@ for filename in conf["REST"]:
             tree.root.children[0].data["boot"] =  b
             tree.root.children[1].data["boot"] =  b
     
-    if "outfile" in conf:
-        tree.write(conf["outfile"])
+    if conf.outfile:
+        tree.write(conf.outfile)
     else:
         tree.write()
 
 
-
-
-
-
-"""
-# PHYML
-        #tree2 = phyml.phyml(aln, seqtype="dna", usertree=tree, 
-        #                    verbose=conf["verbose"],
-        #                    opttree=False, optbranches=True)
-        #
-        #phylo.reconRoot(tree2, tree, lambda x:x, newCopy=False)
-        #recon = phylo.reconcile(tree2, tree, lambda x:x)
-        #
-        #for node2, node in recon.iteritems():
-        #    node.data["boot"] = node.dist / 100.0        
-        #    node.dist = node2.dist
-"""

@@ -235,7 +235,7 @@ def write_in_tree(filename, tree, labels):
     rename_tree_with_ids(tree2, labels)
     for node in tree2.nodes.values():
         node.dist = 0
-    tree2.writeNewick(filename)
+    tree2.write(filename)
 writeInTree = write_in_tree
 
 
@@ -748,13 +748,15 @@ def boot_proml(seqs, iters = 100, seed = 1, jumble=5, output=None,
 
 
 def consense_from_file(intrees, verbose=True, args="y"):
-    cwd = create_temp_dir()
 
-    ntrees = 0
+    # read all trees
+    trees = util.open_stream(intrees).readlines()
+    ntrees = len(trees)
+
+    cwd = create_temp_dir()
     out = open("intree", "w")
-    for line in util.open_stream(intrees):
-        out.write(line)
-        ntrees += 1
+    for tree in trees:
+        out.write(tree)
     out.close()
     
     exec_phylip("consense", args, verbose)

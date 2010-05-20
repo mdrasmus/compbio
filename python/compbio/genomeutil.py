@@ -10,7 +10,6 @@ import os
 import sys
 
 # rasmus libs
-from rasmus import algorithms
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
@@ -517,7 +516,7 @@ class GeneIter:
             self.index = 0
             
             # find starting index by binary search
-            low, top = algorithms.binsearch(genes, start-1, 
+            low, top = util.binsearch(genes, start-1, 
                                             lambda a,b: cmp(a.start, b))
             
             if top != None:
@@ -955,7 +954,7 @@ class Matching:
 
     def findNearGenes(self, chrom, pos):
         genes = chrom.genes
-        low, top = algorithms.binsearch(genes, pos, lambda a, b: cmp(a.start, b))
+        low, top = util.binsearch(genes, pos, lambda a, b: cmp(a.start, b))
         if low != None:
             gene1 = genes[low]
         else:

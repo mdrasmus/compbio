@@ -9,7 +9,7 @@ from rasmus import util
 from rasmus import stats
 import Spidir
 
-from rasmus.bio import alignlib, fasta, phylo, genomeutil
+from rasmus.bio import alignlib, fasta, phylo
 
 # scipy libs
 #from scipy import matrixmultiply as mm
@@ -66,14 +66,13 @@ conf = util.parseOptions(sys.argv, options, quit=True)
 
 
 def main(conf):
-    env.addEnvPaths("DATAPATH")
     
     # read configuration    
-    stree = treelib.readTree(env.findFile(conf["stree"]))
+    stree = treelib.read_tree(conf["stree"])
     params = Spidir.readParams(conf["params"])
-    gene2species = genomeutil.readGene2species(env.findFile(conf["smap"][-1]))
+    gene2species = phylo.read_gene2species(conf["smap"][-1])
     
-    tree = treelib.readTree(conf["tree"])
+    tree = treelib.read_tree(conf["tree"])
     
     #if "midpoints" in conf:
     #    midpoints = readMidpoints(conf["midpoints"])
@@ -110,13 +109,13 @@ def simTreeLens(conf, tree, stree, params, gene2species, baserate):
     tree2 = tree.copy()
     
     recon = phylo.reconcile(tree2, stree, gene2species)
-    events = phylo.labelEvents(tree2, recon)
+    events = phylo.label_events(tree2, recon)
     
     # set midpoint randomly
     midpoints = {}
     setMidpointsRandom(tree2.root, events, recon, params, midpoints, wholeTree=True)
     
-    #util.printDict(midpoints, keyfunc=lambda x: x.name)
+    #util.print_dict(midpoints, keyfunc=lambda x: x.name)
     
     # set branch lengths
     def walk(node):

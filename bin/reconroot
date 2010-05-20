@@ -22,7 +22,7 @@ conf, args = o.parse_args()
 if conf.midpoint:
     # midpoint rooting
     for treefile in args:
-        print "rerooting %s..." % treefile
+        print "rerooting %s" % treefile
         tree = treelib.read_tree(treefile)
         treelib.midpoint_root(tree)
         tree.write(treefile)

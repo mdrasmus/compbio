@@ -68,10 +68,10 @@ def countDupLoss(famids, treefiles, stree, gene2species, params):
         tree = treelib.readTree(f)
         
         phylo.initDupLossTree(singleTree)
-        dup, loss, appear = phylo.countDupLossTree(tree, singleTree, gene2species)
-        dup, loss, appear = phylo.countDupLossTree(tree, totalTree, gene2species)
+        dup, loss, appear = phylo.count_dup_loss_tree(tree, singleTree, gene2species)
+        dup, loss, appear = phylo.count_dup_loss_tree(tree, totalTree, gene2species)
 
-        phylo.countAncestralGenes(singleTree)
+        phylo.count_ancestral_genes(singleTree)
         
         row, junk = tree2row(singleTree)
         row["partid"] = name

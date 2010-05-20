@@ -15,7 +15,6 @@ from itertools import izip, imap
 # rasmus direct imports
 import rasmus
 from rasmus.util import *
-from rasmus.algorithms import *
 from rasmus.matrixlib import *
 from rasmus.stats import *
 from rasmus.progress import *

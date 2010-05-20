@@ -23,7 +23,9 @@ def write_dist_matrix(mat, labels, out=sys.stdout):
 
 
 o = optparse.OptionParser()
-phy.add_common_options(o)
+o.add_option("-l", "--discard-labels", "discard_labels",
+             action="store_true", default=False)
+phy.add_common_options(o, dist=True, tree=False)
 conf, files = phy.parse_common_options(o)
 
 result = 0
@@ -36,39 +38,20 @@ for fn in files:
 
     if len(align) <= 2:
         continue
-
-    if conf.usertreeext:
-        raise Exception("Can't specify usertree for bionj")
-    
-    # make temp files
-    distfile = outdir + "/dist"
-    treefile = basename + conf.treeext
-    
-    # find distances    
-    if conf.seqtype == "pep":
-        labels = phylip.protdist(align, distfile, verbose=True)
-    else:
-        labels = phylip.dnadist(align, distfile, verbose=True)
-
-    labels_junk, distmat = phylip.read_dist_matrix(distfile)
-    write_dist_matrix(distmat, labels, distfile)
-
-
-    util.tic()
-    cmd = "echo -n '%s\n%s' | bionj > '%s/out'" %\
-          (distfile, treefile, outdir)
-    print cmd
-
-    out = open(outdir + "/cmd", "w")
-    out.write(cmd)
-    out.close()
-    if os.system(cmd) != 0:
-        open(outdir + "/error", "w").close()
-        result = 1
-    out = open("%s/time" % outdir, "w")
-    out.write(str(util.toc()) + "\n")
-    out.close()
         
+    # find distances
+    distfile = basename + conf.distext
+    if conf.seqtype == "pep":
+        labels = phylip.protdist(align, distfile, verbose=conf.verbose)
+    else:
+        labels = phylip.dnadist(align, distfile, verbose=conf.verbose)
+
+    labels_num, distmat = phylip.read_dist_matrix(distfile)
+
+    if discard_labels:
+        labels = labels_num
+    
+    write_dist_matrix(distmat, labels, distfile)
 
 
 sys.exit(result)

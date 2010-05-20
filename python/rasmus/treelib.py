@@ -33,7 +33,7 @@ except ImportError:
 
 
 
-
+# TODO: I should generalize this
 # allow tree reading extra recursion levels
 sys.setrecursionlimit(4000)
 
@@ -213,6 +213,36 @@ class Tree:
             else:
                 yield node
                 stack.pop()
+
+
+    def inorder(self, node=None):
+        """Iterate through nodes with in-order traversal"""
+
+        if node is None:
+            node = self.root
+
+        stack = [[node, 0]]
+        
+        while len(stack) > 0:
+            node, i = stack[-1]
+
+            if node.is_leaf():
+                yield node
+                stack.pop()
+
+            elif i < len(node.children):
+                assert len(node.children) == 2
+
+                if i == 1:
+                    # left has been visited
+                    # yield current node then visit right
+                    yield node
+                
+                # recurse into children
+                stack.append([node.children[i], 0])
+                stack[-2][1] += 1
+            else:
+                stack.pop()
     
   
     #=============================
@@ -334,7 +364,8 @@ class Tree:
                 self.nodes[name2] = tree2.nodes[name]
                 self.nodes[name2].name = name2
             else:
-                if type(name) == int:
+                # make sure I do not issue a name that matches this one
+                if isinstance(name, int):
                     if name >= self.nextname:
                         self.nextname = name + 1
                 self.nodes[name] = tree2.nodes[name]
@@ -634,7 +665,7 @@ class Tree:
     def read_big_newick(self, filename):
         """Reads a big newick file with a custom parser"""
     
-        infile = file(filename)    
+        infile = util.open_stream(filename) #file(filename)    
         closure = {"opens": 0}
         names = set()
 
@@ -1154,7 +1185,7 @@ def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
     remove_set = set(tree.leaf_names()) - set(leaf_names)
     for sp in remove_set:
     	tree.remove(tree.nodes[sp])
-    remove_exposed_internal_nodes(tree)
+    remove_exposed_internal_nodes(tree, [tree.nodes[x] for x in leaf_names])
     remove_single_children(tree)
     
     return tree
@@ -1164,6 +1195,31 @@ subtreeByLeafNames = subtree_by_leaf_names
 def reorder_tree(tree, tree2):
     """Reorders the branches of tree to match tree2"""
 
+    # reroot tree to match tree2
+    root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+
+    def walk(node):
+        if node.is_leaf():
+            leaves = set([node.name])
+        else:
+            leaves = set()
+            for child in node.children:
+                l = walk(child)
+                if l is None:
+                    return None
+                leaves = leaves.union(l)
+
+        if leaves in root_branches:
+            # root found, terminate search
+            reroot(tree, node.name, newCopy=False)
+            return None
+            
+        return leaves
+    walk(tree.root)
+
+    
+
+    # reorder tree to match tree2
     leaf_lookup = util.list2lookup(tree2.leaf_names())
 
     def mean(lst):
@@ -1969,14 +2025,37 @@ if __name__ == "__main__":
     tree = read_tree(infile)
     tree.write(rootData=True)
 
-    
-    infile = StringIO("((a:1,b:2)60:3,(c:4,d:5)y:6)rra;")
+
+    # reorder test1
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
     tree = read_tree(infile)
     print tree.nodes['b'].parent.data
-
 
     infile = StringIO("((d:1,c:2)x:3,(b:4,a:5)y:6)r;")
     tree2 = read_tree(infile)
 
+    draw_tree_names(tree, maxlen=5)
     reorder_tree(tree, tree2)
-    draw_tree_names(tree2, maxlen=5)
+    draw_tree_names(tree, maxlen=5)
+
+
+    # reorder test2
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    print tree.nodes['b'].parent.data
+
+    infile = StringIO("(a:0.5,(b:2,(d:5,c:4)y:9)x:0.5);")
+    tree2 = read_tree(infile)
+
+    draw_tree_names(tree, maxlen=5)
+    reorder_tree(tree, tree2)
+    draw_tree_names(tree, maxlen=5)
+
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    for node in tree.inorder():
+        print node.name
+
+
+
+

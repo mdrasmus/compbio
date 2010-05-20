@@ -1,3 +1,10 @@
+"""
+
+   Common statistics library
+
+"""
+
+
 # python libs
 from math import *
 import cmath
@@ -6,7 +13,6 @@ import os
 
 # rasmus libs
 from rasmus import util
-from rasmus import algorithms
 from rasmus import tablelib
 
 
@@ -212,6 +218,58 @@ def logadd(lna, lnb):
     else:
         return lna
 
+
+def logsub(lna, lnb):
+    """
+    subtracting numbers in log-space
+
+    must have lna > lnb
+     """
+
+    diff = lna - lnb
+    if diff < 500:
+        diff2 = exp(diff) - 1.0
+        if diff2 == 0.0:
+            return -util.INF
+        else:
+            return log(diff2) + lnb
+    else:
+        return lna
+    
+
+def logadd_sign(sa, lna, sb, lnb):
+    """Adding numbers in log-space"""
+
+    if sa > 0 and sb > 0:
+        return 1, logadd(lna, lnb)
+
+    elif sa == 0:
+        return sb, lnb
+
+    elif sb == 0:
+        return sa, lna
+
+    elif sa < 0 and sb < 0:
+        return -1, logadd(lna, lnb)
+
+    elif sa > 0 and sb < 0:
+        if lna > lnb:
+            return 1, logsub(lna, lnb)
+        elif lna == lnb:
+            return 0, -util.INF
+        else:
+            return -1, logsub(lnb, lna)
+
+    elif sa < 0 and sb > 0:
+        if lna > lnb:
+            return -1, logsub(lna, lnb)
+        elif lna == lnb:
+            return 0, -util.INF
+        else:
+            return 1, logsub(lnb, lna)
+
+    else:
+        raise Exception("unhandled case")
 
 
 def smooth(vals, radius):
@@ -516,7 +574,7 @@ def sample(weights):
     item i will be chosen with probability weights[i]/sum(weights)
     """
     
-    probs = util.oneNorm(weights)
+    probs = util.one_norm(weights)
     
     cdf = [0]
     for i in range(1, len(probs)):
@@ -524,7 +582,7 @@ def sample(weights):
     
     pick = random.random()
     
-    low,top = algorithms.binsearch(cdf, pick)
+    low,top = util.binsearch(cdf, pick)
     
     assert low != None
     
@@ -1254,7 +1312,7 @@ def fit_distrib(cdf, params_init, data, ndivs=20, minsamples=5,
     data = sorted(data)
     bins = [data[i:i+binsize] for i in xrange(0, len(data), binsize)]
     obs = scipy.array(map(len, bins))
-    ind = find(lambda x: x[-1] >= start and x[0] <= end, bins)
+    ind = util.find(lambda x: x[-1] >= start and x[0] <= end, bins)
     obs = util.mget(obs, ind)
     
     def optfunc(params):

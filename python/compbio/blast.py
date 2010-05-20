@@ -440,8 +440,8 @@ def bl2seq(seq1, seq2, program="blastp", options="", name1="seq1", name2="seq2")
     file1 = util.tempfile(".", "blastp", ".fasta")
     file2 = util.tempfile(".", "blastp", ".fasta")
 
-    fasta.writeFastaOrdered(file1, [name1], [seq1])
-    fasta.writeFastaOrdered(file2, [name2], [seq2])
+    fasta.write_fasta_ordered(file1, [name1], [seq1])
+    fasta.write_fasta_ordered(file2, [name2], [seq2])
 
     
     # execute blast    

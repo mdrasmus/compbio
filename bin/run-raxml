@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-# run phyml with standard command-line interface
+# run RAxML with standard command-line interface
 
-import sys, os, shutil
+
+import sys, os, shutil, time
 import optparse
+import subprocess
 
 from rasmus import util, treelib
 from rasmus.bio import phylip, fasta
@@ -11,12 +13,21 @@ from rasmus.bio import phylorun as phy
 
 o = optparse.OptionParser()
 o.add_option("-m", "--model", dest="model", metavar="MODEL")
-o.add_option("-n", "--nrates", dest="nrates", metavar="NRATES",
-             type="int", default=4)
-o.add_option("-a", "--alpha", dest="alpha", metavar="ALPHA",
-             default="e")
+o.add_option("-x", "--random", dest="random", action="store_true")
+o.add_option("", "--fastboot", dest="fastboot", metavar="NUMBER")
 phy.add_common_options(o)
 conf, files = phy.parse_common_options(o)
+
+PROG = "raxmlHPC"
+
+
+def run(args, outdir):
+    curdir = os.getcwd()
+    os.chdir(outdir)    
+    ret = subprocess.call(args)
+    os.chdir(curdir)
+    return ret
+
 
 result = 0
 for fn in files:
@@ -27,7 +38,6 @@ for fn in files:
     align = fasta.read_fasta(basename + conf.alignext)
     labels = phylip.write_phylip_align(file(outdir + "/infile", "w"), align,
                                        False)
-    util.write_list(file(outdir + "/labels", "w"), labels)
 
     # require minimium size of alignment
     if len(align) <= 2:
@@ -45,39 +55,72 @@ for fn in files:
         for n in usertree2:
             n.data = {}
         
-        usertree_file = outdir + "/usertree"
-        usertree2.write(usertree_file)
+        usertree_file = "usertree"
+        usertree2.write(outdir +"/usertree")
     else:
         usertree = None
-        usertree_file = "BIONJ"
+        usertree_file = None
         data = None
     
 
+    # default model
     if conf.seqtype == "dna":
         if conf.model is None:
-            conf.model = "HKY"
-        args = "'%s/infile' 0 s 1 %d %s e e %d %s %s %s y" % \
-               (outdir, conf.boot, conf.model, conf.nrates, conf.alpha,
-                usertree_file,
-                "ny"[int(conf.opttree)])
+            conf.model = "GTRGAMMA"       
     else:
         if conf.model is None:
-            conf.model = "JTT"
-        args = "'%s/infile' 1 s 1 %d %s e %d %s %s %s y" % \
-               (outdir, conf.boot, conf.model, conf.nrates, conf.alpha,
-                usertree_file,
-                "ny"[int(conf.opttree)])
-    cmd = "phyml " + args + " > '%s/out'" % outdir
+            conf.model = "PROTGAMMAJTT"
+
+    # basic arguments
+    args = [PROG, "-s", "infile",
+                  "-n", "out",
+                  "-m", conf.model]
+
+    # user tree
+    if usertree_file:
+        args.extend(["-t", usertree_file])
+
+    # bootstrapping
+    if conf.boot:
+        args.extend(["-b", str(int(time.time())), "-N", str(conf.boot)])
+
+    if conf.random:
+        args.extend(["-x", str(int(time.time()))])
+
+    if conf.fastboot:
+        args.extend(["-f", "a",
+                     "-N", str(conf.fastboot),
+                     "-x", str(int(time.time()))])
+
+    if conf.extra:
+        args.extend(conf.extra)
+
+    # record command
+    cmd = " ".join(args)
     print cmd
     out = open(outdir + "/cmd", "w")
     out.write(cmd)
     out.close()
-    if os.system(cmd) != 0:
+
+    # run program
+    if run(args, outdir) != 0:
         open(outdir + "/error", "w").close()
         result = 1
     else:
-        tree = treelib.read_tree(outdir + "/infile_phyml_tree.txt")
 
+        if conf.boot or conf.fastboot:
+            # perform consensus
+            if subprocess.call(
+                ["treecons", 
+                 "-o", outdir + "/RAxML_result.out",
+                 "--binary",
+                 "-a", basename + conf.alignext,
+                 outdir+"/RAxML_bootstrap.out"]) != 0:
+                result = 1
+                continue
+        
+        tree = treelib.read_tree(outdir + "/RAxML_result.out")
+        
         # reorder tree
         if usertree:
             treelib.reorder_tree(tree, usertree)
@@ -92,5 +135,6 @@ for fn in files:
                 tree.nodes[name] = val
 
         tree.write(basename + conf.treeext)
+
 
 sys.exit(result)

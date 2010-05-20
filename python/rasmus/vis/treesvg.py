@@ -50,8 +50,8 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     
     if stree and gene2species:
         recon = phylo.reconcile(tree, stree, gene2species)
-        events = phylo.labelEvents(tree, recon)
-        losses = phylo.findLoss(tree, stree, recon)
+        events = phylo.label_events(tree, recon)
+        losses = phylo.find_loss(tree, stree, recon)
     else:
         events = None
         losses = None

@@ -1516,6 +1516,15 @@ def replace_ext(filename, oldext, newext):
         raise Exception("file '%s' does not have extension '%s'" % (filename, oldext))
 
 
+def makedirs(filename):
+    """
+    Makes a path of directories.
+    Does not fail if filename already exists
+    """
+
+    if not os.path.isdir(filename):
+        os.makedirs(filename)
+
 
 #=============================================================================
 # sorting

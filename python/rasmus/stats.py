@@ -1312,7 +1312,7 @@ def fit_distrib(cdf, params_init, data, ndivs=20, minsamples=5,
     data = sorted(data)
     bins = [data[i:i+binsize] for i in xrange(0, len(data), binsize)]
     obs = scipy.array(map(len, bins))
-    ind = find(lambda x: x[-1] >= start and x[0] <= end, bins)
+    ind = util.find(lambda x: x[-1] >= start and x[0] <= end, bins)
     obs = util.mget(obs, ind)
     
     def optfunc(params):

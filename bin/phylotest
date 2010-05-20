@@ -244,7 +244,7 @@ def report_test(argv):
                 branches = 0
                 branches_correct = 0
             else:
-                rf = phylo.robinsonFouldsError(datatree, evaltree)
+                rf = phylo.robinson_foulds_error(datatree, evaltree)
                 branches_correct = int((1.0 - rf) * nbranches)            
 
             # compute totals

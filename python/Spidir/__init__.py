@@ -196,8 +196,8 @@ def drawParamTree(tree, params, *args, **kargs):
                               *args, **kargs)
     
     # draw variance
-    coords = treelib.layoutTree(tree, kargs["xscale"], kargs["yscale"],
-                                      kargs["minlen"], kargs["maxlen"])
+    coords = treelib.layout_tree(tree, kargs["xscale"], kargs["yscale"],
+                                 kargs["minlen"], kargs["maxlen"])
     
     canvas.beginTransform(("translate", lmargin, tmargin))
     canvas.beginStyle("stroke-width: 3")
@@ -245,7 +245,7 @@ def setTreeDistances(conf, tree, distmat, genes):
         tree.data["error"] = 0.0
     else:
         # perform LSE
-        lse = phylo.leastSquareError(tree, distmat, genes)
+        lse = phylo.least_square_error(tree, distmat, genes)
 
         # catch unusual case that may occur in greedy search
         if sum(x.dist for x in tree.nodes.values()) == 0:
@@ -291,21 +291,21 @@ def setBranchError(conf, tree, errors, dists, edges, topmat):
 
 
 def findSplits(network, leaves):
-    """DEPRECATED: use phylo.findAllBranchSplits()"""
+    """DEPRECATED: use phylo.find_all_branch_splits()"""
     
-    return phylo.findAllBranchSplits(network, leaves)
+    return phylo.find_all_branch_splits(network, leaves)
 
 
 def getSplit(tree):
-    """DEPRECATED: use phylo.findBranchSplits()"""
+    """DEPRECATED: use phylo.find_branch_splits()"""
     
-    return phylo.findBranchSplits(tree)
+    return phylo.find_branch_splits(tree)
               
 
 def robinsonFouldsError(tree1, tree2):
-    """DEPRECATED: use phylo.robinsonFouldsError()"""
+    """DEPRECATED: use phylo.robinson_foulds_error()"""
     
-    return phylo.robinsonFouldsError(tree1, tree2)
+    return phylo.robinson_foulds_error(tree1, tree2)
 
 
 
@@ -344,7 +344,7 @@ def learnModel(trees, stree, gene2species, statsprefix="", filenames=None):
     util.tic("learn model")
 
     util.tic("find branch length distributions")
-    lengths, used = phylo.findBranchDistrib(trees, stree, gene2species, False)
+    lengths, used = phylo.find_branch_distrib(trees, stree, gene2species, False)
     debug("Total trees matching species topology: %d out of %d" % 
           (sum(used), len(trees)))
     util.toc()
@@ -554,7 +554,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
     # derive relative branch lengths
     #tree.clearData("logl", "extra", "fracs", "params", "unfold")
     recon = phylo.reconcile(tree, stree, gene2species)
-    events = phylo.labelEvents(tree, recon)
+    events = phylo.label_events(tree, recon)
     
     # determine if top branch unfolds
     if recon[tree.root] ==  stree.root and \
@@ -573,7 +573,7 @@ def treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=None):
         baserate = Likelihood.getBaserate(tree, stree, params, recon=recon)
         
     
-    phylo.midrootRecon(tree, stree, recon, events, params, baserate)
+    phylo.midroot_recon(tree, stree, recon, events, params, baserate)
     
     # calc likelihood in C
     this.logl = treeLikelihood_C(conf, tree, recon, events, stree, params, 
@@ -672,7 +672,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         elif search == "exhaustive":
             if tree == None:
                 tree = phylo.neighborjoin(distmat, labels)
-                tree = phylo.reconRoot(tree, stree, gene2species)
+                tree = phylo.recon_root(tree, stree, gene2species)
             
             tree, logl = Search.searchExhaustive(conf, distmat, labels, tree, stree, 
                                           gene2species, params, 
@@ -699,7 +699,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         setTreeDistances(conf, tree, distmat, labels)
         logl = treeLogLikelihood(conf, tree, stree, gene2species, params)
         
-        thash = phylo.hashTree(tree)
+        thash = phylo.hash_tree(tree)
         if thash in visited:
             a, b, count = visited[thash]
         else:
@@ -709,12 +709,12 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         if isDebug(DEBUG_LOW):
             debug("\nuser given tree:")
             recon = phylo.reconcile(tree, stree, gene2species)
-            events = phylo.labelEvents(tree, recon)
+            events = phylo.label_events(tree, recon)
             drawTreeLogl(tree, events=events)        
     
     # eval the user given trees
     for treefile in conf["tree"]:
-        tree = treelib.readTree(treefile)
+        tree = treelib.read_tree(treefile)
         evalUserTree(tree)
     
     for topfile in conf["tops"]:
@@ -723,7 +723,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         
         while True:
             try:
-                strees.append(treelib.readTree(infile))
+                strees.append(treelib.read_tree(infile))
             except:
                 break
         
@@ -747,7 +747,7 @@ def spidir(conf, distmat, labels, stree, gene2species, params):
         if isDebug(DEBUG_LOW):
             debug("\ncorrect tree:")
             recon = phylo.reconcile(tree, stree, gene2species)
-            events = phylo.labelEvents(tree, recon)
+            events = phylo.label_events(tree, recon)
             drawTreeLogl(tree, events=events)
     
     
@@ -801,25 +801,25 @@ if __name__ == "__main__":
     
     
     
-    stree = treelib.readTree(StringIO.StringIO("(A, B);"))
+    stree = treelib.read_tree(StringIO.StringIO("(A, B);"))
     
     
     # test 1
     print "\n\nTest 1"
-    tree  = treelib.readTree(StringIO.StringIO("(a:3, b:2);"))
+    tree  = treelib.read_tree(StringIO.StringIO("(a:3, b:2);"))
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
     
-    treelib.drawTreeLens(tree,scale=5)
+    treelib.draw_tree_lens(tree,scale=5)
     floateq(logl, log(stats.normalPdf(3, params["A"]) *
                       stats.normalPdf(2, params["B"])))
     
     
     # test 2
     print "\n\nTest 2"    
-    tree  = treelib.readTree(StringIO.StringIO("((a1:2.5, a2:2):1, b:2);"))
+    tree  = treelib.read_tree(StringIO.StringIO("((a1:2.5, a2:2):1, b:2);"))
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
     
-    treelib.drawTreeLens(tree,scale=5)
+    treelib.draw_tree_lens(tree,scale=5)
     floateq(logl, log(stats.normalPdf(2.5+1, params["A"])) +
                   log(stats.normalPdf(2+1, params["A"])) -
                   log(1.0 - stats.normalCdf(1, params["A"])) +
@@ -827,11 +827,11 @@ if __name__ == "__main__":
 
 
     print "\n\nTest 3"    
-    tree  = treelib.readTree(StringIO.StringIO(
+    tree  = treelib.read_tree(StringIO.StringIO(
                              "(((a1:2.5, a2:2):1, a3:1.5):1.2, b:2);"))
     logl = treeLogLikelihood(conf, tree, stree, gene2species, params, baserate=1)
     
-    treelib.drawTreeLens(tree,scale=5)
+    treelib.draw_tree_lens(tree,scale=5)
     floateq(logl, log(stats.normalPdf(2.5+1+1.2, params["A"])) +
                   log(stats.normalPdf(2+1+1.2, params["A"])) -
                   log(1.0 - stats.normalCdf(1+1.2, params["A"])) +

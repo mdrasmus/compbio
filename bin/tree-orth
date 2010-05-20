@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from rasmus import treelib, util
-from rasmus.bio import genomeutil, phylo
+from rasmus.bio import phylo
 
 import os, sys
 
@@ -13,16 +13,16 @@ if len(sys.argv) < 3:
 
 stree_file, gene2species_file = sys.argv[1:3]
 
-stree = treelib.readTree(stree_file)
-gene2species = genomeutil.readGene2species(gene2species_file)
+stree = treelib.read_tree(stree_file)
+gene2species = phylo.read_gene2species(gene2species_file)
 
 
 for filename in sys.argv[3:]:
     print >>sys.stderr, filename.rstrip()
-    tree = treelib.readTree(filename.rstrip())
+    tree = treelib.read_tree(filename.rstrip())
     recon = phylo.reconcile(tree, stree, gene2species)
 
-    orths = phylo.findOrthologs(tree, stree, recon)
+    orths = phylo.find_orthologs(tree, stree, recon)
 
     for gene1, gene2, spcnt1, spcnt2 in orths:
         sp1 = gene2species(gene1)

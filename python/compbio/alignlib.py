@@ -476,7 +476,7 @@ def findFourFold(aln):
     return ind
 '''
 
-def calcFourFoldDistMatrix(aln):
+def calc_four_fold_dist_matrix(aln):
     names = aln.keys()
 
     mat = []

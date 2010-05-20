@@ -2,17 +2,33 @@
 
    Coalescent methods
 
+
+A note about population size.  In this code all population sizes N or n are
+uncorrected.  If you need to compute a coalescent for a diploid species
+you must multiply N by 2 before passing it to any of these functions.
+
 """
+
+#=============================================================================
+# imports
 
 from __future__ import division
 
+# python imports
+import itertools
 from itertools import chain, izip
-
 from math import *
 import random
+
+# rasmus imports
 from rasmus import treelib, stats, util
 from rasmus.symbolic import *
 
+# compbio imports
+from . import birthdeath
+
+#=============================================================================
+# single coalescent PDFs, CDFs, and sampling functions
 
 
 def prob_coal(t, k, n):
@@ -29,90 +45,13 @@ def prob_coal(t, k, n):
 
 def sample_coal(k, n):
     """
-    Returns a smaple coalescent time for 'k' individuals in a population size 'n'
+    Returns a sample coalescent time for 'k' individuals in a population 'n'
     """
 
     # k choose 2
     k2 = k * (k-1) / 2
     k2n = k2 / n
     return random.expovariate(k2n)
-
-
-def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
-    """
-    Returns a Tree from a list of divergence times.
-
-    The topology is choosen by randomly choosing pairs of leaves.
-    """
-
-    # initialize k
-    if k is None:
-        if leaves is not None:
-            k = len(leaves)
-        else:
-            k = len(times)
-            
-    tree = treelib.Tree()
-
-    # initialize k children
-    if leaves is None:
-        children = set(treelib.TreeNode(tree.new_name()) for i in xrange(k))
-    else:
-        children = set(treelib.TreeNode(name) for name in leaves)
-    for child in children:
-        tree.add(child)
-        child.data["time"] = 0.0
-
-    # perform random merges
-    for i in xrange(1, len(times)):
-        # make new parent and merge children
-        parent = treelib.TreeNode(tree.new_name())
-        parent.data["time"] = times[i]
-        a, b = random.sample(children, 2)
-        
-        tree.add_child(parent, a)
-        tree.add_child(parent, b)
-
-        # adjust children set
-        children.remove(a)
-        children.remove(b)
-        children.add(parent)
-
-
-    # set branch lengths
-    for node in tree:
-        if not node.parent:
-            if t is not None:
-                node.dist = t - node.data["time"]
-            else:
-                node.dist = 0.0
-        else:
-            node.dist = node.parent.data["time"] - node.data["time"]
-
-    # for convenience cap the tree for easy drawing/manipulation
-    if capped:
-        tree.make_root()
-        for node in children:
-            tree.add_child(tree.root, node)
-    else:
-        # set root
-        if len(children) == 1:
-            tree.root = list(children)[0]
-    
-    # return tree and remaining lineages
-    return tree, children
-    
-
-
-def sample_coal_tree(k, n):
-    """
-    Returns a simulated coalescence tree for k leaves from a population n.
-    """
-
-    times = [0]
-    for j in xrange(k, 1, -1):
-        times.append(times[-1] + sample_coal(j, n))
-    return make_tree_from_times(times)[0]
 
 
 def sample_coal_times(k, n):
@@ -126,60 +65,10 @@ def sample_coal_times(k, n):
     return times[1:]
 
 
-def sample_coal_tree_bounded(k, n, T, capped=False):
-    """
-    Returns a simulated coalescence tree for k leaves from a populations n
-    with fixed maximum time t.  The simulation is conditioned on returning
-    a tree that completely coaleces before time T.
-    """    
-    times = [0]
-    for j in xrange(k, 1, -1):
-        times.append(times[-1] + sample_coal_bounded(j, n, T - times[-1]))
-
-    return make_tree_from_times(times, t=T, capped=capped)[0]
-
-
-def sample_coal_tree_bounded_reject(k, n, T, capped=False):
-    """
-    Returns a simulated coalescence tree for k leaves from a populations n
-    with fixed maximum time t.  The simulation is conditioned on returning
-    a tree that completely coaleces before time T.
-    """
-
-    # sample times with rejection sampling
-    while True:
-        times = [0]
-        for j in xrange(k, 1, -1):
-            times.append(times[-1] + sample_coal(j, n))
-        if times[-1] < t:
-            break
-
-    return make_tree_from_times(times, t=T, capped=capped)[0]
-
-
-def sample_coal_tree_fixed(k, n, t, capped=False):
-    """
-    Returns a simulated coalescence tree for k leaves from a population n
-    with a fixed maximum time t.
-
-    The return value is the tuple (tree, lineages)
-    """
-
-    times = [0]
-    for j in xrange(k, 1, -1):
-        times.append(times[-1] + sample_coal(j, n))
-        if times[-1] > t:
-            times.pop()
-            break
-    
-    return make_tree_from_times(times, k, t, capped=capped)
-
-
-
 def prob_mrca(t, k, n):
     """
-    Probability density the age 't' of the most recent common ancestor (MRCA)
-    of 'k' lineages in a population size 'n'
+    Probability density function of the age 't' of the most recent
+    common ancestor (MRCA) of 'k' lineages in a population size 'n'
     """
 
     s = 0.0
@@ -191,7 +80,7 @@ def prob_mrca(t, k, n):
 
 def cdf_mrca(t, k, n):
     """
-    Cumulative probability density the age 't' of the most recent common
+    Cumulative probability density of the age 't' of the most recent common
     ancestor (MRCA) of 'k' lineages in a population size 'n'
     """
 
@@ -205,6 +94,22 @@ def cdf_mrca(t, k, n):
     return s
 
 
+def mrca_const(i, a, b):
+    """A constant used in calculating MRCA"""
+
+    # i+1 choose 2
+    y = (i+1) * i / 2.0
+    prod = 1.0
+
+    for j in xrange(a, b+1):
+        if j == i:
+            continue
+        # j+1 choose 2
+        x = (j+1) * j / 2.0
+        prod *= x / (x - y)
+    return prod
+
+
 
 def prob_coal_bounded(t, k, n, T):
     """
@@ -214,13 +119,7 @@ def prob_coal_bounded(t, k, n, T):
 
     if t > T:
         return 0.0
-
-    #i = k - 1
-    #consts = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
-    #x = sum(consts)
-    #y = sum(mrca_const(j, 1, i-1) * exp(-((j+1) * j / 2.0 / n) * (T - t))
-    #        for j in xrange(1, i))
-
+    
     if k == 2:
         prob_coal(t, k, n)
     return prob_coal(t, k, n) * cdf_mrca(T-t, k-1, n) / \
@@ -228,7 +127,10 @@ def prob_coal_bounded(t, k, n, T):
 
 
 def cdf_coal_bounded(t, k, n, T):
-
+    """
+    Cumalative density function of seeing a coalescence at 't' from
+    'k' lineages in a population of size 'n' with bounding time 'T'
+    """
     i = k - 1
 
     lam_i = (i+1)*i/2.0 / n
@@ -306,11 +208,10 @@ def sample_coal_bounded_reject(k, n, T):
     Sample a coalescent time 't' for 'k' lineages and population 'n'
     on the condition that the MRCA is before 'T'
 
-    Uses rejection samping.
+    Uses rejection sampling.  It works but is very inefficient.
     """
 
     i = k - 1
-
     consts = [mrca_const(j, 1, i-1) for j in xrange(1, i)]
     x = sum(consts)
 
@@ -332,28 +233,213 @@ def sample_coal_bounded_reject(k, n, T):
             return t
 
 
-def mrca_const(i, a, b):
-    """A constant used in calculating MCRA"""
+def prob_coal_counts(u, v, t, n):
+    """
+    The probabiluty of going from 'u' lineages to 'v' lineages in time 't'
+    with population size 'n'
+    """
+    
+    T = t / n
 
-    # i+1 choose 2
-    y = (i+1) * i / 2.0
-    prod = 1.0
+    s = 0.0
+    for k in xrange(v, u+1):
+        a = exp(-k*(k-1)*T/2.0) * (2*k-1)*(-1)**(k-v) / stats.factorial(v) / \
+            stats.factorial(k-v) / (k+v-1) * \
+            stats.prod((v+y)*(u-y)/(u+y) for y in xrange(k))
+        s += a
+    return s
 
-    for j in xrange(a, b+1):
-        if j == i:
-            continue
-        # j+1 choose 2
-        x = (j+1) * j / 2.0
-        prod *= x / (x - y)
-    return prod
+
+def prob_coal_recon_topology(tree, recon, stree, n):
+    """
+    Returns the log probability of a reconciled gene tree ('tree', 'recon')
+    from the coalescent model given a species tree 'stree' and
+    population sizes 'n'
+    """
+    
+    popsizes = init_popsizes(stree, n)
+
+    # log probability
+    lnp = 0.0
+
+    nodes = set(tree.postorder())
+
+    # init reverse reconciliation
+    rev_recon = {}
+    for node, snode in recon.iteritems():
+        if node not in nodes:
+            raise Exception("node '%s' not in tree" % node.name)
+        rev_recon.setdefault(snode, []).append(node)
+
+    # init lineage counts
+    lineages = {}
+    for snode in stree:
+        if snode.is_leaf():
+            lineages[snode] = len([x for x in rev_recon[snode]
+                                   if x.is_leaf()])
+        else:
+            lineages[snode] = 0
+
+    # iterate through species tree branches
+    for snode in stree.postorder():
+        if snode.parent:
+            # non root branch
+            u = lineages[snode]
+
+            # subtract number of coals in branch
+            v = u - len([x for x in rev_recon.get(snode, [])
+                         if not x.is_leaf()])            
+            lineages[snode.parent] += v
+
+            lnp += log(prob_coal_counts(u, v, snode.dist,
+                                        popsizes[snode.name]))
+            lnp -= log(num_labeled_histories(u, v))            
+        else:
+            u = lineages[snode]
+            lnp -= log(num_labeled_histories(u, 1))
+
+    
+    # correct for topologies H(T)
+    # find connected subtrees that are in the same species branch
+    subtrees = []
+    subtree_root = {}
+    for node in tree.preorder():
+        if node.parent and recon[node] == recon[node.parent]:
+            subtree_root[node] = subtree_root[node.parent]
+        else:
+            subtrees.append(node)
+            subtree_root[node] = node
+
+    # find leaves through recursion
+    def walk(node, subtree, leaves):
+        if node.is_leaf():
+            leaves.append(node)
+        elif (subtree_root[node.children[0]] != subtree and
+              subtree_root[node.children[1]] != subtree):
+            leaves.append(node)
+        else:
+            for child in node.children:
+                walk(child, subtree, leaves)
+
+    # apply correction for each subtree
+    for subtree in subtrees:
+        leaves = []
+        for child in subtree.children:
+            walk(subtree, subtree, leaves)
+        if len(leaves) > 2:
+            lnp += log(birthdeath.num_topology_histories(subtree, leaves))
+
+    return lnp
+
+
+def num_labeled_histories(nleaves, nroots):
+    n = 1.0
+    for i in xrange(nroots + 1, nleaves+1):
+        n *= i * (i - 1) / 2.0
+    return n
+    
+
+#=============================================================================
+# sampling coalescent trees
+#
+#  - normal coalescent
+#  - fixed time coalescent (may not be complete)
+#  - bounded coalescent (conditioned on completing in fixed time)
+#
+
+
+def sample_coal_tree(k, n):
+    """
+    Returns a simulated coalescent tree for 'k' leaves from a population 'n'.
+    """
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal(j, n))
+    return make_tree_from_times(times)[0]
+
+
+def sample_coal_tree_bounded(k, n, T, capped=False):
+    """
+    Returns a simulated coalescent tree for 'k' leaves from a populations 'n'
+    with fixed maximum time 't'.  The simulation is conditioned on returning
+    a tree that completely coaleces before time 'T'.
+
+    capped -- if True an artificial root to the tree.  Used primarily by
+              other methods.
+    """    
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal_bounded(j, n, T - times[-1]))
+    return make_tree_from_times(times, t=T, capped=capped)[0]
+
+
+def sample_coal_tree_bounded_reject(k, n, T, capped=False):
+    """
+    Returns a simulated coalescence tree for k leaves from a populations n
+    with fixed maximum time t.  The simulation is conditioned on returning
+    a tree that completely coaleces before time T.
+    """
+
+    # sample times with rejection sampling
+    while True:
+        times = [0]
+        for j in xrange(k, 1, -1):
+            times.append(times[-1] + sample_coal(j, n))
+        if times[-1] < t:
+            break
+
+    return make_tree_from_times(times, t=T, capped=capped)[0]
+
+
+def sample_coal_tree_fixed(k, n, t, capped=False):
+    """
+    Returns a simulated coalescence tree for 'k' leaves from a population size
+    'n' with a fixed maximum time 't'.
+
+    The return value is the tuple (tree, lineages) where lineages is a set
+    of lineages that have not yet coalesced.
+
+    capped -- if True, remaining lineages are added as children to a artificial
+              tree root.
+    """
+
+    times = [0]
+    for j in xrange(k, 1, -1):
+        times.append(times[-1] + sample_coal(j, n))
+        if times[-1] > t:
+            times.pop()
+            break
+    
+    return make_tree_from_times(times, k, t, capped=capped)
+
+
+def init_popsizes(stree, n):
+    """
+    Uses 'n' to initialize a population size dict for species tree 'stree'
+    """
+
+    if isinstance(n, (int, float)):
+        return dict.fromkeys(stree.nodes.keys(), n)
+    elif isinstance(n, dict):
+        return n
+    else:
+        raise Exception("n must be a int or dict.")
+
 
 
 def sample_multicoal_tree(stree, n, leaf_counts=None,
                           namefunc=None):
     """
     Returns a gene tree from a multi-species coalescence process
-    n -- population size (int or dict)
-         If n is a dict it must map from species name to population size
+
+    stree       -- species tree
+    n           -- population size (int or dict)
+                   If n is a dict it must map from species name to
+                   population size.
+    leaf_counts -- dict of species names to a starting gene count.
+                   Default is 1 gene per extant species.
+    namefunc    -- a function that generates new gene names given a species
+                   name.
     """
 
     # initialize vector for how many genes per extant species
@@ -369,12 +455,7 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
             return name
 
     # initialize population sizes
-    if isinstance(n, (int, float)):
-        popsizes = dict.fromkeys(stree.nodes.keys(), n)
-    elif isinstance(n, dict):
-        popsizes = n
-    else:
-        raise Exception("n must be a int or dict.")
+    popsizes = init_popsizes(stree, n)
 
     # init gene counts
     counts = dict((n.name, 0) for n in stree)
@@ -444,6 +525,74 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
 
 
 
+
+def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
+    """
+    Returns a Tree from a list of divergence times.
+
+    The topology is choosen by randomly choosing pairs of leaves.
+    """
+
+    # initialize k
+    if k is None:
+        if leaves is not None:
+            k = len(leaves)
+        else:
+            k = len(times)
+            
+    tree = treelib.Tree()
+
+    # initialize k children
+    if leaves is None:
+        children = set(treelib.TreeNode(tree.new_name()) for i in xrange(k))
+    else:
+        children = set(treelib.TreeNode(name) for name in leaves)
+    for child in children:
+        tree.add(child)
+        child.data["time"] = 0.0
+
+    # perform random merges
+    for i in xrange(1, len(times)):
+        # make new parent and merge children
+        parent = treelib.TreeNode(tree.new_name())
+        parent.data["time"] = times[i]
+        a, b = random.sample(children, 2)
+        
+        tree.add_child(parent, a)
+        tree.add_child(parent, b)
+
+        # adjust children set
+        children.remove(a)
+        children.remove(b)
+        children.add(parent)
+
+
+    # set branch lengths
+    for node in tree:
+        if not node.parent:
+            if t is not None:
+                node.dist = t - node.data["time"]
+            else:
+                node.dist = 0.0
+        else:
+            node.dist = node.parent.data["time"] - node.data["time"]
+
+    # for convenience cap the tree for easy drawing/manipulation
+    if capped:
+        tree.make_root()
+        for node in children:
+            tree.add_child(tree.root, node)
+    else:
+        # set root
+        if len(children) == 1:
+            tree.root = list(children)[0]
+    
+    # return tree and remaining lineages
+    return tree, children
+    
+
+
+
 #=============================================================================
 # allele frequency
 
@@ -492,14 +641,13 @@ def legendre(n, r):
     assert l[0] == 'scalar'
     return l[1]
 
-
 def gegenbauer(i, r):
-    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
-            (legendre(i-1, r) - legendre(i+1, r)))
-
-def gegenbauer2(i, r):
     return ((i * (i+1)) / 2.0 * hypergeo(i+2, 1 - i, 2, (1 - r) / 2.0))
 
+
+def gegenbauer2(i, r):
+    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
+            (legendre(i-1, r) - legendre(i+1, r)))
 
 def gegenbauer3(n, a, z):
 
@@ -514,6 +662,7 @@ def gegenbauer3(n, a, z):
 
 
 def prob_fix(p, n, t, k=8, esp=0.001):
+    """Probability of fixation"""
     r = 1 - 2*p
     
     prob = p
@@ -527,14 +676,6 @@ def prob_fix(p, n, t, k=8, esp=0.001):
     return prob
 
 
-def hypergeo_fast(a, b, c, z, k=100):
-    """Hypergeometric function"""
-    terms = [1.0]
-    for i in xrange(1, k+1):
-        terms.append(float((i+a-1)*(i+b-1)*z)/(i+c-1)/i * terms[i-1])
-    return sum(terms)
-
-
 def hypergeo(a, b, c, z, k=100):
     """Hypergeometric function"""
     terms = [0.0]
@@ -545,12 +686,15 @@ def hypergeo(a, b, c, z, k=100):
         if term == 0.0:
             break
         terms.append(log(abs(term)) + terms[i-1])
-    #util.plot(terms)
     return sum(s*exp(i) for s, i in zip(signs, terms))
 
 
 def loghypergeo(a, b, c, z, k=100):
-    """Hypergeometric function"""
+    """
+    Hypergeometric function
+
+    Performs computation in log-space
+    """
     terms = [0.0]
     signs = [1.0]
     for i in xrange(1, k+1):
@@ -574,6 +718,43 @@ def hypergeo_mult(i, z1, z2, k=100):
      h2 = hypergeo(1-i, i+2, 2, z2, k)
      return h1 * h2
      
+
+def freq_pdf(x, p, n, t, k=8):
+
+    if x > 0.5:
+        return freq_pdf(1.0-x, 1.0-p, n, t, k)
+    
+    q = 1.0 - p
+    prob = -util.INF
+    sgn = 1
+    t4n = t / (4*n)
+    
+    for i in xrange(1, k+1):
+        #term = (p * q * i * (i+1) * (2*i+1) *
+        #        hypergeo(1-i,i+2,2,p) * hypergeo(1-i,i+2,2,x) *
+        #        exp(-t * i * (i+1) / (4*n)))
+
+        lcoff = log(p * q * i * (i+1) * (2*i+1))
+        s1, h1 = loghypergeo(1-i,i+2,2,p, i+2)
+        s2, h2 = loghypergeo(1-i,i+2,2,x, i+2)
+        sgn2 = s1 * s2
+        term = (lcoff + h1 + h2 - (i * (i+1) * t4n))
+        
+        sgn, prob = stats.logadd_sign(sgn, prob, sgn2, term)
+
+    return sgn * exp(prob)
+
+
+#=============================================================================
+# old versions
+
+
+def hypergeo_old(a, b, c, z, k=100):
+    """Hypergeometric function"""
+    terms = [1.0]
+    for i in xrange(1, k+1):
+        terms.append(float((i+a-1)*(i+b-1)*z)/(i+c-1)/i * terms[i-1])
+    return sum(terms)
 
 
 def freq_pdf_old(x, p, n, t, k=8):
@@ -603,31 +784,6 @@ def freq_pdf_old(x, p, n, t, k=8):
 
     return sgn * exp(prob)
 
-
-def freq_pdf(x, p, n, t, k=8):
-
-    if x > 0.5:
-        return freq_pdf(1.0-x, 1.0-p, n, t, k)
-    
-    q = 1.0 - p
-    prob = -util.INF
-    sgn = 1
-    t4n = t / (4*n)
-    
-    for i in xrange(1, k+1):
-        #term = (p * q * i * (i+1) * (2*i+1) *
-        #        hypergeo(1-i,i+2,2,p) * hypergeo(1-i,i+2,2,x) *
-        #        exp(-t * i * (i+1) / (4*n)))
-
-        lcoff = log(p * q * i * (i+1) * (2*i+1))
-        s1, h1 = loghypergeo(1-i,i+2,2,p, i+2)
-        s2, h2 = loghypergeo(1-i,i+2,2,x, i+2)
-        sgn2 = s1 * s2
-        term = (lcoff + h1 + h2 - (i * (i+1) * t4n))
-        
-        sgn, prob = stats.logadd_sign(sgn, prob, sgn2, term)
-
-    return sgn * exp(prob)
 
 
 def freq_pdf2(x, p, n, t, k=8):
@@ -667,6 +823,10 @@ def freq_pdf4(x, p, n, t, k=8):
         prob += term
 
     return prob
+
+
+
+
 
     
     

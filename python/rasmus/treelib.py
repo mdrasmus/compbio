@@ -213,6 +213,36 @@ class Tree:
             else:
                 yield node
                 stack.pop()
+
+
+    def inorder(self, node=None):
+        """Iterate through nodes with in-order traversal"""
+
+        if node is None:
+            node = self.root
+
+        stack = [[node, 0]]
+        
+        while len(stack) > 0:
+            node, i = stack[-1]
+
+            if node.is_leaf():
+                yield node
+                stack.pop()
+
+            elif i < len(node.children):
+                assert len(node.children) == 2
+
+                if i == 1:
+                    # left has been visited
+                    # yield current node then visit right
+                    yield node
+                
+                # recurse into children
+                stack.append([node.children[i], 0])
+                stack[-2][1] += 1
+            else:
+                stack.pop()
     
   
     #=============================
@@ -2020,6 +2050,11 @@ if __name__ == "__main__":
     draw_tree_names(tree, maxlen=5)
     reorder_tree(tree, tree2)
     draw_tree_names(tree, maxlen=5)
+
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    for node in tree.inorder():
+        print node.name
 
 
 

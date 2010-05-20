@@ -267,6 +267,8 @@ def get_tree_timestamps(tree):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
+
+    Leaves have time 0
     """
 
     esp = .001
@@ -282,7 +284,8 @@ def get_tree_timestamps(tree):
 
                 # ensure branch lengths are ultrametrix
                 if t2:                    
-                    assert abs(t - t2) < esp
+                    assert abs(t - t2) < esp, (node.name, t, t2)
+                t2 = t
 
         times[node] = t
         return t + node.dist
@@ -290,6 +293,30 @@ def get_tree_timestamps(tree):
     
     return times
 
+
+def check_timestamps(tree, times):    
+    for node in tree:
+        if node.parent:
+            if times[node.parent] - times[node] < 0.0 or \
+               abs(((times[node.parent] - times[node]) -
+                    node.dist)/node.dist) > .001:
+                treelib.draw_tree_names(tree, maxlen=7, minlen=7)
+                util.printcols([(a.name, b) for a, b in times.items()])
+                print
+                print node.name, node.dist, times[node.parent] - times[node]
+                raise Exception("negative time span")
+
+
+def set_dists_from_timestamps(tree, times):
+    """
+    Sets the branch lengths of a tree using a timestamp dict
+    """
+
+    for node in tree:
+        if node.parent:
+            node.dist = times[node.parent] - times[node]
+        else:
+            node.dist = 0.0
 
 
 

@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+# Thu May 14 17:17:41 EDT 2009
+# compare ortholog
+
+#
+# NOTE: actual orthologs are filtered down to only the genes that appear in
+# predicted dataset
+#
+
+import sys
+from rasmus import treelib, util, tablelib
+from rasmus.bio import phylo
+
+#stree = treelib.read_tree(sys.argv[1])
+#gene2species = phylo.read_gene2species(sys.argv[2])
+
+# parse args
+actual_rel_file, pred_rel_file = sys.argv[1:]
+
+# read data
+actual_rel = util.read_delim(actual_rel_file)
+pred_rel = util.read_delim(pred_rel_file)
+
+
+# get genes that are in predicted dataset
+pred_genes = set(x[2] for x in pred_rel if x[1] == "gene")
+
+# dups
+actual_dups = set(tuple(x) for x in actual_rel if x[1] == "dup")
+pred_dups = set(tuple(x) for x in pred_rel if x[1] == "dup")
+dup_tp = len(actual_dups & pred_dups)
+
+# losses
+actual_loss = set(tuple(x) for x in actual_rel if x[1] == "loss")
+pred_loss = set(tuple(x) for x in pred_rel if x[1] == "loss")
+loss_tp = len(actual_loss & pred_loss)
+
+# orthologs
+actual_spec = [x for x in actual_rel if x[1] == "spec"]
+pred_spec = [x for x in pred_rel if x[1] == "spec"]
+
+
+actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+                   for a in x[2].split(",")
+                   for b in x[3].split(",")
+                   if a in pred_genes and b in pred_genes)
+pred_orth = set((x[0],) + tuple(sorted([a,b])) for x in pred_spec
+                for a in x[2].split(",")
+                for b in x[3].split(","))
+orth_tp = len(actual_orth & pred_orth)
+
+#print "\n".join(map(repr, list(actual_orth3)[:10]))
+
+# dup
+print "dup actual:\t" + str(len(actual_dups))
+print "dup pred:\t" + str(len(pred_dups))
+print "dup sn:\t" + str(util.safediv(dup_tp, len(actual_dups)))
+print "dup ppv:\t" + str(util.safediv(dup_tp, len(pred_dups)))
+
+# loss
+print "loss actual:\t" + str(len(actual_loss))
+print "loss pred:\t" + str(len(pred_loss))
+print "loss sn:\t" + str(util.safediv(loss_tp, len(actual_loss)))
+print "loss ppv:\t" + str(util.safediv(loss_tp, len(pred_loss)))
+
+# orths
+print "orth actual:\t" + str(len(actual_orth))
+print "orth pred:\t" + str(len(pred_orth))
+print "orth sn:\t" + str(util.safediv(orth_tp, len(actual_orth)))
+print "orth ppv:\t" + str(util.safediv(orth_tp, len(pred_orth)))
+

@@ -94,11 +94,12 @@ class DLCoalRecon (object):
         """Perform reconciliation"""
         
         self.init_search()
+        proposal = self.proposer.init_proposal()
         for i in xrange(nsearch):
             print "search", i
-            proposal = self.proposer.next_proposal()
             p = self.eval_proposal(proposal)
             self.eval_search(p, proposal)
+            proposal = self.proposer.next_proposal()
         
         # rename locus tree nodes
         rename_nodes(self.maxrecon["locus_tree"], self.name_internal)
@@ -175,6 +176,30 @@ class DLCoalReconProposer (object):
     def set_locus_tree(self, locus_tree):
         self.locus_search.set_tree(locus_tree)
 
+    def init_proposal(self):
+        """Get first proposal"""
+        
+        # TODO: propose other reconciliations beside LCA
+        locus_tree = self.locus_search.get_tree().copy()
+        locus_recon = phylo.reconcile(locus_tree, self.reconer.stree,
+                                      self.reconer.gene2species)
+        locus_events = phylo.label_events(locus_tree, locus_recon)
+
+        # propose daughters (TODO)
+        daughters = set()
+
+        # propose coal recon (TODO: propose others beside LCA)
+        coal_recon = phylo.reconcile(self.reconer.coal_tree,
+                                     locus_tree, lambda x: x)
+
+        recon = {"coal_recon": coal_recon,
+                 "locus_tree": locus_tree,
+                 "locus_recon": locus_recon,
+                 "locus_events": locus_events,
+                 "daughters": daughters}
+        return recon
+
+
     def next_proposal(self):        
         self.locus_search.propose()
         
@@ -200,9 +225,6 @@ class DLCoalReconProposer (object):
                  "locus_events": locus_events,
                  "daughters": daughters}
         return recon
-
-    #def get_proposal(self):
-    #    
 
 
     def accept(self):
@@ -292,7 +314,7 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
         print coal_prob
     #util.toc()
 
-    return dl_prob + d_prob + util.safelog(prob / nsamples, -util.INF)
+    return dl_prob + d_prob + util.safelog(prob / nsamples)
 
 
 
@@ -343,13 +365,13 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
                 try:
                     lnp += util.safelog(
                         coal.prob_coal_counts(u, v, snode.dist,
-                                              popsizes[snode.name]),
-                        -util.INF)
+                                              popsizes[snode.name]))
                 except:
                     print u, v, snode.dist, popsizes[snode.name]
                     raise
             else:
                 assert v == 1
+
             lnp -= log(coal.num_labeled_histories(u, v))
         else:
             # normal coalesent

@@ -395,13 +395,17 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
 # sampling from the DLCoal model
 
 def sample_dlcoal(stree, n, duprate, lossrate, namefunc=lambda x: x,
-                  remove_single=True, name_internal="n"):
+                  remove_single=True, name_internal="n",
+                  minsize=0):
     """Sample a gene tree from the DLCoal model"""
 
     # generate the locus tree
-    locus_tree, locus_recon, locus_events = \
-                birthdeath.sample_birth_death_gene_tree(
-        stree, duprate, lossrate)
+    while True:
+        locus_tree, locus_recon, locus_events = \
+                    birthdeath.sample_birth_death_gene_tree(
+            stree, duprate, lossrate)
+        if len(locus_tree.leaves()) >= minsize:
+            break
 
     if len(locus_tree.nodes) <= 1:
         # total extinction

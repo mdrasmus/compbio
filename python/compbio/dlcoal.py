@@ -288,7 +288,7 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
         print coal_prob
     #util.toc()
 
-    return dl_prob + d_prob + log(prob / nsamples)
+    return dl_prob + d_prob + util.safelog(prob / nsamples, -util.INF)
 
 
 
@@ -346,11 +346,13 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
                     raise
             else:
                 assert v == 1
-            lnp -= log(coal.num_labeled_histories(u, v))            
+            lnp -= util.safelog(coal.num_labeled_histories(u, v),
+                                -util.INF)
         else:
             # normal coalesent
             u = lineages[snode]
-            lnp -= log(coal.num_labeled_histories(u, 1))
+            lnp -= util.safelog(coal.num_labeled_histories(u, 1),
+                                -util.INF)
 
     
     # correct for topologies H(T)
@@ -381,7 +383,9 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
         for child in subtree.children:
             walk(subtree, subtree, leaves)
         if len(leaves) > 2:
-            lnp += log(birthdeath.num_topology_histories(subtree, leaves))
+            lnp += util.safelog(
+                birthdeath.num_topology_histories(subtree, leaves),
+                -util.INF)
 
     return lnp
 

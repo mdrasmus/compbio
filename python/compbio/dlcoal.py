@@ -201,6 +201,10 @@ class DLCoalReconProposer (object):
                  "daughters": daughters}
         return recon
 
+    #def get_proposal(self):
+    #    
+
+
     def accept(self):
         self.locus_search.set_tree(self.locus_search.get_tree().copy())
     
@@ -256,11 +260,11 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
 
     # duploss probability
 
-    util.tic("top")
+    #util.tic("top")
     dl_prob = spidir.calc_birth_death_prior(locus_tree, stree, locus_recon,
                                             duprate, lossrate,
                                             maxdoom=maxdoom)
-    util.toc()
+    #util.toc()
     
     # daughters probability
     d_prob = dups * log(.5)
@@ -346,13 +350,11 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
                     raise
             else:
                 assert v == 1
-            lnp -= util.safelog(coal.num_labeled_histories(u, v),
-                                -util.INF)
+            lnp -= log(coal.num_labeled_histories(u, v))
         else:
             # normal coalesent
             u = lineages[snode]
-            lnp -= util.safelog(coal.num_labeled_histories(u, 1),
-                                -util.INF)
+            lnp -= log(coal.num_labeled_histories(u, 1))
 
     
     # correct for topologies H(T)
@@ -383,9 +385,7 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
         for child in subtree.children:
             walk(subtree, subtree, leaves)
         if len(leaves) > 2:
-            lnp += util.safelog(
-                birthdeath.num_topology_histories(subtree, leaves),
-                -util.INF)
+            lnp += log(birthdeath.num_topology_histories(subtree, leaves))
 
     return lnp
 

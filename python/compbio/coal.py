@@ -83,14 +83,17 @@ def cdf_mrca(t, k, n):
     Cumulative probability density of the age 't' of the most recent common
     ancestor (MRCA) of 'k' lineages in a population size 'n'
     """
-
+    
     if k == 1:
         return 1.0
     
     s = 0.0
-    for i in xrange(1, k):
-        lam = (i+1) * i / 2.0 / n
-        s += (1 - exp(- lam * t)) * mrca_const(i, 1, k-1)
+    for i in xrange(1, k+1):
+        lam = i * (i-1) / (2.0 * n)
+        p = 1.0
+        for y in xrange(1, i):
+            p *= (y-k) / (k+y)
+        s += exp(-lam * t) * (2*i - 1) * p
     return s
 
 
@@ -745,90 +748,9 @@ def freq_pdf(x, p, n, t, k=8):
     return sgn * exp(prob)
 
 
+
+
 #=============================================================================
-# old versions
-
-
-def hypergeo_old(a, b, c, z, k=100):
-    """Hypergeometric function"""
-    terms = [1.0]
-    for i in xrange(1, k+1):
-        terms.append(float((i+a-1)*(i+b-1)*z)/(i+c-1)/i * terms[i-1])
-    return sum(terms)
-
-
-def freq_pdf_old(x, p, n, t, k=8):
-
-    if x > 0.5:
-        return freq_pdf2(1.0-x, 1.0-p, n, t, k)
-    
-    q = 1.0 - p
-    prob = -util.INF
-    sgn = 1
-    t4n = t / (4*n)
-    
-    for i in xrange(1, k+1):
-        #term = (p * q * i * (i+1) * (2*i+1) *
-        #        hypergeo(1-i,i+2,2,p) * hypergeo(1-i,i+2,2,x) *
-        #        exp(-t * i * (i+1) / (4*n)))
-
-        lcoff = log(p * q * i * (i+1) * (2*i+1))
-        h1 = hypergeo(1-i,i+2,2,p, i+2)
-        h2 = hypergeo(1-i,i+2,2,x, i+2)
-        sgn2 = util.sign(h1) * util.sign(h2)
-
-        if sgn2 != 0:
-            term = (lcoff + log(abs(h1)) + log(abs(h2)) +
-                    (- i * (i+1) * t4n))
-            sgn, prob = stats.logadd_sign(sgn, prob, sgn2, term)
-
-    return sgn * exp(prob)
-
-
-
-def freq_pdf2(x, p, n, t, k=8):
-    r = 1 - 2*p
-    z = 1 - 2*x
-
-    prob = 0.0
-    for i in xrange(1, k+1):
-        term = ((2*i + 1) * (i - r*r) / float(i * (i+1)) *
-                gegenbauer(i, r) * gegenbauer(i, z) *
-                exp(-t * i * (i+1) / (4*n)))
-        print term
-        prob += term
-
-    return prob
-
-
-def freq_pdf3(x, p, n, t, k=8):
-    q = 1.0 - p
-    prob = 0.0
-    for i in xrange(1, k+1):
-        term = (p * q * i * (i+1) * (2*i+1) *
-                hypergeo(1-i,i+2,2,p,40) * hypergeo(1-i,i+2,2,x,40) *
-                exp(-t * i * (i+1) / (4*n)))
-        prob += term
-
-    return prob
-
-
-def freq_pdf4(x, p, n, t, k=8):
-    q = 1.0 - p
-    prob = 0.0
-    for i in xrange(1, k+1):
-        term = (p * q * i * (i+1) * (2*i+1) *
-                hypergeo_mult(i, p, x, 100) *
-                exp(-t * i * (i+1) / (4*n)))
-        prob += term
-
-    return prob
-
-
-
-
-
-    
     
 if __name__ == "__main__":
     from rasmus.common import plotfunc
@@ -915,4 +837,103 @@ if __name__ == "__main__":
                      .01, .99, .01, style="lines")
         p.enableOutput(True)
         p.replot()
+
+
+
+
+#=============================================================================
+# old versions
+
+
+def hypergeo_old(a, b, c, z, k=100):
+    """Hypergeometric function"""
+    terms = [1.0]
+    for i in xrange(1, k+1):
+        terms.append(float((i+a-1)*(i+b-1)*z)/(i+c-1)/i * terms[i-1])
+    return sum(terms)
+
+
+def freq_pdf_old(x, p, n, t, k=8):
+
+    if x > 0.5:
+        return freq_pdf2(1.0-x, 1.0-p, n, t, k)
+    
+    q = 1.0 - p
+    prob = -util.INF
+    sgn = 1
+    t4n = t / (4*n)
+    
+    for i in xrange(1, k+1):
+        #term = (p * q * i * (i+1) * (2*i+1) *
+        #        hypergeo(1-i,i+2,2,p) * hypergeo(1-i,i+2,2,x) *
+        #        exp(-t * i * (i+1) / (4*n)))
+
+        lcoff = log(p * q * i * (i+1) * (2*i+1))
+        h1 = hypergeo(1-i,i+2,2,p, i+2)
+        h2 = hypergeo(1-i,i+2,2,x, i+2)
+        sgn2 = util.sign(h1) * util.sign(h2)
+
+        if sgn2 != 0:
+            term = (lcoff + log(abs(h1)) + log(abs(h2)) +
+                    (- i * (i+1) * t4n))
+            sgn, prob = stats.logadd_sign(sgn, prob, sgn2, term)
+
+    return sgn * exp(prob)
+
+
+
+def freq_pdf2(x, p, n, t, k=8):
+    r = 1 - 2*p
+    z = 1 - 2*x
+
+    prob = 0.0
+    for i in xrange(1, k+1):
+        term = ((2*i + 1) * (i - r*r) / float(i * (i+1)) *
+                gegenbauer(i, r) * gegenbauer(i, z) *
+                exp(-t * i * (i+1) / (4*n)))
+        print term
+        prob += term
+
+    return prob
+
+
+def freq_pdf3(x, p, n, t, k=8):
+    q = 1.0 - p
+    prob = 0.0
+    for i in xrange(1, k+1):
+        term = (p * q * i * (i+1) * (2*i+1) *
+                hypergeo(1-i,i+2,2,p,40) * hypergeo(1-i,i+2,2,x,40) *
+                exp(-t * i * (i+1) / (4*n)))
+        prob += term
+
+    return prob
+
+
+def freq_pdf4(x, p, n, t, k=8):
+    q = 1.0 - p
+    prob = 0.0
+    for i in xrange(1, k+1):
+        term = (p * q * i * (i+1) * (2*i+1) *
+                hypergeo_mult(i, p, x, 100) *
+                exp(-t * i * (i+1) / (4*n)))
+        prob += term
+
+    return prob
+
+
+def cdf_mrca2(t, k, n):
+    """
+    Cumulative probability density of the age 't' of the most recent common
+    ancestor (MRCA) of 'k' lineages in a population size 'n'
+    """
+
+    if k == 1:
+        return 1.0
+    
+    s = 0.0
+    for i in xrange(1, k):
+        lam = (i+1) * i / 2.0 / n
+        s += (1 - exp(- lam * t)) * mrca_const(i, 1, k-1)
+    return s
+
 

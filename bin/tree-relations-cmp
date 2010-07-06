@@ -23,15 +23,18 @@ pred_rel = util.read_delim(pred_rel_file)
 
 
 # get genes that are in predicted dataset
-pred_genes = set(x[2] for x in pred_rel if x[1] == "gene")
+#pred_genes = set(x[2] for x in pred_rel if x[1] == "gene")
+pred_trees = set(x[0] for x in pred_rel)
 
 # dups
-actual_dups = set(tuple(x) for x in actual_rel if x[1] == "dup")
+actual_dups = set(tuple(x) for x in actual_rel if x[1] == "dup"
+                  if x[0] in pred_trees)
 pred_dups = set(tuple(x) for x in pred_rel if x[1] == "dup")
 dup_tp = len(actual_dups & pred_dups)
 
 # losses
-actual_loss = set(tuple(x) for x in actual_rel if x[1] == "loss")
+actual_loss = set(tuple(x) for x in actual_rel if x[1] == "loss"
+                  if x[0] in pred_trees)
 pred_loss = set(tuple(x) for x in pred_rel if x[1] == "loss")
 loss_tp = len(actual_loss & pred_loss)
 
@@ -40,10 +43,14 @@ actual_spec = [x for x in actual_rel if x[1] == "spec"]
 pred_spec = [x for x in pred_rel if x[1] == "spec"]
 
 
+#actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+#                   for a in x[2].split(",")
+#                   for b in x[3].split(",")
+#                   if a in pred_genes and b in pred_genes)
 actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+                  if x[0] in pred_trees
                    for a in x[2].split(",")
-                   for b in x[3].split(",")
-                   if a in pred_genes and b in pred_genes)
+                  for b in x[3].split(","))
 pred_orth = set((x[0],) + tuple(sorted([a,b])) for x in pred_spec
                 for a in x[2].split(",")
                 for b in x[3].split(","))

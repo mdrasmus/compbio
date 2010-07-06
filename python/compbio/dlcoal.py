@@ -26,7 +26,7 @@ import spidir
 import spidir.topology_prior
 
 
-reload(phylo)
+#reload(phylo)
 
 
 #=============================================================================
@@ -337,8 +337,10 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
 
             if snode not in daughters:
                 try:
-                    lnp += log(coal.prob_coal_counts(u, v, snode.dist,
-                                                     popsizes[snode.name]))
+                    lnp += util.safelog(
+                        coal.prob_coal_counts(u, v, snode.dist,
+                                              popsizes[snode.name]),
+                        -util.INF)
                 except:
                     print u, v, snode.dist, popsizes[snode.name]
                     raise

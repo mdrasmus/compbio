@@ -37,6 +37,10 @@ if 0:
     draw_tree(tree, scale=.01)
     #show_tree(tree)
 
+# test prob counts
+if 1:
+    print coal.prob_coal_counts(2, 2, 48e6, 20000)
+
 
 # test MRCA
 if 0:
@@ -64,10 +68,26 @@ if 0:
     p.plot(x, y3, style="lines")
 
 
+# test CDF MRCA
+if 0:
+    n = 1000
+    k = 6
+    step = 10
+    x = list(frange(0, 5000, step))
+    y = [coal.prob_mrca(i, k, n) * step for i in x]
+    y2 = cumsum(y)
+    y3 = [coal.cdf_mrca(t, k, n) for t in x]
+    y4 = [coal.prob_coal_counts(k, 1, t, n) for t in x]
+    
+    p = plot(x, y2, style="lines")
+    p.plot(x, y3, style="lines")
+    p.plot(x, y4, style="lines")
+
+
 # plot pdf of bounded coal
 if 0:
     n = 1000
-    k = 45
+    k = 6
     T = 500
     
     #x = [coal.sample_coal_bounded(k, n, t)
@@ -98,7 +118,7 @@ if 0:
 
 
 # test sample bounded coal (k=2)
-if 0:
+if 1:
     n = 1000
     k = 2
     T = 800

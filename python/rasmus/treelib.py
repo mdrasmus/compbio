@@ -1246,6 +1246,70 @@ def reorder_tree(tree, tree2):
 
     walk(tree.root)
 
+#=============================================================================
+# timestamps
+
+
+def get_tree_timestamps(tree, root=None):
+    """
+    Use the branch lengths of a tree to set timestamps for each node
+    Assumes ultrametric tree.
+
+    Leaves have time 0
+    """
+
+    if root is None:
+        root = tree.root
+
+    esp = .001
+    times = {}
+
+    def walk(node):
+        if node.is_leaf():
+            t = 0.0
+        else:
+            t2 = None
+            for child in node.children:
+                t = walk(child)
+
+                # ensure branch lengths are ultrametrix
+                if t2:                    
+                    assert abs(t - t2) < esp, (node.name, t, t2)
+                t2 = t
+
+        times[node] = t
+        return t + node.dist
+    walk(root)
+    
+    return times
+
+
+def check_timestamps(tree, times):    
+    for node in tree:
+        if node.parent:
+            if times[node.parent] - times[node] < 0.0 or \
+               abs(((times[node.parent] - times[node]) -
+                    node.dist)/node.dist) > .001:
+                treelib.draw_tree_names(tree, maxlen=7, minlen=7)
+                util.printcols([(a.name, b) for a, b in times.items()])
+                print
+                print node.name, node.dist, times[node.parent] - times[node]
+                raise Exception("negative time span")
+
+
+def set_dists_from_timestamps(tree, times):
+    """
+    Sets the branch lengths of a tree using a timestamp dict
+    """
+
+    for node in tree:
+        if node.parent:
+            node.dist = times[node.parent] - times[node]
+        else:
+            node.dist = 0.0
+
+
+
 
 #=============================================================================
 # parent tables
@@ -1615,6 +1679,8 @@ def midpoint_root(tree):
     
     assert 0 # shouldn't get here
 
+#=============================================================================
+# conversion to other formats
 
 def make_ptree(tree):
     """Make parent tree array from tree"""

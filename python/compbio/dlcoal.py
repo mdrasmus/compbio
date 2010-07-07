@@ -304,14 +304,13 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
             events=locus_events)
         assert len(locus_times) == len(locus_tree.nodes), (
             len(locus_times), len(locus_tree.nodes))
-        birthdeath.set_dists_from_timestamps(locus_tree, locus_times)
+        treelib.set_dists_from_timestamps(locus_tree, locus_times)
 
         # coal topology probability
         coal_prob = prob_coal_recon_topology(coal_tree, coal_recon,
                                              locus_tree, popsizes, daughters)
         
         prob += exp(coal_prob)
-        print coal_prob
     #util.toc()
 
     return dl_prob + d_prob + util.safelog(prob / nsamples)

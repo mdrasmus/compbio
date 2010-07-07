@@ -236,21 +236,62 @@ def sample_coal_bounded_reject(k, n, T):
             return t
 
 
-def prob_coal_counts(u, v, t, n):
+def prob_coal_counts(a, b, t, n):
     """
-    The probabiluty of going from 'u' lineages to 'v' lineages in time 't'
+    The probabiluty of going from 'a' lineages to 'b' lineages in time 't'
     with population size 'n'
     """
     
-    T = t / n
-
     s = 0.0
-    for k in xrange(v, u+1):
-        a = exp(-k*(k-1)*T/2.0) * (2*k-1)*(-1)**(k-v) / stats.factorial(v) / \
-            stats.factorial(k-v) / (k+v-1) * \
-            stats.prod((v+y)*(u-y)/(u+y) for y in xrange(k))
-        s += a
+    for k in xrange(b, a+1):
+        i = exp(-k*(k-1)*t/2.0/n) * \
+            (2*k-1)*(-1)**(k-b) / stats.factorial(b) / \
+            stats.factorial(k-b) / (k+b-1) * \
+            stats.prod((b+y)*(a-y)/(a+y) for y in xrange(k))
+        s += i
     return s
+
+def count_lineages_per_branch(tree, recon, stree, rev_recon=None):
+    """
+    Returns the count of gene lineages present at each node in the species
+    tree 'tree' given a gene tree 'tree' and reconciliation 'recon'
+    """
+
+    
+    # init reverse reconciliation
+    if rev_recon is None:
+        rev_recon = {}
+        nodes = set(tree.postorder())
+        for node, snode in recon.iteritems():
+            if node not in nodes:
+                raise Exception("node '%s' not in tree" % node.name)
+            rev_recon.setdefault(snode, []).append(node)
+
+    # init lineage counts
+    lineages = {}
+    for snode in stree:
+        if snode.is_leaf():
+            lineages[snode] = [len([x for x in rev_recon[snode]
+                                   if x.is_leaf()]), 0]
+        else:
+            lineages[snode] = [0, 0]
+    
+    # iterate through species tree branches
+    for snode in stree.postorder():
+        if snode.parent:
+            # non root branch
+            a = lineages[snode][0]
+
+            # subtract number of coals in branch
+            b = a - len([x for x in rev_recon.get(snode, [])
+                         if not x.is_leaf()])
+            lineages[snode][1] = b
+            lineages[snode.parent][0] += b
+        else:
+            lineages[snode][1] = 1
+
+    return lineages
+
 
 
 def prob_coal_recon_topology(tree, recon, stree, n):
@@ -262,13 +303,75 @@ def prob_coal_recon_topology(tree, recon, stree, n):
     
     popsizes = init_popsizes(stree, n)
 
+    lineages = count_lineages_per_branch(tree, recon, stree)
+
     # log probability
     lnp = 0.0
 
-    nodes = set(tree.postorder())
+
+    # iterate through species tree branches
+    for snode in stree.postorder():
+        if snode.parent:
+            # non root branch
+            a, b = lineages[snode]
+            
+            lnp += log(prob_coal_counts(a, b, snode.dist,
+                                        popsizes[snode.name]))
+            lnp -= log(num_labeled_histories(a, b))            
+        else:
+            a = lineages[snode][0]
+            lnp -= log(num_labeled_histories(a, 1))
+
+    
+    # correct for topologies H(T)
+    # find connected subtrees that are in the same species branch
+    subtrees = []
+    subtree_root = {}
+    for node in tree.preorder():
+        if node.parent and recon[node] == recon[node.parent]:
+            subtree_root[node] = subtree_root[node.parent]
+        else:
+            subtrees.append(node)
+            subtree_root[node] = node
+
+    # find leaves through recursion
+    def walk(node, subtree, leaves):
+        if node.is_leaf():
+            leaves.append(node)
+        elif (subtree_root[node.children[0]] != subtree and
+              subtree_root[node.children[1]] != subtree):
+            leaves.append(node)
+        else:
+            for child in node.children:
+                walk(child, subtree, leaves)
+
+    # apply correction for each subtree
+    for subtree in subtrees:
+        leaves = []
+        for child in subtree.children:
+            walk(subtree, subtree, leaves)
+        if len(leaves) > 2:
+            lnp += log(birthdeath.num_topology_histories(subtree, leaves))
+
+    return lnp
+
+
+
+def prob_coal_recon_topology2(tree, recon, stree, n):
+    """
+    Returns the log probability of a reconciled gene tree ('tree', 'recon')
+    from the coalescent model given a species tree 'stree' and
+    population sizes 'n'
+    """
+    
+    popsizes = init_popsizes(stree, n)
+
+    # log probability
+    lnp = 0.0 
 
     # init reverse reconciliation
     rev_recon = {}
+    nodes = set(tree.postorder())
     for node, snode in recon.iteritems():
         if node not in nodes:
             raise Exception("node '%s' not in tree" % node.name)
@@ -335,19 +438,112 @@ def prob_coal_recon_topology(tree, recon, stree, n):
     return lnp
 
 
+def cdf_mrca_bounded_tree(gene_counts, T, stree, sroot, n,
+                          tree=None, recon=None):
+    """
+    What is the log probability that multispecies coalescent in species
+    tree 'stree' with population sizes 'n' and extant gene counts 'gene_counts'
+    will have a MRCA that occurs in branch 'sroot' before time 'T'.
+
+    As a convenience, you can pass None for gene_counts and give a reconciled
+    gene tree instead ('tree', 'recon').
+    """
+
+    if sroot is None:
+        sroot = stree.root
+
+    # init gene counts
+    if gene_counts is None:
+        gene_counts = dict.fromkeys(sroot.leaf_names(), 0)
+        for leaf in tree.leaves():
+            gene_counts[recon[leaf.name]] += 1
+
+    popsizes = init_popsizes(stree, n)
+
+    # get time to MRCA above sroot
+    stimes = treelib.get_tree_timestamps(stree, sroot)
+    root_time = T - stimes[sroot]
+
+    # use dynamic programming to calc prob of lineage counts
+    prob_counts = {}
+    def walk(node):
+        if node.is_leaf():
+            M = gene_counts[node.name]
+            prob_counts[node] = [0.0] * (M+1)
+            prob_counts[node][M] = 1.0
+            return M
+        
+        else:
+            assert len(node.children) == 2
+            c1 = node.children[0]
+            c2 = node.children[1]
+            t1 = c1.dist
+            t2 = c2.dist
+            M1 = walk(c1)
+            M2 = walk(c2)
+            M = M1 + M2 # max lineage counts in this snode
+            n1 = popsizes[c1.name]
+            n2 = popsizes[c2.name]
+
+            prob_counts[node] = [0, 0]
+            for k in xrange(2, M+1):
+                prob_counts[node].append(sum(
+                    sum(prob_coal_counts(i, m, t1, n1) *
+                        prob_counts[c1][i]
+                        for i in xrange(m, M1+1)) * 
+                    sum(prob_coal_counts(i, k-m, t2, n2) *
+                        prob_counts[c2][i]
+                        for i in xrange(k-m, M2+1))
+                    for m in xrange(1, k)))
+                #print prob_counts[node]
+
+            assert abs(sum(prob_counts[node]) - 1.0) < .001
+            return M
+    M = walk(sroot)
+
+    #util.print_dict(prob_counts, key=lambda x: x.name)
+    
+    # count final sum
+    p = sum(cdf_mrca(root_time, k, popsizes[sroot.name]) *
+            prob_counts[sroot][k]
+            for k in xrange(2, M+1))
+
+    return log(p)
+
+
 def num_labeled_histories(nleaves, nroots):
     n = 1.0
     for i in xrange(nroots + 1, nleaves+1):
         n *= i * (i - 1) / 2.0
     return n
+
+
+def prob_coal_bounded_recon_topology(tree, recon, stree, n, T):
+    """
+    Returns the log probability of a reconciled gene tree ('tree', 'recon')
+    from the coalescent model given a species tree 'stree' and
+    population sizes 'n' and stopping time 'T'
+    """
+
+    popsizes = init_popsizes(stree, n)
+
+    p = prob_coal_recon_topology(tree, recon, stree, n)
+    times = treelib.get_tree_timestamps(tree)
+    lineages = count_lineages_per_branch(tree, recon, stree)
+    k_root = lineages[tree.root][0]
+    T_root = T - times[tree.root]
+    return log(cdf_mrca(T_root, k_root, popsizes[recon[tree.root].name])) + p \
+           - cdf_mrca_bounded_tree(None, T, stree, stree.root, n,
+                                   tree=tree, recon=recon)
     
+
 
 #=============================================================================
 # sampling coalescent trees
 #
-#  - normal coalescent
-#  - fixed time coalescent (may not be complete)
-#  - bounded coalescent (conditioned on completing in fixed time)
+#  - normal kingman coalescent
+#  - censored coalescent
+#  - bounded coalescent (conditioned on completion before a fixed time)
 #
 
 
@@ -381,6 +577,9 @@ def sample_coal_tree_bounded_reject(k, n, T, capped=False):
     Returns a simulated coalescence tree for k leaves from a populations n
     with fixed maximum time t.  The simulation is conditioned on returning
     a tree that completely coaleces before time T.
+
+    This works, but is very inefficient.  Use sample_coal_tree_bounded
+    instead.
     """
 
     # sample times with rejection sampling

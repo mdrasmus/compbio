@@ -227,32 +227,50 @@ if 0:
 
 # test coal counts
 if 0:
-    v = 1
+    b = 1
     t = 1000.0
     n = 1000
 
-    for u in xrange(1, 20):
-        a = coal.prob_coal_counts(u, v, t, n)
-        b = coal.cdf_mrca(t, u, n)
-        print a, b
-        fequal(a, b)
+    util.tic("test coal counts")
+    for a in xrange(1, 100):
+        i = coal.prob_coal_counts(a, b, t, n)
+        j = coal.cdf_mrca(t, a, n)
+        print i, j
+        fequal(i, j)
+    toc()
 
-    
-    for u in xrange(1, 10):
-        a = sum(coal.prob_coal_counts(u, v, t, n)
-                  for v in xrange(1, u+1))
-        print u, a
-        fequal(a, 1.0)
+    for a in xrange(1, 10):
+        i = sum(coal.prob_coal_counts(a, b, t, n)
+                  for b in xrange(1, a+1))
+        print a, i
+        fequal(i, 1.0)
+
+
+
+# test coal counts
+if 0:
+    b = 3
+    t = 1000.0
+    n = 1000
+
+    util.tic("test coal counts")
+    for b in xrange(1, 10):
+        for a in xrange(b, 10):
+            i = coal.prob_coal_counts(a, b, t, n)
+            j = coal.prob_coal_counts_slow(a, b, t, n)
+            print i, j
+            fequal(i, j)
+    toc()
 
 
 # test cdf mrca BMC
-if 0:
+if 1:
     stree = treelib.parse_newick("((A:1000, B:1000):500, C:1500);")
     n = 1000
     gene_counts = dict.fromkeys(stree.leaf_names(), 1)
     T = 2000
                    
-    print exp(coal.cdf_mrca_bounded_tree(gene_counts, T, stree, None, n))
+    print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
 
 
 # test cdf mrca BMC
@@ -262,7 +280,7 @@ if 0:
     gene_counts = dict.fromkeys(stree.leaf_names(), 1)
     T = 2000
                    
-    print exp(coal.cdf_mrca_bounded_tree(gene_counts, T, stree, None, n))
+    print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
 
     nsamples = 5000
     c = 0
@@ -272,4 +290,5 @@ if 0:
             c += 1
     print c / float(nsamples)
 
+    
     

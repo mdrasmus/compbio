@@ -180,7 +180,7 @@ class Tree:
         return self.nodes.itervalues()
 
 
-    def preorder(self, node=None):
+    def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in pre-order traversal"""
         
         if node is None:
@@ -192,11 +192,12 @@ class Tree:
             node = queue.pop()
             yield node
 
-            for child in reversed(node.children):
-                queue.append(child)
+            if not is_leaf(node):
+                for child in reversed(node.children):
+                    queue.append(child)
 
                 
-    def postorder(self, node=None):
+    def postorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in post-order traversal"""
         
         if node is None:
@@ -207,7 +208,7 @@ class Tree:
         while len(stack) > 0:
             node, i = stack[-1]
 
-            if i < len(node.children):
+            if i < len(node.children) and not is_leaf(node):
                 stack.append([node.children[i], 0])
                 stack[-2][1] += 1
             else:
@@ -215,7 +216,7 @@ class Tree:
                 stack.pop()
 
 
-    def inorder(self, node=None):
+    def inorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes with in-order traversal"""
 
         if node is None:
@@ -230,7 +231,7 @@ class Tree:
                 yield node
                 stack.pop()
 
-            elif i < len(node.children):
+            elif i < len(node.children) and not is_leaf(node):
                 assert len(node.children) == 2
 
                 if i == 1:
@@ -1250,7 +1251,7 @@ def reorder_tree(tree, tree2):
 # timestamps
 
 
-def get_tree_timestamps(tree, root=None):
+def get_tree_timestamps(tree, root=None, leaves=None):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
@@ -1265,7 +1266,7 @@ def get_tree_timestamps(tree, root=None):
     times = {}
 
     def walk(node):
-        if node.is_leaf():
+        if node.is_leaf() or (leaves and node in leaves):
             t = 0.0
         else:
             t2 = None

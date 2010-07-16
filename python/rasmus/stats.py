@@ -122,6 +122,13 @@ def corr(lst1, lst2):
         return 1e1000
 
 
+def corr_pvalue(r, n):
+    """Returns the signficance of correlation > r with n samples"""
+
+    t = r / sqrt((1 - r*r) / float(n - 2))
+    return rpy.r.pt(-t, n-2)
+    
+
 def qqnorm(data, plot=None):
     """Quantile-quantile plot"""
     
@@ -134,6 +141,42 @@ def qqnorm(data, plot=None):
     else:
         plot.plot(data2, norm)
         return plot
+
+
+def entropy(probs, base=2):
+    """Shannon's entropy"""
+
+    return - sum(p * log(p, base) for p in probs if p > 0.0)
+
+def cross_entropy(p, q, base=2):
+    try:
+        return - sum(i * log(j, base) for i,j in izip(p, q) if i > 0.0)
+    except OverflowError:
+        return util.INF
+
+def kl_div(p, q):
+    """Compute the KL divergence for two discrete distributions"""
+    return cross_entropy(p, q) - entropy(p)
+
+def akaike_ic(lnl, k):
+    """Akaike information criterion"""
+    return 2 * k - 2 * lnl
+
+def akaike_icc(lnl, n, k):
+    """Akaike information criterion with second order correction
+       Good for small sample sizes
+    """
+    return akaike_ic(lnl, k) + 2*k*(k+1) / (n - k - 1)
+
+
+def bayesian_ic(lnl, n, k):
+    """Bayesian information criterion
+
+       lnl -- ln(L)
+       n   -- number of data points
+       k   -- number of parameters
+    """
+    return -2 * lnl + k * log(n)
 
 
 

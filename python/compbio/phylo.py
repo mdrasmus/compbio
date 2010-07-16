@@ -1347,7 +1347,7 @@ def makeTopologyMatrix(tree, genes):
 
     # find how edges split vertices
     network = treelib.tree2graph(tree)
-    splits = findAllBranchSplits(network, set(genes))
+    splits = find_all_branch_splits(network, set(genes))
     edges = splits.keys()
 
     # create topology matrix

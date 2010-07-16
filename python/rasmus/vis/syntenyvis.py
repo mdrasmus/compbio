@@ -139,6 +139,10 @@ class Frag:
     def length(self):
         return self.end - self.start + 1
 
+    def hash(self):
+        return '\t'.join(map(str,[self.genome,self.chrom,self.start,self.end,
+                                  self.direction,self.x,self.y,self.genes]))
+
 
 class Layout (object):
     def __init__(self, x, y, orient):
@@ -363,7 +367,8 @@ class SyntenyVisBase:
             for gene2 in iter_chrom(self.db.get_regions(frag.genome, 
                                                         frag.chrom),
                                     other.start, other.end):
-                block_lookup[gene2] = block
+                # use list in case of multiple syntenic regions
+                block_lookup.setdefault(gene2,[]).append(block)
                 
         self.block_lookup = block_lookup
         
@@ -376,7 +381,8 @@ class SyntenyVisBase:
             for name2 in self.orth_lookup.get(gene.data["ID"], []):
                 gene2 = self.db.get_region(name2)
                 if gene2 in block_lookup:
-                    frag_lookup[block_lookup[gene2]].genes.append(gene2)
+                    for block2 in block_lookup[gene2]:
+                        frag_lookup[block2].genes.append(gene2)
                     refLookup[gene2] = gene
         self.refLookup = refLookup
         
@@ -390,8 +396,52 @@ class SyntenyVisBase:
             # set fragment start and end
             frag.start = frag.genes[0].start
             frag.end = frag.genes[-1].end
+
+        # merge fragments if overlap
+        frag_list = list(frag_lookup.items())
+        done = False
+        while not done:
+            done = True
+            frag_copy = frag_list[:]
+            for ndx,(block,frag) in enumerate(frag_list):
+                for block2,frag2 in frag_list[ndx+1:]:
+                    if frag.hash()==frag2.hash():
+                        continue
+                    if frag.genome == frag2.genome and \
+                       frag.chrom == frag2.chrom and \
+                       frag.direction == frag2.direction and \
+                       ((frag.start <= frag2.start and frag.end >= frag2.start) or \
+                        (frag2.start <= frag.start and frag2.end >= frag.start)):
+                        frag_copy.remove((block,frag))
+                        frag_copy.remove((block2,frag2))
+                        frag_merge = Frag(genome=frag.genome,
+                                          chrom=frag.chrom,
+                                          start=min(frag.start,frag2.start),
+                                          end=max(frag.end,frag2.end),
+                                          strand=frag.direction)
+                        frag_merge.genes = sorted(list(set(frag.genes+frag2.genes)),
+                                                  key=lambda a: a.start)
+                        frag_copy.append((block,frag_merge))
+                        frag_copy.append((block2,frag_merge))
+                        done = False
+                        break
+                if not done:  # restart
+                    frag_list = frag_copy
+                    break
+        frag_lookup = dict(frag_list)
+
+        # redetermine fragment dimensions
+        for frag in frag_lookup.itervalues():
+            if len(frag.genes) == 0:
+                frag.x = None
+                continue
+            frag.genes.sort(key=lambda a: a.start)
             
-            # find fragment direction
+            # set fragment start and end
+            frag.start = frag.genes[0].start
+            frag.end = frag.genes[-1].end
+
+            # find fragment directions
             vote = 0
             last = None
             
@@ -426,32 +476,42 @@ class SyntenyVisBase:
             frag.x = ref_frag.x - stats.median(diffs)
         
         # place blocks
+        seen = set()
+        fragy  = {}
         fragY = util.Dict(default=-self.genome_sep)
         for block, flip in blocks:
             frag = frag_lookup[block]
+            if frag.hash() in seen:
+                continue
+            seen.add(frag.hash())
             otherGenome = frag.genome
             
             if frag.x == None:
                 # fragment could not be placed
                 continue
-            
-            frag.y = fragY[otherGenome] - \
-                     ((order[otherGenome] - 1) * 
-                       self.max_genome_sep)
+
+            # ensure same scaffolds go on same line
+            if (frag.genome,frag.chrom) in fragy:
+                frag.y = fragy[frag.genome,frag.chrom]
+            else:
+                frag.y = fragY[otherGenome] - \
+                         ((order[otherGenome] - 1) *
+                          self.max_genome_sep)
+                fragy[frag.genome,frag.chrom] = frag.y
+
+                # stagger fragments
+                fragY[otherGenome] -= self.frag_sep
+                if fragY[otherGenome] < -self.max_genome_sep:
+                    fragY[otherGenome] = -self.genome_sep
 
             # re-get all genes between those coordinates
             #frag.genes = list(iter_chrom(self.db.get_regions(frag.genome, 
             #                                                 frag.chrom),
             #                             frag.start, frag.end))
             
-            # store and lyaout frag
+            # store and layout frag
             self.frags.add(frag)
             self.layout_frag_contents(frag)
-
-            # stagger fragments
-            fragY[otherGenome] -= self.frag_sep
-            if fragY[otherGenome] < -self.max_genome_sep:
-                fragY[otherGenome] = -self.genome_sep
         
 
     def filter_blocks(self, blocks, ref_chrom, start, end):

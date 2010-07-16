@@ -39,7 +39,7 @@ class GoTerm:
         self.definition = ""
         self.is_a = []
         self.part_of = []
-#        self.synonym = []
+        self.synonym = []
 
 class AllTerm(GoTerm):
     def __init__(self):
@@ -76,11 +76,14 @@ class GoHandler(xml.sax.handler.ContentHandler):
     
     def characters(self, text):
         if self.elm == "go:accession":
-            self.term.accession = text
+            self.term.accession += text
         elif self.elm == "go:name":
-            self.term.name = text
+            self.term.name += text
         elif self.elm == "go:definition":
-            self.term.definition = text
+            self.term.definition += text
+        elif self.elm == "go:synonym":
+            if 'GO' in text:
+                self.term.synonym.append(text)
         
 
 class GoDatabase:

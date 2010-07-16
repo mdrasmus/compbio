@@ -26,7 +26,7 @@ import spidir
 import spidir.topology_prior
 
 
-reload(phylo)
+#reload(phylo)
 
 
 #=============================================================================
@@ -94,11 +94,12 @@ class DLCoalRecon (object):
         """Perform reconciliation"""
         
         self.init_search()
+        proposal = self.proposer.init_proposal()
         for i in xrange(nsearch):
             print "search", i
-            proposal = self.proposer.next_proposal()
             p = self.eval_proposal(proposal)
             self.eval_search(p, proposal)
+            proposal = self.proposer.next_proposal()
         
         # rename locus tree nodes
         rename_nodes(self.maxrecon["locus_tree"], self.name_internal)
@@ -175,6 +176,30 @@ class DLCoalReconProposer (object):
     def set_locus_tree(self, locus_tree):
         self.locus_search.set_tree(locus_tree)
 
+    def init_proposal(self):
+        """Get first proposal"""
+        
+        # TODO: propose other reconciliations beside LCA
+        locus_tree = self.locus_search.get_tree().copy()
+        locus_recon = phylo.reconcile(locus_tree, self.reconer.stree,
+                                      self.reconer.gene2species)
+        locus_events = phylo.label_events(locus_tree, locus_recon)
+
+        # propose daughters (TODO)
+        daughters = set()
+
+        # propose coal recon (TODO: propose others beside LCA)
+        coal_recon = phylo.reconcile(self.reconer.coal_tree,
+                                     locus_tree, lambda x: x)
+
+        recon = {"coal_recon": coal_recon,
+                 "locus_tree": locus_tree,
+                 "locus_recon": locus_recon,
+                 "locus_events": locus_events,
+                 "daughters": daughters}
+        return recon
+
+
     def next_proposal(self):        
         self.locus_search.propose()
         
@@ -200,6 +225,7 @@ class DLCoalReconProposer (object):
                  "locus_events": locus_events,
                  "daughters": daughters}
         return recon
+
 
     def accept(self):
         self.locus_search.set_tree(self.locus_search.get_tree().copy())
@@ -255,12 +281,9 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
 
 
     # duploss probability
-
-    util.tic("top")
     dl_prob = spidir.calc_birth_death_prior(locus_tree, stree, locus_recon,
                                             duprate, lossrate,
                                             maxdoom=maxdoom)
-    util.toc()
     
     # daughters probability
     d_prob = dups * log(.5)
@@ -268,7 +291,6 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
 
     # integrate over duplication times using sampling
     prob = 0.0
-    #util.tic("int")
     for i in xrange(nsamples):
         # sample duplication times
 
@@ -278,77 +300,105 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
             events=locus_events)
         assert len(locus_times) == len(locus_tree.nodes), (
             len(locus_times), len(locus_tree.nodes))
-        birthdeath.set_dists_from_timestamps(locus_tree, locus_times)
+        treelib.set_dists_from_timestamps(locus_tree, locus_times)
 
         # coal topology probability
-        coal_prob = prob_coal_recon_topology(coal_tree, coal_recon,
-                                             locus_tree, popsizes, daughters)
+        coal_prob = prob_multicoal_recon_topology(
+            coal_tree, coal_recon, locus_tree, popsizes, daughters)
         
         prob += exp(coal_prob)
-        print coal_prob
-    #util.toc()
 
-    return dl_prob + d_prob + log(prob / nsamples)
+    if add_spec:
+        removed = treelib.remove_single_children(locus_tree)
+        for r in removed:
+            del locus_recon[r]
+            del locus_events[r]
+
+    return dl_prob + d_prob + util.safelog(prob / nsamples)
 
 
 
 
-def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
+def prob_multicoal_recon_topology(tree, recon, locus_tree, n, daughters):
     """
     Returns the log probability of a reconciled gene tree ('tree', 'recon')
     from the coalescent model given a locus_tree 'locus_tree',
     population sizes 'n', and daughters set 'daughters'
     """
 
-    # init population sizes
+    # initialize popsizes, lineage counts, and divergence times
     popsizes = coal.init_popsizes(locus_tree, n)
+    lineages = coal.count_lineages_per_branch(tree, recon, locus_tree)
+    locus_times = treelib.get_tree_timestamps(locus_tree)
+
+
+    # calc log probability
+    lnp = coal.prob_multicoal_recon_topology(
+        tree, recon, locus_tree, popsizes, lineages=lineages)
+
+
+    def walk(node, gene_counts, leaves):
+        if node.is_leaf():
+            gene_counts[node.name] = lineages[node][0]
+            leaves.append(node)
+        else:
+            for child in node.children:
+                if child in daughters:
+                    gene_counts[child.name] = 1
+                    leaves.append(child)
+                else:                
+                    walk(child, gene_counts, leaves)
+    
+    for daughter in daughters:
+        lnp += coal.cdf_mrca(daughter.dist, lineages[daughter][0],
+                              popsizes[daughter.name])
+
+        # determine leaves of the coal subtree
+        gene_counts = {}
+        leaves = []
+        walk(daughter, gene_counts, leaves)
+        
+        lnp -= coal.cdf_mrca_bounded_multicoal(
+            gene_counts, locus_times[daughter.parent], locus_tree, popsizes,
+            sroot=daughter, sleaves=leaves, stimes=locus_times)
+    
+    return lnp
+
+
+def prob_multicoal_recon_topology2(tree, recon, locus_tree, n, daughters):
+    """
+    Returns the log probability of a reconciled gene tree ('tree', 'recon')
+    from the coalescent model given a locus_tree 'locus_tree',
+    population sizes 'n', and daughters set 'daughters'
+    """
+
+    # init population sizes and lineage counts
+    popsizes = coal.init_popsizes(locus_tree, n)
+    lineages = coal.count_lineages_per_branch(tree, recon, locus_tree)
 
     # log probability
     lnp = 0.0
-
-    nodes = set(tree.postorder())
-
-    # init reverse reconciliation
-    rev_recon = {}
-    for node, snode in recon.iteritems():
-        if node not in nodes:
-            raise Exception("node '%s' not in tree" % node.name)
-        rev_recon.setdefault(snode, []).append(node)
-
-    # init lineage counts
-    lineages = {}
-    for snode in locus_tree:
-        if snode.is_leaf():
-            lineages[snode] = len([x for x in rev_recon[snode]
-                                   if x.is_leaf()])
-        else:
-            lineages[snode] = 0
-
+    
     # iterate through species tree branches
     for snode in locus_tree.postorder():
         if snode.parent:
             # non root branch
-            u = lineages[snode]
+            a, b = lineages[snode]
 
-            # subtract number of coals in branch
-            v = u - len([x for x in rev_recon.get(snode, [])
-                         if not x.is_leaf()])            
-            lineages[snode.parent] += v
-
-            if snode not in daughters:
-                try:
-                    lnp += log(coal.prob_coal_counts(u, v, snode.dist,
-                                                     popsizes[snode.name]))
-                except:
-                    print u, v, snode.dist, popsizes[snode.name]
-                    raise
+            if snode not in daughters:                
+                lnp += util.safelog(coal.prob_coal_counts(a, b, snode.dist,
+                                          popsizes[snode.name]))
             else:
-                assert v == 1
-            lnp -= log(coal.num_labeled_histories(u, v))            
+                assert b == 1
+                # the probability of this subtree 1 since complete
+                # coalescence is required.
+
+            lnp -= log(coal.num_labeled_histories(a, b))
         else:
             # normal coalesent
-            u = lineages[snode]
-            lnp -= log(coal.num_labeled_histories(u, 1))
+            a, b = lineages[snode]
+            assert b == 1
+            lnp -= log(coal.num_labeled_histories(a, b))
 
     
     # correct for topologies H(T)
@@ -389,13 +439,17 @@ def prob_coal_recon_topology(tree, recon, locus_tree, n, daughters):
 # sampling from the DLCoal model
 
 def sample_dlcoal(stree, n, duprate, lossrate, namefunc=lambda x: x,
-                  remove_single=True, name_internal="n"):
+                  remove_single=True, name_internal="n",
+                  minsize=0):
     """Sample a gene tree from the DLCoal model"""
 
     # generate the locus tree
-    locus_tree, locus_recon, locus_events = \
-                birthdeath.sample_birth_death_gene_tree(
-        stree, duprate, lossrate)
+    while True:
+        locus_tree, locus_recon, locus_events = \
+                    birthdeath.sample_birth_death_gene_tree(
+            stree, duprate, lossrate)
+        if len(locus_tree.leaves()) >= minsize:
+            break
 
     if len(locus_tree.nodes) <= 1:
         # total extinction
@@ -458,6 +512,8 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
          If n is a dict it must map from species name to population size
     """
 
+    # TODO: needs proper sampling from BMC
+
     # initialize vector for how many genes per extant species
     if leaf_counts is None:
         leaf_counts = dict((l, 1) for l in stree.leaf_names())
@@ -488,12 +544,12 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
         k = counts[snode.name]
         if snode in daughters:
             # daughter branch, use bounded coalescent
-            subtree = coal.sample_coal_tree_bounded(
+            subtree = coal.sample_bounded_coal_tree(
                 k, popsizes[snode.name], snode.dist, capped=True)
             lineages = set(subtree.root)
         elif snode.parent:            
             # non basal branch
-            subtree, lineages = coal.sample_coal_tree_fixed(
+            subtree, lineages = coal.sample_censored_coal_tree(
                 k, popsizes[snode.name], snode.dist, capped=True)
         else:
             # basal branch

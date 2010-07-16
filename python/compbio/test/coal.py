@@ -37,6 +37,10 @@ if 0:
     draw_tree(tree, scale=.01)
     #show_tree(tree)
 
+# test prob counts
+if 0:
+    print coal.prob_coal_counts(2, 2, 48e6, 20000)
+
 
 # test MRCA
 if 0:
@@ -64,10 +68,26 @@ if 0:
     p.plot(x, y3, style="lines")
 
 
+# test CDF MRCA
+if 0:
+    n = 1000
+    k = 6
+    step = 10
+    x = list(frange(0, 5000, step))
+    y = [coal.prob_mrca(i, k, n) * step for i in x]
+    y2 = cumsum(y)
+    y3 = [coal.cdf_mrca(t, k, n) for t in x]
+    y4 = [coal.prob_coal_counts(k, 1, t, n) for t in x]
+    
+    p = plot(x, y2, style="lines")
+    p.plot(x, y3, style="lines")
+    p.plot(x, y4, style="lines")
+
+
 # plot pdf of bounded coal
 if 0:
     n = 1000
-    k = 45
+    k = 6
     T = 500
     
     #x = [coal.sample_coal_bounded(k, n, t)
@@ -207,22 +227,68 @@ if 0:
 
 # test coal counts
 if 0:
-    v = 1
+    b = 1
     t = 1000.0
     n = 1000
 
-    for u in xrange(1, 20):
-        a = coal.prob_coal_counts(u, v, t, n)
-        b = coal.cdf_mrca(t, u, n)
-        print a, b
-        fequal(a, b)
+    util.tic("test coal counts")
+    for a in xrange(1, 100):
+        i = coal.prob_coal_counts(a, b, t, n)
+        j = coal.cdf_mrca(t, a, n)
+        print i, j
+        fequal(i, j)
+    toc()
+
+    for a in xrange(1, 10):
+        i = sum(coal.prob_coal_counts(a, b, t, n)
+                  for b in xrange(1, a+1))
+        print a, i
+        fequal(i, 1.0)
+
+
+
+# test coal counts
+if 0:
+    b = 3
+    t = 1000.0
+    n = 1000
+
+    util.tic("test coal counts")
+    for b in xrange(1, 10):
+        for a in xrange(b, 10):
+            i = coal.prob_coal_counts(a, b, t, n)
+            j = coal.prob_coal_counts_slow(a, b, t, n)
+            print i, j
+            fequal(i, j)
+    toc()
+
+
+# test cdf mrca BMC
+if 1:
+    stree = treelib.parse_newick("((A:1000, B:1000):500, C:1500);")
+    n = 1000
+    gene_counts = dict.fromkeys(stree.leaf_names(), 1)
+    T = 2000
+                   
+    print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
+
+
+# test cdf mrca BMC
+if 0:
+    stree = treelib.parse_newick("((A:1000, B:1000):500, (C:700, D:700):800);")
+    n = 1000
+    gene_counts = dict.fromkeys(stree.leaf_names(), 1)
+    T = 2000
+                   
+    print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
+
+    nsamples = 5000
+    c = 0
+    for i in xrange(nsamples):
+        tree, recon = coal.sample_multicoal_tree(stree, n)
+        if treelib.get_tree_timestamps(tree)[tree.root] < T:
+            c += 1
+    print c / float(nsamples)
 
     
-    for u in xrange(1, 10):
-        a = sum(coal.prob_coal_counts(u, v, t, n)
-                  for v in xrange(1, u+1))
-        print u, a
-        fequal(a, 1.0)
-
-
     

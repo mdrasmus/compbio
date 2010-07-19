@@ -625,29 +625,36 @@ def sample_allele_freq(p, n):
         return 1.0
     return p1
 
-    
+# new function for determining Legendre polynomial evaluations
+def legendre_lambda(r):
+    """
+    Returns a lambda that calculates the Legendre polynomial based on a 
+     recursive formula (43) from 
+     http://mathworld.wolfram.com/LegendrePolynomial.html.
+    As the value r is constant, results to calls for different n are cached,
+     which reduces runtime for repeated calls.
+    The old legendre(n,r) function below is intractible for n>~10.
+    This function can run with n as high as one million in a fraction of a 
+     second (using isolated calls, so no caching to build higher values of n).
+    """
+    def cacheleg(i,d):
+        assert (type(i) == int and i >= 0)
+        m = d['max']
+        if i <= m:
+            return d[i]
+        x = d[1]
+        for n in xrange(m+1,i+1):
+            d[n] = 1.0 * ( (2*n-1)*x*d[n-1] - (n-1)*d[n-2] ) / n
+        d['max'] = i
+        return d[i]
+    d = {0:1.0, 1:r, 'max':1}
+    return lambda n: cacheleg(n,d)
 
-# Legendre polynomial
-def legendre_poly(n):
-
-    """ \frac{1}{2^n n!} d^n/dx^n [(x^2 - 1)^n] """
-
-    return simplify(('mult', ('scalar', 1.0 / (2 ** n * stats.factorial(n))),
-                    derivate(('power', ('add', ('power', ('var', 'x'),
-                                                         ('scalar', 2)),
-                                               ('scalar', -1)),
-                                       ('scalar', n)),
-                             'x', n)))
-
-def legendre(n, r):
-    l = simplify(assign_vars(legendre_poly(n), {'x': r}))
-    assert l[0] == 'scalar'
-    return l[1]
 
 def gegenbauer(i, r):
     return ((i * (i+1)) / 2.0 * hypergeo(i+2, 1 - i, 2, (1 - r) / 2.0))
 
-
+# this should be depreciated and replaced by gegenbauer4
 def gegenbauer2(i, r):
     return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
             (legendre(i-1, r) - legendre(i+1, r)))
@@ -662,8 +669,14 @@ def gegenbauer3(n, a, z):
     return tot
 
 
+# this replaces gegenbauer2; the method is the same, but should be much faster
+def gegenbauer4(i, r):
+    leg = legendre_lambda(r)
+    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
+            (leg(i-1) - leg(i+1)))
 
 
+# this should be depreciated and replaced by prob_fix2
 def prob_fix(p, n, t, k=8, esp=0.001):
     """Probability of fixation"""
     r = 1 - 2*p
@@ -671,6 +684,24 @@ def prob_fix(p, n, t, k=8, esp=0.001):
     prob = p
     for i in xrange(1, k+1):
         term = (.5 * (-1)**i * (legendre(i-1, r) - legendre(i+1, r)) *
+                 exp(-t * i * (i+1) / (4 * n)))
+        if term != 0.0 and abs(term) < esp:
+            return prob + term
+        prob += term
+
+    return prob
+
+
+# this function should replace prob_fix
+# the method is the same, but should run much faster
+# also, the k=8 default may be increased significantly for better approximation
+def prob_fix2(p, n, t, k=8, esp=0.001):
+    """Probability of fixation"""
+    r = 1 - 2*p
+    leg = legendre_lambda(r)
+    prob = p
+    for i in xrange(1, k+1):
+        term = (.5 * (-1)**i * (leg(i-1) - leg(i+1)) *
                  exp(-t * i * (i+1) / (4 * n)))
         if term != 0.0 and abs(term) < esp:
             return prob + term
@@ -843,6 +874,29 @@ if __name__ == "__main__":
 
 #=============================================================================
 # old versions
+
+
+# Legendre polynomial
+# this function should be depreciated
+def legendre_poly(n):
+
+    """ \frac{1}{2^n n!} d^n/dx^n [(x^2 - 1)^n] """
+
+    return simplify(('mult', ('scalar', 1.0 / (2 ** n * stats.factorial(n))),
+                    derivate(('power', ('add', ('power', ('var', 'x'),
+                                                         ('scalar', 2)),
+                                               ('scalar', -1)),
+                                       ('scalar', n)),
+                             'x', n)))
+
+
+# this function should be depreciated
+def legendre(n, r):
+    l = simplify(assign_vars(legendre_poly(n), {'x': r}))
+    assert l[0] == 'scalar'
+    return l[1]
+
+
 
 
 def hypergeo_old(a, b, c, z, k=100):

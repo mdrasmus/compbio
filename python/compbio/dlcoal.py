@@ -96,7 +96,8 @@ class DLCoalRecon (object):
         self.init_search()
         proposal = self.proposer.init_proposal()
         for i in xrange(nsearch):
-            print "search", i
+            if i%10 == 0:
+                print "search", i
             p = self.eval_proposal(proposal)
             self.eval_search(p, proposal)
             proposal = self.proposer.next_proposal()
@@ -311,7 +312,7 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
                                              locus_tree, popsizes, daughters)
         
         prob += exp(coal_prob)
-        print coal_prob
+#        print coal_prob
     #util.toc()
 
     return dl_prob + d_prob + util.safelog(prob / nsamples)

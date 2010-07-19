@@ -625,6 +625,73 @@ def sample_allele_freq(p, n):
         return 1.0
     return p1
 
+
+def freq_CDF(p, N, t, T, k=50):
+    """
+    Evaluates the CDF derived from Kimura.
+    p is initial frequency of the allele in the population
+    N is the population size
+    t is time (units?)
+    T is the upper limit of the CDF (int from 0 to T)
+    k is approximation for the upper limit in the (supposed to be) infinite sum
+    """
+    return freq_CDF_leg(legendre_lambda(1.0-2*p), N, t, T, k=k)
+
+
+### TODO: diagnose and fix the distribution problems
+def freq_CDF_leg(leg, N, t, T, k=50):
+    """
+    Evaluates the CDF derived from Kimura.
+    N.B.: Appears to fail sometimes; this needs to be fixed
+    leg is a Legendre (lambda) for evaluating the CDF
+    N is the population size
+    t is time (units?)
+    T is the upper limit of the CDF (int from 0 to T)
+    k is approximation for the upper limit in the (supposed to be) infinite sum
+    """
+    def innersum(i, T, j=0, s=0.0, c=1.0):
+        if T == 0.0:
+            return 1.0
+        if j > i:
+            return s
+        newc = 1.0 if j == 0 else c * (-T) * (i+j) * (i-j+1) / j / j
+        return innersum(i, T, j+1, s+newc, newc)
+#    if p == 0.0: # none have the allele
+#        return 1.0 # all weight is at 0, so CDF is equal to 1
+#    if p == 1.0: # all have the allele
+#        return 1.0 if T == 1.0 else 0.0
+    s = 0.0
+    for i in xrange(1,k+1):
+        newterm = leg(i-1) - leg(i+1)
+        newterm *= exp(- i * (i+1) / 4.0 * t / N)
+        newterm *= .5 - .5 * innersum(i,T)
+        s += newterm
+    return s
+
+
+def freq_prob_range(p, N, t, T1, T2, k=50):
+    leg = legendre_lambda(1.0-2*p)
+    return (freq_CDF_leg(leg, N, t, T2, k=k) - freq_CDF_leg(leg, N, t, T1, k=k))
+
+
+## important note: does not always work
+def sample_freq_CDF(p, N, t):
+    """
+    Takes an allele frequency p, a population size N, and a time period t.
+    Samples from the CDF derived from Kimura to get a new allele frequency.
+    N.B.: The current version fails sometimes (on some N, t pairs), presumably
+     due to errors in freq_CDF_leg.  These need to be fixed.
+    """
+    import scipy.optimize #, random
+    y = random.random()
+    leg = legendre_lambda(1.0-2*p)
+    def f(T):
+        return freq_CDF_leg(leg, N, t, T) - y
+    
+    return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+
+
+
 # new function for determining Legendre polynomial evaluations
 def legendre_lambda(r):
     """

@@ -635,7 +635,9 @@ def freq_CDF(p, N, t, T, k=50):
     T is the upper limit of the CDF (int from 0 to T)
     k is approximation for the upper limit in the (supposed to be) infinite sum
     """
-    return freq_CDF_leg(legendre_lambda(1.0-2*p), N, t, T, k=k)
+#    return freq_CDF_leg(legendre_lambda(1.0-2*p), N, t, T, k=k)
+    return freq_CDF_leg2(legendre_lambda(1.0-2*p), legendre_lambda(1.0-2*T), 
+      N, t, k=k)
 
 
 ### TODO: diagnose and fix the distribution problems
@@ -665,6 +667,29 @@ def freq_CDF_leg(leg, N, t, T, k=50):
         newterm = leg(i-1) - leg(i+1)
         newterm *= exp(- i * (i+1) / 4.0 * t / N)
         newterm *= .5 - .5 * innersum(i,T)
+        s += newterm
+    return s
+
+
+# TODO: determine whether this also has distribution problems; fix them if so
+# TODO: also change freq_CDF_leg to call this function, if the distribution
+#   is easier to fix (my intuition says it might be)
+def freq_CDF_leg2(leg_r,leg_T,N,t,k=50):
+    """
+    Evaluates the CDF derived from Kimura using two Legendre polynomials.
+    This should be equivalent to freq_CDF_leg, only using an updated method.
+    leg_r is the legendre_lambda associated with r
+    leg_T is the legendre_lambde associated with T (T', really)
+    N is the population size
+    t is the time elapsed
+    k is the upper limit to approximate the infinite sum
+    """
+    s = 0.0
+    expconst = float(t) / 4.0 / N
+    for i in xrange(1,k+1):
+        newterm = .5 * (leg_r(i-1) - leg_r(i+1))
+        newterm *= exp(- i * (i+1) * expconst)
+        newterm *= 1 - leg_T(i)
         s += newterm
     return s
 

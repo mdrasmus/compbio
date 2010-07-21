@@ -801,49 +801,14 @@ def freq_CDF(p, N, t, T, k=50):
     T is the upper limit of the CDF (int from 0 to T)
     k is approximation for the upper limit in the (supposed to be) infinite sum
     """
-#    return freq_CDF_leg(legendre_lambda(1.0-2*p), N, t, T, k=k)
-    return freq_CDF_leg2(legendre_lambda(1.0-2*p), legendre_lambda(1.0-2*T), 
+    return freq_CDF_legs_ends(legendre(1.0-2*p), legendre(1.0-2*T), 
       N, t, k=k)
 
 
-### TODO: diagnose and fix the distribution problems
-def freq_CDF_leg(leg, N, t, T, k=50):
-    """
-    Evaluates the CDF derived from Kimura.
-    N.B.: Appears to fail sometimes; this needs to be fixed
-    leg is a Legendre (lambda) for evaluating the CDF
-    N is the population size
-    t is time (units?)
-    T is the upper limit of the CDF (int from 0 to T)
-    k is approximation for the upper limit in the (supposed to be) infinite sum
-    """
-    def innersum(i, T, j=0, s=0.0, c=1.0):
-        if T == 0.0:
-            return 1.0
-        if j > i:
-            return s
-        newc = 1.0 if j == 0 else c * (-T) * (i+j) * (i-j+1) / j / j
-        return innersum(i, T, j+1, s+newc, newc)
-#    if p == 0.0: # none have the allele
-#        return 1.0 # all weight is at 0, so CDF is equal to 1
-#    if p == 1.0: # all have the allele
-#        return 1.0 if T == 1.0 else 0.0
-    s = 0.0
-    for i in xrange(1,k+1):
-        newterm = leg(i-1) - leg(i+1)
-        newterm *= exp(- i * (i+1) / 4.0 * t / N)
-        newterm *= .5 - .5 * innersum(i,T)
-        s += newterm
-    return s
-
-
-# TODO: determine whether this also has distribution problems; fix them if so
-# TODO: also change freq_CDF_leg to call this function, if the distribution
-#   is easier to fix (my intuition says it might be)
-def freq_CDF_leg2(leg_r,leg_T,N,t,k=50):
+def freq_CDF_legs_noends(leg_r,leg_T,N,t,k=50):
     """
     Evaluates the CDF derived from Kimura using two Legendre polynomials.
-    This should be equivalent to freq_CDF_leg, only using an updated method.
+    This does not include the probabilities at 0 and 1 (partial CDF).
     leg_r is the legendre_lambda associated with r
     leg_T is the legendre_lambde associated with T (T', really)
     N is the population size
@@ -860,12 +825,35 @@ def freq_CDF_leg2(leg_r,leg_T,N,t,k=50):
     return s
 
 
+def freq_CDF_legs_ends(leg_r,leg_T,N,t,k=50):
+    """
+    Evaluates the CDF derived from Kimura using two Legendre polynomials.
+    This includes the probabilities at 0 and 1 (full CDF).
+    leg_r is the legendre_lambda associated with r
+    leg_T is the legendre_lambde associated with T (T', really)
+    N is the population size
+    t is the time elapsed
+    k is the upper limit to approximate the infinite sum
+    """
+    s = prob_fix(1.0-leg_r(True),N,t) # leg_r(True) currently returns p, so this is probability of extinction
+    expconst = float(t) / 4.0 / N
+    for i in xrange(1,k+1):
+        newterm = .5 * (leg_r(i-1) - leg_r(i+1))
+        newterm *= exp(- i * (i+1) * expconst)
+        newterm *= 1 - leg_T(i)
+        s += newterm
+    return s if leg_T(True) < 1.0 else s + prob_fix(leg_r(True),N,t) # add fixation probability if T==1
+
+
 def freq_prob_range(p, N, t, T1, T2, k=50):
-    leg = legendre_lambda(1.0-2*p)
-    return (freq_CDF_leg(leg, N, t, T2, k=k) - freq_CDF_leg(leg, N, t, T1, k=k))
+    leg_r = legendre(1.0-2*p)
+    leg_T1 = legendre(1.0-2*T1)
+    leg_T2 = legendre(1.0-2*T2)
+    return (freq_CDF_legs_noends(leg_r, leg_T2, N, t, k=k) - \
+      freq_CDF_legs_noends(leg_r, leg_T1, N, t, k=k))
+    # uses noends because probabilities at 0 and 1 may be determined using other methods
 
 
-## important note: does not always work
 def sample_freq_CDF(p, N, t):
     """
     Takes an allele frequency p, a population size N, and a time period t.
@@ -875,28 +863,37 @@ def sample_freq_CDF(p, N, t):
     """
     import scipy.optimize #, random
     y = random.random()
-    leg = legendre_lambda(1.0-2*p)
-    def f(T):
-        return freq_CDF_leg(leg, N, t, T) - y
+    leg_r = legendre(1.0-2*p)
+    extinction = prob_fix(1.0-p, N, t) # probability of allele extinction
     
-    return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+    if y < extinction:
+        return 0.0 # sample an extinction event
+    elif y > 1.0 - prob_fix(p, N, t):
+        return 1.0 # sample a fixation event
+    else:
+        def f(T):
+            return freq_CDF_legs_noends(leg_r, legendre(1.0-2*T), N, t) \
+              - y + extinction  # trims extinction probability, assures brentq works
+        return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
 
 
 
 # new function for determining Legendre polynomial evaluations
-def legendre_lambda(r):
+def legendre(r):
     """
     Returns a lambda that calculates the Legendre polynomial based on a 
      recursive formula (43) from 
      http://mathworld.wolfram.com/LegendrePolynomial.html.
     As the value r is constant, results to calls for different n are cached,
      which reduces runtime for repeated calls.
-    The old legendre(n,r) function below is intractible for n>~10.
+    The old legendre_old(n,r) function below is intractible for n>~10.
     This function can run with n as high as one million in a fraction of a 
      second (using isolated calls, so no caching to build higher values of n).
     """
     def cacheleg(i,d):
-        assert (type(i) == int and i >= 0)
+        if type(i) == bool:
+            return (1.0-d[1])/2.0 if i else d[1] # utility function; may need to be removed
+        assert (type(i) == int and i >= 0) # if i is not type bool
         m = d['max']
         if i <= m:
             return d[i]
@@ -906,16 +903,18 @@ def legendre_lambda(r):
         d['max'] = i
         return d[i]
     d = {0:1.0, 1:r, 'max':1}
+    assert -1.0 <= r and r <= 1.0 # ensure r in reasonable range
     return lambda n: cacheleg(n,d)
 
 
 def gegenbauer(i, r):
     return ((i * (i+1)) / 2.0 * hypergeo(i+2, 1 - i, 2, (1 - r) / 2.0))
 
-# this should be depreciated and replaced by gegenbauer4
+# this should be the fastest gegenbauer method now (21 July 2010)
 def gegenbauer2(i, r):
+    leg = legendre(r)
     return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
-            (legendre(i-1, r) - legendre(i+1, r)))
+            (leg(i-1) - leg(i+1)))
 
 def gegenbauer3(n, a, z):
 
@@ -927,36 +926,11 @@ def gegenbauer3(n, a, z):
     return tot
 
 
-# this replaces gegenbauer2; the method is the same, but should be much faster
-def gegenbauer4(i, r):
-    leg = legendre_lambda(r)
-    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
-            (leg(i-1) - leg(i+1)))
-
-
-# this should be depreciated and replaced by prob_fix2
-def prob_fix(p, n, t, k=8, esp=0.001):
+# TODO: determine proper k and esp values
+def prob_fix(p, n, t, k=100, esp=0.000001):
     """Probability of fixation"""
     r = 1 - 2*p
-    
-    prob = p
-    for i in xrange(1, k+1):
-        term = (.5 * (-1)**i * (legendre(i-1, r) - legendre(i+1, r)) *
-                 exp(-t * i * (i+1) / (4 * n)))
-        if term != 0.0 and abs(term) < esp:
-            return prob + term
-        prob += term
-
-    return prob
-
-
-# this function should replace prob_fix
-# the method is the same, but should run much faster
-# also, the k=8 default may be increased significantly for better approximation
-def prob_fix2(p, n, t, k=8, esp=0.001):
-    """Probability of fixation"""
-    r = 1 - 2*p
-    leg = legendre_lambda(r)
+    leg = legendre(r)
     prob = p
     for i in xrange(1, k+1):
         term = (.5 * (-1)**i * (leg(i-1) - leg(i+1)) *
@@ -1149,11 +1123,41 @@ def legendre_poly(n):
 
 
 # this function should be depreciated
-def legendre(n, r):
+def legendre_old(n, r):
     l = simplify(assign_vars(legendre_poly(n), {'x': r}))
     assert l[0] == 'scalar'
     return l[1]
 
+
+### TODO: distribution problems arise from probability masses at 0 and 1
+def freq_CDF_leg_old(leg, N, t, T, k=50):
+    """
+    Evaluates the CDF derived from Kimura.
+    N.B.: Appears to fail sometimes; this needs to be fixed
+    leg is a Legendre (lambda) for evaluating the CDF
+    N is the population size
+    t is time (units?)
+    T is the upper limit of the CDF (int from 0 to T)
+    k is approximation for the upper limit in the (supposed to be) infinite sum
+    """
+    def innersum(i, T, j=0, s=0.0, c=1.0):
+        if T == 0.0:
+            return 1.0
+        if j > i:
+            return s
+        newc = 1.0 if j == 0 else c * (-T) * (i+j) * (i-j+1) / j / j
+        return innersum(i, T, j+1, s+newc, newc)
+#    if p == 0.0: # none have the allele
+#        return 1.0 # all weight is at 0, so CDF is equal to 1
+#    if p == 1.0: # all have the allele
+#        return 1.0 if T == 1.0 else 0.0
+    s = 0.0
+    for i in xrange(1,k+1):
+        newterm = leg(i-1) - leg(i+1)
+        newterm *= exp(- i * (i+1) / 4.0 * t / N)
+        newterm *= .5 - .5 * innersum(i,T)
+        s += newterm
+    return s
 
 
 
@@ -1163,6 +1167,12 @@ def hypergeo_old(a, b, c, z, k=100):
     for i in xrange(1, k+1):
         terms.append(float((i+a-1)*(i+b-1)*z)/(i+c-1)/i * terms[i-1])
     return sum(terms)
+
+
+# this is depreciated; replaced by an equivalent (but faster) gegenbauer method
+def gegenbauer2_old(i, r):
+    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
+            (legendre_old(i-1, r) - legendre_old(i+1, r)))
 
 
 def freq_pdf_old(x, p, n, t, k=8):
@@ -1311,3 +1321,19 @@ def prob_multicoal_recon_topology_old(tree, recon, stree, n,
             lnp += log(birthdeath.num_topology_histories(subtree, leaves))
 
     return lnp
+
+
+# this is depreciated; replaced by prob_fix method using new legendre method
+def prob_fix_old(p, n, t, k=8, esp=0.001):
+    """Probability of fixation"""
+    r = 1 - 2*p
+    
+    prob = p
+    for i in xrange(1, k+1):
+        term = (.5 * (-1)**i * (legendre_old(i-1, r) - legendre_old(i+1, r)) *
+                 exp(-t * i * (i+1) / (4 * n)))
+        if term != 0.0 and abs(term) < esp:
+            return prob + term
+        prob += term
+
+    return prob

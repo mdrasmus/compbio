@@ -791,29 +791,128 @@ def sample_allele_freq(p, n):
         return 1.0
     return p1
 
+
+def freq_CDF(p, N, t, T, k=50):
+    """
+    Evaluates the CDF derived from Kimura.
+    p is initial frequency of the allele in the population
+    N is the population size
+    t is time (units?)
+    T is the upper limit of the CDF (int from 0 to T)
+    k is approximation for the upper limit in the (supposed to be) infinite sum
+    """
+#    return freq_CDF_leg(legendre_lambda(1.0-2*p), N, t, T, k=k)
+    return freq_CDF_leg2(legendre_lambda(1.0-2*p), legendre_lambda(1.0-2*T), 
+      N, t, k=k)
+
+
+### TODO: diagnose and fix the distribution problems
+def freq_CDF_leg(leg, N, t, T, k=50):
+    """
+    Evaluates the CDF derived from Kimura.
+    N.B.: Appears to fail sometimes; this needs to be fixed
+    leg is a Legendre (lambda) for evaluating the CDF
+    N is the population size
+    t is time (units?)
+    T is the upper limit of the CDF (int from 0 to T)
+    k is approximation for the upper limit in the (supposed to be) infinite sum
+    """
+    def innersum(i, T, j=0, s=0.0, c=1.0):
+        if T == 0.0:
+            return 1.0
+        if j > i:
+            return s
+        newc = 1.0 if j == 0 else c * (-T) * (i+j) * (i-j+1) / j / j
+        return innersum(i, T, j+1, s+newc, newc)
+#    if p == 0.0: # none have the allele
+#        return 1.0 # all weight is at 0, so CDF is equal to 1
+#    if p == 1.0: # all have the allele
+#        return 1.0 if T == 1.0 else 0.0
+    s = 0.0
+    for i in xrange(1,k+1):
+        newterm = leg(i-1) - leg(i+1)
+        newterm *= exp(- i * (i+1) / 4.0 * t / N)
+        newterm *= .5 - .5 * innersum(i,T)
+        s += newterm
+    return s
+
+
+# TODO: determine whether this also has distribution problems; fix them if so
+# TODO: also change freq_CDF_leg to call this function, if the distribution
+#   is easier to fix (my intuition says it might be)
+def freq_CDF_leg2(leg_r,leg_T,N,t,k=50):
+    """
+    Evaluates the CDF derived from Kimura using two Legendre polynomials.
+    This should be equivalent to freq_CDF_leg, only using an updated method.
+    leg_r is the legendre_lambda associated with r
+    leg_T is the legendre_lambde associated with T (T', really)
+    N is the population size
+    t is the time elapsed
+    k is the upper limit to approximate the infinite sum
+    """
+    s = 0.0
+    expconst = float(t) / 4.0 / N
+    for i in xrange(1,k+1):
+        newterm = .5 * (leg_r(i-1) - leg_r(i+1))
+        newterm *= exp(- i * (i+1) * expconst)
+        newterm *= 1 - leg_T(i)
+        s += newterm
+    return s
+
+
+def freq_prob_range(p, N, t, T1, T2, k=50):
+    leg = legendre_lambda(1.0-2*p)
+    return (freq_CDF_leg(leg, N, t, T2, k=k) - freq_CDF_leg(leg, N, t, T1, k=k))
+
+
+## important note: does not always work
+def sample_freq_CDF(p, N, t):
+    """
+    Takes an allele frequency p, a population size N, and a time period t.
+    Samples from the CDF derived from Kimura to get a new allele frequency.
+    N.B.: The current version fails sometimes (on some N, t pairs), presumably
+     due to errors in freq_CDF_leg.  These need to be fixed.
+    """
+    import scipy.optimize #, random
+    y = random.random()
+    leg = legendre_lambda(1.0-2*p)
+    def f(T):
+        return freq_CDF_leg(leg, N, t, T) - y
     
+    return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
 
-# Legendre polynomial
-def legendre_poly(n):
 
-    """ \frac{1}{2^n n!} d^n/dx^n [(x^2 - 1)^n] """
 
-    return simplify(('mult', ('scalar', 1.0 / (2 ** n * stats.factorial(n))),
-                    derivate(('power', ('add', ('power', ('var', 'x'),
-                                                         ('scalar', 2)),
-                                               ('scalar', -1)),
-                                       ('scalar', n)),
-                             'x', n)))
+# new function for determining Legendre polynomial evaluations
+def legendre_lambda(r):
+    """
+    Returns a lambda that calculates the Legendre polynomial based on a 
+     recursive formula (43) from 
+     http://mathworld.wolfram.com/LegendrePolynomial.html.
+    As the value r is constant, results to calls for different n are cached,
+     which reduces runtime for repeated calls.
+    The old legendre(n,r) function below is intractible for n>~10.
+    This function can run with n as high as one million in a fraction of a 
+     second (using isolated calls, so no caching to build higher values of n).
+    """
+    def cacheleg(i,d):
+        assert (type(i) == int and i >= 0)
+        m = d['max']
+        if i <= m:
+            return d[i]
+        x = d[1]
+        for n in xrange(m+1,i+1):
+            d[n] = 1.0 * ( (2*n-1)*x*d[n-1] - (n-1)*d[n-2] ) / n
+        d['max'] = i
+        return d[i]
+    d = {0:1.0, 1:r, 'max':1}
+    return lambda n: cacheleg(n,d)
 
-def legendre(n, r):
-    l = simplify(assign_vars(legendre_poly(n), {'x': r}))
-    assert l[0] == 'scalar'
-    return l[1]
 
 def gegenbauer(i, r):
     return ((i * (i+1)) / 2.0 * hypergeo(i+2, 1 - i, 2, (1 - r) / 2.0))
 
-
+# this should be depreciated and replaced by gegenbauer4
 def gegenbauer2(i, r):
     return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
             (legendre(i-1, r) - legendre(i+1, r)))
@@ -828,8 +927,14 @@ def gegenbauer3(n, a, z):
     return tot
 
 
+# this replaces gegenbauer2; the method is the same, but should be much faster
+def gegenbauer4(i, r):
+    leg = legendre_lambda(r)
+    return ((i * (i+1)) / float((2*i+1)*(1-r*r)) *
+            (leg(i-1) - leg(i+1)))
 
 
+# this should be depreciated and replaced by prob_fix2
 def prob_fix(p, n, t, k=8, esp=0.001):
     """Probability of fixation"""
     r = 1 - 2*p
@@ -837,6 +942,24 @@ def prob_fix(p, n, t, k=8, esp=0.001):
     prob = p
     for i in xrange(1, k+1):
         term = (.5 * (-1)**i * (legendre(i-1, r) - legendre(i+1, r)) *
+                 exp(-t * i * (i+1) / (4 * n)))
+        if term != 0.0 and abs(term) < esp:
+            return prob + term
+        prob += term
+
+    return prob
+
+
+# this function should replace prob_fix
+# the method is the same, but should run much faster
+# also, the k=8 default may be increased significantly for better approximation
+def prob_fix2(p, n, t, k=8, esp=0.001):
+    """Probability of fixation"""
+    r = 1 - 2*p
+    leg = legendre_lambda(r)
+    prob = p
+    for i in xrange(1, k+1):
+        term = (.5 * (-1)**i * (leg(i-1) - leg(i+1)) *
                  exp(-t * i * (i+1) / (4 * n)))
         if term != 0.0 and abs(term) < esp:
             return prob + term
@@ -1009,6 +1132,29 @@ if __name__ == "__main__":
 
 #=============================================================================
 # old versions
+
+
+# Legendre polynomial
+# this function should be depreciated
+def legendre_poly(n):
+
+    """ \frac{1}{2^n n!} d^n/dx^n [(x^2 - 1)^n] """
+
+    return simplify(('mult', ('scalar', 1.0 / (2 ** n * stats.factorial(n))),
+                    derivate(('power', ('add', ('power', ('var', 'x'),
+                                                         ('scalar', 2)),
+                                               ('scalar', -1)),
+                                       ('scalar', n)),
+                             'x', n)))
+
+
+# this function should be depreciated
+def legendre(n, r):
+    l = simplify(assign_vars(legendre_poly(n), {'x': r}))
+    assert l[0] == 'scalar'
+    return l[1]
+
+
 
 
 def hypergeo_old(a, b, c, z, k=100):

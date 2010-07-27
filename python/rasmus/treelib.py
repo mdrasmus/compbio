@@ -1095,7 +1095,7 @@ def graph2tree(mat, root, closedset=None):
     return tree
 
 
-def remove_single_children(tree):
+def remove_single_children(tree, simplifyRoot=True):
     """
     Remove all nodes from the tree that have exactly one child
     
@@ -1133,7 +1133,7 @@ def remove_single_children(tree):
         del tree.nodes[node.name]
 
     # remove singleton from root
-    if len(tree.root.children) == 1:
+    if simplifyRoot and len(tree.root.children) == 1:
         oldroot = tree.root
         tree.root = tree.root.children[0]
         oldroot.children = []
@@ -1177,7 +1177,7 @@ def remove_exposed_internal_nodes(tree, leaves=None):
 removeExposedInternalNodes = remove_exposed_internal_nodes
 
 
-def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
+def subtree_by_leaf_names(tree, leaf_names, newCopy=False, simplifyRoot=True):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
@@ -1187,7 +1187,7 @@ def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
     for sp in remove_set:
     	tree.remove(tree.nodes[sp])
     remove_exposed_internal_nodes(tree, [tree.nodes[x] for x in leaf_names])
-    remove_single_children(tree)
+    remove_single_children(tree, simplifyRoot=simplifyRoot)
     
     return tree
 subtreeByLeafNames = subtree_by_leaf_names

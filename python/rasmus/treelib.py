@@ -1177,7 +1177,8 @@ def remove_exposed_internal_nodes(tree, leaves=None):
 removeExposedInternalNodes = remove_exposed_internal_nodes
 
 
-def subtree_by_leaf_names(tree, leaf_names, newCopy=False, simplifyRoot=True):
+def subtree_by_leaf_names(tree, leaf_names, newCopy=False, \
+                            simplifyRoot=True, removeSingleChildren=True):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
@@ -1185,9 +1186,10 @@ def subtree_by_leaf_names(tree, leaf_names, newCopy=False, simplifyRoot=True):
     
     remove_set = set(tree.leaf_names()) - set(leaf_names)
     for sp in remove_set:
-    	tree.remove(tree.nodes[sp])
+        tree.remove(tree.nodes[sp])
     remove_exposed_internal_nodes(tree, [tree.nodes[x] for x in leaf_names])
-    remove_single_children(tree, simplifyRoot=simplifyRoot)
+    if removeSingleChildren:
+        remove_single_children(tree, simplifyRoot=simplifyRoot)
     
     return tree
 subtreeByLeafNames = subtree_by_leaf_names

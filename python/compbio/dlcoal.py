@@ -620,7 +620,25 @@ def dlcoal_sims(outdir, nsims, stree, n, duprate, lossrate,
         write_dlcoal_recon(outfile, coal_tree, ex)
 
 
+## added 30 July 2010
+##  should mimic dlcoal_sims, but using the new simulator
+## TODO: fix this up when code is more integrated
+def dlcoal_sims2(outdir, nsims, stree, n, duprate, lossrate, freq=1.0,
+                freqdup=.05, freqloss=.05, forcetime=1e6, start=0, minsize=0,
+                **options):
+    
+    import sim_v2_2 # TODO: remove this when code is more integrated
+    
+    for i in xrange(start, nsims+start): # changed nsims to nsims+start
+        outfile = phylo.phylofile(outdir, str(i), "")
+        util.makedirs(os.path.dirname(outfile))
+        print "simulating", outfile
 
+        # sample a new tree from DLCoal model using new simulator
+        coal_tree, ex = sim_v2_2.sample_dlcoal_no_ifix(stree, n, freq, \
+                            duprate, lossrate, freqdup, freqloss, forcetime, \
+                            minsize=minsize, **options)
+        write_dlcoal_recon(outfile, coal_tree, ex)
 
 
 

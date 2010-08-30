@@ -270,6 +270,12 @@ def sample_bounded_coal_reject(k, n, T):
 
 
 def get_rev_recon(tree, recon, stree):
+    """
+    Returns a reverse reconciliation
+
+    A reverse reconciliation is a mapping from nodes in the species tree to
+    lists of nodes in the gene tree.
+    """
     rev_recon = {}
     nodes = set(tree.postorder())
     for node, snode in recon.iteritems():
@@ -405,14 +411,14 @@ def cdf_mrca_bounded_multicoal(gene_counts, T, stree, n,
     if sleaves is None:
         sleaves = sroot.leaves()
 
-    if len(sleaves) <= 1:
-        return 0.0
+    #if len(sleaves) <= 1:
+    #    return 0.0
 
     # init gene counts
     if gene_counts is None:
-        gene_counts = dict.fromkeys(sleaves, 0)
+        gene_counts = dict.fromkeys([x.name for x in sleaves], 0)
         for leaf in tree.leaves():
-            gene_counts[recon[leaf.name]] += 1
+            gene_counts[recon[leaf].name] += 1
 
     popsizes = init_popsizes(stree, n)
 
@@ -477,7 +483,8 @@ def num_labeled_histories(nleaves, nroots):
 
 def prob_bounded_multicoal_recon_topology(tree, recon, stree, n, T,
                                           root=None, leaves=None,
-                                          lineages=None, stimes=None):
+                                          lineages=None, top_stats=None,
+                                          stimes=None):
     """
     Returns the log probability of a reconciled gene tree ('tree', 'recon')
     from the coalescent model given a species tree 'stree' and
@@ -504,7 +511,7 @@ def prob_bounded_multicoal_recon_topology(tree, recon, stree, n, T,
     T_root = T - stimes[stree.root]
     return log(cdf_mrca(T_root, k_root, popsizes[recon[tree.root].name])) + p \
            - cdf_mrca_bounded_multicoal(None, T, stree, popsizes,
-                                        tree=tree, recon=recon, stimes=stimes)
+                                      tree=tree, recon=recon, stimes=stimes)
     
 
 
@@ -598,9 +605,11 @@ def init_popsizes(stree, n):
         raise Exception("n must be a int or dict.")
 
 
+# TODO: right now this assumes that there are at least 1 or more genes
+# in each extant species
 
 def sample_multicoal_tree(stree, n, leaf_counts=None,
-                          namefunc=None):
+                          namefunc=None, sroot=None, sleaves=None):
     """
     Returns a gene tree from a multi-species coalescence process
 
@@ -613,6 +622,11 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     namefunc    -- a function that generates new gene names given a species
                    name.
     """
+
+    if sleaves is None:
+        sleaves = stree.leaves()
+    if sroot is None:
+        sroot = stree.root
 
     # initialize vector for how many genes per extant species
     if leaf_counts is None:
@@ -639,13 +653,16 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     # subtrees
     subtrees = {}
 
+    queue = MultiPushQueue(sleaves)
+
     # loop through species tree
-    for snode in stree.postorder():        
+    for snode in queue: #stree.postorder():
         # simulate population for one branch
         k = counts[snode.name]
         
-        if snode.parent:
+        if snode != sroot:
             # non basal branch
+            queue.push(snode.parent, len(snode.parent.children))
             subtree, lineages = sample_censored_coal_tree(
                 k, popsizes[snode.name], snode.dist, capped=True)
         else:
@@ -653,7 +670,7 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
             subtree = sample_coal_tree(k, popsizes[snode.name])
             lineages = subtree.root
         subtrees[snode] = (subtree, lineages)
-        if snode.parent:
+        if snode != sroot:
             counts[snode.parent.name] += len(lineages)
         for node in subtree:
             recon[node] = snode
@@ -666,9 +683,10 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     for subtree, lineages in subtrees.values():
         tree.merge_names(subtree)
         tree.remove(subtree.root)
+        del recon[subtree.root]
     
-    for snode in stree:
-        if not snode.is_leaf():
+    for snode in subtrees:
+        if snode not in sleaves: # not snode.is_leaf():
             subtree, lineages = subtrees[snode]
 
             # get lineages from child subtrees
@@ -685,14 +703,140 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
 
 
     # set root
-    tree.root = subtrees[stree.root][0].root
+    tree.root = subtrees[sroot][0].root
     tree.add(tree.root)
+    recon[tree.root] = sroot
 
     # name leaves
     for leaf in tree.leaves():
         tree.rename(leaf.name, namefunc(recon[leaf].name))
         
     return tree, recon
+
+
+# TODO: code up a non-rejection sampling version of this function
+
+def sample_bounded_multicoal_tree_reject(stree, n, T, leaf_counts=None,
+                                         namefunc=None, sleaves=None,
+                                         sroot=None):
+    """
+    Returns a gene tree from a bounded multi-species coalescence process
+
+    stree       -- species tree
+    n           -- population size (int or dict)
+                   If n is a dict it must map from species name to
+                   population size.
+    T           -- deadline for complete coalescence
+    leaf_counts -- dict of species names to a starting gene count.
+                   Default is 1 gene per extant species.
+    namefunc    -- a function that generates new gene names given a species
+                   name.
+    sleaves     -- you can specify a subtree of the stree by giving the a
+                   list 'sleaves' of leaf nodes of the stree
+    sroot       -- you can specify a subtree of the stree by giving the 
+                   subtree root node 'sroot'
+    """
+
+    # initialize vector for how many genes per extant species
+    if sleaves is None:
+        sleaves = stree.leaves()
+    if sroot is None:
+        sroot = stree.root
+    if leaf_counts is None:
+        leaf_counts = dict((l.name, 1) for l in sleaves)
+
+    # initialize function for generating new gene names
+    if namefunc is None:
+        spcounts = dict((l.name, 1) for l in sleaves)
+        def namefunc(sp):
+            name = sp + "_" + str(spcounts[sp])
+            spcounts[sp] += 1
+            return name
+
+    # initialize population sizes
+    popsizes = init_popsizes(stree, n)
+
+    reject = 0
+    while True:
+        queue = MultiPushQueue(sleaves)
+
+        # init gene counts
+        counts = dict((n.name, 0) for n in stree)
+        counts.update(leaf_counts)
+
+        # init reconciliation
+        recon = {}
+
+        # subtrees
+        subtrees = {}
+
+        # loop through species tree
+        for snode in queue:
+            # simulate population for one branch
+            k = counts[snode.name]
+
+            if snode != sroot:
+                # non basal branch
+                subtree, lineages = sample_censored_coal_tree(
+                    k, popsizes[snode.name], snode.dist, capped=True)
+                queue.push(snode.parent, len(snode.parent.children))
+            else:
+                # basal branch
+                subtree = sample_coal_tree(k, popsizes[snode.name])
+                lineages = subtree.root
+            subtrees[snode] = (subtree, lineages)
+            if snode != sroot:
+                counts[snode.parent.name] += len(lineages)
+            for node in subtree:
+                recon[node] = snode
+
+        # stitch subtrees together
+        tree = treelib.Tree()
+
+        # add all nodes to total tree
+        for subtree, lineages in subtrees.values():
+            tree.merge_names(subtree)
+            tree.remove(subtree.root)
+            del recon[subtree.root]
+
+        for snode in subtrees:
+            if not snode.is_leaf():
+                subtree, lineages = subtrees[snode]
+
+                # get lineages from child subtrees
+                lineages2 = chain(*[subtrees[child][1]
+                                    for child in snode.children])
+
+                # ensure leaves are randomly attached
+                leaves = subtree.leaves()
+                random.shuffle(leaves)
+
+                # stitch leaves of the subtree to children subtree lineages
+                for leaf, lineage in izip(leaves, lineages2):
+                    tree.add_child(leaf, lineage)
+
+
+        # set root
+        tree.root = subtrees[sroot][0].root
+        tree.add(tree.root)
+        recon[tree.root] = sroot
+
+
+        # reject tree if basal branch goes past deadline
+        times = treelib.get_tree_timestamps(tree)        
+        if times[tree.root] < T:
+            break
+        else:
+            reject += 1
+            #print "reject", reject, times[tree.root], T
+
+
+    # name leaves
+    for leaf in tree.leaves():
+        tree.rename(leaf.name, namefunc(recon[leaf].name))
+        
+    return tree, recon
+
 
 
 def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
@@ -760,6 +904,34 @@ def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
     return tree, children
     
 
+
+#=============================================================================
+# helper data structures
+
+class MultiPushQueue (object):
+    def __init__(self, lst):
+        self._lst = set(lst)
+        self._count = {}
+
+    def __iter__(self):
+        return self
+
+    def push(self, node, needed):
+
+        count = self._count.setdefault(node, 0)
+
+        # must be queued 'needed' times
+        if count + 1 == needed:
+            self._lst.add(node)
+        else:
+            self._count[node] += 1
+
+    def next(self):
+        if len(self._lst) == 0:
+            raise StopIteration
+        else:
+            return self._lst.pop()
+                
 
 
 #=============================================================================
@@ -1267,6 +1439,8 @@ def prob_multicoal_recon_topology_old(tree, recon, stree, n,
     Returns the log probability of a reconciled gene tree ('tree', 'recon')
     from the coalescent model given a species tree 'stree' and
     population sizes 'n'
+
+    This definately has a bug, that the current code fixes.
     """
     
     popsizes = init_popsizes(stree, n)

@@ -893,7 +893,6 @@ def assert_tree(tree):
     
     assert tree.root.parent == None
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
-assertTree = assert_tree
 
 
 

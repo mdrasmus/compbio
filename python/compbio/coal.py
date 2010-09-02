@@ -150,6 +150,48 @@ def cdf_coal_cond_counts(x, a, b, t, n):
     return s / stats.factorial(b) * (-lama) / prob_coal_counts(a, b, t, n)
 
 
+def sample_coal_cond_counts(a, b, t, n):
+    """
+    Samples the next coalescent between 'a' lineages in a population size of
+    'n', conditioned on there being 'b' lineages at time 't'.
+    """
+    
+    # this code solves this equation for t
+    #   cdf(t) - p = 0
+    # where p ~ U(0, 1)
+
+    import scipy.optimize
+    
+    p = random.random()
+
+    # compute constants
+    lama = -a*(a-1)/2.0/n
+    C0 = stats.prod((b+y)*(a-1-y)/(a-1+y) for y in xrange(b))
+    c = -b*(b-1)/2.0/n
+    d = 1.0/stats.factorial(b) * (-lama) / prob_coal_counts(a, b, t, n)
+    
+
+    # CDF(t) - p
+    def f(x):
+        if x <= 0:
+            return x - p
+        if x >= t:
+            return 1.0 - p + (x - t)
+
+        C = C0
+        s = exp(c*t) * (exp((lama-c)*x)-1.0) / (lama-c) * C
+        for k in xrange(b+1, a):
+            k1 = k - 1
+            lam = -k*k1/2.0/n
+            C = (b+k1)*(a-1-k1)/(a-1+k1)/(b-k) * C
+            s += exp(lam*t) * (exp((lama-lam)*x) - 1.0) / (lama - lam) \
+                 * (2*k-1) / (k1+b) * C
+
+        return s * d - p
+    
+    return scipy.optimize.brentq(f, 0.0, t, disp=False)
+
+
 
 def prob_mrca(t, k, n):
     """
@@ -485,60 +527,62 @@ def cdf_mrca_bounded_multicoal(gene_counts, T, stree, n,
 
     # use dynamic programming to calc prob of lineage counts
     prob_counts = calc_prob_counts_table(gene_counts, T, stree, popsizes,
-                                    sroot, sleaves, stimes)
-    M = len(prob_counts[sroot]) - 1
-    
-    # count final sum
-    p = sum(cdf_mrca(root_time, k, popsizes[sroot.name]) *
-            prob_counts[sroot][k]
-            for k in xrange(2, M+1))
-    
-    return util.safelog(p)
-
+                                          sroot, sleaves, stimes)
+    return util.safelog(prob_counts[sroot][1][1])
 
 
 def calc_prob_counts_table(gene_counts, T, stree, popsizes,
-                      sroot, sleaves, stimes):
+                            sroot, sleaves, stimes):
 
     root_time = T - stimes[sroot]
 
     # use dynamic programming to calc prob of lineage counts
+    # format: prob_counts[node] = [a, b]
     prob_counts = {}
     def walk(node):
         if node in sleaves:
             # leaf case
             M = gene_counts[node.name]
-            prob_counts[node] = [0.0] * (M+1)
-            prob_counts[node][M] = 1.0
-            return M
+
+            # populate starting lineage counts
+            start = [0.0] * (M+1)
+            start[M] = 1.0
         
         else:
             # internal node case
             assert len(node.children) == 2
+                        
             c1 = node.children[0]
             c2 = node.children[1]
-            ptime = stimes[node]
-            t1 = ptime - stimes[c1]   # c1.dist
-            t2 = ptime - stimes[c2]   # c2.dist
             M1 = walk(c1)
             M2 = walk(c2)
             M = M1 + M2 # max lineage counts in this snode
-            n1 = popsizes[c1.name]
-            n2 = popsizes[c2.name]
+            end1 = prob_counts[c1][1]
+            end2 = prob_counts[c2][1]
 
-            prob_counts[node] = [0, 0]
+            # populate starting lineage counts
+            start = [0.0, 0.0]
             for k in xrange(2, M+1):
-                prob_counts[node].append(sum(
-                    sum(prob_coal_counts(i, m, t1, n1) *
-                        prob_counts[c1][i]
-                        for i in xrange(m, M1+1)) * 
-                    sum(prob_coal_counts(i, k-m, t2, n2) *
-                        prob_counts[c2][i]
-                        for i in xrange(k-m, M2+1))
-                    for m in xrange(1, k)))
+                start.append(sum(end1[i] * end2[k-i]
+                                 for i in xrange(1, k)
+                                 if i <= M1 and k-i <= M2))
 
-            assert abs(sum(prob_counts[node]) - 1.0) < .001
-            return M
+        # populate ending lineage counts
+        n = popsizes[node.name]
+        ptime = stimes[node.parent] if node.parent else T
+        t = ptime - stimes[node]
+
+        end = [0.0]
+        for k in xrange(1, M+1):
+            end.append(
+                sum(prob_coal_counts(i, k, t, n) * start[i]
+                    for i in xrange(k, M+1)))
+
+        prob_counts[node] = [start, end]
+
+        assert abs(sum(start) - 1.0) < .001
+            
+        return M
     M = walk(sroot)
 
     return prob_counts
@@ -796,6 +840,26 @@ def sample_censored_coal_tree(k, n, t, capped=False):
     return make_tree_from_times(times, k, t, capped=capped)
 
 
+def sample_coal_cond_counts_tree(a, b, t, n, capped=False):
+    """
+    Returns a simulated coalescence tree for 'a' leaves from a population size
+    'n', conditioned on their being 'b' lineages at time 't'.
+
+    The return value is the tuple (tree, lineages) where lineages is a set
+    of lineages that have not yet coalesced.
+
+    capped -- if True, remaining lineages are added as children to a artificial
+              tree root.
+    """
+
+    times = [0]
+    for j in xrange(a, b, -1):
+        times.append(times[-1] + sample_coal_cond_counts(j, b, t-times[-1], n))
+    
+    return make_tree_from_times(times, a, t, capped=capped)
+
+
+
 def init_popsizes(stree, n):
     """
     Uses 'n' to initialize a population size dict for species tree 'stree'
@@ -918,9 +982,9 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     return tree, recon
 
 
-def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None,
-                                  namefunc=None, sleaves=None,
-                                  sroot=None, gene_counts=None):
+def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None, namefunc=None,
+                                  sroot=None, sleaves=None, stimes=None,
+                                  gene_counts=None):
     """
     Returns a gene tree from a bounded multi-species coalescence process
 
@@ -967,7 +1031,6 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None,
         stimes = treelib.get_tree_timestamps(stree)
 
 
-    # TODO: calc table for b(v) instead of a(v)
     # calc table
     prob_counts = calc_prob_counts_table(gene_counts, T, stree, popsizes,
                                          sroot, sleaves, stimes)
@@ -981,24 +1044,27 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None,
         if node in sleaves:
             lineages[node][0] = gene_counts[node.name]
         else:
-            probs1 = prob_counts[node.children[0]]
-            probs2 = prob_counts[node.children[1]]
+            probs1 = prob_counts[node.children[0]][1]
+            probs2 = prob_counts[node.children[1]][1]
             if node.parent:
                 t = stimes[node.parent] - stimes[node]
             else:
                 t = T - stimes[node]
 
+            reject = 0
             while True:
                 k1 = stats.sample(probs1)
                 k2 = stats.sample(probs2)
-                if random.random() < prob_coal_counts(b, k1 + k2, t):
+                if random.random() < prob_coal_counts(k1 + k2, b, t, n):
                     # accept
                     break
+                reject += 1
+                #print reject, b, k1+k2, prob_coal_counts(k1 + k2, b, t, n)
 
             # set linages counts
             lineages[node][0] = k1 + k2
-            lineages[node.children[0]][1] = k1
-            lineages[node.children[1]][1] = k2
+            lineages[node.children[0]] = [None, k1]
+            lineages[node.children[1]] = [None, k2]
 
             # recurse
             walk(node.children[0])
@@ -1007,89 +1073,70 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None,
 
 
     # sample coalescent times
-    # TODO: finish
+    queue = MultiPushQueue(sleaves)
 
+    # init reconciliation and subtree dicts
+    recon = {}
+    subtrees = {}
 
-    '''
-    reject = 0
-    while True:
-        queue = MultiPushQueue(sleaves)
+    # loop through species tree
+    for snode in queue:
+        # simulate population for one branch
+        a, b = lineages[snode]
 
-        # init gene counts
-        counts = dict((n.name, 0) for n in stree)
-        counts.update(leaf_counts)
-
-        # init reconciliation
-        recon = {}
-
-        # subtrees
-        subtrees = {}
-
-        # loop through species tree
-        for snode in queue:
-            # simulate population for one branch
-            k = counts[snode.name]
-
-            if snode != sroot:
-                # non basal branch
-                subtree, lineages = sample_censored_coal_tree(
-                    k, popsizes[snode.name], snode.dist, capped=True)
-                queue.push(snode.parent, len(snode.parent.children))
-            else:
-                # basal branch
-                subtree = sample_coal_tree(k, popsizes[snode.name])
-                lineages = subtree.root
-            subtrees[snode] = (subtree, lineages)
-            if snode != sroot:
-                counts[snode.parent.name] += len(lineages)
-            for node in subtree:
-                recon[node] = snode
-
-        # stitch subtrees together
-        tree = treelib.Tree()
-
-        # add all nodes to total tree
-        for subtree, lineages in subtrees.values():
-            tree.merge_names(subtree)
-            tree.remove(subtree.root)
-            del recon[subtree.root]
-
-        for snode in subtrees:
-            if not snode.is_leaf():
-                subtree, lineages = subtrees[snode]
-
-                # get lineages from child subtrees
-                lineages2 = chain(*[subtrees[child][1]
-                                    for child in snode.children])
-
-                # ensure leaves are randomly attached
-                leaves = subtree.leaves()
-                random.shuffle(leaves)
-
-                # stitch leaves of the subtree to children subtree lineages
-                for leaf, lineage in izip(leaves, lineages2):
-                    tree.add_child(leaf, lineage)
-
-
-        # set root
-        tree.root = subtrees[sroot][0].root
-        tree.add(tree.root)
-        recon[tree.root] = sroot
-
-
-        # reject tree if basal branch goes past deadline
-        times = treelib.get_tree_timestamps(tree)        
-        if times[tree.root] < T:
-            break
+        if snode != sroot:
+            # non basal branch
+            subtree, remain = sample_coal_cond_counts_tree(
+                a, b, snode.dist, popsizes[snode.name], capped=True)
+            queue.push(snode.parent, len(snode.parent.children))
         else:
-            reject += 1
-            #print "reject", reject, times[tree.root], T
-    '''
+            # basal branch
+            subtree = sample_bounded_coal_tree(a, popsizes[snode.name],
+                                               T - stimes[snode])
+            remain = [subtree.root]
+        subtrees[snode] = (subtree, remain)
+        for node in subtree:
+            recon[node] = snode    
+
+    # stitch subtrees together
+    tree = treelib.Tree()
+
+    # add all nodes to total tree
+    for snode, (subtree, remain) in subtrees.iteritems():
+        tree.merge_names(subtree)
+        tree.remove(subtree.root)
+        del recon[subtree.root]
+    
+    for snode in subtrees:
+        if snode not in sleaves: # not snode.is_leaf():
+            subtree, remain = subtrees[snode]
+
+            # get lineages from child subtrees
+            lineages2 = chain(*[subtrees[child][1]
+                                for child in snode.children])
+
+            # ensure leaves are randomly attached
+            leaves = subtree.leaves()
+            random.shuffle(leaves)
+
+            # stitch leaves of the subtree to children subtree lineages
+            for leaf, lineage in izip(leaves, lineages2):
+                tree.add_child(leaf, lineage)
+
+
+    # set root
+    tree.root = subtrees[sroot][0].root
+    tree.add(tree.root)
+    recon[tree.root] = sroot
+
+    # reject tree if basal branch goes past deadline
+    #times = treelib.get_tree_timestamps(tree)
+    #assert times[tree.root] < T, times[tree.root]
 
     # name leaves
     for leaf in tree.leaves():
         tree.rename(leaf.name, namefunc(recon[leaf].name))
-        
+    
     return tree, recon
 
 
@@ -1890,6 +1937,53 @@ def prob_multicoal_recon_topology_old(tree, recon, stree, n,
             lnp += log(birthdeath.num_topology_histories(subtree, leaves))
 
     return lnp
+
+
+def calc_prob_counts_table_old(gene_counts, T, stree, popsizes,
+                               sroot, sleaves, stimes):
+
+    root_time = T - stimes[sroot]
+
+    # use dynamic programming to calc prob of lineage counts
+    prob_counts = {}
+    def walk(node):
+        if node in sleaves:
+            # leaf case
+            M = gene_counts[node.name]
+            prob_counts[node] = [0.0] * (M+1)
+            prob_counts[node][M] = 1.0
+            return M
+        
+        else:
+            # internal node case
+            assert len(node.children) == 2
+            c1 = node.children[0]
+            c2 = node.children[1]
+            ptime = stimes[node]
+            t1 = ptime - stimes[c1]   # c1.dist
+            t2 = ptime - stimes[c2]   # c2.dist
+            M1 = walk(c1)
+            M2 = walk(c2)
+            M = M1 + M2 # max lineage counts in this snode
+            n1 = popsizes[c1.name]
+            n2 = popsizes[c2.name]
+
+            prob_counts[node] = [0, 0]
+            for k in xrange(2, M+1):
+                prob_counts[node].append(sum(
+                    sum(prob_coal_counts(i, m, t1, n1) *
+                        prob_counts[c1][i]
+                        for i in xrange(m, M1+1)) * 
+                    sum(prob_coal_counts(i, k-m, t2, n2) *
+                        prob_counts[c2][i]
+                        for i in xrange(k-m, M2+1))
+                    for m in xrange(1, k)))
+
+            assert abs(sum(prob_counts[node]) - 1.0) < .001
+            return M
+    M = walk(sroot)
+
+    return prob_counts
 
 
 # this is depreciated; replaced by prob_fix method using new legendre method

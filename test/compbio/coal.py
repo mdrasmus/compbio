@@ -159,7 +159,27 @@ class Coal (unittest.TestCase):
             #    x, a, b, t, n), 40)
             show_plot()
 
-            
+
+    def test_sample_coal_cond_counts(self):
+
+        # test coalescent pdf when conditioned on future lineage counts
+
+        a = 5
+        for b in xrange(2, a):
+            t = 500
+            n = 1000
+            p = plotfunc(lambda x: coal.prob_coal_cond_counts(
+                x, a, b, t, n), 0, t, 10)
+
+            # draw single coal samples using rejection sampling
+            s = [coal.sample_coal_cond_counts(a, b, t, n)
+                 for i in xrange(1000)]
+            plotdistrib(s, 50, plot=p)
+
+            print eq_sample_pdf(s, lambda x: coal.prob_coal_cond_counts(
+                x, a, b, t, n), 40)
+            show_plot()
+
 
     def test_sample_coal_tree(self):
         n = 1000
@@ -174,6 +194,7 @@ class Coal (unittest.TestCase):
             10, n, 300, capped=True)
         draw_tree(tree, scale=.01)
         #show_tree(tree)
+        
 
     def test_prob_counts(self):
         print coal.prob_coal_counts(2, 2, 48e6, 20000)
@@ -443,8 +464,13 @@ def test_bounded_multicoal_tree(stree, n, T, nsamples):
     for i in xrange(nsamples):
 
         # use rejection sampling
-        tree, recon = coal.sample_bounded_multicoal_tree_reject(
+        #tree, recon = coal.sample_bounded_multicoal_tree_reject(
+        #    stree, n, T, namefunc=lambda x: x)
+
+        # sample tree
+        tree, recon = coal.sample_bounded_multicoal_tree(
             stree, n, T, namefunc=lambda x: x)
+
         
         top = phylo.hash_tree(tree)
         tops.setdefault(top, [0, tree, recon])[0] += 1
@@ -568,7 +594,7 @@ class BMC (unittest.TestCase):
             "((A:1000, B:1000):500, (C:700, D:700):800);")
         n = 500
         T = 2000
-        nsamples = 5000
+        nsamples = 10000
         tab, tops = test_bounded_multicoal_tree(stree, n, T, nsamples)
         print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
 

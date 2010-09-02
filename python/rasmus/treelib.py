@@ -1251,7 +1251,7 @@ def reorder_tree(tree, tree2):
 # timestamps
 
 
-def get_tree_timestamps(tree, root=None, leaves=None):
+def get_tree_timestamps(tree, root=None, leaves=None, times=None):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
@@ -1263,11 +1263,12 @@ def get_tree_timestamps(tree, root=None, leaves=None):
         root = tree.root
 
     esp = .001
-    times = {}
+    if times is None:
+        times = {}
 
     def walk(node):
         if node.is_leaf() or (leaves and node in leaves):
-            t = 0.0
+            t = times.get(node, 0.0)
         else:
             t2 = None
             for child in node.children:

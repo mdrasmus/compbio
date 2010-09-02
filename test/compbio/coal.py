@@ -43,6 +43,124 @@ class Coal (unittest.TestCase):
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
         show_plot()
 
+
+    def test_prob_coal_cond_counts_simple(self):
+
+        # when we condition on b=1, it is the same as the bounded coal
+        # PDF.
+        # prob_coal_cond_counts is actually a more general version of
+        # prob_bounded_coal
+        a = 5
+        b = 1
+        t = 2000
+        n = 1000
+        p = plotfunc(lambda x: coal.prob_coal_cond_counts_simple(
+            x, a, b, t, n), 0, 2000, 10)
+        plotfunc(lambda x: coal.prob_bounded_coal(x, a, n, t), 0, 2000, 10,
+                 ymin=0, plot=p)
+        
+        show_plot()
+
+
+    def test_prob_coal_cond_counts(self):
+
+        # match against a simpler slower implementation
+        a = 5
+        b = 3
+        t = 2000
+        n = 1000
+        p = plotfunc(lambda x: coal.prob_coal_cond_counts(
+            x, a, b, t, n), 0, 2000, 10)
+        plotfunc(lambda x: coal.prob_coal_cond_counts_simple(
+            x, a, b, t, n), 0, 2000, 10, plot=p)
+        
+        show_plot()
+
+    def test_prob_coal_cond_counts2_simple(self):
+
+        # test coalescent pdf when conditioned on future lineage counts
+
+        a = 5
+        for b in xrange(2, a):
+            t = 500
+            n = 1000
+            p = plotfunc(lambda x: coal.prob_coal_cond_counts_simple(
+                x, a, b, t, n), 0, t, 10)
+
+            # draw single coal samples using rejection sampling
+            x2 = []
+            for i in xrange(1000):
+                while True:
+                    times = coal.sample_coal_times(a, n)
+                    if times[a-b-1] < t and (b == 1 or times[a-b]) > t:
+                        break
+                x2.append(times[0])
+
+            plotdistrib(x2, 50, plot=p)
+
+            print eq_sample_pdf(x2,
+                                lambda x: coal.prob_coal_cond_counts_simple(
+                x, a, b, t, n), 40)
+            show_plot()
+
+
+    def test_prob_coal_cond_counts2(self):
+
+        # test coalescent pdf when conditioned on future lineage counts
+
+        a = 5
+        for b in xrange(2, a):
+            t = 500
+            n = 1000
+            p = plotfunc(lambda x: coal.prob_coal_cond_counts(
+                x, a, b, t, n), 0, t, 10)
+
+            # draw single coal samples using rejection sampling
+            x2 = []
+            for i in xrange(1000):
+                while True:
+                    times = coal.sample_coal_times(a, n)
+                    if times[a-b-1] < t and (b == 1 or times[a-b]) > t:
+                        break
+                x2.append(times[0])
+
+            plotdistrib(x2, 50, plot=p)
+
+            eq_sample_pdf(x2, lambda x: coal.prob_coal_cond_counts(
+                x, a, b, t, n), 40)
+            show_plot()
+
+
+    def test_cdf_coal_cond_counts(self):
+
+        # test coalescent pdf when conditioned on future lineage counts
+
+        a = 5
+        for b in xrange(2, a):
+            t = 500
+            n = 1000
+            p = plotfunc(lambda x: coal.cdf_coal_cond_counts(
+                x, a, b, t, n), 0, t, 10)
+
+            # draw single coal samples using rejection sampling
+            s = []
+            for i in xrange(1000):
+                while True:
+                    times = coal.sample_coal_times(a, n)
+                    if times[a-b-1] < t and (b == 1 or times[a-b] > t):
+                        break
+                s.append(times[0])
+
+            x2, y2 = stats.cdf(s)
+            p.plot(x2, y2, style='lines')
+
+            #print eq_sample_pdf(x2,
+            #                    lambda x: coal.prob_coal_cond_counts(
+            #    x, a, b, t, n), 40)
+            show_plot()
+
+            
+
     def test_sample_coal_tree(self):
         n = 1000
         tree = coal.sample_coal_tree(10, n)
@@ -423,7 +541,8 @@ class BMC (unittest.TestCase):
     def test_cdf_BMC(self):
 
         # test cdf mrca BMC
-        stree = treelib.parse_newick("((A:1000, B:1000):500, (C:700, D:700):800);")
+        stree = treelib.parse_newick(
+            "((A:1000, B:1000):500, (C:700, D:700):800);")
         n = 1000
         gene_counts = dict.fromkeys(stree.leaf_names(), 1)
         T = 2000
@@ -445,7 +564,8 @@ class BMC (unittest.TestCase):
     def test_recon(self):
         
         # test multicoal_tree on simple 4 species tree
-        stree = treelib.parse_newick("((A:1000, B:1000):500, (C:700, D:700):800);")
+        stree = treelib.parse_newick(
+            "((A:1000, B:1000):500, (C:700, D:700):800);")
         n = 500
         T = 2000
         nsamples = 5000
@@ -454,7 +574,46 @@ class BMC (unittest.TestCase):
 
         a, b = tab[:20].cget("percent", "prob")
         fequals(a, b, rel=.05, eabs=.005)
+
+
+
+    def test_prob_coal(self):
+
+        # test the waiting time PDF of a coal in the BMC
+        stree = treelib.parse_newick(
+            "(((A:700, B:700):300, E:1000):500, (C:700, D:700):800);")
+        n = 500
+        T = 1700
+        nsamples = 5000
+
+        t = 200
+        u = stree.nodes["A"].parent.parent
+        ucount = 3
+        utime = 1000
+        gene_counts = None
+
+        c = 1.0 - exp(coal.prob_no_coal_bmc(
+            u, utime, ucount, gene_counts, T, stree, n,
+            sroot=None, sleaves=None, stimes=None,
+            tree=None, recon=None))
+
+        def pdf(t):
+            return c * exp(coal.prob_coal_bmc(
+                t, u, utime, ucount, gene_counts, T, stree, n,
+                sroot=None, sleaves=None, stimes=None,
+                tree=None, recon=None))
         
+
+        print "sum", integrate(pdf, 0, 500, 1)
+        print "coal", c
+
+
+        p = plotfunc(pdf, 0, 500, 10)
+        plotfunc(lambda t: coal.prob_coal(t, ucount, n), 0, 500, 10, plot=p)
+        show_plot()
+
+        draw_tree_names(stree, maxlen=8)
+            
 
 
 #=============================================================================

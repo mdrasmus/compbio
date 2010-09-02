@@ -78,7 +78,7 @@ class LinkedList (object):
             yield node
             node = prev
 
-    def remove_node(self):
+    def remove_node(self, node):
         """Remove node from list"""
 
         if node.prev is not None:
@@ -102,36 +102,40 @@ class LinkedList (object):
 
     def append(self, item):
         """Append item to end of list"""
+
+        node = LinkedNode(item)
         
         if self._tail is None:
             # append first node
-            self._head = LinkedNode(item)
+            self._head = node
             self._tail = self._head
         else:
             # append to end of list
-            node = LinkedNode(item)
             self._tail.next = node
             node.prev = self._tail
             self._tail = node
 
         self._size += 1
+        return node
 
 
     def prepend(self, item):
         """Prepend item to front of list"""
 
+        node = LinkedNode(item)
+
         if self._head is None:
             # append first node
-            self._head = LinkedNode(item)
+            self._head = node
             self._tail = self._head
         else:
             # append to front of list
-            node = LinkedNode(item)
             self._head.prev = node
             node.next = self._head
             self._head = node
 
         self._size += 1
+        return node
 
     def extend(self, items):
         """Append many items to end of list"""
@@ -184,6 +188,28 @@ class LinkedList (object):
         self._size -= 1
 
         return item
+
+
+    def insert_after(self, node, item):
+        """Insert a new item after a node in the list"""
+
+        if node is None:
+            self.prepend(item)
+
+        # create new node
+        node2 = LinkedNode(item)
+        node2.prev = node
+        node2.next = node.next
+
+        # link surrounding nodes
+        node.next = node2
+        if node2.next:
+            node2.next.prev = node2
+        else:
+            self._tail = node2
+
+        self._size += 1
+        
     
     def clear(self):
         """Clear the list of all items"""

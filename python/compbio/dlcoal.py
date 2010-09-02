@@ -446,9 +446,7 @@ def sample_locus_coal_tree(stree, n, leaf_counts=None,
     n -- population size (int or dict)
          If n is a dict it must map from species name to population size
     """
-
-    # TODO: needs proper sampling from BMC
-
+    
     # initialize vector for how many genes per extant species
     if leaf_counts is None:
         leaf_counts = dict((l, 1) for l in stree.leaf_names())

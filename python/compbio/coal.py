@@ -933,13 +933,13 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
             queue.push(snode.parent, len(snode.parent.children))
             subtree, lineages = sample_censored_coal_tree(
                 k, popsizes[snode.name], snode.dist, capped=True)
+            counts[snode.parent.name] += len(lineages)
         else:
             # basal branch
             subtree = sample_coal_tree(k, popsizes[snode.name])
-            lineages = subtree.root
+            lineages = [subtree.root]
         subtrees[snode] = (subtree, lineages)
-        if snode != sroot:
-            counts[snode.parent.name] += len(lineages)
+        
         for node in subtree:
             recon[node] = snode
 
@@ -976,9 +976,15 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     recon[tree.root] = sroot
 
     # name leaves
-    for leaf in tree.leaves():
-        tree.rename(leaf.name, namefunc(recon[leaf].name))
-        
+    for node in tree:
+        if recon[node].is_leaf():
+            tree.rename(node.name, namefunc(recon[node].name))
+
+    #print "HERE"
+    #treelib.draw_tree_names(tree, maxlen=8)
+    #print "recon", [(x[0].name, x[1].name) for x in recon.items()]
+    
+
     return tree, recon
 
 
@@ -1050,6 +1056,7 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None, namefunc=None,
                 t = stimes[node.parent] - stimes[node]
             else:
                 t = T - stimes[node]
+            n = popsizes[node.name]
 
             reject = 0
             while True:
@@ -1059,7 +1066,6 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None, namefunc=None,
                     # accept
                     break
                 reject += 1
-                #print reject, b, k1+k2, prob_coal_counts(k1 + k2, b, t, n)
 
             # set linages counts
             lineages[node][0] = k1 + k2

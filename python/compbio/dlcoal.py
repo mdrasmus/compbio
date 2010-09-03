@@ -127,7 +127,7 @@ class DLCoalRecon (object):
 
     def eval_proposal(self, proposal):
         """Compute probability of proposal"""
-
+        
         # compute recon probability
         phylo.add_implied_spec_nodes(proposal["locus_tree"], self.stree,
                                      proposal["locus_recon"],
@@ -146,7 +146,7 @@ class DLCoalRecon (object):
                                        add_spec=False)
         treelib.remove_single_children(proposal["locus_tree"])
         phylo.subset_recon(proposal["locus_tree"], proposal["locus_recon"])
-
+        
         return p
 
 
@@ -266,9 +266,9 @@ def prob_dlcoal_recon_topology(coal_tree, coal_recon,
 
     Note: locus tree must have implied speciation nodes present
     """
-
+    
     dups = phylo.count_dup(locus_tree, locus_events)
-
+    
     # ensure implicit speciations are present
     if add_spec:
         phylo.add_implied_spec_nodes(locus_tree, stree,
@@ -409,8 +409,14 @@ def sample_dlcoal(stree, n, duprate, lossrate, namefunc=lambda x: x,
             phylo.subset_recon(coal_tree, coal_recon)
 
     if name_internal:
-        rename_nodes(coal_tree, name_internal)
-        rename_nodes(locus_tree, name_internal)
+        try:
+            rename_nodes(coal_tree, name_internal)
+            rename_nodes(locus_tree, name_internal)
+        except:
+            print
+            treelib.draw_tree_names(coal_tree, maxlen=8)
+            locus_tree.write()
+            raise
 
 
     # store extra information
@@ -433,10 +439,6 @@ def rename_nodes(tree, prefix="n"):
                 name2 = prefix + str(tree.new_name())
             tree.rename(node.name, name2)
 
-
-
-# TODO: still need to correctly implement this function.
-# use new sampling function for BMC.
 
 def sample_locus_coal_tree(stree, n, leaf_counts=None,
                            daughters=set(),
@@ -470,24 +472,25 @@ def sample_locus_coal_tree(stree, n, leaf_counts=None,
 
     # init reconciliation, events
     recon = {}
-
     subtrees = {}
 
     
-    def walk(node, leaves):
+    def walk(node, leaves, stubs):
         if node.is_leaf():
             leaves.append(node)
         else:
             for child in node.children:
                 if child in daughters:
                     leaves.append(child)
+                    stubs.append(child)
                 else:
-                    walk(child, leaves)
+                    walk(child, leaves, stubs)
 
     for snode in chain(daughters, [stree.root]):
         # determine leaves of the coal subtree
         leaves = []
-        walk(snode, leaves)
+        sstubs = []
+        walk(snode, leaves, sstubs)
 
         leaf_counts2 = {}
         for leaf in leaves:
@@ -499,7 +502,7 @@ def sample_locus_coal_tree(stree, n, leaf_counts=None,
                 leaf_counts2[leaf.name] = 1
 
         if snode.parent:
-            subtree, subrecon = coal.sample_bounded_multicoal_tree_reject(
+            subtree, subrecon = coal.sample_bounded_multicoal_tree(
                 stree, popsizes, stimes[snode.parent],
                 leaf_counts=leaf_counts2,
                 namefunc=namefunc, sleaves=leaves,
@@ -510,33 +513,27 @@ def sample_locus_coal_tree(stree, n, leaf_counts=None,
                 sleaves=leaves,
                 namefunc=namefunc)
 
-        subtrees[snode] = (subtree, leaves)
-        for n, s in subrecon.iteritems():
-            recon[n] = s
+        # determine stubs
+        stubs = []
+        for node in subtree:
+            if node.is_leaf() and subrecon[node] in sstubs:
+                stubs.append((node, subrecon[node]))
+        subtrees[snode] = (subtree, stubs)
+        recon.update(subrecon)
+
 
     # stitch subtrees together
     tree = treelib.Tree()
 
     # add all nodes to total tree
-    for snode, (subtree, leaves2) in subtrees.iteritems():
+    for snode, (subtree, stubs) in subtrees.iteritems():
         tree.merge_names(subtree)
-        if snode.parent:
-            tree.remove(subtree.root)
-            del recon[subtree.root]
-    
-    for snode, (subtree, leaves2) in subtrees.iteritems():
-        # get lineages from child subtrees
-        lineages = [subtrees[child][0].root for child in leaves2
-                    if child in subtrees]
 
-        # ensure leaves are randomly attached
-        leaves = [x for x in subtree.leaves() if x in daughters]
-        random.shuffle(leaves)
-
-        # stitch leaves of the subtree to children subtree lineages
-        for leaf, lineage in izip(leaves, lineages):
-            tree.add_child(leaf, lineage)
-
+    # stitch leaves of the subtree to children subtree lineages
+    for snode, (subtree, stubs) in subtrees.iteritems():
+        for leaf, snode in stubs:
+            child_subtree = subtrees[snode][0]
+            tree.add_child(leaf, child_subtree.root)
 
     # set root
     tree.root = subtrees[stree.root][0].root
@@ -544,7 +541,7 @@ def sample_locus_coal_tree(stree, n, leaf_counts=None,
     # name leaves
     for leaf in tree.leaves():
         tree.rename(leaf.name, namefunc(recon[leaf].name))
-        
+    
     return tree, recon
 
 
@@ -636,7 +633,7 @@ def sample_locus_coal_tree_old(stree, n, leaf_counts=None,
 
 
     # set root
-    tree.root = subtrees[stree.root][0].root
+    tree.root = subtrees[stree.root][0].root    
 
     # name leaves
     for leaf in tree.leaves():

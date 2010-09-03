@@ -21,6 +21,7 @@ def test_dlcoal_tree(locus_tree, n, daughters, nsamples):
     
     for i in xrange(nsamples):
 
+        '''
         # use rejection sampling
         while True:
             coal_tree, coal_recon = coal.sample_multicoal_tree(
@@ -32,7 +33,12 @@ def test_dlcoal_tree(locus_tree, n, daughters, nsamples):
                     break
             else:
                 break
-
+        '''
+        coal_tree, coal_recon = dlcoal.sample_locus_coal_tree(
+            locus_tree, n, leaf_counts=None,
+            daughters=daughters,
+            namefunc=lambda x: x)
+        #draw_tree_names(coal_tree, maxlen=8)
         
         top = phylo.hash_tree(coal_tree)
         tops.setdefault(top, [0, coal_tree, coal_recon])[0] += 1
@@ -76,14 +82,45 @@ class DLCoal (unittest.TestCase):
 
         locus_tree = ex["locus_tree"]
         daughters = ex["daughters"]
-        nsamples = 100
+        nsamples = 10000
         print
         draw_tree_names(locus_tree, maxlen=8)
         
         tab, tops = test_dlcoal_tree(locus_tree, n, daughters, nsamples)
         print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
 
+
+    def test2(self):
+
+        # params
+        locus_tree = treelib.parse_newick("""(
+             (
+              A_3:1000.000000,
+              B_4:1000.000000
+             ):500.000000,
+             (
+              (
+               C_8:700.000000,
+               D_9:700.000000
+              ):304.113591,
+              (
+               C_10:700.000000,
+               D_11:700.000000
+              ):304.113591
+             ):495.886409
+             );""")
+        n = 200
+        duprate = .000012
+        lossrate = .000011
+
+        daughters = set([locus_tree.nodes["C_8"].parent])
+        nsamples = 10000
+        print
+        draw_tree_names(locus_tree, maxlen=8)
         
+        tab, tops = test_dlcoal_tree(locus_tree, n, daughters, nsamples)
+        print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
+
 
 
 

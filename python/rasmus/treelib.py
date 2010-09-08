@@ -879,11 +879,11 @@ parseNewick = parse_newick
 def assert_tree(tree):
     """Assert that the tree is internally consistent"""
     
-    visited = {}
+    visited = set()
     def walk(node):
         assert node.name in tree.nodes
         assert node.name not in visited
-        visited[node.name] = 1
+        visited.add(node.name)
         if node.parent:
             assert node in node.parent.children
         for child in node.children:

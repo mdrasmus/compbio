@@ -553,7 +553,7 @@ class MultiCoal (unittest.TestCase):
 
 class BMC (unittest.TestCase):
 
-    def test_cdf_BMC_simple(self):
+    def test_cdf_bmc_simple(self):
 
         # test cdf mrca BMC
         stree = treelib.parse_newick("((A:1000, B:1000):500, C:1500);")
@@ -564,7 +564,7 @@ class BMC (unittest.TestCase):
         print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
 
 
-    def test_cdf_BMC(self):
+    def test_cdf_bmc(self):
 
         # test cdf mrca BMC
         stree = treelib.parse_newick(
@@ -602,7 +602,51 @@ class BMC (unittest.TestCase):
         fequals(a, b, rel=.05, eabs=.005)
 
 
+    def test_top(self):
 
+        stree = treelib.parse_newick(
+        "(((A:200, E:200):800, B:1000):500, (C:700, D:700):800);")
+        n = 500
+        T = 2000
+        nsamples = 10000
+
+        # compare top hist with simpler rejection sampling
+        tops = {}
+        tops2 = {}
+    
+        for i in xrange(nsamples):
+            if i % (nsamples // 100) == 0:
+                print i
+            # use rejection sampling
+            tree, recon = coal.sample_bounded_multicoal_tree_reject(
+                stree, n, T, namefunc=lambda x: x)
+
+            # sample tree
+            tree2, recon2 = coal.sample_bounded_multicoal_tree(
+                stree, n, T, namefunc=lambda x: x)
+
+            top = phylo.hash_tree(tree)
+            top2 = phylo.hash_tree(tree2)
+            
+            tops.setdefault(top, [0, tree, recon])[0] += 1
+            tops.setdefault(top2, [0, tree2, recon2])
+            
+            tops2.setdefault(top2, [0, tree2, recon2])[0] += 1
+            tops2.setdefault(top, [0, tree, recon])
+
+
+        keys = tops.keys()
+        x = [safelog(tops[i][0], default=0) for i in keys]
+        y = [safelog(tops2[i][0], default=0) for i in keys]
+
+        p = plot(x, y)
+        p.plot([min(x), max(x)], [min(x), max(x)], style="lines")
+        show_plot()
+    
+        
+
+
+    '''
     def test_prob_coal(self):
 
         # test the waiting time PDF of a coal in the BMC
@@ -639,7 +683,7 @@ class BMC (unittest.TestCase):
         show_plot()
 
         draw_tree_names(stree, maxlen=8)
-            
+    '''
 
 
 #=============================================================================

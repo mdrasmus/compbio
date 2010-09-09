@@ -21,8 +21,6 @@ from rasmus import util
 from . import fasta
 
 
-# NOTE: camelCase names are DEPRECATED
-
 
 #=============================================================================
 # gene to species mapping functions
@@ -153,7 +151,6 @@ def label_events(gtree, recon):
     walk(gtree.root)
     
     return events
-labelEvents = label_events
 
 
 def label_events_node(node, recon):
@@ -164,7 +161,6 @@ def label_events_node(node, recon):
             return "spec"
     else:
         return "gene"
-labelEventsNode = label_events_node
 
 
 def find_loss_node(node, recon):
@@ -613,7 +609,6 @@ def recon_root(gtree, stree, gene2species = gene2species,
         treelib.reroot(gtree, node1.name, newCopy=False)
     
     return gtree
-reconRoot = recon_root
 
 
 def midroot_recon(tree, stree, recon, events, params, generate):
@@ -679,8 +674,6 @@ def midroot_recon(tree, stree, recon, events, params, generate):
     
     node1.dist = mid * generate
     node2.dist = (totdist - mid) * generate
-
-
 
 
 
@@ -847,7 +840,6 @@ def find_branch_distrib(trees, stree, gene2species = gene2species,
     used = []
 
     for tree in trees:
-        #tree = reconRoot(tree, stree, gene2species, newCopy=False)
         recon = reconcile(tree, stree, gene2species)
         events = label_events(tree, recon)
         
@@ -1290,7 +1282,7 @@ def least_square_error(tree, distmat, genes, forcePos=True, weighting=False):
             dists.append(distmat[i][j])
     
     # create topology matrix
-    topmat, edges = makeTopologyMatrix(tree, genes)
+    topmat, edges = make_topology_matrix(tree, genes)
     
     # setup matrix and vector
     if weighting:
@@ -1318,8 +1310,8 @@ def least_square_error(tree, distmat, genes, forcePos=True, weighting=False):
     paths = paths.tolist()
     
     # set branch lengths
-    setBranchLengths(tree, edges, edgelens, paths, resids, 
-                     topmat=topmat, rootedge=rootedge)
+    set_branch_lengths_from_matrix(tree, edges, edgelens, paths, resids, 
+                                   topmat=topmat, rootedge=rootedge)
     
     return util.Bundle(resids=resids, 
                        paths=paths, 
@@ -1327,23 +1319,7 @@ def least_square_error(tree, distmat, genes, forcePos=True, weighting=False):
                        topmat=topmat)
 
 
-
-def makeWeightMatrix(topmat, paths):
-    import scipy
-    
-    weightmat = scipy.transpose(topmat)
-    
-    
-    for row in weightmat:
-        tot = sum(row)
-        
-        for i in xrange(len(row)):
-            row[i] *= 1.0 #* float(paths[i])
-    
-    return weightmat
-
-
-def makeTopologyMatrix(tree, genes):
+def make_topology_matrix(tree, genes):
 
     # find how edges split vertices
     network = treelib.tree2graph(tree)
@@ -1368,8 +1344,8 @@ def makeTopologyMatrix(tree, genes):
     return topmat, edges
 
 
-def setBranchLengths(tree, edges, edgelens, paths, resids, 
-                     topmat=None, rootedge=None):
+def set_branch_lengths_from_matrix(tree, edges, edgelens, paths, resids, 
+                                   topmat=None, rootedge=None):
     # recreate rooting branches
     if rootedge != None:
         # restore original rooting
@@ -1509,6 +1485,7 @@ def find_branch_splits(tree):
     
     return splits2
 
+
 def find_splits(tree):
     """Find branch splits for a tree"""
     
@@ -1545,10 +1522,9 @@ def find_splits(tree):
             splits.append((set1, set2))
     
     return splits
-findSplits = find_splits
 
 
-def splitString(split, leaves=None, leafDelim=" ", splitDelim="|"):
+def split_string(split, leaves=None, leafDelim=" ", splitDelim="|"):
     """
     Returns a string representing a split
 
@@ -1563,7 +1539,7 @@ def splitString(split, leaves=None, leafDelim=" ", splitDelim="|"):
     return leafDelim.join(split[0]) + splitDelim + leafDelim.join(split[1])
 
 
-def splitBitString(split, leaves=None, char1="*", char2=".", nochar=" "):
+def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
     """Returns a bit string representation of a split"""
 
     if leaves is None:
@@ -1598,7 +1574,6 @@ def robinson_foulds_error(tree1, tree2):
         return 0.0
     else:
         return 1 - (len(overlap) / denom)
-robinsonFouldsError = robinson_foulds_error
 
 
 #=============================================================================

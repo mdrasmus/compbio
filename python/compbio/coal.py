@@ -502,7 +502,7 @@ def cdf_mrca_bounded_multicoal(gene_counts, T, stree, n,
     if sroot is None:
         sroot = stree.root
     if sleaves is None:
-        sleaves = sroot.leaves()
+        sleaves = set(sroot.leaves())
 
     if len(sleaves) == 0:
         return 0.0
@@ -606,10 +606,10 @@ def prob_coal_bmc(t, u, utime, ucount, gene_counts, T, stree, n,
 
     # find relevent leaves of stree (u should be treated as a leaf)
     if sleaves is None:
-        sleaves = []
+        sleaves = set()
         def walk(node):    
             if node.is_leaf() or node == u:
-                sleaves.append(node)
+                sleaves.add(node)
             else:
                 for child in node.children:
                     walk(child)
@@ -676,10 +676,10 @@ def prob_no_coal_bmc(u, utime, ucount, gene_counts, T, stree, n,
 
     # find relevent leaves of stree (u should be treated as a leaf)
     if sleaves is None:
-        sleaves = []
+        sleaves = set()
         def walk(node):    
             if node.is_leaf() or node == u:
-                sleaves.append(node)
+                sleaves.add(node)
             else:
                 for child in node.children:
                     walk(child)
@@ -895,7 +895,7 @@ def sample_multicoal_tree(stree, n, leaf_counts=None,
     """
 
     if sleaves is None:
-        sleaves = stree.leaves()
+        sleaves = set(stree.leaves())
     if sroot is None:
         sroot = stree.root
 
@@ -1014,7 +1014,7 @@ def sample_bounded_multicoal_tree(stree, n, T, leaf_counts=None, namefunc=None,
 
     # initialize vector for how many genes per extant species
     if sleaves is None:
-        sleaves = stree.leaves()
+        sleaves = set(stree.leaves())
     if sroot is None:
         sroot = stree.root
     if leaf_counts is None:
@@ -1227,7 +1227,7 @@ def sample_bounded_multicoal_tree_reject(stree, n, T, leaf_counts=None,
 
     # initialize vector for how many genes per extant species
     if sleaves is None:
-        sleaves = stree.leaves()
+        sleaves = set(stree.leaves())
     if sroot is None:
         sroot = stree.root
     if leaf_counts is None:

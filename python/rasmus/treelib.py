@@ -111,6 +111,11 @@ class TreeNode:
         out.write(str(self.dist))
     writeData = write_data
 
+    def __repr__(self):
+        """Returns a representation of the node"""
+
+        return "<node %s>" % self.name
+
 
 # class for managing branch data
 class BranchData (object):

@@ -6,7 +6,6 @@ from rasmus import stats
 from rasmus.testing import *
 
 from compbio import coal
-reload(coal)
 
 
 

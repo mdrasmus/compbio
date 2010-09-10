@@ -313,14 +313,19 @@ def find_orthologs(gtree, stree, recon, counts=True):
 
 
 
-def subset_recon(tree, recon):
+def subset_recon(tree, recon, events=None):
     """Ensure the reconciliation only refers to nodes in tree"""
 
     # get all nodes that are walkable
     nodes = set(tree.postorder())
-    for node, snode in recon.items():
+    for node in list(recon):
         if node not in nodes:
             del recon[node]
+    if events:
+        for node in list(events):
+            if node not in nodes:
+                del events[node]
+        
 
 
 #=============================================================================
@@ -1084,6 +1089,143 @@ def propose_random_nni(tree):
     #assert a.parent.parent == b.parent
 
     return node1, node2, random.randint(0, 1)
+
+
+
+#=============================================================================
+# reconciliation rearrangements
+
+def change_recon_up(recon, node, events=None):
+    """
+    Move the mapping of a node up one branch
+    """
+        
+    if events is not None and events[node] == "spec":
+        # promote speciation to duplication
+        # R'(v) = e(R(u))
+        events[node] = "dup"
+    else:
+        # R'(v) = p(R(u))
+        recon[node] = recon[node].parent
+
+
+def change_recon_down(recon, node, schild, events=None):
+    """
+    Move the mapping of a node down one branch
+    """
+
+    if events is not None and recon[node] == schild:
+        events[node] = "spec"
+    else:
+        recon[node] = schild
+
+
+def can_change_recon_up(recon, node, events=None):
+    """Returns True is recon can remap node one 'step' up"""
+
+    if events is not None and events[node] == "spec" and not node.is_leaf():
+        # promote speciation to duplication
+        return True
+    else:
+        # move duplication up one branch
+        rnode = recon[node]
+        prnode = rnode.parent
+
+        # rearrangement is valid if
+        return (not node.is_leaf() and 
+            prnode is not None and #  1. there is parent sp. branch
+            (node.parent is None or # 2. no parent to restrict move
+             rnode != recon[node.parent] # 3. not already matching parent
+             ))
+
+
+def enum_recon(tree, stree, depth=None,
+               step=0, preorder=None,
+               recon=None, events=None,
+               gene2species=None):
+    """
+    Enumerate reconciliations between a gene tree and a species tree
+    """
+    
+    if recon is None:
+        recon = reconcile(tree, stree, gene2species)
+        events = label_events(tree, recon)
+
+    if preorder is None:
+        preorder = list(tree.preorder())
+
+    # yield current recon
+    yield recon, events
+
+    if depth is None or depth > 0:
+        for i in xrange(step, len(preorder)):
+            node = preorder[i]
+            if can_change_recon_up(recon, node, events):
+                schild = recon[node]
+                change_recon_up(recon, node, events)
+            
+                # recurse
+                depth2 = depth - 1 if depth is not None else None
+                for r, e in enum_recon(tree, stree, depth2,
+                                       i, preorder,
+                                       recon, events):
+                    yield r, e
+            
+                change_recon_down(recon, node, schild, events)
+
+
+
+    
+'''
+class EnumRecon (object):
+    """
+    Enumerate reconciliations between a gene tree and species tree
+    """
+
+    def __init__(self, tree, stree, depth=1,
+                 step=-1, preorder=None,
+                 recon=None, events=None,
+                 gene2species=None):
+        self.tree = tree
+        self.stree = stree
+        self.depth = 1
+        self.step = step
+
+        if recon:
+            self.recon = recon
+            self.events = events
+        else:
+            self.recon = reconcile(tree, stree, gene2species)
+            self.events = label_events(tree, self.recon)
+
+        if preorder:
+            self.preorder = preorder
+        else:
+            self.preorder = list(tree.preorder())
+            
+        
+        self.sprev = None
+
+
+    def __iter__(self):
+        return self
+
+    
+    def next(self):
+        if self.step >= 0:
+            # perform a rearrangement
+            if self.step >= len(self.preorder):
+                # no more mappings to move up, take 1 step back
+                change_recon_down(self.recon, node, schild, self.events)
+            
+            node = self.preorder[self.step]
+            if can_change_recon_up(self.recon, node, self.events):
+                self.sprev = self.recon[node]
+                change_recon_up(self.recon, node, self.events)
+        self.step += 1
+        
+        return self.recon
+'''
 
 
 

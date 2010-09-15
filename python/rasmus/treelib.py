@@ -1099,7 +1099,7 @@ def graph2tree(mat, root, closedset=None):
     return tree
 
 
-def remove_single_children(tree):
+def remove_single_children(tree, simplify_root=True):
     """
     Remove all nodes from the tree that have exactly one child
     
@@ -1111,15 +1111,6 @@ def remove_single_children(tree):
     removed = [node
                for node in tree
                if len(node.children) == 1 and node.parent]
-            
-
-    """
-    def walk(node):
-        if len(node.children) == 1 and node.parent:
-            removed.append(node)
-        node.recurse(walk)
-    walk(tree.root)
-    """
     
     # actually remove children
     for node in removed:
@@ -1137,7 +1128,7 @@ def remove_single_children(tree):
         del tree.nodes[node.name]
 
     # remove singleton from root
-    if len(tree.root.children) == 1:
+    if simplify_root and len(tree.root.children) == 1:
         oldroot = tree.root
         tree.root = tree.root.children[0]
         oldroot.children = []
@@ -1146,7 +1137,7 @@ def remove_single_children(tree):
         tree.root.dist += oldroot.dist
     
     return removed
-removeSingleChildren = remove_single_children
+
 
 
 def remove_exposed_internal_nodes(tree, leaves=None):
@@ -1178,7 +1169,7 @@ def remove_exposed_internal_nodes(tree, leaves=None):
         if node.is_leaf() and node not in stay:
             tree.remove(node)
     walk(tree.root)
-removeExposedInternalNodes = remove_exposed_internal_nodes
+
 
 
 def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
@@ -1189,12 +1180,11 @@ def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
     
     remove_set = set(tree.leaf_names()) - set(leaf_names)
     for sp in remove_set:
-    	tree.remove(tree.nodes[sp])
+        tree.remove(tree.nodes[sp])
     remove_exposed_internal_nodes(tree, [tree.nodes[x] for x in leaf_names])
-    remove_single_children(tree)
     
     return tree
-subtreeByLeafNames = subtree_by_leaf_names
+
 
 
 def reorder_tree(tree, tree2):

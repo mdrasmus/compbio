@@ -1568,7 +1568,7 @@ def sample_freq_CDF(p, N, t):
     
     if y < extinction:
         return 0.0 # sample an extinction event
-    elif y > 1.0 - prob_fix(p, N, t):
+    elif y > 1.0 - prob_fix_leg(leg_r, N, t): #prob_fix(p, N, t):
         return 1.0 # sample a fixation event
     else:
         def f(T):
@@ -1627,11 +1627,27 @@ def gegenbauer3(n, a, z):
 
 
 # TODO: determine proper k and esp values
-def prob_fix(p, n, t, k=100, esp=0.000001):
+def prob_fix(p, n, t, k=50, esp=0.000001):
     """Probability of fixation"""
     r = 1 - 2*p
     leg = legendre(r)
     prob = p
+    for i in xrange(1, k+1):
+        term = (.5 * (-1)**i * (leg(i-1) - leg(i+1)) *
+                 exp(-t * i * (i+1) / (4 * n)))
+        if term != 0.0 and abs(term) < esp:
+            return prob + term
+        prob += term
+
+    return prob
+
+
+# added 02 August 2010
+# saves information to leg_r
+def prob_fix_leg(leg_r, n, t, k=50, esp=0.000001):
+    """Probability of fixation"""
+    leg = leg_r 
+    prob = leg(True) # gets p
     for i in xrange(1, k+1):
         term = (.5 * (-1)**i * (leg(i-1) - leg(i+1)) *
                  exp(-t * i * (i+1) / (4 * n)))

@@ -279,7 +279,7 @@ def simSeq(tree, outfile, seqlen=999, mutaterate=[1.0],
 
     # evolve sequences down tree
     def walk(node, seq):
-        if node.isLeaf():
+        if node.is_leaf():
             # save sequence
             seqs[node.name] = seq
 

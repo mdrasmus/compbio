@@ -1207,8 +1207,8 @@ def spearman(vec1, vec2):
     assert len(vec1) == len(vec2), "vec1 and vec2 are not the same length"
     
     n = len(vec1)
-    rank1 = util.sortrank(vec1)
-    rank2 = util.sortrank(vec2)
+    rank1 = util.sortranks(vec1)
+    rank2 = util.sortranks(vec2)
     
     R = sum((vec1[i] - vec2[i])**2 for i in xrange(n))
     

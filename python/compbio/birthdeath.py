@@ -224,7 +224,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
                 def walk2(node):
                     node.recurse(walk2)
                     recon[node] = child
-                    if node.isLeaf():
+                    if node.is_leaf():
                         events[node] = "spec"
                         next_nodes.append(node)
                     else:

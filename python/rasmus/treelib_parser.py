@@ -16,84 +16,15 @@ tokens = (
 )
 
 
-"""
-   Tree --> Subtree ";" | Branch ";"
-   Subtree --> Leaf | Internal
-   Leaf --> Name
-   Internal --> "(" BranchSet ")" Name
-   BranchSet --> Branch | Branch "," BranchSet
-   Branch --> Subtree Length
-   Name --> empty | string
-   Length --> empty | ":" number
-"""
-
 
 t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
 
-'''
-def t_FLOAT(t):
-    r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
-    t.value = float(t.value)
-    return t
-'''
 
 t_DATA = r"[^,;\(\)]+"
 
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
 
-'''
-def _tree(p):
-    """
-    tree : branch ';'
-    """
-    p[0] = p[1]
-
-
-
-def subtree(p):
-    """subtree : "(" branch_set ")" NAME
-               | "(" branch_set ")" 
-               | NAME"""
-    if len(p) == 5:
-        p[0] = (p[2], p[4])
-    elif len(p) == 4:
-        p[0] = (p[2], "")
-    else:
-        p[0] = ([], p[1])
-
-
-def _subtree(p):
-    """subtree : "(" branch_set ")"
-               | NAME"""
-    if len(p) == 4:
-        p[0] = (p[2], "")
-    else:
-        p[0] = ([], p[1])
-
-
-def _branch_set(p):
-    """branch_set : branch "," branch_set
-                  | branch 
-    """
-
-    if len(p) == 2:
-        p[0] = [p[1]]
-    else:
-        p[0] = [p[1]] + p[3]
-    
-
-def _branch(p):
-    """
-    branch : subtree DATA
-           | subtree
-    """
-
-    if len(p) == 3:
-        p[0] = p[1] + (p[2],)
-    else:
-        p[0] = p[1] + ("",)
-'''
 
 #=============================================================================
 
@@ -158,6 +89,80 @@ if __name__ == "__main__":
 
 #=============================================================================
 # OLD parsing code
+
+
+
+"""
+   Tree --> Subtree ";" | Branch ";"
+   Subtree --> Leaf | Internal
+   Leaf --> Name
+   Internal --> "(" BranchSet ")" Name
+   BranchSet --> Branch | Branch "," BranchSet
+   Branch --> Subtree Length
+   Name --> empty | string
+   Length --> empty | ":" number
+"""
+
+'''
+def t_FLOAT(t):
+    r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
+    t.value = float(t.value)
+    return t
+'''
+
+'''
+def _tree(p):
+    """
+    tree : branch ';'
+    """
+    p[0] = p[1]
+
+
+
+def subtree(p):
+    """subtree : "(" branch_set ")" NAME
+               | "(" branch_set ")" 
+               | NAME"""
+    if len(p) == 5:
+        p[0] = (p[2], p[4])
+    elif len(p) == 4:
+        p[0] = (p[2], "")
+    else:
+        p[0] = ([], p[1])
+
+
+def _subtree(p):
+    """subtree : "(" branch_set ")"
+               | NAME"""
+    if len(p) == 4:
+        p[0] = (p[2], "")
+    else:
+        p[0] = ([], p[1])
+
+
+def _branch_set(p):
+    """branch_set : branch "," branch_set
+                  | branch 
+    """
+
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[0] = [p[1]] + p[3]
+    
+
+def _branch(p):
+    """
+    branch : subtree DATA
+           | subtree
+    """
+
+    if len(p) == 3:
+        p[0] = p[1] + (p[2],)
+    else:
+        p[0] = p[1] + ("",)
+'''
+
 
 '''
         # literals

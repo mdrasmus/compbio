@@ -81,7 +81,6 @@ class TreeNode:
     def is_leaf(self):
         """Returns True if the node is a leaf (no children)"""
         return len(self.children) == 0
-    isLeaf = is_leaf
     
     def recurse(self, func, *args):
         """Applies a function 'func' to the children of a node"""
@@ -104,7 +103,6 @@ class TreeNode:
     def leaf_names(self):
         """Returns the leaf names beneath the node in traversal order"""
         return [x.name for x in self.leaves()]
-    leafNames = leaf_names
     
     def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
@@ -558,7 +556,7 @@ class Tree:
         
         # default data writer
         if writeData == None:
-            writeData = self.writeData
+            writeData = self.write_data
         
         if not oneline:
             out.write(" " * depth)
@@ -1156,14 +1154,13 @@ def remove_exposed_internal_nodes(tree, leaves=None):
         # wether to keep it
         stay = set()
         for leaf in tree.leaves():
-            if isinstance(leaf.name, str):
+            if isinstance(leaf.name, basestring):
                 stay.add(leaf)
     
     # post order traverse tree
     def walk(node):
         # keep a list of children to visit, since they may remove themselves
-        children = copy.copy(node.children)
-        for child in children:
+        for child in list(node.children):
             walk(child)
 
         if node.is_leaf() and node not in stay:
@@ -1189,30 +1186,31 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
 
 
 
-def reorder_tree(tree, tree2):
+def reorder_tree(tree, tree2, reroot=True):
     """Reorders the branches of tree to match tree2"""
 
-    # reroot tree to match tree2
-    root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+    if reroot:
+        # reroot tree to match tree2
+        root_branches = [set(n.leaf_names()) for n in tree2.root.children]
 
-    def walk(node):
-        if node.is_leaf():
-            leaves = set([node.name])
-        else:
-            leaves = set()
-            for child in node.children:
-                l = walk(child)
-                if l is None:
-                    return None
-                leaves = leaves.union(l)
+        def walk(node):
+            if node.is_leaf():
+                leaves = set([node.name])
+            else:
+                leaves = set()
+                for child in node.children:
+                    l = walk(child)
+                    if l is None:
+                        return None
+                    leaves = leaves.union(l)
 
-        if leaves in root_branches:
-            # root found, terminate search
-            reroot(tree, node.name, newCopy=False)
-            return None
-            
-        return leaves
-    walk(tree.root)
+            if leaves in root_branches:
+                # root found, terminate search
+                reroot(tree, node.name, newCopy=False)
+                return None
+
+            return leaves
+        walk(tree.root)
 
     
 
@@ -1232,7 +1230,7 @@ def reorder_tree(tree, tree2):
                 leaf_sets.append(walk(child))
 
             scores = [mean(util.mget(leaf_lookup, l)) for l in leaf_sets]
-            rank = util.sortrank(scores)
+            rank = util.sortindex(scores)
             node.children = util.mget(node.children, rank)
 
             # return union
@@ -1242,6 +1240,39 @@ def reorder_tree(tree, tree2):
             return ret
 
     walk(tree.root)
+
+
+def set_tree_topology(tree, tree2):
+    """
+    Changes the topology of tree to match tree2
+
+    trees must have nodes with the same names
+    """
+
+    nodes = tree.nodes
+    nodes2 = tree2.nodes
+    
+    for node in tree:
+        node2 = nodes2[node.name]
+
+        # set parent
+        if node2.parent:
+            node.parent = nodes[node2.parent.name]
+        else:
+            node.parent = None
+        
+        # set children
+        if node.is_leaf():
+            assert node2.is_leaf()
+        else:
+            # copy child structure
+            node.children[:] = [nodes[n.name] for n in node2.children]
+
+    tree.root = nodes[tree2.root.name]
+
+    #assert_tree(tree2)
+    #assert_tree(tree)
+
 
 #=============================================================================
 # timestamps
@@ -1272,7 +1303,7 @@ def get_tree_timestamps(tree, root=None, leaves=None, times=None):
 
                 # ensure branch lengths are ultrametrix
                 if t2:                    
-                    assert abs(t - t2) < esp, (node.name, t, t2)
+                    assert abs(t - t2)/t < esp, (node.name, t, t2)
                 t2 = t
 
         times[node] = t
@@ -1288,7 +1319,7 @@ def check_timestamps(tree, times):
             if times[node.parent] - times[node] < 0.0 or \
                abs(((times[node.parent] - times[node]) -
                     node.dist)/node.dist) > .001:
-                treelib.draw_tree_names(tree, maxlen=7, minlen=7)
+                draw_tree_names(tree, maxlen=7, minlen=7)
                 util.printcols([(a.name, b) for a, b in times.items()])
                 print
                 print node.name, node.dist, times[node.parent] - times[node]

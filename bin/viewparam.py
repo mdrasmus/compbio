@@ -42,7 +42,7 @@ for name in stree.nodes:
     labels[name] = (blen - nchars) * "-" + nchars * "=" + " "
     
     # label internal nodes
-    if not stree.nodes[name].isLeaf():
+    if not stree.nodes[name].is_leaf():
         strnum = str(name)
         labels[name] = labels[name][:-len(strnum)-2] + strnum + "= "
 

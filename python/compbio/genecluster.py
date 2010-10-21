@@ -338,10 +338,10 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
         for child in node.children:
             walk(child)
 
-        if not node.isLeaf():
+        if not node.is_leaf():
             blastfiles = []
-            leaves1 = node.children[0].leafNames()
-            leaves2 = node.children[1].leafNames()
+            leaves1 = node.children[0].leaf_names()
+            leaves2 = node.children[1].leaf_names()
             
             # determine sibling blast files
             for leaf1 in leaves1:
@@ -355,7 +355,7 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
             outblastfiles = []
             if node.parent:
                 inleaves = leaves1 + leaves2
-                outleaves = set(node.parent.leafNames()) - set(inleaves)
+                outleaves = set(node.parent.leaf_names()) - set(inleaves)
                 
                 for leaf1 in inleaves:
                     for leaf2 in outleaves:

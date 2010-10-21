@@ -1,6 +1,6 @@
 #
 # Phylogeny functions
-# Matt Rasmussen 2006-2009
+# Matt Rasmussen 2006-2010
 # 
 
 
@@ -23,7 +23,7 @@ from . import fasta
 
 
 #=============================================================================
-# gene to species mapping functions
+# Gene to species mapping functions
 
 
 def gene2species(genename):
@@ -32,6 +32,11 @@ def gene2species(genename):
 
 
 def make_gene2species(maps):
+    """Returns a function that maps gene names to species names
+
+    maps -- a list of tuples [(gene_pattern, species_name), ... ]
+    """
+    
     # find exact matches and expressions
     exacts = {}
     exps = []
@@ -102,7 +107,7 @@ def reconcile(gtree, stree, gene2species=gene2species):
     def walk(node):
         node.recurse(walk)
         
-        if not node.isLeaf():
+        if not node.is_leaf():
             # this node's species is lca of children species  
             recon[node] = reconcile_lca(stree, order, 
                                        util.mget(recon, node.children))
@@ -154,7 +159,7 @@ def label_events(gtree, recon):
 
 
 def label_events_node(node, recon):
-    if not node.isLeaf():
+    if not node.is_leaf():
         if recon[node] in map(lambda x: recon[x], node.children):
             return "dup"
         else:
@@ -435,7 +440,7 @@ def count_dup_loss_tree(tree, stree, gene2species, recon=None):
 def count_ancestral_genes(stree):
     """count ancestral genes"""
     def walk(node):
-        if not node.isLeaf():
+        if not node.is_leaf():
             counts = []
             for child in node.children:
                 walk(child)
@@ -736,18 +741,18 @@ def get_orthologs(tree, events):
 # Tree hashing
 #
 
-def hash_tree_compose(child_hashes):
+def hash_tree_compose(child_hashes, node=None):
     return "(%s)" % ",".join(child_hashes)
 
 
-def hash_tree(tree, smap = lambda x: x):
+def hash_tree(tree, smap=lambda x: x, compose=hash_tree_compose):
     def walk(node):
-        if node.isLeaf():
+        if node.is_leaf():
             return smap(node.name)
         else:
             child_hashes = map(walk, node.children)
             child_hashes.sort()
-            return hash_tree_compose(child_hashes)
+            return compose(child_hashes, node)
     
     if isinstance(tree, treelib.Tree) or hasattr(tree, "root"):
         return walk(tree.root)
@@ -759,11 +764,11 @@ def hash_tree(tree, smap = lambda x: x):
 
 def hash_order_tree(tree, smap = lambda x: x):
     def walk(node):
-        if node.isLeaf():
+        if node.is_leaf():
             return smap(node.name)
         else:
             child_hashes = map(walk, node.children)
-            ind = util.sortrank(child_hashes)
+            ind = util.sortindex(child_hashes)
             child_hashes = util.mget(child_hashes, ind)
             node.children = util.mget(node.children, ind)
             return hash_tree_compose(child_hashes)
@@ -1006,7 +1011,7 @@ def add_implied_spec_nodes(tree, stree, recon, events):
 # local rearrangements
 
 
-def perform_nni(tree, node1, node2, change=0):
+def perform_nni(tree, node1, node2, change=0, rooted=True):
     """Proposes a new tree using Nearest Neighbor Interchange
        
        Branch for NNI is specified by giving its two incident nodes (node1 and 
@@ -1019,7 +1024,7 @@ def perform_nni(tree, node1, node2, change=0):
                /  \
          child[0]  child[1]
     
-    special case with rooted branch:
+    special case with rooted branch and rooted=False:
     
               node2
              /     \
@@ -1033,7 +1038,7 @@ def perform_nni(tree, node1, node2, change=0):
         node1, node2 = node2, node1  
     
     # try to see if edge is one branch (not root edge)
-    if treelib.is_rooted(tree) and \
+    if not rooted and treelib.is_rooted(tree) and \
        node2 == tree.root:
         # special case of specifying root edge
         if node2.children[0] == node1:
@@ -1089,6 +1094,155 @@ def propose_random_nni(tree):
     #assert a.parent.parent == b.parent
 
     return node1, node2, random.randint(0, 1)
+
+
+
+
+def perform_spr(tree, subtree, newpos):
+    """
+    Proposes new topology using Subtree Pruning and Regrafting (SPR)
+    
+        a = subtree
+        e = newpos
+
+        BEFORE
+                ....
+            f         d
+           /           \
+          c             e
+         / \           ...
+        a   b
+       ... ...
+
+        AFTER
+
+            f         d
+           /           \
+          b             c
+         ...           / \
+                      a   e
+                     ... ...
+
+        Requirements:
+        1. a (subtree) is not root or children of root
+        2. e (newpos) is not root, a, descendant of a, c (parent of a), or 
+           b (sibling of a)
+        3. tree is binary
+
+"""
+    a = subtree
+    e = newpos
+
+    c = a.parent
+    f = c.parent
+    bi = 1 if c.children[0] == a else 0
+    b = c.children[bi]
+    ci = 0  if f.children[0] == c else 1
+    d = e.parent
+    ei = 0 if d.children[0] == e else 1
+
+    d.children[ei] = c
+    c.children[bi] = e
+    f.children[ci] = b
+    b.parent = f
+    c.parent = d
+    e.parent = c
+
+
+
+
+def propose_random_spr(tree):
+    """
+    What if e == f  (also equivalent to NNI) this is OK
+
+    BEFORE
+    
+          d
+         / \
+        e  ...
+       / \
+      c  ...         
+     / \           
+    a   b
+   ... ...
+
+    AFTER
+          d
+         / \
+        c
+       / \
+      a   e
+     ... / \
+        b  ...
+       ...
+       
+  What if d == f  (also equivalent to NNI) this is OK
+  
+    BEFORE
+          
+        f
+       / \
+      c   e
+     / \  ...
+    a   b
+   ... ...
+
+    AFTER
+          
+        f
+       / \
+      b   c  
+     ... / \ 
+        a   e
+       ... ...  
+
+    Requirements:
+    1. a (subtree) is not root or children of root
+    2. e (newpos) is not root, a, descendant of a, c (parent of a), or 
+       b (sibling of a)
+    3. tree is binary
+    """
+
+    assert len(tree.nodes) >= 5, "Tree is too small"
+
+    # find subtree (a) to cut off (any node that is not root or child of root)
+    nodes = tree.nodes.values()
+    while True:
+        a = random.sample(nodes, 1)[0]
+        if (a.parent is not None and a.parent.parent is not None):
+            break
+    subtree = a
+    
+    # find sibling (b) of a
+    c = a.parent
+    bi = 1 if c.children[0] == a else 0
+    b = c.children[bi]
+    
+    # choose newpos (e)
+    e = None
+    while True:
+        e = random.sample(nodes, 1)[0]
+        
+        # test if e is a valid choice
+        if e.parent is None or e == a or e == c or e == b:
+            continue
+        
+        # also test if e is a descendent of a
+        under_a = False
+        ptr = e.parent
+        while ptr is not None:
+            if ptr == a:
+                under_a = True
+                break
+            ptr = ptr.parent
+        if under_a:
+            continue
+        
+        break
+    newpos = e
+
+    return subtree, newpos
+
 
 
 
@@ -1235,7 +1389,10 @@ class EnumRecon (object):
 class TreeSearch (object):
 
     def __init__(self, tree):
-        self.set_tree(tree)
+        self.tree = tree
+
+    def __iter__(self):
+        return self
 
     def set_tree(self, tree):
         self.tree = tree
@@ -1249,11 +1406,18 @@ class TreeSearch (object):
     def revert(self):
         raise
 
+    def reset(self):
+        pass
+
+    def next(self):
+        return self.propose()
+
 
 class TreeSearchNni (TreeSearch):
 
     def __init__(self, tree):
         TreeSearch.__init__(self, tree)
+        self.set_tree(tree)
 
     def set_tree(self, tree):
         self.tree = tree
@@ -1267,8 +1431,212 @@ class TreeSearchNni (TreeSearch):
         return self.tree
 
     def revert(self):
-        perform_nni(self.tree, self.node1, self.node2, self.child)
+        if self.node1 is not None:
+            perform_nni(self.tree, self.node1, self.node2, self.child)
         return self.tree
+
+    def reset(self):
+        self.node1 = None
+        self.node2 = None
+        self.child = None
+
+
+class TreeSearchSpr (TreeSearch):
+
+    def __init__(self, tree):
+        TreeSearch.__init__(self, tree)
+        self.set_tree(tree)
+
+    def set_tree(self, tree):
+        self.tree = tree
+        self.node1 = None
+        self.node2 = None
+
+    def propose(self):
+
+        # choose SPR move
+        self.node1, node3 = propose_random_spr(self.tree)
+        
+        # remember sibling of node1
+        p = self.node1.parent
+        self.node2 = (p.children[1] if p.children[0] == self.node1
+                      else p.children[0])
+
+        # perform SPR move
+        perform_spr(self.tree, self.node1, node3)
+        return self.tree
+
+    def revert(self):
+        if self.node1 is not None:
+            perform_spr(self.tree, self.node1, self.node2)
+        return self.tree
+
+    def reset(self):
+        self.node1 = None
+        self.node2 = None        
+
+
+class TreeSearchMix (TreeSearch):
+
+    def __init__(self, tree):
+        TreeSearch.__init__(self, tree)
+        self.total_weight = 0.0
+        self.last_propose = 0
+        self.methods = []
+        self.set_tree(tree)
+
+    def set_tree(self, tree):
+        self.tree = tree
+
+        for method in self.methods:
+            method[0].set_tree(tree)
+
+    def add_proposer(self, proposer, weight):
+        self.total_weight += weight
+        self.methods.append((proposer, weight))
+
+    def propose(self):
+        # randomly choose method
+        choice = random.random() * self.total_weight
+        s = self.methods[0][1]
+        i = 0
+        while i < len(self.methods)-1 and s < choice:
+            i += 1
+            s += self.methods[i][1]
+
+        # make proposal
+        self.last_propose = i
+        return self.methods[i][0].propose()
+
+    def revert(self):
+        return self.methods[self.last_propose][0].revert()
+
+    def reset(self):
+        for method in self.methods:
+            method[0].reset()
+
+
+class TreeSearchUnique (TreeSearch):
+    """
+    Propose unique tree topologies
+    """
+
+    def __init__(self, tree, search, tree_hash=None, maxtries=5,
+                 auto_add=True):
+        TreeSearch.__init__(self, tree)
+        self.search = search
+        self.seen = set()
+        self._tree_hash = tree_hash if tree_hash else hash_tree
+        self.maxtries = maxtries
+        self.auto_add = auto_add
+
+    def set_tree(self, tree):
+        self.tree = tree
+        self.search.set_tree(tree)
+
+
+    def propose(self):
+
+        for i in xrange(self.maxtries):
+            if i > 0:
+                self.search.revert()
+            tree = self.search.propose()
+            top = self._tree_hash(tree)
+            if top not in self.seen:
+                #util.logger("tried", i, len(self.seen))
+                break
+        else:            
+            #util.logger("maxtries", len(self.seen))
+            pass
+
+        if self.auto_add:
+            self.seen.add(top)
+        self.tree = tree
+        return self.tree
+        
+
+    def revert(self):
+        self.tree = self.search.revert()
+        return self.tree
+
+
+    def reset(self):
+        self.seen.clear()
+        self.search.reset()
+
+
+    def add_seen(self, tree):
+        top = self._tree_hash(tree)
+        self.seen.add(top)
+        
+
+class TreeSearchPrescreen (TreeSearch):
+
+    def __init__(self, tree, search, prescreen, poolsize):
+        TreeSearch.__init__(self, tree)
+        self.search = TreeSearchUnique(tree, search, auto_add=False)
+        self.prescreen = prescreen
+        self.poolsize = poolsize
+        self.oldtree = None
+
+
+    def set_tree(self, tree):
+        self.tree = tree
+        self.search.set_tree(tree)
+
+
+    def propose(self):
+
+        # save old topology
+        self.oldtree = self.tree.copy()
+
+        pool = []
+        best_score = self.prescreen(self.tree)
+        total = -util.INF
+
+        # TODO: add unique filter
+
+        # make many subproposals
+        self.search.reset()
+        for i in xrange(self.poolsize):
+            self.search.propose()
+            score = self.prescreen(self.tree)
+            tree = self.tree.copy()
+
+            # save tree and logl
+            pool.append((tree, score))
+            total = stats.logadd(total, score)
+
+            if score > best_score:
+                # make more proposals off this one
+                best_score = score
+            else:
+                self.search.revert()
+
+        # propose one of the subproposals 
+        choice = random.random()
+        partsum = -util.INF
+
+        for tree, score in pool:
+            partsum = stats.logadd(partsum, score)
+            if choice < math.exp(partsum - total):
+                # propose tree i
+                treelib.set_tree_topology(self.tree, tree)
+                break
+
+
+        self.search.add_seen(self.tree)
+
+
+    def revert(self):
+        if self.oldtree:
+            treelib.set_tree_topology(self.tree, self.oldtree)
+
+
+    def reset(self):
+        self.oldtree = None
+        self.search.reset()
+
 
 
 
@@ -1303,7 +1671,7 @@ def neighborjoin(distmat, genes, usertree=None):
     newnames = {}
     if usertree != None:
         def walk(node):
-            if not node.isLeaf():
+            if not node.is_leaf():
                 assert len(node.children) == 2, \
                     Exception("usertree is not binary")
             
@@ -1636,7 +2004,7 @@ def find_splits(tree):
     # find descendants
     descendants = []
     def walk(node):
-        if node.isLeaf():
+        if node.is_leaf():
             descendants.append(set([node.name]))
         else:
             s = set()
@@ -1844,7 +2212,7 @@ def findSpeciesSets(stree):
     setmap = {}
     def walk(node):
         node.recurse(walk)
-        if node.isLeaf():
+        if node.is_leaf():
             setmap[node] = {node.name:1}
         else:
             setmap[node] = {}

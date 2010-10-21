@@ -592,7 +592,7 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
     # order species
     species = []
     def walk(node):
-        if node.isLeaf():
+        if node.is_leaf():
             species.append(node.name)
         else:
             walk(node.children[0])
@@ -673,7 +673,7 @@ def generateGeneFamilyTable(conf, filename, treenames, datadir, resultdirs):
 def getInorderSpecies(stree):
     species = []
     def walk(node):
-        if node.isLeaf():
+        if node.is_leaf():
             species.append(node.name)
         else:
             walk(node.children[0])

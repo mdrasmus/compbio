@@ -150,7 +150,7 @@ def renameTreeAlign(tree, align):
     next = [1]
     def walk(node):
         oldname = node.name
-        if not node.isLeaf():
+        if not node.is_leaf():
             tree.rename(node.name, next[0])
             next[0] += 1
             align[str(node.name)] = lookup[str(oldname)]

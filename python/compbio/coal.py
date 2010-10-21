@@ -362,90 +362,57 @@ def sample_bounded_coal_reject(k, n, T):
             return t
 
 
-def get_rev_recon(tree, recon, stree):
-    """
-    Returns a reverse reconciliation
-
-    A reverse reconciliation is a mapping from nodes in the species tree to
-    lists of nodes in the gene tree.
-    """
-    rev_recon = {}
-    nodes = set(tree.postorder())
-    for node, snode in recon.iteritems():
-        if node not in nodes:
-            raise Exception("node '%s' not in tree" % node.name)
-        rev_recon.setdefault(snode, []).append(node)
-    return rev_recon
-
-def count_lineages_per_branch(tree, recon, stree, rev_recon=None):
+def count_lineages_per_branch(tree, recon, stree):
     """
     Returns the count of gene lineages present at each node in the species
     tree 'tree' given a gene tree 'tree' and reconciliation 'recon'
     """
 
-    
-    # init reverse reconciliation
-    if rev_recon is None:
-        rev_recon = get_rev_recon(tree, recon, stree)
-
     # init lineage counts
     lineages = {}
     for snode in stree:
-        if snode.is_leaf():
-            lineages[snode] = [len([x for x in rev_recon[snode]
-                                   if x.is_leaf()]), 0]
+        lineages[snode] = [0, 0]
+
+    for node in tree.postorder():
+        snode = recon[node]
+        if node.is_leaf():
+            lineages[snode][0] += 1 # leaf lineage
         else:
-            lineages[snode] = [0, 0]
-    
-    # iterate through species tree branches
+            lineages[snode][1] -= 1 # coal
+
     for snode in stree.postorder():
-        if snode.parent:
-            # non root branch
-            a = lineages[snode][0]
-
-            # subtract number of coals in branch
-            b = a - len([x for x in rev_recon.get(snode, [])
-                         if len(x.children) > 1])
-            lineages[snode][1] = b
-            lineages[snode.parent][0] += b
-        else:
-            lineages[snode][1] = 1
-
+        if not snode.is_leaf():
+            lineages[snode][0] = sum(lineages[x][1] for x in snode.children)
+        lineages[snode][1] += lineages[snode][0]
+        
     return lineages
 
 
-
-def get_topology_stats(tree, recon, stree, rev_recon=None):
+def get_topology_stats(tree, recon, stree):
     """
     The function computes terms necessary for many topology calculations
     """
-
-    nodes_per_species = {} # How many gene nodes per species
-    descend_nodes = {} # How many descendent nodes recon to the same species
-
     
-    # init reverse reconciliation
-    if rev_recon is None:
-        rev_recon = get_rev_recon(tree, recon, stree)
+    # How many gene nodes per species
+    nodes_per_species = dict.fromkeys(stree, 0)
 
-    # iterate through species tree
-    for snode, nodes in rev_recon.iteritems():
-        nodes_per_species[snode] = len([x for x in nodes
-                                        if len(x.children) > 1])
+    # How many descendent nodes recon to the same species
+    descend_nodes = {} 
 
     # iterate through tree
     for node in tree.postorder():
-        if not node.is_leaf() and len(node.children) > 1:
-            descend_nodes[node] = 1 + sum(descend_nodes.get(child, 0)
-                                          for child in node.children
-                                          if recon[child] == recon[node])
+        if len(node.children) > 1:
+            nodes_per_species[recon[node]] += 1
+            if not node.is_leaf():
+                descend_nodes[node] = 1 + sum(descend_nodes.get(child, 0)
+                                              for child in node.children
+                                              if recon[child] == recon[node])
 
     return nodes_per_species, descend_nodes
 
 
 
 def prob_multicoal_recon_topology(tree, recon, stree, n,
-                                  root=None, leaves=None,
                                   lineages=None, top_stats=None):
     """
     Returns the log probability of a reconciled gene tree ('tree', 'recon')
@@ -454,14 +421,10 @@ def prob_multicoal_recon_topology(tree, recon, stree, n,
     """
     
     popsizes = init_popsizes(stree, n)
-    rev_recon = None
     if lineages is None:
-        rev_recon = get_rev_recon(tree, recon, stree)
-        lineages = count_lineages_per_branch(tree, recon, stree,
-                                             rev_recon=rev_recon)
+        lineages = count_lineages_per_branch(tree, recon, stree)
     if top_stats is None:
-        top_stats = get_topology_stats(tree, recon, stree,
-                                       rev_recon=rev_recon)
+        top_stats = get_topology_stats(tree, recon, stree)
 
     # iterate through species tree branches
     lnp = 0.0 # log probability
@@ -470,10 +433,16 @@ def prob_multicoal_recon_topology(tree, recon, stree, n,
             # non root branch
             a, b = lineages[snode]
             
-            lnp += (log(prob_coal_counts(a, b, snode.dist,
+            p = (log(prob_coal_counts(a, b, snode.dist,
                                          popsizes[snode.name]))
                     + stats.logfactorial(top_stats[0].get(snode, 0))
                     - log(num_labeled_histories(a, b)))
+
+            #p = log(prob_coal_counts(a, b, snode.dist,
+            #                            popsizes[snode.name]) *
+            #           stats.factorial(top_stats[0].get(snode, 0))
+            #           / num_labeled_histories(a, b))
+            lnp += p
         else:
             a = lineages[snode][0]
             lnp += (stats.logfactorial(top_stats[0].get(snode, 0)) -
@@ -521,13 +490,10 @@ def cdf_mrca_bounded_multicoal(gene_counts, T, stree, n,
     # get time to MRCA above sroot
     if stimes is None:
         stimes = treelib.get_tree_timestamps(stree, sroot, sleaves)
-
-
-    root_time = T - stimes[sroot]
-
+    
     # use dynamic programming to calc prob of lineage counts
     prob_counts = calc_prob_counts_table(gene_counts, T, stree, popsizes,
-                                          sroot, sleaves, stimes)
+                                         sroot, sleaves, stimes)
     return util.safelog(prob_counts[sroot][1][1])
 
 
@@ -546,9 +512,8 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
             start = [0.0] * (M+1)
             start[M] = 1.0
         
-        else:
-            # internal node case
-            assert len(node.children) == 2
+        elif len(node.children) == 2:
+            # internal node case with 2 children
                         
             c1 = node.children[0]
             c2 = node.children[1]
@@ -564,6 +529,25 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
                 start.append(sum(end1[i] * end2[k-i]
                                  for i in xrange(1, k)
                                  if i <= M1 and k-i <= M2))
+
+        elif len(node.children) == 1:
+            # single child case
+
+            c1 = node.children[0]
+            M1 = walk(c1)
+            M = M1 # max lineage counts in this snode
+            end1 = prob_counts[c1][1]
+
+            # populate starting lineage counts with child's ending counts
+            start = [0.0, 0.0]
+            for k in xrange(2, M+1):
+                start.append(end1[k])
+            
+        else:
+            # unhandled case
+            raise Exception("not implemented")
+
+            
 
         # populate ending lineage counts
         n = popsizes[node.name]
@@ -741,23 +725,19 @@ def prob_bounded_multicoal_recon_topology(tree, recon, stree, n, T,
     from the coalescent model given a species tree 'stree' and
     population sizes 'n' and stopping time 'T'
     """
-
+    
     # get input stats
     popsizes = init_popsizes(stree, n)
-    rev_recon = None
     if lineages is None:
-        rev_recon = get_rev_recon(tree, recon, stree)
-        lineages = count_lineages_per_branch(tree, recon, stree,
-                                             rev_recon=rev_recon)
+        lineages = count_lineages_per_branch(tree, recon, stree)
     if top_stats is None:
-        top_stats = get_topology_stats(tree, recon, stree,
-                                       rev_recon=rev_recon)
+        top_stats = get_topology_stats(tree, recon, stree)
     if stimes is None:
         stimes = treelib.get_tree_timestamps(stree)
 
     
     p = prob_multicoal_recon_topology(tree, recon, stree, popsizes,
-                                      lineages=lineages)
+                                      lineages=lineages, top_stats=top_stats)
     k_root = lineages[stree.root][0]
     T_root = T - stimes[stree.root]
     return log(cdf_mrca(T_root, k_root, popsizes[recon[tree.root].name])) + p \
@@ -1069,48 +1049,91 @@ def sample_lineage_counts(node, leaves,
     
     a, b = lineages[node]
     if node not in leaves:
-        c1 = node.children[0]
-        c2 = node.children[1]
-        probs1 = prob_counts[c1][1]
-        probs2 = prob_counts[c2][1]
-
-        if b is None:
-            # special case where no ending count 'b' is conditioned
-            k1 = stats.sample(probs1)
-            k2 = stats.sample(probs2)
-        else:
-            # condition on ending count 'b'
-            if node.parent:
-                t = stimes[node.parent] - stimes[node]
-            else:
-                t = T - stimes[node]
-            n = popsizes[node.name]
+        if len(node.children) == 2:
+            # two child case
             
-            reject = 0
-            while True:
+            c1 = node.children[0]
+            c2 = node.children[1]
+            probs1 = prob_counts[c1][1]
+            probs2 = prob_counts[c2][1]
+
+            if b is None:
+                # special case where no ending count 'b' is conditioned
                 k1 = stats.sample(probs1)
                 k2 = stats.sample(probs2)
-                if random.random() < prob_coal_counts(k1 + k2, b, t, n):
-                    # accept
-                    break
-                reject += 1
+            else:
+                # condition on ending count 'b'
+                if node.parent:
+                    t = stimes[node.parent] - stimes[node]
+                else:
+                    t = T - stimes[node]
+                n = popsizes[node.name]
 
-        # set linages counts
-        lineages[node][0] = k1 + k2
-        if c1 not in lineages:
-            lineages[c1] = [None, k1]
-        else:
-            lineages[c1][1] = k1
-        if c2 not in lineages:
-            lineages[c2] = [None, k2]
-        else:
-            lineages[c2][1] = k2
+                reject = 0
+                while True:
+                    k1 = stats.sample(probs1)
+                    k2 = stats.sample(probs2)
+                    if random.random() < prob_coal_counts(k1 + k2, b, t, n):
+                        # accept
+                        break
+                    reject += 1
 
-        # recurse
-        sample_lineage_counts(c1, leaves,
-                              popsizes, stimes, T, lineages, prob_counts)
-        sample_lineage_counts(c2, leaves,
-                              popsizes, stimes, T, lineages, prob_counts)
+            # set linages counts
+            lineages[node][0] = k1 + k2
+            if c1 not in lineages:
+                lineages[c1] = [None, k1]
+            else:
+                lineages[c1][1] = k1
+            if c2 not in lineages:
+                lineages[c2] = [None, k2]
+            else:
+                lineages[c2][1] = k2
+
+            # recurse
+            sample_lineage_counts(c1, leaves,
+                                  popsizes, stimes, T, lineages, prob_counts)
+            sample_lineage_counts(c2, leaves,
+                                  popsizes, stimes, T, lineages, prob_counts)
+
+        elif len(node.children) == 1:
+            # single child case
+
+            c1 = node.children[0]
+            probs1 = prob_counts[c1][1]
+
+            if b is None:
+                # special case where no ending count 'b' is conditioned
+                k1 = stats.sample(probs1)
+            else:
+                # condition on ending count 'b'
+                if node.parent:
+                    t = stimes[node.parent] - stimes[node]
+                else:
+                    t = T - stimes[node]
+                n = popsizes[node.name]
+
+                reject = 0
+                while True:
+                    k1 = stats.sample(probs1)
+                    if random.random() < prob_coal_counts(k1, b, t, n):
+                        # accept
+                        break
+                    reject += 1
+
+            # set linages counts
+            lineages[node][0] = k1
+            if c1 not in lineages:
+                lineages[c1] = [None, k1]
+            else:
+                lineages[c1][1] = k1
+
+            # recurse
+            sample_lineage_counts(c1, leaves,
+                                  popsizes, stimes, T, lineages, prob_counts)
+
+        else:
+            # unhandled case
+            raise Excepiton("not implemented")
 
 
 def coal_cond_lineage_counts(lineages, sroot, sleaves, popsizes, stimes, T,
@@ -2047,6 +2070,91 @@ def calc_prob_counts_table_old(gene_counts, T, stree, popsizes,
     M = walk(sroot)
 
     return prob_counts
+
+
+
+def count_lineages_per_branch_old(tree, recon, stree, rev_recon=None):
+    """
+    Returns the count of gene lineages present at each node in the species
+    tree 'tree' given a gene tree 'tree' and reconciliation 'recon'
+    """
+    
+    # init reverse reconciliation
+    if rev_recon is None:
+        rev_recon = get_rev_recon(tree, recon, stree)
+
+    # init lineage counts
+    lineages = {}
+    for snode in stree:
+        if snode.is_leaf():
+            lineages[snode] = [len([x for x in rev_recon[snode]
+                                   if x.is_leaf()]), 0]
+        else:
+            lineages[snode] = [0, 0]
+    
+    # iterate through species tree branches
+    for snode in stree.postorder():
+        if snode.parent:
+            # non root branch
+            a = lineages[snode][0]
+
+            # subtract number of coals in branch
+            b = a - len([x for x in rev_recon.get(snode, [])
+                         if len(x.children) > 1])
+            lineages[snode][1] = b
+            lineages[snode.parent][0] += b
+        else:
+            lineages[snode][1] = 1
+
+    lineages2 = count_lineages_per_branch(tree, recon, stree)
+    assert lineages == lineages2
+
+    return lineages
+
+
+def get_rev_recon(tree, recon, stree):
+    """
+    Returns a reverse reconciliation
+
+    A reverse reconciliation is a mapping from nodes in the species tree to
+    lists of nodes in the gene tree.
+    """
+    rev_recon = {}
+    nodes = set(tree.postorder())
+    for node, snode in recon.iteritems():
+        if node not in nodes:
+            raise Exception("node '%s' not in tree" % node.name)
+        rev_recon.setdefault(snode, []).append(node)
+    return rev_recon
+
+
+def get_topology_stats_old(tree, recon, stree, rev_recon=None):
+    """
+    The function computes terms necessary for many topology calculations
+    """
+
+    nodes_per_species = {} # How many gene nodes per species
+    descend_nodes = {} # How many descendent nodes recon to the same species
+
+    nodes_per_species = dict.fromkeys(stree, 0)
+    
+    # init reverse reconciliation
+    if rev_recon is None:
+        rev_recon = get_rev_recon(tree, recon, stree)
+
+    # iterate through species tree
+    for snode, nodes in rev_recon.iteritems():
+        nodes_per_species[snode] = len([x for x in nodes
+                                        if len(x.children) > 1])
+
+    # iterate through tree
+    for node in tree.postorder():
+        if not node.is_leaf() and len(node.children) > 1:
+            descend_nodes[node] = 1 + sum(descend_nodes.get(child, 0)
+                                          for child in node.children
+                                          if recon[child] == recon[node])
+
+    return nodes_per_species, descend_nodes
 
 
 # this is depreciated; replaced by prob_fix method using new legendre method

@@ -23,4 +23,6 @@ for line in sys.stdin:
         bestline = line
         bestscore = score
 
-
+# print last hit
+if bestline is not None:
+    sys.stdout.write(bestline)

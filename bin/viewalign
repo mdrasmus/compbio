@@ -42,7 +42,7 @@ def codon_align(aln):
         
 
 def print_align(conf, alnfile):       
-    aln = fasta.readFasta(alnfile)
+    aln = fasta.read_fasta(alnfile)
 
     percid = alignlib.calc_conservation(aln)
 

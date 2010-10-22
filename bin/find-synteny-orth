@@ -62,6 +62,9 @@ o.add_option("--cluster-method", dest="cluster_method",
              metavar="(all|samedir)",
              default="all",
              help="Method to use for clustering")
+o.add_option("--m","--minsize",dest="minsize",
+             type="int",default=3,
+             help="Min number of hits for syntenic block")
 
 
 o.add_option("--out-hits", dest="outhits", metavar="FILENAME",
@@ -257,7 +260,8 @@ def main(argv):
             blocks = cluster_synteny(hits, conf.window, conf.window,
                                      conf.outhits, conf.outblocks,
                                      conf.cluster_method)
-            find_synteny_orths(blocks, conf.outhits, conf.outblocks)
+            find_synteny_orths(blocks, conf.outhits, conf.outblocks,
+                               minsize = conf.minsize)
             
     else:
         raise Exception("Choose an action to perform")

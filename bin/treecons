@@ -140,7 +140,7 @@ for filename in files:
         
         # find actual branch lengths
         spidir.find_ml_branch_lengths_hky(tree,
-                                          util.mget(aln, tree.leaf_names()),
+                                          aln,
                                           bgfreq,
                                           conf.kappa,
                                           maxiter=conf.maxiter,

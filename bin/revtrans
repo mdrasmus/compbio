@@ -52,7 +52,7 @@ util.toc()
 
 if conf.transmap:
     transmap = {}
-    for row in util.delim_reader(conf.transmap):
+    for row in util.DelimReader(conf.transmap):
         transmap[row[0]] = row[1]
     seqs = SeqMap(seqs, transmap)
     

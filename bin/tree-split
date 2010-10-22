@@ -32,8 +32,8 @@ stree = treelib.read_tree(conf["stree"])
 
 def normBoot(tree):
     if tree.hasData("boot") and len(tree.root.children) == 2:
-        if tree.root.children[0].isLeaf() or \
-           tree.root.children[1].isLeaf():
+        if tree.root.children[0].is_leaf() or \
+           tree.root.children[1].is_leaf():
             tree.root.children[0].data["boot"] = 0.0
             tree.root.children[1].data["boot"] = 0.0
             tree.root.data["boot"] = 0.0

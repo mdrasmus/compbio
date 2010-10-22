@@ -345,7 +345,7 @@ if 1:
 # get in order traversal of nodes
 keys = []
 def walk(node):
-    if node.isLeaf():
+    if node.is_leaf():
         keys.append(node.name)
     else:
         walk(node.children[0])
@@ -448,7 +448,7 @@ tab.write(os.path.join(conf["outdir"], "corr/rel.tab"))
 #
 
 util.tic("abs paths correlation")
-keys = stree.leafNames()
+keys = stree.leaf_names()
 corrmat = getCorrMatrix(lens, stree, keys, False)
 util.heatmap(corrmat, width=20, height=20,
              rlabels = keys, clabels=keys,
@@ -475,7 +475,7 @@ tab.write(os.path.join(conf["outdir"], "corr/abs_paths.tab"))
 #
 
 util.tic("rel paths correlation")
-keys = stree.leafNames()
+keys = stree.leaf_names()
 rcorrmat = getCorrMatrix(rlens, stree, keys, False)
 util.heatmap(rcorrmat, width=20, height=20,
              rlabels = keys, clabels=keys,

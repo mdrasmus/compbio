@@ -67,7 +67,7 @@ for treefile in sys.stdin:
         else:
             parent = "-1"
             
-        if node.isLeaf():
+        if node.is_leaf():
             boot = -1.0
         else:
             boot = node.data.get("boot", -1.0)

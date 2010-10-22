@@ -1531,8 +1531,8 @@ def makedirs(filename):
 #
 
 
-def sortrank(lst, cmp=cmp, key=None, reverse=False):
-    """Returns the ranks of items in lst"""
+def sortindex(lst, cmp=cmp, key=None, reverse=False):
+    """Returns the sorted indices of items in lst"""
     ind = range(len(lst))
     
     if key is None:
@@ -1544,17 +1544,22 @@ def sortrank(lst, cmp=cmp, key=None, reverse=False):
     return ind
 
 
+def sortranks(lst, cmp=cmp, key=None, reverse=False):
+    """Returns the ranks of items in lst"""
+    return invperm(sortindex(lst, cmp, key, reverse))
+    
+
 def sort_many(lst, *others, **args):
     """Sort several lists based on the sorting of 'lst'"""
 
     args.setdefault("reverse", False)
 
     if "key" in args:    
-        ind = sortrank(lst, key=args["key"], reverse=args["reverse"])
+        ind = sortindex(lst, key=args["key"], reverse=args["reverse"])
     elif "cmp" in args:
-        ind = sortrank(lst, cmp=args["cmp"], reverse=args["reverse"])
+        ind = sortindex(lst, cmp=args["cmp"], reverse=args["reverse"])
     else:
-        ind = sortrank(lst, reverse=args["reverse"])
+        ind = sortindex(lst, reverse=args["reverse"])
     
     lsts = [mget(lst, ind)]
     

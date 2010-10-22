@@ -166,7 +166,7 @@ class TreeViewer (sumtree.SumTree):
                 for i, (node, schild) in enumerate(losses[node]):
                     print "loss %d in species %s" % (i+1, str(schild.name))
                     
-                    for sleaf in schild.leafNames():
+                    for sleaf in schild.leaf_names():
                         print "  %s" % sleaf
             
         else:

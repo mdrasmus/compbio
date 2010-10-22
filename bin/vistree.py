@@ -100,7 +100,7 @@ class VisTree (sumtree.SumTree):
 
 
     def printNode(self, node, showDesc = True):
-        if node.isLeaf():
+        if node.is_leaf():
             if showDesc and node.name in self.desc:
                 print "%s\t%s" % (node.name, self.desc[node.name])
             else:
@@ -112,16 +112,16 @@ class VisTree (sumtree.SumTree):
 
     def alignNode(self, node):
         # get all protein sequences of sub tree
-        seqs2 = self.seqs.get(self.tree.leafNames(node))
+        seqs2 = self.seqs.get(self.tree.leaf_names(node))
 
         self.selalign = self.alignfunc(seqs2, verbose = True)
-        self.selalign.names = tree.leafNames(node)
+        self.selalign.names = tree.leaf_names(node)
         alignlib.printAlign(self.selalign)
 
 
     """
     def refine(self, node):
-        #seqs2 = util.subdict(seqs, tree.leafNames(node))
+        #seqs2 = util.subdict(seqs, tree.leaf_names(node))
         #aln = alignfunc(seqs2, verbose = True)
 
         phylip.refineNode(self.tree, node, self.seqs, 

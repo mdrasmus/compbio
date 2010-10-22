@@ -25,8 +25,8 @@ if len(conf["REST"]) != 2:
 tree1, tree2 = map(treelib.read_tree, conf["REST"])
 
 if conf["unroot"]:
-    treelib.reroot(tree1, sorted(tree1.leafNames())[0], newCopy=False)
-    treelib.reroot(tree2, sorted(tree1.leafNames())[0], newCopy=False)
+    treelib.reroot(tree1, sorted(tree1.leaf_names())[0], newCopy=False)
+    treelib.reroot(tree2, sorted(tree1.leaf_names())[0], newCopy=False)
 
 hash1 = phylo.hash_tree(tree1)
 hash2 = phylo.hash_tree(tree2)

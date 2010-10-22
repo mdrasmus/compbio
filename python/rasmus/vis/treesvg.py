@@ -2,7 +2,7 @@
 from rasmus import svg
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import phylo
+from compbio import phylo
 
 import sys
 import math
@@ -106,7 +106,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             +(-len(lines)+1+i)*(labelSize+1),
                             labelSize)
         
-        if node.isLeaf():
+        if node.is_leaf():
             canvas.text(str(node.name), 
                         x + leafPadding, y+fontSize/2., fontSize,
                         fillColor=node.color)
@@ -222,7 +222,7 @@ def getPairwiseDists(tree, mainsp):
     """get pairwise distances between the main taxon and the rest of the taxa"""
     lst = []
 
-    for sp in tree.leafNames():
+    for sp in tree.leaf_names():
         lst.append((sp, findDist(tree, mainsp, sp)))
 
     lst.sort(key=lambda x: x[1])

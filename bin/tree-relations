@@ -44,8 +44,12 @@ for filename in filenames:
 
     # get recon and events
     if conf.treeext and conf.reconext:
-        recon, events = phylo.read_recon_events(util.replace_ext(
-            filename, conf.treeext, conf.reconext), tree, stree)
+        try:
+            recon, events = phylo.read_recon_events(util.replace_ext(
+                filename, conf.treeext, conf.reconext), tree, stree)
+        except:
+            print >>sys.stderr, filename
+            raise
     else:
         # use MPR to build reconciliation and events
         recon = phylo.reconcile(tree, stree, gene2species)

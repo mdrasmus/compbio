@@ -8,22 +8,35 @@
 #
 
 import sys
+import optparse
 from rasmus import treelib, util, tablelib
 from rasmus.bio import phylo
+
+o = optparse.OptionParser()
+o.add_option("--no-famid", dest="nofamid", action="store_true")
+o.add_option("--subset-genes", dest="subset_genes", action="store_true")
+conf, args = o.parse_args()
+
 
 #stree = treelib.read_tree(sys.argv[1])
 #gene2species = phylo.read_gene2species(sys.argv[2])
 
 # parse args
-actual_rel_file, pred_rel_file = sys.argv[1:]
+actual_rel_file, pred_rel_file = args
 
 # read data
 actual_rel = util.read_delim(actual_rel_file)
 pred_rel = util.read_delim(pred_rel_file)
 
+if conf.nofamid:
+    for row in actual_rel:
+        row[0] = ""
+    for row in pred_rel:
+        row[0] = ""
+
 
 # get genes that are in predicted dataset
-#pred_genes = set(x[2] for x in pred_rel if x[1] == "gene")
+pred_genes = set(x[2] for x in pred_rel if x[1] == "gene")
 pred_trees = set(x[0] for x in pred_rel)
 
 # dups
@@ -43,14 +56,16 @@ actual_spec = [x for x in actual_rel if x[1] == "spec"]
 pred_spec = [x for x in pred_rel if x[1] == "spec"]
 
 
-#actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
-#                   for a in x[2].split(",")
-#                   for b in x[3].split(",")
-#                   if a in pred_genes and b in pred_genes)
-actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
-                  if x[0] in pred_trees
-                   for a in x[2].split(",")
-                  for b in x[3].split(","))
+if conf.subset_genes:
+    actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+                      for a in x[2].split(",")
+                      for b in x[3].split(",")
+                      if a in pred_genes and b in pred_genes)
+else:
+    actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+                      if x[0] in pred_trees
+                      for a in x[2].split(",")
+                      for b in x[3].split(","))
 pred_orth = set((x[0],) + tuple(sorted([a,b])) for x in pred_spec
                 for a in x[2].split(",")
                 for b in x[3].split(","))

@@ -1186,10 +1186,10 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
 
 
 
-def reorder_tree(tree, tree2, reroot=True):
+def reorder_tree(tree, tree2, root=True):
     """Reorders the branches of tree to match tree2"""
 
-    if reroot:
+    if root:
         # reroot tree to match tree2
         root_branches = [set(n.leaf_names()) for n in tree2.root.children]
 

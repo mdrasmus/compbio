@@ -163,6 +163,7 @@ class Svg:
     def ellispe(self, x, y, xradius, yradius, strokeColor=black, fillColor=black):
         self.out.write("<ellipse  cx='%f' cy='%f' rx='%f' ry='%f' %s />\n" %\
             (x, y, xradius, yradius, colorFields(strokeColor, fillColor)))
+    ellipse = ellispe  # for backward compatibility
     
     
     def text(self, msg, x, y, size, strokeColor=null, fillColor=black,

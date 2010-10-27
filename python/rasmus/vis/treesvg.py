@@ -24,7 +24,8 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
               lossColor=(0, 0, 1),
               dupColor=(1, 0, 0),
               eventSize=4,
-              legendScale=False, autoclose=None):
+              legendScale=False, autoclose=None,
+              labelLeaves=True, drawHoriz=True):
     
     # set defaults
     fontRatio = 8. / 11.
@@ -55,6 +56,9 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     else:
         events = None
         losses = None
+
+    if len(labels) > 0 or (stree and gene2species):
+        drawHoriz = True
     
     # layout tree
     if layout is None:
@@ -86,12 +90,15 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     def walk(node):
         x, y = coords[node]
         if node.parent:
-            parentx = coords[node.parent][0]
+            parentx, parenty = coords[node.parent]
         else:
-            parentx = 0
+            parentx, parenty = 0, y
         
         # draw branch
-        canvas.line(parentx, y, x, y, color=node.color)
+        if drawHoriz:
+            canvas.line(parentx, y, x, y, color=node.color)
+        else:
+            canvas.line(parentx, parenty, x, y, color=node.color)
         if node.name in labels:
             branchlen = x - parentx
             lines = str(labels[node.name]).split("\n")
@@ -107,16 +114,18 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             labelSize)
         
         if node.is_leaf():
-            canvas.text(str(node.name), 
-                        x + leafPadding, y+fontSize/2., fontSize,
-                        fillColor=node.color)
+            if labelLeaves:
+                canvas.text(str(node.name), 
+                            x + leafPadding, y+fontSize/2., fontSize,
+                            fillColor=node.color)
         else:
-            top = coords[node.children[0]][1]
-            bot = coords[node.children[-1]][1]
-            
-            # draw children
-            canvas.line(x, top, x, bot, color=node.color)
-            
+            if drawHoriz:
+                top = coords[node.children[0]][1]
+                bot = coords[node.children[-1]][1]
+                
+                # draw children
+                canvas.line(x, top, x, bot, color=node.color)
+                
             for child in node.children:
                 walk(child)
     

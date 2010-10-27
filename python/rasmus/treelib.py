@@ -1879,6 +1879,10 @@ layoutTreeHierarchical = layout_tree_hierarchical
 
 def tree_color_map(leafmap=lambda x: (0, 0, 0)):
     """Returns a simple color mixing colormap"""
+    def null_func(tree):
+        pass
+    if leafmap is None:
+        return null_func
 
     def func(tree):
         def walk(node):

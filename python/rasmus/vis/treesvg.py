@@ -25,7 +25,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
               dupColor=(1, 0, 0),
               eventSize=4,
               legendScale=False, autoclose=None,
-              labelLeaves=True, drawHoriz=True):
+              extendroot=True, labelLeaves=True, drawHoriz=True, nodeSize=0):
     
     # set defaults
     fontRatio = 8. / 11.
@@ -92,13 +92,18 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         if node.parent:
             parentx, parenty = coords[node.parent]
         else:
-            parentx, parenty = 0, y
+            if extendroot:
+                parentx, parenty = 0, y
+            else:
+                parentx, parenty = x, y     # e.g. no branch
         
         # draw branch
         if drawHoriz:
             canvas.line(parentx, y, x, y, color=node.color)
         else:
             canvas.line(parentx, parenty, x, y, color=node.color)
+
+        # draw branch labels
         if node.name in labels:
             branchlen = x - parentx
             lines = str(labels[node.name]).split("\n")
@@ -112,7 +117,12 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             y + labelOffset 
                             +(-len(lines)+1+i)*(labelSize+1),
                             labelSize)
-        
+
+        # draw nodes
+        if nodeSize > 0:
+            canvas.circle(x, y, nodeSize, strokeColor=svg.null, fillColor=node.color)
+
+        # draw leaf labels or recur
         if node.is_leaf():
             if labelLeaves:
                 canvas.text(str(node.name), 
@@ -120,12 +130,12 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             fillColor=node.color)
         else:
             if drawHoriz:
+                # draw vertical part of branch
                 top = coords[node.children[0]][1]
                 bot = coords[node.children[-1]][1]
-                
-                # draw children
                 canvas.line(x, top, x, bot, color=node.color)
                 
+            # draw children
             for child in node.children:
                 walk(child)
     

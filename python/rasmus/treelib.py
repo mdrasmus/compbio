@@ -111,7 +111,6 @@ class TreeNode:
 
     def __repr__(self):
         """Returns a representation of the node"""
-
         return "<node %s>" % self.name
 
 
@@ -167,14 +166,20 @@ class Tree:
     Well suited for phylogenetic trees
     """
 
-    def __init__(self, nextname = 1, branch_data=BranchData()):
+    def __init__(self, nextname = 1, branch_data=BranchData(),
+                 name=None):
         self.nodes = {}
         self.root = None
         self.nextname = nextname
         self.default_data = {}
         self.data = {}
         self.branch_data = branch_data
+        self.name = name
 
+    def __repr__(self):
+        """Returns a representation of the tree"""
+        return "<tree %s>" % self.name
+        
     #=========================================
     # iterators
     
@@ -280,10 +285,13 @@ class Tree:
         """
         Removes a node from a tree.
         Notifies parent (if it exists) that node has been removed.
+        Notify children (if they exist) that node has been removed.
         """
         
         if node.parent:
             node.parent.children.remove(node)
+        for child in node.children:
+            child.parent = None
         del self.nodes[node.name]
     
     
@@ -291,6 +299,7 @@ class Tree:
         """
         Removes subtree rooted at 'node' from tree.
         Notifies parent (if it exists) that node has been removed.
+        Notifies children (if they exist) that node has been removed.
         """
         
         def walk(node):
@@ -302,6 +311,8 @@ class Tree:
         
         if node.parent:
             node.parent.children.remove(node)
+        for child in node.children:
+            child.parent = None
     removeTree = remove_tree
 
     
@@ -405,7 +416,7 @@ class Tree:
     
     def copy(self):
         """Returns a copy of the tree"""
-        tree = Tree(nextname = self.nextname)
+        tree = Tree(nextname = self.nextname, name = self.name)
         
         # copy structure
         if self.root != None:
@@ -535,7 +546,8 @@ class Tree:
             if not node.is_leaf() and isinstance(node.name, str):
                 string += node.name
 
-        string += ":%f" % node.dist
+        if node.dist != 0:
+            string += ":%f" % node.dist
         return string
     writeData = write_data
     
@@ -656,6 +668,7 @@ class Tree:
             return node
 
         self.root = walk(expr)
+        self.add(self.root)
 
         # test for boot strap presence
         for node in self.nodes.itervalues():
@@ -1186,16 +1199,16 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
 
 
 
-def reorder_tree(tree, tree2, root=True):
+def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf:leaf.name):
     """Reorders the branches of tree to match tree2"""
 
     if root:
         # reroot tree to match tree2
-        root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+        root_branches = [set(map(leafmap, n.leaves())) for n in tree2.root.children]
 
         def walk(node):
             if node.is_leaf():
-                leaves = set([node.name])
+                leaves = set([leafmap(node)])
             else:
                 leaves = set()
                 for child in node.children:
@@ -1215,14 +1228,14 @@ def reorder_tree(tree, tree2, root=True):
     
 
     # reorder tree to match tree2
-    leaf_lookup = util.list2lookup(tree2.leaf_names())
+    leaf_lookup = util.list2lookup(map(leafmap, tree2.leaves()))
 
     def mean(lst):
         return sum(lst) / float(len(lst))
     
     def walk(node):
         if node.is_leaf():
-            return set([node.name])
+            return set([leafmap(node)])
         else:
             leaf_sets = []
 

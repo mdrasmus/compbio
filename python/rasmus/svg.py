@@ -160,10 +160,10 @@ class Svg:
         self.out.write("<circle cx='%f' cy='%f' r='%f' %s />\n" % \
             (x, y, radius, colorFields(strokeColor, fillColor)))
     
-    def ellispe(self, x, y, xradius, yradius, strokeColor=black, fillColor=black):
+    def ellipse(self, x, y, xradius, yradius, strokeColor=black, fillColor=black):
         self.out.write("<ellipse  cx='%f' cy='%f' rx='%f' ry='%f' %s />\n" %\
             (x, y, xradius, yradius, colorFields(strokeColor, fillColor)))
-    ellipse = ellispe  # for backward compatibility
+    ellispe = ellipse  # for backward compatibility
     
     
     def text(self, msg, x, y, size, strokeColor=null, fillColor=black,

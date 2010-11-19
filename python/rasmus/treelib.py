@@ -115,7 +115,7 @@ class TreeNode:
         return "<node %s>" % self.name
 
 
-# class for managing branch data
+
 class BranchData (object):
     """A class for managing branch specific data for a Tree
     
@@ -656,6 +656,7 @@ class Tree:
             return node
 
         self.root = walk(expr)
+        self.nodes[self.root.name] = self.root
 
         # test for boot strap presence
         for node in self.nodes.itervalues():
@@ -877,7 +878,6 @@ parseNewick = parse_newick
 #============================================================================
 # Misc. functions for manipulating trees
 #
-
 
 def assert_tree(tree):
     """Assert that the tree is internally consistent"""

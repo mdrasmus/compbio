@@ -432,11 +432,19 @@ def prob_multicoal_recon_topology(tree, recon, stree, n,
         if snode.parent:
             # non root branch
             a, b = lineages[snode]
-            
-            p = (log(prob_coal_counts(a, b, snode.dist,
-                                         popsizes[snode.name]))
-                    + stats.logfactorial(top_stats[0].get(snode, 0))
-                    - log(num_labeled_histories(a, b)))
+
+            try:
+                p = (util.safelog(prob_coal_counts(a, b, snode.dist,
+                                                   popsizes[snode.name]))
+                     + stats.logfactorial(top_stats[0].get(snode, 0))
+                     - log(num_labeled_histories(a, b)))
+            except:
+                print (a, b, snode.dist, popsizes[snode.name],
+                       prob_coal_counts(a, b, snode.dist,
+                                        popsizes[snode.name]),
+                       )
+                                          
+                raise
 
             #p = log(prob_coal_counts(a, b, snode.dist,
             #                            popsizes[snode.name]) *
@@ -711,8 +719,14 @@ def prob_no_coal_bmc(u, utime, ucount, gene_counts, T, stree, n,
 
 def num_labeled_histories(nleaves, nroots):
     n = 1.0
-    for i in xrange(nroots + 1, nleaves+1):
+    for i in xrange(nroots + 1, nleaves + 1):
         n *= i * (i - 1) / 2.0
+    return n
+
+def log_num_labeled_histories(nleaves, nroots):
+    n = 0.0
+    for i in xrange(nroots + 1, nleaves + 1):
+        n += log(i * (i - 1) / 2.0)
     return n
 
 

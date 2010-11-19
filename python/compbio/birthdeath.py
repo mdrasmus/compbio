@@ -13,6 +13,14 @@ def prob_birth_death1(ngenes, t, birth, death):
     Returns the probability that one lineage leaves 'ngenes' genes
     after time 't'
     """
+
+    # special case
+    if birth == death:
+        ut = t / (1.0 / birth + t)
+        if ngenes == 0:
+            return ut
+        else:
+            return ((1.0 - ut)**2) * (ut**(ngenes-1))
     
     l = birth
     u = death
@@ -33,11 +41,13 @@ def prob_birth_death(genes1, genes2, t, birth, death):
        time 't' with 'birth' and 'death' rates.
     """
 
+    # special cases
     if birth == 0.0 and death == 0.0:
         if genes1 == genes2:
             return 1.0
         else:
             return 0.0
+    
     
     l = birth
     u = death
@@ -63,7 +73,13 @@ def birth_wait_time(t, n, T, birth, death):
        'n' lineages starting at time 0, evolving until time 'T' with a
        'birth' and 'death' rates for a reconstructed process.
     """
-    
+
+    # special case
+    if birth == death:
+        t2 = t - T
+        nl = 1.0 / birth
+        return birth * n * (-nl + t2)**n / (-nl - T)**n / (1.0 - birth * t2)
+        
     l = birth
     u = death
     r = l - u
@@ -80,8 +96,11 @@ def prob_no_birth(n, T, birth, death):
        for a reconstructed process.
     """
 
+    # special cases
     if birth == 0.0:
         return 1.0
+    elif birth == death:
+        return 1.0 / (1.0 + birth * T)**n
     
     l = birth
     u = death
@@ -135,8 +154,7 @@ def sample_birth_wait_time(n, T, birth, death):
     Conditioned that a birth will occur
     """
     
-    # TODO: could make this much more efficient (use straight line instead of
-    # flat line).
+    # TODO: could make this much more efficient
     
     # uses rejection sampling
     start_y = birth_wait_time(0, n, T, birth, death)
@@ -211,8 +229,8 @@ def sample_birth_death_gene_tree(stree, birth, death,
         else:
             for child in snode:
                 # determine if loss will occur
-                if random.uniform(0, 1) < prob_birth_death(1, 0, child.dist, 
-                                                           birth, death):
+                if random.uniform(0, 1) < prob_birth_death1(0, child.dist, 
+                                                            birth, death):
                     continue
                 
                 # no loss, so simulate reconstructed tree

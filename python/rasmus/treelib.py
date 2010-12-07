@@ -897,17 +897,17 @@ def assert_tree(tree):
     
     visited = set()
     def walk(node):
-        assert node.name in tree.nodes
-        assert node.name not in visited
+        assert node.name in tree.nodes, (tree.name, node.name)
+        assert node.name not in visited, (tree.name, node.name)
         visited.add(node.name)
         if node.parent:
-            assert node in node.parent.children
+            assert node in node.parent.children, (tree.name, node.name)
         for child in node.children:
-            assert child.parent == node
+            assert child.parent == node, (tree.name, node.name, child.name)
         node.recurse(walk)
     walk(tree.root)
     
-    assert tree.root.parent == None
+    assert tree.root.parent == None, (tree.name, tree.root.name)
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
 
 

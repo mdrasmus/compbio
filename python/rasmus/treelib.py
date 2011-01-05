@@ -1168,6 +1168,30 @@ def remove_exposed_internal_nodes(tree, leaves=None):
     walk(tree.root)
 
 
+def subtree_by_leaves(tree, leaves=None, keep_single=False):
+    """
+    Remove any leaf not in leaves set
+    
+    leaves -- a list of leaves that should stay    
+    """
+    
+    stay = set(leaves)    
+    
+    # post order traverse tree
+    def walk(node):
+        # keep a list of children to visit, since they may remove themselves
+        for child in list(node.children):
+            walk(child)
+
+        if node.is_leaf() and node not in stay:
+            tree.remove(node)
+    walk(tree.root)
+
+    if not keep_single:
+        remove_single_children(tree)
+
+    return tree
+
 
 def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
     """Returns a subtree with only the leaves specified"""
@@ -1176,13 +1200,13 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
         tree = tree.copy()
     
     remove_set = set(tree.leaf_names()) - set(leaf_names)
-    for sp in remove_set:
-        tree.remove(tree.nodes[sp])
-    remove_exposed_internal_nodes(tree, [tree.nodes[x] for x in leaf_names])
-    if not keep_single:
-        remove_single_children(tree)
-    
-    return tree
+    #for sp in remove_set:
+    #    tree.remove(tree.nodes[sp])
+    return subtree_by_leaves(tree, [tree.nodes[x] for x in leaf_names],
+                             keep_single=keep_single)
+    #if not keep_single:
+    #    remove_single_children(tree)
+    #return tree
 
 
 

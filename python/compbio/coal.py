@@ -547,8 +547,8 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
             end1 = prob_counts[c1][1]
 
             # populate starting lineage counts with child's ending counts
-            start = [0.0, 0.0]
-            for k in xrange(2, M+1):
+            start = [0.0]
+            for k in xrange(1, M+1):
                 start.append(end1[k])
             
         else:
@@ -575,7 +575,7 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
 
         prob_counts[node] = [start, end]
 
-        assert abs(sum(start) - 1.0) < .001
+        assert abs(sum(start) - 1.0) < .001, (start, node.children)
             
         return M
     M = walk(sroot)
@@ -1515,7 +1515,7 @@ def freq_CDF(p, N, t, T, k=50):
     T is the upper limit of the CDF (int from 0 to T)
     k is approximation for the upper limit in the (supposed to be) infinite sum
     """
-    return freq_CDF_legs_ends(legendre(1.0-2*p), legendre(1.0-2*T), 
+    return freq_CDF-_legs_ends(legendre(1.0-2*p), legendre(1.0-2*T), 
       N, t, k=k)
 
 
@@ -1575,7 +1575,16 @@ def sample_freq_CDF(p, N, t):
     N.B.: The current version fails sometimes (on some N, t pairs), presumably
      due to errors in freq_CDF_leg.  These need to be fixed.
     """
-    import scipy.optimize #, random
+
+    # special cases
+    if p == 0.0:
+        return 0.0
+    elif p == 1.0:
+        return 1.0
+    elif t == 0.0:
+        return p
+    
+    import scipy.optimize
     y = random.random()
     leg_r = legendre(1.0-2*p)
     extinction = prob_fix(1.0-p, N, t) # probability of allele extinction
@@ -1588,7 +1597,12 @@ def sample_freq_CDF(p, N, t):
         def f(T):
             return freq_CDF_legs_noends(leg_r, legendre(1.0-2*T), N, t) \
               - y + extinction  # trims extinction probability, assures brentq works
-        return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+
+        try:
+            return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+        except:
+            print p, N, t
+            raise
 
 
 

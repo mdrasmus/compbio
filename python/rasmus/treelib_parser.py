@@ -1,5 +1,5 @@
 
-import os
+import os, re
 
 try:
     from rasmus.ply import lex, yacc
@@ -18,13 +18,21 @@ tokens = (
 
 
 t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
-
-
 t_DATA = r"[^,;\(\)]+"
+
+#t_DATA2 = r"^([^,;\(\)\[\]]+|[^,;\(\)\[\]]*\[[^\]]*\][^,;\(\)\[\]]*)$"
+#t_DATA =  r"([^,;\(\)]+|[^,;\(\)]*\[[^\]]*\])"
+#[^,;\(\)]*XXX\[[^\]]*\])"
+#[^,;\(\)]+)"
 
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
 
+
+#print re.match(t_DATA2, ";")
+#print re.match("^"+t_DATA+"$", ":1")
+#print re.match("^"+t_DATA+"$", ":1[hi]")
+#sys.exit()
 
 #=============================================================================
 

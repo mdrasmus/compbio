@@ -78,7 +78,7 @@ def main(conf):
     
     util.tic("process alignments")
     for alignfile in conf["REST"]:
-        aln = fasta.readFasta(alignfile)
+        aln = fasta.read_fasta(alignfile)
         
         merges = genecall.findFragments(regiondb, aln, overlapCutoff=.5)
         

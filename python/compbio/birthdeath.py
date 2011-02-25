@@ -221,7 +221,10 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None,
     doom = set()
     
     def walk(T, node):
-        next_t = random.expovariate(bd_rate)
+        if bd_rate == 0.0:
+            next_t = util.INF
+        else:
+            next_t = random.expovariate(bd_rate)
         
         if next_t > T:
             # finish branch
@@ -401,7 +404,7 @@ def sample_birth_literal(n, T, birth, death):
     birth -- rate of birth
     death -- rate of death
     """
-
+    
     while True:
         tmin = util.INF
         

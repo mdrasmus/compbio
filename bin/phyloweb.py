@@ -977,7 +977,7 @@ def generateTopologyTable(conf, datadir, resultdirs):
         tree = treelib.read_tree(getCorrectTreeFile(conf, datadir, treename))
         row["treelen"] = sum(x.dist for x in tree.nodes.values())
         
-        aln = fasta.readFasta(alnfile)
+        aln = fasta.read_fasta(alnfile)
         row["alignlen"] = aln.alignlen()
         
         for prog, resultdir, resulturl in resultdirs:

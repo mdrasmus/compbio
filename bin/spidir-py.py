@@ -280,7 +280,7 @@ def buildTree(conf, stree, gene2species):
             # read in different labels if needed
             if "labels" in conf:
                 labels = Spidir.readLabels(conf["labels"][i])
-                conf["aln"] = fasta.readFasta(conf["labels"][i])
+                conf["aln"] = fasta.read_fasta(conf["labels"][i])
             
             tree, logl = Spidir.spidir(conf, distmat, labels, stree, 
                                           gene2species, params)

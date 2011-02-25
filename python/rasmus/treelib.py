@@ -490,8 +490,7 @@ class Tree:
 
         # also parse nhx comments
         data = read_nhx_data(self, node, data)
-
-
+        
         if ":" in data:
             boot, dist = data.split(":")
             node.dist = float(dist)
@@ -631,6 +630,7 @@ class Tree:
 
         def walk(expr):
             children, name, data = expr
+            assert ":" not in name, "bad name '%s'" % name
             
             # parse name
             if name == "":

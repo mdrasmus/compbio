@@ -50,6 +50,7 @@ def p_subtree(p):
                | "(" branch_set ")"
                | NAME DATA
                | NAME
+               | DATA
     """
     if len(p) == 6:
         p[0] = (p[2], "", p[4] + p[5])
@@ -60,7 +61,10 @@ def p_subtree(p):
     elif len(p) == 3:
         p[0] = ([], p[1], p[2])
     elif len(p) == 2:
-        p[0] = ([], p[1], "")
+        if ":" in p[1]:
+            p[0] = ([], "", p[1])
+        else:
+            p[0] = ([], p[1], "")
 
 
 def p_branch_set(p):

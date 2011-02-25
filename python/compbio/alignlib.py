@@ -78,7 +78,7 @@ def remove_empty_columns(aln):
             if not i in dels:
                 val += aln[name][i]
         aln2[name] = val
-    aln2.orderNames(aln)
+    aln2.order_names(aln)
     
     return aln2
 removeEmptyColumns = remove_empty_columns

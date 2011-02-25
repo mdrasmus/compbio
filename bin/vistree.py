@@ -246,7 +246,7 @@ if "fasta" in conf:
     util.tic("read sequence")
     for filename in conf["fasta"]:
         util.tic("read '%s'" % filename)
-        vis.seqs.update(fasta.readFasta(filename))
+        vis.seqs.update(fasta.read_fasta(filename))
         util.toc()
     util.log("loaded %d sequences" % len(vis.seqs))
     util.toc()

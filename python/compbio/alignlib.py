@@ -552,6 +552,27 @@ def print_degen(aln, **args):
     print_align(aln, extra=extra, **args)
 
 
+#=============================================================================
+# background frequency
+#
+def compute_bgfreq(aln):
+    # initialize with pseudo counts
+    dna2int = {'A': 0, "C": 1, "G": 2, "T": 3}
+    bgfreq = [1,1,1,1]
+    count = 4 
+
+    # count
+    for name, seq in aln.iteritems():
+        for c in seq.upper():
+            count += 1
+            if c in dna2int:
+                bgfreq[dna2int[c]] += 1
+
+    # normalize
+    bgfreq = [float(freq)/count for freq in bgfreq]
+
+    return bgfreq
+
 #-------------------------------------------------------------------------------
 # Position Specific Scoring Matrix (PSSM)
 #-------------------------------------------------------------------------------

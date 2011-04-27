@@ -103,6 +103,38 @@ class TreeNode:
     def leaf_names(self):
         """Returns the leaf names beneath the node in traversal order"""
         return [x.name for x in self.leaves()]
+
+    def ancestors(self):
+        """Returns the ancestors above the node in traversal order"""
+        ancestors = []
+
+        def walk(node):
+            if node.parent:
+                ancestors.append(node.parent)
+                walk(node.parent)
+        walk(self)
+        
+        return ancestors
+
+    def ancestor_names(self):
+        """Returns the ancestor names above the node in traversal order"""
+        return [x.name for x in self.ancestors()]
+
+    def descendants(self):
+        """Returns the descendants beneath the node in traversal order"""
+        descendants = []
+
+        def walk(node):
+            for child in node.children:
+                descendants.append(child)
+                walk(child)
+        walk(self)
+
+        return descendants
+
+    def descendant_names(self):
+        """Returns the descendant names beneath the node in traversal order"""
+        return [x.name for x in self.descendants()]
     
     def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
@@ -270,6 +302,7 @@ class Tree:
            Does not add node to any specific location (use add_child instead).
         """
         self.nodes[node.name] = node
+        node.data["tree"] = self
 
 
     def add_child(self, parent, child):
@@ -279,6 +312,8 @@ class Tree:
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
+        child.data["tree"] = self
+        parent.data["tree"] = self
 
 
     def remove(self, node):
@@ -293,7 +328,16 @@ class Tree:
         for child in node.children:
             child.parent = None
         del self.nodes[node.name]
-    
+
+    def remove_child(self, parent, child):
+        """
+        Removes a child node from an existing node 'parent' in the tree.
+        Updates the parent-child relationships but does NOT remove the nodes (use remove instead).
+        """
+        
+        assert parent != child and child.parent == parent
+        parent.children.remove(child)
+        child.parent = None
     
     def remove_tree(self, node):
         """
@@ -399,11 +443,27 @@ class Tree:
         return node.leaves()
     
     
-    def leaf_names(self, node = None):
+    def leaf_names(self, node=None):
         """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
     leafNames = leaf_names
-    
+
+
+    def ancestors(self, node):
+        """Returns the ancestors in order"""
+        return node.ancestors()
+
+    def ancestor_names(self, node):
+        """Returns the ancestor names of the tree in order"""
+        return node.ancestor_names()
+
+    def descendants(self, node):
+        """Returns the descendants in order"""
+        return node.descendants()
+
+    def descendant_names(self, node):
+        """Returns the descendant names in order"""
+        return node.descendant_names()
     
     #===============================
     # data functions
@@ -433,6 +493,10 @@ class Tree:
         # copy extra data
         tree.copy_data(self)
         tree.copy_node_data(self)
+
+        # change "tree" reference in data
+        for node in tree:
+            node.data["tree"] = tree
         
         return tree
     

@@ -955,6 +955,22 @@ def add_spec_node(node, snode, tree, recon, events):
 
     return newnode
 
+def remove_spec_node(node, tree):
+    """
+    removes speciation node 'node' from gene tree 'tree'
+
+    Modifies recon and events accordingly
+    """
+    assert len(node.children) == 1
+    
+    # remove node from tree
+    tree.add_child(node.parent, node.children[0])
+    tree.remove(node)
+    
+    # remove recon and events info
+    del recon[node]
+    del events[node]
+
 
 def add_implied_spec_nodes(tree, stree, recon, events):
     """
@@ -1005,6 +1021,13 @@ def add_implied_spec_nodes(tree, stree, recon, events):
 
     return added_nodes
 
+
+def remove_implied_spec_nodes(tree, added_nodes):
+    """
+    removes speciation nodes from tree
+    """
+    for node in added_nodes:
+        remove_spec_node(tree, node)
 
 
 #=============================================================================
@@ -1644,7 +1667,7 @@ class TreeSearchPrescreen (TreeSearch):
 # Phylogenetic reconstruction: Neighbor-Joining
 #
 
-def neighborjoin(distmat, genes, usertree=None):
+def neighborjoin(distmat, genes, usertree=None, binary=False):
     """Neighbor joining algorithm"""
     
     tree = treelib.Tree()
@@ -1731,14 +1754,23 @@ def neighborjoin(distmat, genes, usertree=None):
         
         if len(leaves) > 2:
             restdists[gene3] = r / (len(leaves) - 2)
-    
-    # join the last two genes into a tribranch
+
     gene1, gene2 = leaves.keys()
-    if type(gene1) != int:
-        gene1, gene2 = gene2, gene1
-    tree.add_child(tree.nodes[gene1], tree.nodes[gene2])
-    tree.nodes[gene2].dist = dists[gene1][gene2]
-    tree.root = tree.nodes[gene1]
+    if binary:
+        # join the last two genes at the root and split the remaining dist evenly
+        parent = treelib.TreeNode(tree.new_name())
+        tree.add_child(parent, tree.nodes[gene1])
+        tree.add_child(parent, tree.nodes[gene2])
+        tree.nodes[gene1].dist = dists[gene1][gene2] / 2.0
+        tree.nodes[gene2].dist = dists[gene1][gene2] / 2.0
+        tree.root = parent
+    else:
+        # join the last two genes into a tribranch
+        if type(gene1) != int:
+            gene1, gene2 = gene2, gene1
+        tree.add_child(tree.nodes[gene1], tree.nodes[gene2])
+        tree.nodes[gene2].dist = dists[gene1][gene2]
+        tree.root = tree.nodes[gene1]
 
     # root tree according to usertree    
     if usertree != None and treelib.is_rooted(usertree):
@@ -2071,6 +2103,12 @@ def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
 
 
 def robinson_foulds_error(tree1, tree2):
+    """Returns the normalized Robinson Foulds Error metric, e.g. (A+B)/max(C,D),
+       where A is the number of partitions implied by tree1 but not by tree2,
+       B is the number of partitions implied by tree2 but not by tree1,
+       C is the total number of partitions implied by tree1, and
+       D is the total number of partitions implied by tree2.
+    """
     splits1 = find_branch_splits(tree1)
     splits2 = find_branch_splits(tree2)
 

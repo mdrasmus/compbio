@@ -403,13 +403,15 @@ class Tree:
     
         # merge nodes and change the names of childTree names if they conflict
         # with existing names
-        self.merge_names(childTree)
-        parent = node.parent
-        if parent:
-            index = parent.children.index(node)
-            parent.children[index] = childTree.root
-            childTree.root.parent = parent
-            del self.nodes[node.name]
+        self.remove_tree(node)
+        self.add_tree(node.parent, childTree)
+##        self.merge_names(childTree)
+##        parent = node.parent
+##        if parent:
+##            index = parent.children.index(node)
+##            parent.children[index] = childTree.root
+##            childTree.root.parent = parent
+##            del self.nodes[node.name]
     replaceTree = replace_tree
     
     

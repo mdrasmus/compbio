@@ -21,6 +21,23 @@ from rasmus import util
 from . import fasta
 
 
+#=============================================================================
+# Counting functions
+
+def num_rooted_trees(nleaves):
+    # (2n-3)!! = (2n-3)!/[2^(n-2)*(n-2)!] for n >= 2
+    assert nleaves >= 1
+    if nleaves < 2:
+        return 1
+    return stats.factorial(2*nleaves-3)/(2**(nleaves-2) * stats.factorial(nleaves-2))
+
+def num_unrooted_trees(nleaves):
+    # (2n-5)!! = (2n-5)!/[2^(n-3)*(n-3)!] for n >= 3
+    assert nleaves >= 1
+    if nleaves < 3:
+        return 1
+    return stats.factorial(2*nleaves-5)/(2**(nleaves-3) * stats.factorial(nleaves-3))
+
 
 #=============================================================================
 # Gene to species mapping functions
@@ -514,7 +531,8 @@ def dup_consistency(tree, recon, events):
 
 
 def recon_root(gtree, stree, gene2species = gene2species, 
-               rootby = "duploss", newCopy=True):
+               rootby = "duploss", newCopy=True,
+	       returnCost=False):
     """Reroot a tree by minimizing the number of duplications/losses/both"""
     
     # make a consistent unrooted copy of gene tree
@@ -618,7 +636,10 @@ def recon_root(gtree, stree, gene2species = gene2species,
         assert node1.parent == node2
         treelib.reroot(gtree, node1.name, newCopy=False)
     
-    return gtree
+    if returnCost:
+        return gtree, mincost
+    else:
+        return gtree
 
 
 def midroot_recon(tree, stree, recon, events, params, generate):

@@ -51,4 +51,3 @@ for treefile in args:
     phylo.recon_root(tree, stree, gene2species, 
                      rootby=conf.cost, newCopy=False)
     tree.write(treefile)
-

@@ -995,9 +995,9 @@ def lca(nodes):
                 return node1
             if node2 in set1:
                 return node2
-            if node1.parent != None:
+            if node1.parent is not None:
                 node1 = node1.parent
-            if node2.parent != None:
+            if node2.parent is not None:
                 node2 = node2.parent
             
             set1.add(node1)
@@ -1661,7 +1661,7 @@ def unroot(tree, newCopy = True):
     return tree
 
 
-def reroot(tree, newroot, onBranch=True, newCopy=True):
+def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
     """
     Change the rooting of a tree
     """
@@ -1677,12 +1677,16 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
         len(tree.root.children) == 2):
         return tree        
     
-    
+    if keepName:
+        oldroot = tree.root.name
     unroot(tree, newCopy=False)
     
     if onBranch:
         # add new root in middle of branch
-        newNode = TreeNode(tree.new_name())
+        if keepName:
+            newNode = TreeNode(oldroot)
+        else:
+            newNode = TreeNode(tree.new_name())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
         rootdata1, rootdata2 = tree.split_branch_data(node1)

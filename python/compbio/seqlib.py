@@ -21,7 +21,7 @@ class SeqDict (dict):
         self.names = []
     
     
-    def orderNames(self, aln):
+    def order_names(self, aln):
         """Orders the names in the same order they appear in aln"""
         
         lookup = util.list2lookup(aln.keys())

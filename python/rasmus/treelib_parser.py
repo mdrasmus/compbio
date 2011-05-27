@@ -1,5 +1,5 @@
 
-import os
+import os, re
 
 try:
     from rasmus.ply import lex, yacc
@@ -18,13 +18,21 @@ tokens = (
 
 
 t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
-
-
 t_DATA = r"[^,;\(\)]+"
+
+#t_DATA2 = r"^([^,;\(\)\[\]]+|[^,;\(\)\[\]]*\[[^\]]*\][^,;\(\)\[\]]*)$"
+#t_DATA =  r"([^,;\(\)]+|[^,;\(\)]*\[[^\]]*\])"
+#[^,;\(\)]*XXX\[[^\]]*\])"
+#[^,;\(\)]+)"
 
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
 
+
+#print re.match(t_DATA2, ";")
+#print re.match("^"+t_DATA+"$", ":1")
+#print re.match("^"+t_DATA+"$", ":1[hi]")
+#sys.exit()
 
 #=============================================================================
 
@@ -42,6 +50,7 @@ def p_subtree(p):
                | "(" branch_set ")"
                | NAME DATA
                | NAME
+               | DATA
     """
     if len(p) == 6:
         p[0] = (p[2], "", p[4] + p[5])
@@ -52,7 +61,10 @@ def p_subtree(p):
     elif len(p) == 3:
         p[0] = ([], p[1], p[2])
     elif len(p) == 2:
-        p[0] = ([], p[1], "")
+        if ":" in p[1]:
+            p[0] = ([], "", p[1])
+        else:
+            p[0] = ([], p[1], "")
 
 
 def p_branch_set(p):

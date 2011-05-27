@@ -432,11 +432,19 @@ def prob_multicoal_recon_topology(tree, recon, stree, n,
         if snode.parent:
             # non root branch
             a, b = lineages[snode]
-            
-            p = (log(prob_coal_counts(a, b, snode.dist,
-                                         popsizes[snode.name]))
-                    + stats.logfactorial(top_stats[0].get(snode, 0))
-                    - log(num_labeled_histories(a, b)))
+
+            try:
+                p = (util.safelog(prob_coal_counts(a, b, snode.dist,
+                                                   popsizes[snode.name]))
+                     + stats.logfactorial(top_stats[0].get(snode, 0))
+                     - log(num_labeled_histories(a, b)))
+            except:
+                print (a, b, snode.dist, popsizes[snode.name],
+                       prob_coal_counts(a, b, snode.dist,
+                                        popsizes[snode.name]),
+                       )
+                                          
+                raise
 
             #p = log(prob_coal_counts(a, b, snode.dist,
             #                            popsizes[snode.name]) *
@@ -539,8 +547,8 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
             end1 = prob_counts[c1][1]
 
             # populate starting lineage counts with child's ending counts
-            start = [0.0, 0.0]
-            for k in xrange(2, M+1):
+            start = [0.0]
+            for k in xrange(1, M+1):
                 start.append(end1[k])
             
         else:
@@ -567,7 +575,7 @@ def calc_prob_counts_table(gene_counts, T, stree, popsizes,
 
         prob_counts[node] = [start, end]
 
-        assert abs(sum(start) - 1.0) < .001
+        assert abs(sum(start) - 1.0) < .001, (start, node.children)
             
         return M
     M = walk(sroot)
@@ -711,8 +719,14 @@ def prob_no_coal_bmc(u, utime, ucount, gene_counts, T, stree, n,
 
 def num_labeled_histories(nleaves, nroots):
     n = 1.0
-    for i in xrange(nroots + 1, nleaves+1):
+    for i in xrange(nroots + 1, nleaves + 1):
         n *= i * (i - 1) / 2.0
+    return n
+
+def log_num_labeled_histories(nleaves, nroots):
+    n = 0.0
+    for i in xrange(nroots + 1, nleaves + 1):
+        n += log(i * (i - 1) / 2.0)
     return n
 
 
@@ -1501,7 +1515,7 @@ def freq_CDF(p, N, t, T, k=50):
     T is the upper limit of the CDF (int from 0 to T)
     k is approximation for the upper limit in the (supposed to be) infinite sum
     """
-    return freq_CDF_legs_ends(legendre(1.0-2*p), legendre(1.0-2*T), 
+    return freq_CDF-_legs_ends(legendre(1.0-2*p), legendre(1.0-2*T), 
       N, t, k=k)
 
 
@@ -1561,7 +1575,16 @@ def sample_freq_CDF(p, N, t):
     N.B.: The current version fails sometimes (on some N, t pairs), presumably
      due to errors in freq_CDF_leg.  These need to be fixed.
     """
-    import scipy.optimize #, random
+
+    # special cases
+    if p == 0.0:
+        return 0.0
+    elif p == 1.0:
+        return 1.0
+    elif t == 0.0:
+        return p
+    
+    import scipy.optimize
     y = random.random()
     leg_r = legendre(1.0-2*p)
     extinction = prob_fix(1.0-p, N, t) # probability of allele extinction
@@ -1574,7 +1597,12 @@ def sample_freq_CDF(p, N, t):
         def f(T):
             return freq_CDF_legs_noends(leg_r, legendre(1.0-2*T), N, t) \
               - y + extinction  # trims extinction probability, assures brentq works
-        return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+
+        try:
+            return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+        except:
+            print p, N, t
+            raise
 
 
 

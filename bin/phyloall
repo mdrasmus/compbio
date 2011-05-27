@@ -449,7 +449,7 @@ def align2tree(conf, prog, alignfile, basename):
     else:
         raise "unknown phylogeny program '%s'" % prog
     
-    tree.writeNewick(treefile)
+    tree.write_newick(treefile)
 
 
 
@@ -495,7 +495,7 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         raise "unknown program '%s'" % prog
 
     
-    tree.writeNewick(treefile)
+    tree.write_newick(treefile)
 
     
 

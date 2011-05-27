@@ -58,12 +58,13 @@ pred_spec = [x for x in pred_rel if x[1] == "spec"]
 
 if conf.subset_genes:
     actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
+                      if len(x) == 4
                       for a in x[2].split(",")
                       for b in x[3].split(",")
                       if a in pred_genes and b in pred_genes)
 else:
     actual_orth = set((x[0],) + tuple(sorted([a,b])) for x in actual_spec
-                      if x[0] in pred_trees
+                      if x[0] in pred_trees and len(x) == 4
                       for a in x[2].split(",")
                       for b in x[3].split(","))
 pred_orth = set((x[0],) + tuple(sorted([a,b])) for x in pred_spec

@@ -45,13 +45,13 @@ for line in sys.stdin:
     # old FASTAs
     oldfastas = []
     for ext in conf["fastaext"]:
-        oldfastas.append(fasta.readFasta(os.path.join(oldpath,
+        oldfastas.append(fasta.read_fasta(os.path.join(oldpath,
                                                       oldfamid + ext)))
 
     # old aligns
     oldaligns = []
     for ext in conf["alignext"]:
-        oldaligns.append(fasta.readFasta(os.path.join(oldpath,
+        oldaligns.append(fasta.read_fasta(os.path.join(oldpath,
                                                       oldfamid + ext)))
     
 

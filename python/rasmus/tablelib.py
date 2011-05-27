@@ -79,7 +79,7 @@ DIR_DEFAULTS = 3
 #DIR_DELIM    = 3
 
 # a special unique null type (more 'null' than None)
-NULL = util.Bundle()
+NULL = object()
 
 
 class TableException (Exception):

@@ -6,9 +6,9 @@ import sys
 
 for fn in sys.argv[1:]:
     util.tic(fn)
-    fa = fasta.readFasta(fn, errors=False)
+    fa = fasta.read_fasta(fn, errors=False)
 
-    fasta.writeFasta(fn, fa)
+    fasta.write_fasta(fn, fa)
     util.toc()
 
 

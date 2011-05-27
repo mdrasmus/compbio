@@ -38,7 +38,7 @@ gene2species = phylo.read_gene2species(options.smap)
 stree = treelib.read_tree(options.stree)
 
 def normBoot(tree):
-    if tree.hasData("boot") and len(tree.root.children) == 2:
+    if tree.has_data("boot") and len(tree.root.children) == 2:
         if tree.root.children[0].is_leaf() or \
            tree.root.children[1].is_leaf():
             tree.root.children[0].data["boot"] = 0.0

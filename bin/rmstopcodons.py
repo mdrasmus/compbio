@@ -5,7 +5,7 @@ from rasmus import fasta
 
 fn = sys.argv[1]
 
-names, seqs = fasta.readFastaOrdered(fn)
+names, seqs = zip(*fasta.read_fasta(fn))
 
 for i in xrange(len(names)):
     if seqs[i][-1] == "*":

@@ -2,7 +2,7 @@
 
 import os, sys, optparse
 
-from rasmus import env, util
+from rasmus import util
 from rasmus.bio import fasta, phylo, alignlib
 
 

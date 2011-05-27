@@ -575,7 +575,7 @@ def logfactorial(x, k=1):
 
 def choose(n, k):
     if n == 0 and k == 0:
-        return 1.0
+        return 1
         
     if n < 0 or k < 0 or k > n:
         return 0
@@ -585,10 +585,45 @@ def choose(n, k):
         k = n - k
     
     t = 1.0
+    n2 = n + 1.0
     for i in xrange(1, k+1):
-        t = t * (n - i + 1) / i
+        t *= (n2 - i) / i
     return int(t + 0.5)
     #return factorial(n, n - k) / factorial(k)
+
+def fchoose(n, k):
+    if n == 0 and k == 0:
+        return 1
+        
+    if n < 0 or k < 0 or k > n:
+        return 0
+    
+    # optimization for speed
+    if k > n/2:
+        k = n - k
+    
+    t = 1.0
+    n2 = n + 1.0
+    for i in xrange(1, k+1):
+        t *= (n2 - i) / i
+    return t
+
+def logchoose(n, k):
+    if n == 0 and k == 0:
+        return 0.0
+        
+    if n < 0 or k < 0 or k > n:
+        return -util.INF
+    
+    # optimization for speed
+    if k > n/2:
+        k = n - k
+    
+    t = 0.0
+    n2 = n + 1.0
+    for i in xrange(1, k+1):
+        t += log((n2 - i) / i)
+    return t
 
 
 def multinomial(vals):

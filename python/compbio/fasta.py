@@ -152,8 +152,7 @@ def iter_fasta(filename, keyfunc=firstword, valuefunc = lambda x: x):
                 yield (key, valuefunc(value))
             key = keyfunc(line[1:].rstrip())
             value = ""
-        else:
-            assert key != ""
+        elif key != "":
             value += line.rstrip()
     if key != "":
         yield (key, valuefunc(value))

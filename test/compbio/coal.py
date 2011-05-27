@@ -42,6 +42,10 @@ class Coal (unittest.TestCase):
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
         show_plot()
 
+    #def test_prob_coal_counts_extreme(self):
+    #
+    #    assert coal.prob_coal_counts(8, 4, 2000, 400000000) >= 0.0
+
 
     def test_prob_coal_cond_counts_simple(self):
 

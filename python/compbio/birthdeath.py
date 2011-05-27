@@ -13,6 +13,19 @@ def prob_birth_death1(ngenes, t, birth, death):
     Returns the probability that one lineage leaves 'ngenes' genes
     after time 't'
     """
+
+    # special cases
+    if birth == death:
+        if birth == 0.0:
+            if ngenes == 1:
+                return 1.0
+            else:
+                return 0.0
+        ut = t / (1.0 / birth + t)
+        if ngenes == 0:
+            return ut
+        else:
+            return ((1.0 - ut)**2) * (ut**(ngenes-1))
     
     l = birth
     u = death
@@ -33,11 +46,13 @@ def prob_birth_death(genes1, genes2, t, birth, death):
        time 't' with 'birth' and 'death' rates.
     """
 
+    # special cases
     if birth == 0.0 and death == 0.0:
         if genes1 == genes2:
             return 1.0
         else:
             return 0.0
+    
     
     l = birth
     u = death
@@ -63,7 +78,13 @@ def birth_wait_time(t, n, T, birth, death):
        'n' lineages starting at time 0, evolving until time 'T' with a
        'birth' and 'death' rates for a reconstructed process.
     """
-    
+
+    # special case
+    if birth == death:
+        t2 = t - T
+        nl = 1.0 / birth
+        return birth * n * (-nl + t2)**n / (-nl - T)**n / (1.0 - birth * t2)
+        
     l = birth
     u = death
     r = l - u
@@ -80,8 +101,11 @@ def prob_no_birth(n, T, birth, death):
        for a reconstructed process.
     """
 
+    # special cases
     if birth == 0.0:
         return 1.0
+    elif birth == death:
+        return 1.0 / (1.0 + birth * T)**n
     
     l = birth
     u = death
@@ -126,6 +150,32 @@ def num_topology_histories(node, leaves=None):
 # sampling
 
 
+def sample_birth_death_count(n, t, birth, death):
+    """
+    Sample the gene count at time 't' with birth death rates
+    'birth' and 'death' with starting count 'n'
+    """
+
+    t2 = 0.0
+    bd = float(birth + death)
+
+    while t2 < t and n > 0:
+        rate = bd * n
+        next_t = random.expovariate(rate)
+
+        if t2 + next_t < t:
+            if random.random() < birth / bd:
+                # birth
+                n += 1
+            else:
+                # death
+                n -= 1
+
+        t2 += next_t
+
+    return n
+
+
 def sample_birth_wait_time(n, T, birth, death):
     """
     Sample the next birth event from a reconstructed birthdeath process.
@@ -135,8 +185,7 @@ def sample_birth_wait_time(n, T, birth, death):
     Conditioned that a birth will occur
     """
     
-    # TODO: could make this much more efficient (use straight line instead of
-    # flat line).
+    # TODO: could make this much more efficient
     
     # uses rejection sampling
     start_y = birth_wait_time(0, n, T, birth, death)
@@ -151,45 +200,62 @@ def sample_birth_wait_time(n, T, birth, death):
             return t
 
 
-def sample_birth_death_tree(T, birth, death, tree=None, node=None):
+def sample_birth_death_tree(T, birth, death, tree=None, node=None,
+                            keepdoom=False):
     """Simulate a reconstructed birth death tree"""
     
     # create tree if one is not given
-    if tree == None:
+    if tree is None:
         tree = treelib.Tree()
     
     # create starting node if one is not given
-    if node == None:
+    if node is None:
         tree.make_root() 
         node = tree.root
     else:
         node2 = treelib.TreeNode(tree.new_name())
         tree.add_child(node, node2)
         node = node2
+
+    bd_rate = float(birth + death)
+    doom = set()
     
-    def walk(tn, node):
-        n = 1
-        
-        # determine if this is the last branch
-        if random.uniform(0, 1) < prob_no_birth(n, T-tn, birth, death):
-            node.dist = T - tn
+    def walk(T, node):
+        if bd_rate == 0.0:
+            next_t = util.INF
         else:
-            t = sample_birth_wait_time(n, T-tn, birth, death)
-            node.dist = t
+            next_t = random.expovariate(bd_rate)
+        
+        if next_t > T:
+            # finish branch
+            node.dist = T
             
-            assert tn + t < T
-            
-            # recurse
-            node2 = treelib.TreeNode(tree.new_name())
-            tree.add_child(node, node2)
-            walk(tn + t, node2)
+        elif random.random() < birth / bd_rate:
+            # birth
+            node.dist = next_t
 
             node2 = treelib.TreeNode(tree.new_name())
             tree.add_child(node, node2)
-            walk(tn + t, node2)
-    walk(0.0, node)
+            walk(T - next_t, node2)
 
-    return tree
+            node2 = treelib.TreeNode(tree.new_name())
+            tree.add_child(node, node2)
+            walk(T - next_t, node2)
+            
+        else:
+            # death
+            node.dist = next_t
+            doom.add(node)
+    walk(T, node)
+
+    if not keepdoom:
+        leaves = set(tree.leaves()) - doom
+        treelib.subtree_by_leaves(tree, leaves)
+
+        if len(leaves) == 0:
+            doom.add(tree.root)
+    
+    return tree, doom
 
 
 def sample_birth_death_gene_tree(stree, birth, death, 
@@ -211,20 +277,19 @@ def sample_birth_death_gene_tree(stree, birth, death,
         else:
             for child in snode:
                 # determine if loss will occur
-                if random.uniform(0, 1) < prob_birth_death(1, 0, child.dist, 
-                                                           birth, death):
-                    continue
-                
-                # no loss, so simulate reconstructed tree
-                sample_birth_death_tree(child.dist, birth, death, 
-                                        tree=tree, node=node)
+                tree2, doom = sample_birth_death_tree(
+                    child.dist, birth, death, 
+                    tree=tree, node=node, keepdoom=True)
                 
                 # record reconciliation
                 next_nodes = []
                 def walk2(node):
                     node.recurse(walk2)
                     recon[node] = child
-                    if node.is_leaf():
+                    if node in doom:
+                        losses.add(node)
+                        events[node] = "gene"
+                    elif node.is_leaf():
                         events[node] = "spec"
                         next_nodes.append(node)
                     else:
@@ -245,7 +310,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
     if removeloss:
         treelib.remove_exposed_internal_nodes(tree,
                                               set(tree.leaves()) - losses)
-        treelib.remove_single_children(tree)
+        treelib.remove_single_children(tree, simplify_root=False)
         
         delnodes = set()
         for node in recon:
@@ -261,7 +326,6 @@ def sample_birth_death_gene_tree(stree, birth, death,
         events = {tree.root: "spec"}
     
     return tree, recon, events
-
 
 
 #=============================================================================
@@ -340,7 +404,7 @@ def sample_birth_literal(n, T, birth, death):
     birth -- rate of birth
     death -- rate of death
     """
-
+    
     while True:
         tmin = util.INF
         
@@ -359,3 +423,123 @@ def sample_birth_literal(n, T, birth, death):
             return tmin
         else:
             return None
+
+
+#=============================================================================
+# OLD
+
+'''
+
+
+def sample_birth_death_tree2(T, birth, death, tree=None, node=None):
+    """Simulate a reconstructed birth death tree"""
+    
+    # create tree if one is not given
+    if tree == None:
+        tree = treelib.Tree()
+    
+    # create starting node if one is not given
+    if node == None:
+        tree.make_root() 
+        node = tree.root
+    else:
+        node2 = treelib.TreeNode(tree.new_name())
+        tree.add_child(node, node2)
+        node = node2
+    
+    def walk(tn, node):
+        n = 1
+        
+        # determine if this is the last branch
+        if random.uniform(0, 1) < prob_no_birth(n, T-tn, birth, death):
+            node.dist = T - tn
+        else:
+            t = sample_birth_wait_time(n, T-tn, birth, death)
+            node.dist = t
+            
+            assert tn + t < T
+            
+            # recurse
+            node2 = treelib.TreeNode(tree.new_name())
+            tree.add_child(node, node2)
+            walk(tn + t, node2)
+
+            node2 = treelib.TreeNode(tree.new_name())
+            tree.add_child(node, node2)
+            walk(tn + t, node2)
+    walk(0.0, node)
+
+    return tree
+
+
+def sample_birth_death_gene_tree2(stree, birth, death, 
+                                 genename=lambda sp, x: sp + "_" + str(x),
+                                 removeloss=True):
+    """Simulate a gene tree within a species tree with birth and death rates"""
+    
+    # initialize gene tree
+    tree = treelib.Tree()
+    tree.make_root()
+    recon = {tree.root: stree.root}
+    events = {tree.root: "spec"}
+    losses = set()
+    
+    def walk(snode, node):
+        if snode.is_leaf():
+            tree.rename(node.name, genename(snode.name, node.name))
+            events[node] = "gene"
+        else:
+            for child in snode:
+                # determine if loss will occur
+                if random.uniform(0, 1) < prob_birth_death1(0, child.dist, 
+                                                            birth, death):
+                    continue
+                
+                # no loss, so simulate reconstructed tree
+                sample_birth_death_tree2(child.dist, birth, death, 
+                                        tree=tree, node=node)
+                
+                # record reconciliation
+                next_nodes = []
+                def walk2(node):
+                    node.recurse(walk2)
+                    recon[node] = child
+                    if node.is_leaf():
+                        events[node] = "spec"
+                        next_nodes.append(node)
+                    else:
+                        events[node] = "dup"
+                walk2(node.children[-1])
+                
+                # recurse
+                for leaf in next_nodes:
+                    walk(child, leaf)
+            
+            # if no child for node then it is a loss
+            if node.is_leaf():
+                losses.add(node)
+    walk(stree.root, tree.root)
+    
+    
+    # remove lost nodes
+    if removeloss:
+        treelib.remove_exposed_internal_nodes(tree,
+                                              set(tree.leaves()) - losses)
+        treelib.remove_single_children(tree, simplify_root=False)
+        
+        delnodes = set()
+        for node in recon:
+            if node.name not in tree.nodes:
+                delnodes.add(node)
+        for node in delnodes:
+            del recon[node]
+            del events[node]
+
+    if len(tree.nodes) <= 1:
+        tree.nodes = {tree.root.name : tree.root}
+        recon = {tree.root: stree.root}
+        events = {tree.root: "spec"}
+    
+    return tree, recon, events
+
+'''

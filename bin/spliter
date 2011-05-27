@@ -1,45 +1,44 @@
 #!/usr/bin/env python
-# split input files into several temporary files
+# split input files into several temporary files and run jobs in parallel
+#
 
 from __future__ import division
 import sys
 import os
 import optparse
 import math
-
+from glob import glob
 
 
 o = optparse.OptionParser()
 o.disable_interspersed_args()
-#o.add_option("-r", "--reduce", dest="reduce",
-#             default="cat $FILES")
+o.add_option("-r", "--reduce", dest="reduce",
+             default="cat $FILES")
 o.add_option("-i", "--input", dest="input",
              action="append",
              help="input file")
-#o.add_option("-o", "--output", dest="output",
-#             help="output file")
+o.add_option("-o", "--output", dest="output",
+             help="output file")
 o.add_option("-n", "--numgroup", dest="numgroup",
              type="int", default=10,
              help="number of groups to make (default: 10)")
 o.add_option("-g", "--groupsize", dest="groupsize",
              type="int",
              help="size of each group")
-o.add_option("-w", "--nowait", dest="nowait", action="store_true",
-             help="wait for each command to finish")
 o.add_option("-t", "--tmpprefix", dest="tmpprefix",
              help="temp output prefix")
-o.add_option("-k", "--no-clean", dest="no_clean",
+o.add_option("-k", "--clean", dest="clean",
              action="store_true",
-             help="do not clean tempdir prior to run")
+             help="clean temp output")
 o.add_option("-s", "--submit", dest="submit",
-             default='bsub -o "$FILE.bout" -E "touch \"$FILE.bout\""  -K ',
+             default='bsub -o "$FILE.bout" -K ',
              help="submit command")
 o.add_option("-d", "--cleanup", dest="cleanup",
              default='rm -f "$FILE" "$FILE.out" "$FILE.bout"',
-             help="cleanup command after run")
+             help="cleanup command")
 o.add_option("-D", "--no-cleanup", dest="no_cleanup",
              action="store_true",
-             help="Do not clean up temp files after run")
+             help="Do not clean up temp files")
 o.add_option("-v", "--verbose", dest="verbose",
              action="store_true", default=False)
 
@@ -53,14 +52,20 @@ def error(text):
 
 def doublequote(text):
     """Wrap argument in doublequotes with propper escaping"""
-    return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$") + '"'
+    return '"' + text.replace('"', '\\"') + '"'
 
+def quote(text):
+    return text.replace('"', '\\"').replace(" ", "\\ ")
 
 def make_cmd(cmd, **args):
     cmd2 = ""
     for key, val in args.items():
-        cmd2 += 'export %s=%s; ' % (key, doublequote(val))
-    return cmd2 + cmd
+        cmd2 += '%s=%s; ' % (key, doublequote(val))
+        #if '"' not in val:
+        #    cmd2 += '%s="%s"; ' % (key, val)
+        #else:
+        #    cmd2 += "%s=%s; " % (key, val.replace(" ", "\\ "))
+    return "( " + cmd2 + cmd + " )"
 
 
 def main(argv):
@@ -68,47 +73,29 @@ def main(argv):
 
     # determine temp output prefix
     if options.tmpprefix is None:
-        if "RUNPAR_PREFIX" in os.environ:
-            options.tmpprefix = os.environ["RUNPAR_PREFIX"]
+        if "SPLITER_PREFIX" in os.environ:
+            options.tmpprefix = os.environ["SPLITER_PREFIX"]
         else:
             error(("%s: you must specify tempdir with -t or with the " + 
-                   "environment variable RUNPAR_PREFIX") % \
+                   "environment variable SPLITER_PREFIX") % \
                     os.path.basename(sys.argv[0]))
             return 2
 
-    # ensure temp space exists
-    if not os.path.isdir(options.tmpprefix):
-        # XXX: tmpprefix might contain a filename prefix
-        # tmpdir = os.path.dirname(options.tmpprefix)
-        tmpdir = options.tmpprefix
-        if not os.path.exists(tmpdir):
-            if options.verbose:
-                print >>sys.stderr, "making temp directory '%s'" % tmpdir
-            os.makedirs(tmpdir)
-        
-
     # clean all previous tempfiles, if requested
-    if not options.no_clean:
-        for fn in os.listdir(options.tmpprefix):
-            fn2 = os.path.join(options.tmpprefix, fn)
+    if options.clean:
+        for fn in glob(options.tmpprefix + "*"):
             if options.verbose:
-                print >>sys.stderr, "removing", fn2
-            os.remove(fn2)
+                print >>sys.stderr, "removing", fn
+            os.remove(fn)
+        return 0
 
 
     # determine map command
-    if len(args) > 0:
-        cmd = " ".join(args)
-        if cmd == "":
-            error("must give map command")
-            return 2
-    else:
-        cmd = sys.stdin.read()
-
+    cmd = " ".join(args)
+    if cmd == "":
+        error("must give map command")
+        return 2
     
-    if options.nowait:
-        options.submit = 'bsub -o "$FILE.bout" -E "touch \"$FILE.bout\""  '
-        
 
     # determine infiles
     infiles = []
@@ -119,7 +106,7 @@ def main(argv):
             else:
                 infiles.append(open(arg))
     else:
-        error("must specify input file(s)")
+        infiles.append(sys.stdin)
 
     # determine all input lines
     lines = []
@@ -128,18 +115,15 @@ def main(argv):
 
     # determine group size
     if options.groupsize is None:
-        options.groupsize = int(math.ceil(len(lines) /
-                                          float(options.numgroup)))
+        options.groupsize = int(math.ceil(len(lines) / options.numgroup))
 
-    if len(lines) == 0:
-        return 0
 
     # split lines
     pids = set()
     outfiles = []
     infiles = []
     for i in xrange(0, len(lines), options.groupsize):
-        fn = os.path.join(options.tmpprefix, str(i))
+        fn = options.tmpprefix + str(i)
         infiles.append(fn)
         outfiles.append(fn + ".out")
 
@@ -150,33 +134,20 @@ def main(argv):
         out.close()
 
         # run command
-        #cmd2 = make_cmd(options.submit + 
-        #                doublequote('( ' + cmd + ' ) > "$FILE.out"'),
-        #                FILE=fn)
-        
-        cmd2 = make_cmd(options.submit + doublequote(
-            make_cmd('( ' + cmd + ' ) > "$FILE.out"', FILE=fn)),
-                        FILE=fn)
-
-        
+        cmd2 = make_cmd(options.submit + 
+                        doublequote(cmd + " > $FILE.out"), FILE=fn)
         if options.verbose:
             print >>sys.stderr, cmd2
 
-        if options.nowait:
-            os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd2)
-        else:
-            pids.add(os.spawnlp(os.P_NOWAIT, "bash", "bash", "-c", cmd2))
+        pids.add(os.spawnlp(os.P_NOWAIT, "bash", "bash", "-c", cmd2))
 
     # wait for all jobs to finish
     while len(pids) > 0:
         pid, code = os.waitpid(0, 0)
-        if pid in pids:
-            pids.remove(pid)
-        
+        pids.remove(pid)
 
 
     # run reduce command
-    '''
     outfiles = " ".join(map(quote, outfiles))
     if options.output is not None:
         out_cmd = ' > %s' % doublequote(options.output)
@@ -186,7 +157,7 @@ def main(argv):
     if options.verbose:
         print >>sys.stderr, reduce_cmd
     os.system(reduce_cmd)
-    '''
+
 
     # clean up
     if not options.no_cleanup:

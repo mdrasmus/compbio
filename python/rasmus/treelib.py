@@ -396,9 +396,6 @@ class Tree:
     
     def replace_tree(self, node, childTree):
         """Remove node and replace it with the root of childTree"""
-    
-        # merge nodes and change the names of childTree names if they conflict
-        # with existing names
         self.remove_tree(node)
         self.add_tree(node.parent, childTree)
     replaceTree = replace_tree
@@ -943,6 +940,21 @@ def parse_newick(newick):
     tree.read_newick(stream)
     return tree
 parseNewick = parse_newick
+
+def iter_trees(filename):
+    infile = open(filename)
+    try:
+        while True:
+            yield read_tree(infile)
+    except:
+        pass
+    finally:
+        infile.close()            
+iterTrees = iter_trees
+
+def read_trees(filename):
+    return list(iter_trees(filename))
+readTrees = read_trees
 
 
 #=============================================================================

@@ -13,21 +13,44 @@ from rasmus.bio import phylorun as phy
 
 o = optparse.OptionParser()
 o.add_option("-m", "--model", dest="model", metavar="MODEL")
+phy.add_common_options(o)
+o.add_option("-u", "--usertree", dest="usertree", metavar="TREE_FILE")
 o.add_option("-x", "--random", dest="random", action="store_true")
 o.add_option("", "--fastboot", dest="fastboot", metavar="NUMBER")
-phy.add_common_options(o)
+
 conf, files = phy.parse_common_options(o)
 
+# raxml program name
 PROG = "raxmlHPC"
 
 
+#=============================================================================
+
 def run(args, outdir):
+    """Run a program in a subprocess within a new directory"""
     curdir = os.getcwd()
     os.chdir(outdir)    
     ret = subprocess.call(args)
     os.chdir(curdir)
     return ret
 
+def setup_usertree(treefile, treefile2):
+    usertree = treelib.read_tree(treefile)
+
+    # save data
+    data = dict((n.name, n.data) for n in usertree)
+
+    # prepare usertree
+    usertree2 = treelib.unroot(usertree, newCopy=True)
+    for n in usertree2:
+        n.data = {}
+        
+    usertree2.write(outdir +"/" + treefile2)
+
+    return usertree, data
+    
+
+#=============================================================================
 
 result = 0
 for fn in files:
@@ -45,18 +68,12 @@ for fn in files:
 
     # set user tree
     if conf.usertreeext:
-        usertree = treelib.read_tree(basename + conf.usertreeext)
-
-        # save data
-        data = dict((n.name, n.data) for n in usertree)
-
-        # prepare usertree
-        usertree2 = treelib.unroot(usertree, newCopy=True)
-        for n in usertree2:
-            n.data = {}
-        
         usertree_file = "usertree"
-        usertree2.write(outdir +"/usertree")
+        usertree, data = setup_usertree(basename + conf.usertreeext,
+                                        usertree_file)
+    elif conf.usertree:
+        usertree_file = "usertree"
+        usertree, data = setup_usertree(conf.usertree, usertree_file)
     else:
         usertree = None
         usertree_file = None
@@ -79,6 +96,10 @@ for fn in files:
     # user tree
     if usertree_file:
         args.extend(["-t", usertree_file])
+
+    # opttree
+    if not conf.opttree:
+        args.extend(["-f", "e"])
 
     # bootstrapping
     if conf.boot:

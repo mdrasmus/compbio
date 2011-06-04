@@ -183,6 +183,22 @@ class Tree:
         return self.nodes.itervalues()
 
 
+    def __len__(self):
+        """Returns number of nodes in tree"""
+        return len(self.nodes)
+
+
+    def __getitem__(self, key):
+        """Returns node by name"""
+        return self.nodes[key]
+
+
+    def __setitem__(self, key, node):
+        """Adds a node to the tree"""
+        node.name = key
+        self.add(node)
+    
+
     def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in pre-order traversal"""
         
@@ -257,7 +273,7 @@ class Tree:
         if name == None:
             name = self.new_name()
         self.root = TreeNode(name)
-        self.add(self.root)
+        return self.add(self.root)
 
 
     def add(self, node):
@@ -265,6 +281,7 @@ class Tree:
            Does not add node to any specific location (use add_child instead).
         """
         self.nodes[node.name] = node
+        return node
 
 
     def add_child(self, parent, child):
@@ -274,6 +291,7 @@ class Tree:
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
+        return child
 
 
     def remove(self, node):
@@ -654,7 +672,7 @@ class Tree:
         self.root = walk(expr)
         self.nodes[self.root.name] = self.root
 
-        # test for boot strap presence
+        # test for bootstrap presence
         for node in self.nodes.itervalues():
             if "boot" in node.data:
                 self.default_data["boot"] = 0
@@ -673,7 +691,7 @@ class Tree:
         def readchar():
             while True:
                 char = infile.read(1)
-                if char not in " \t\n": break
+                if not char or char not in " \t\n": break
             if char == "(": closure["opens"] += 1
             if char == ")": closure["opens"] -= 1
             return char
@@ -871,6 +889,22 @@ def parse_newick(newick):
     return tree
 parseNewick = parse_newick
 
+def iter_trees(treefile):
+    """read multiple trees from a tree file"""
+    
+    ntrees = 0
+    infile = util.open_stream(treefile)
+    
+    while True:
+        try:
+            tree = read_tree(infile)
+            ntrees += 1
+            yield tree
+        except Exception, e:
+            if ntrees < 1:
+                raise
+            break
+
 
 #=============================================================================
 # NHX format
@@ -1023,7 +1057,7 @@ def subtree(tree, node):
     tree2 = Tree(nextname = tree.new_name())
     
     # copy nodes and data
-    tree2.root = node.copy()    
+    tree2.root = node.copy()
     tree2.copy_data(tree)
     
     # add nodes

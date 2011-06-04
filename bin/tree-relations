@@ -5,15 +5,23 @@
 import os, sys, optparse
 from itertools import chain
 from rasmus import treelib, util, tablelib
-from rasmus.bio import phylo
+from compbio import phylo
+
 
 o = optparse.OptionParser()
-o.add_option("-d", "--dir", dest="dir", action="store_true")
+o.add_option("-d", "--dir", dest="dir", action="store_true",
+             help="identify trees by their directory")
 o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
 o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
 o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
 o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
+
+o.add_option("--no-species-branch", dest="no_species_branch",
+             action="store_true")
+
 conf, args = o.parse_args()
+
+#=============================================================================
 
 # read args
 stree = treelib.read_tree(conf.stree)
@@ -31,6 +39,43 @@ else:
 
 
 
+def get_tree_relations(tree, recon, events):
+
+    # print gene 'events'
+    for leaf in tree.leaves():
+        yield [treename, "gene", leaf.name]
+
+    # print duplication and speciation events
+    for node in tree:
+
+        # skip gene events (already printed)
+        if events[node] == "gene":
+            continue
+        
+        rel = sorted((sorted(child.leaf_names()) for child in node.children),
+                     key=relation_format)
+        
+        if events[node] == "dup":
+            yield [treename, "dup"] + rel
+        elif events[node] == "spec":
+            yield [treename, "spec"] + rel
+
+
+    for gbranch, sbranch in phylo.find_loss(tree, stree, recon):
+        yield [treename, "loss", sorted(gbranch.leaf_names()),
+               str(sbranch.name)]
+
+def relation_format(val):
+    if isinstance(val, (list, tuple)):
+        return ",".join(relation_format(v) for v in val)
+    else:
+        return str(val)           
+
+
+def write_relation(out, rel):    
+    out.write("\t".join(relation_format(val) for val in rel) + "\n")
+
+
 # process tree files
 for filename in filenames:
     tree = treelib.read_tree(filename)
@@ -40,6 +85,7 @@ for filename in filenames:
     else:
         treename = filename
 
+    # check tree
     assert(treelib.is_rooted(tree))
 
     # get recon and events
@@ -54,34 +100,8 @@ for filename in filenames:
         # use MPR to build reconciliation and events
         recon = phylo.reconcile(tree, stree, gene2species)
         events = phylo.label_events(tree, recon)
-        
-
-    for leaf in tree.leaves():
-        print "\t".join([treename, "gene", leaf.name])
-
-    for node in tree:
-
-        if events[node] == "gene":
-            continue
-
-        rel = util.sort([",".join(sorted(child.leaf_names()))
-                                       for child in
-                         util.sort(node.children,
-                                   key=lambda x: len(x.leaves()))])
-        
-        if events[node] == "dup":
-            row = [treename, "dup"] + rel
-        elif events[node] == "spec":
-            row = [treename, "spec"] + rel
-            
-        print "\t".join(row)
 
 
-    for loss in phylo.find_loss(tree, stree, recon):
-
-        print "\t".join([treename, "loss",
-                         ",".join(sorted(loss[0].leaf_names())),
-                         str(loss[1].name)])
-                            
-            
+    for rel in get_tree_relations(tree, recon, events):
+        write_relation(sys.stdout, rel)
 

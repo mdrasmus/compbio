@@ -9,8 +9,6 @@ from rasmus.bio import fasta, alignlib
 
 #=============================================================================
 o = optparse.OptionParser()
-o.add_option("-c", "--check", dest="check", action="store_true", default=False,
-             help="check that the dna translates to the peptide")
 o.add_option("-d", "--dna", dest="dna", metavar="<dna fasta>",
              action="append")
 o.add_option("-o", "--oldext", dest="oldext", metavar="<old extension>",
@@ -21,6 +19,9 @@ o.add_option("-i", "--useindex", dest="useindex", action="store_true",
              default=False)
 o.add_option("-t", "--transmap", dest="transmap",
              help="mapping of transcript names to proteins")
+o.add_option("-c", "--check", dest="check", action="store_true", default=False,
+             help="check that the dna translates to the peptide")
+o.add_option("--trim", action="store_true")
 
 
 conf, args = o.parse_args()
@@ -69,14 +70,16 @@ for aln_file in args:
     aln = fasta.read_fasta(aln_file)
         
     try:
-        alnDna = alignlib.revtranslate_align(aln, seqs, check=conf.check)
+        alndna = alignlib.revtranslate_align(aln, seqs,
+                                             check=conf.check,
+                                             trim=conf.trim)
     except alignlib.TranslateError, e:
         print e
         print "%s  ! ===> %s" % (e.a, e.codon)
         print e.dna
         print e.aa
     else:    
-        alnDna.write(newfile)
+        alndna.write(newfile)
             
 util.toc()
 

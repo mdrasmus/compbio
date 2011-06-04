@@ -9,8 +9,8 @@ import shutil
 from itertools import izip
 
 # rasmus imports
-from rasmus.bio import fasta
 from rasmus import util
+from compbio import fasta
 
 #=============================================================================
 # options
@@ -42,9 +42,11 @@ parts = util.read_delim(conf.part)
 
 # get famids
 if conf.famid:
+    # use first column as famid
     famids = util.cget(parts, 0)
     parts = [row[1:] for row in parts]
 else:
+    # issue new famids based on line number
     famids = map(str, range(len(parts)))
     
 
@@ -76,7 +78,6 @@ for f in fa_files:
    
     for famid, part in izip(famids, parts):
         seqfile = os.path.join(conf.outdir, famid, famid + conf.fastaext)
-        util.logger(seqfile)
         seqs2 = seqs.get(part)
 
         if len(seqs2) > 0:

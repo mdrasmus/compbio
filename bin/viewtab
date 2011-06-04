@@ -1,45 +1,35 @@
 #!/usr/bin/env python
 
-import os, sys
+import os, sys, optparse
 
 from rasmus import util, tablelib
 
 
-options = [
-    ["r:", "rows=", "rows", "<number of row to align at a time>",
-     {"single": True,
-      "default": 100,
-      "parser": int,
-      "help": "use -1 to align entire file"}],
-    ["s:", "spacing=", "spacing", "<column spacing>",
-     {"single": True,
-      "default": 2,
-      "parser": int}],
-    ["w:", "maxwidth=", "maxwidth", "<# chars>",
-     {"single": True,
-      "default": util.INF,
-      "parser": int}],
-    ["d:", "delim=", "delim", "<delimiter>",
-     {"single": True,
-      "default": "\t"}],
-    ["H:", "header=", "header", "",
-     {"single": True,
-      "parser": int,
-      "default": 0}],
-    ["t", "table", "table", "",
-     {"single": True}]
-]
-
-conf = util.parseOptions(sys.argv, options, quit=True)
+o = optparse.OptionParser()
+o.add_option("-r", "--rows", metavar="<number of row to align at a time>",
+             default=100, type="int",
+             help="use -1 to align entire file")
+o.add_option("-s", "--spacing", metavar="<column spacing>",
+             default=2, type="int")
+o.add_option("-w", "--maxwidth", metavar="<# chars>",
+             default=util.INF, type="int")
+o.add_option("-d", "--delim", metavar="<delimiter>",
+             default="\t")
+o.add_option("-H", "--header", metavar="<# rows>",
+             type="int", default=0)
+o.add_option("-t", "--table", action="store_true")
 
 
-if len(conf["REST"]) > 0 and conf["REST"][0] != "-":
-    infile = file(conf["REST"][0])
+conf, args = o.parse_args()
+
+
+if len(args) > 0 and args[0] != "-":
+    infile = file(args[0])
 else:
     infile = sys.stdin
 
 
-if conf["table"]:
+if conf.table:
     tab = tablelib.readTable(infile)
     tab.writePretty()
 else:
@@ -47,18 +37,18 @@ else:
     headers = []
     
     for i, line in enumerate(infile):
-        tokens = line.rstrip().split(conf["delim"])
+        tokens = line.rstrip().split(conf.delim)
         mat.append(tokens)
 
-        if i < conf["header"]:
+        if i < conf.header:
             headers.append(tokens)
 
-        if conf["rows"] > 0 and len(mat) >= conf["rows"]:
+        if conf.rows > 0 and len(mat) >= conf.rows:
             if len(headers) > 0 and i > len(mat):
                 mat = headers + mat
             
-            util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
+            util.printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
             mat = []
 
-    util.printcols(mat, spacing=conf["spacing"], colwidth=conf["maxwidth"])
+    util.printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
 

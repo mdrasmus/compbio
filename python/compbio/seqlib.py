@@ -335,8 +335,12 @@ def revtranslate(aa, dna, check=False):
        Must supply original ungapped DNA.
     """
 
-    a = len(dna.replace("-", ""))
-    b = len(aa.replace("-", "")) * 3
+    # trim stop codon
+    if aa[-1] in "*X" and CODON_TABLE.get(dna[-3:], "") == "*":
+        dna = dna[:-3]
+
+    a = len(aa.replace("-", "")) * 3
+    b = len(dna.replace("-", ""))
 
     if a != b:
         raise TranslateError("sequences have wrong lengths (%d != %d)" %

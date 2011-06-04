@@ -8,15 +8,17 @@
 
 # python libs
 import sys, os
+import optparse
 
 # rasmus libs
 from rasmus import treelib
 from rasmus import util
 from rasmus import stats
-import optparse
-
-import spidir
 from compbio import phylip, fasta, phylo
+
+# spidir libs
+import spidir
+
 
 
 
@@ -43,34 +45,6 @@ o.add_option("--binary", dest="binary",
 
 conf, files = o.parse_args()
 
-
-
-def ensure_binary(tree):
-    
-    multibranches = [node for node in tree
-                     if len(node.children) > 2]
-
-    for node in multibranches:
-        children = list(node.children)
-        
-        # remove children
-        for child in children:
-            tree.remove(child)
-        
-        # add back in binary
-        while len(children) > 2:
-            left = children.pop()
-            right = children.pop()
-            newnode = treelib.TreeNode(tree.new_name())
-            newnode.data['boot'] = 0
-            tree.add_child(newnode, left)
-            tree.add_child(newnode, right)
-            children.append(newnode)
-        
-        # add last two to original node
-        tree.add_child(node, children.pop())
-        tree.add_child(node, children.pop())
-            
                 
             
 def est_bgfreq(aln):
@@ -107,52 +81,36 @@ def rename_trees_with_ids(trees):
 
 
 
+
 for filename in files:
     args = "y"
 
     if conf.rooted:
         args = "r\n" + args
 
-    # use id numbers, because phylip crashes on long gene names
+    # read trees
     trees = read_trees(filename)
-    names = rename_trees_with_ids(trees)
     ntrees = len(trees)
 
     if conf.numtrees:
         if ntrees < conf.numtrees:
             print "SKIP: %d < %d trees" % (ntrees, conf.numtrees)
             continue
-
-    # run phylip
-    tree = phylip.consense(trees, verbose=False, args=args)
-    phylip.rename_tree_with_names(tree, names)
     
+    tree = phylo.consensus_majority_rule(trees, rooted=conf.rooted)
+
+    if conf.binary:
+        phylo.ensure_binary_tree(tree)
+
     
     if conf.align:
         aln = fasta.read_fasta(conf.align)
         bgfreq = est_bgfreq(aln)
-
-        ensure_binary(tree)
-        
-        # copy bootstrap from dist field
-        for node in tree:
-            node.data["boot"] = node.dist / ntrees
+        phylo.ensure_binary_tree(tree)
         
         # find actual branch lengths
-        spidir.find_ml_branch_lengths_hky(tree,
-                                          util.mget(aln, tree.leaf_names()),
-                                          bgfreq,
-                                          conf.kappa,
-                                          maxiter=conf.maxiter,
-                                          parsinit=True)
-
-    else:
-        if conf.binary:
-            ensure_binary(tree)
-    
-        for node in tree:
-            node.data["boot"] = node.dist / ntrees
-            node.dist = 0
+        spidir.find_ml_branch_lengths_hky(tree, aln, bgfreq, conf.kappa,
+                                          maxiter=conf.maxiter, parsinit=True)
     
     if conf.rooted:
         if tree.root.children[0].is_leaf() or \

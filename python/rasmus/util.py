@@ -788,6 +788,43 @@ def minfunc(func, lst):
             lowi = i
     return lowi
 
+def minall(iterable, keyfunc=None, minfunc=None):
+    """Returns (1) all items with minimum value and (2) the minimum value"""
+    if keyfunc==None:
+        keyfunc=lambda it:it
+    if minfunc==None:
+        minfunc=lambda it:it
+
+    items = []
+    minval = INF
+    for it in iterable:
+        val = minfunc(it)
+        if val < minval:
+            items = [keyfunc(it)]
+            minval = val
+        elif val == minval:
+            items.append(keyfunc(it))
+    assert(len(items)>0)
+    return items, minval
+
+def maxall(iterable, keyfunc=None, maxfunc=None):
+    """Returns (1) all items with maximum value and (2) the maximum value"""
+    if keyfunc==None:
+        keyfunc=lambda it:it
+    if maxfunc==None:
+        maxfunc=lambda it:it
+
+    items = []
+    maxval = -INF
+    for it in iterable:
+        val = maxfunc(it)
+        if val > maxval:
+            items = [keyfunc(it)]
+            maxval = val
+        elif val==maxval:
+            items.append(keyfunc(it))
+    assert(len(items)>0)
+    return items, maxval    
 
 
 #=============================================================================

@@ -949,7 +949,7 @@ def iter_trees(filename):
     except:
         pass
     finally:
-        infile.close()            
+        infile.close()
 iterTrees = iter_trees
 
 def read_trees(filename):

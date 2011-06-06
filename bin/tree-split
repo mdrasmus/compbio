@@ -55,21 +55,21 @@ def normBoot(tree):
 def splitTree(tree, stree, gene2species, reroot=False):
     """            
     - If root is a pre-speciation duplication:
-	    - reconRoot tree
+	    - recon_root tree
 	    - If root is still a pre-speciation duplication
 		    - remove root and split the tree into two separate trees
 		    - recurse    
     """
 
     recon = phylo.reconcile(tree, stree, gene2species)
-    events = phylo.labelEvents(tree, recon)
+    events = phylo.label_events(tree, recon)
 
     if events[tree.root] == "dup" and \
        recon[tree.root] == stree.root:
         if reroot:
-            phylo.reconRoot(tree, stree, gene2species, newCopy=False)
+            phylo.recon_root(tree, stree, gene2species, newCopy=False)
             recon = phylo.reconcile(tree, stree, gene2species)
-            events = phylo.labelEvents(tree, recon)
+            events = phylo.label_events(tree, recon)
         
         #treelib.drawTree(tree, minlen=5)
         

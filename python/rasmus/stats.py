@@ -31,6 +31,13 @@ def prod(lst):
     return p
 
 
+def zscores(vals):
+    """Computes the zscores for a list of numbers"""
+    mu = mean(vals)
+    sd = sdev(vals)
+    return [(float(i)-mu)/sd for i in vals]
+
+
 def mean(vals):
     """Computes the mean of a list of numbers"""
     n = 0

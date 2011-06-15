@@ -765,6 +765,8 @@ def get_orthologs(tree, events):
 def hash_tree_compose(child_hashes, node=None):
     return "(%s)" % ",".join(child_hashes)
 
+def hash_tree_compose_names(child_hashes, node=None):
+     return "(%s)%s" % (",".join(child_hashes), node.name)
 
 def hash_tree(tree, smap=lambda x: x, compose=hash_tree_compose):
     def walk(node):
@@ -782,6 +784,8 @@ def hash_tree(tree, smap=lambda x: x, compose=hash_tree_compose):
     else:
         raise Exception("Expected Tree object")
 
+def hash_tree_names(tree, smap=lambda x: x, compose=hash_tree_compose_names):
+    return hash_tree(tree, smap, compose)
 
 def hash_order_tree(tree, smap = lambda x: x):
     def walk(node):

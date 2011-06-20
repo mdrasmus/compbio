@@ -284,10 +284,11 @@ def find_species_roots(tree, stree, recon):
     return roots       
 
 
-def find_orthologs(gtree, stree, recon, counts=True):
+def find_orthologs(gtree, stree, recon, events=None, counts=True):
     """Find all ortholog pairs within a gene tree"""
 
-    events = label_events(gtree, recon)
+    if events is None:
+        events = label_events(gtree, recon)
     orths = []
     
     for node, event in events.items():

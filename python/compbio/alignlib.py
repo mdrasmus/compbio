@@ -213,7 +213,7 @@ def revtranslate_align(aaseqs, dnaseqs, check=False, trim=False):
                         if seq[i] == "X":
                             # repair
                             seq =  seq[:i] + "-" * (len(seq)-i)
-                            dna = dna[:-(len(dna) % 3)]
+                            dna = dna[:-3] #-(len(dna) % 3)]
                         break
 
             

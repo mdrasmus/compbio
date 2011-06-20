@@ -1,28 +1,63 @@
 #!/usr/bin/env python
 
-from rasmus import treelib, util
-from rasmus.bio import phylo
 
-import os, sys
-
-
-if len(sys.argv) < 3:
-    print >>sys.stderr, "usgage: tree-orth <stree> <smap> <tree files> ..."
-    sys.exit(1)
+import os, sys, optparse
+from itertools import chain
+from rasmus import treelib, util, tablelib
+from compbio import phylo
 
 
-stree_file, gene2species_file = sys.argv[1:3]
+o = optparse.OptionParser()
+o.add_option("-d", "--dir", dest="dir", action="store_true",
+             help="identify trees by their directory")
+o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
+o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
+o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
+o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
 
-stree = treelib.read_tree(stree_file)
-gene2species = phylo.read_gene2species(gene2species_file)
+conf, args = o.parse_args()
+
+#=============================================================================
+
+# read args
+stree = treelib.read_tree(conf.stree)
+gene2species = phylo.read_gene2species(conf.smap)
 
 
-for filename in sys.argv[3:]:
-    print >>sys.stderr, filename.rstrip()
-    tree = treelib.read_tree(filename.rstrip())
-    recon = phylo.reconcile(tree, stree, gene2species)
+def read_filenames(stream):
+    for line in stream:
+        yield line.rstrip()
 
-    orths = phylo.find_orthologs(tree, stree, recon)
+if len(args) == 0:
+    filenames = read_filenames(sys.stdin)
+else:
+    filenames = args
+
+
+for filename in filenames:
+    tree = treelib.read_tree(filename)
+    if conf.dir:
+        treename = os.path.basename(os.path.dirname(filename))
+    else:
+        treename = filename
+
+    # check tree
+    assert(treelib.is_rooted(tree))
+
+    # get recon and events
+    if conf.treeext and conf.reconext:
+        try:
+            recon, events = phylo.read_recon_events(util.replace_ext(
+                filename, conf.treeext, conf.reconext), tree, stree)
+        except:
+            print >>sys.stderr, filename
+            raise
+    else:
+        # use MPR to build reconciliation and events
+        recon = phylo.reconcile(tree, stree, gene2species)
+        events = phylo.label_events(tree, recon)
+    
+    orths = phylo.find_orthologs(tree, stree, recon, events)
 
     for gene1, gene2, spcnt1, spcnt2 in orths:
         sp1 = gene2species(gene1)
@@ -33,8 +68,8 @@ for filename in sys.argv[3:]:
             gene1, gene2 = gene2, gene1
             spcnt1, spcnt2 = spcnt2, spcnt1
         
-        print "%s\t%s\t%s\t%s\t%d\t%d" % (sp1, sp2, gene1, gene2,
-                                          spcnt1, spcnt2)
+        print "%s\t%s\t%s\t%s\t%s\t%d\t%d" % (treename, sp1, sp2, gene1, gene2,
+                                              spcnt1, spcnt2)
 
 
 

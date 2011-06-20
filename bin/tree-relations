@@ -43,7 +43,7 @@ def get_tree_relations(tree, recon, events):
 
     # print gene 'events'
     for leaf in tree.leaves():
-        yield [treename, "gene", leaf.name]
+        yield ["gene", leaf.name]
 
     # print duplication and speciation events
     for node in tree:
@@ -54,16 +54,23 @@ def get_tree_relations(tree, recon, events):
         
         rel = sorted((sorted(child.leaf_names()) for child in node.children),
                      key=relation_format)
-        
-        if events[node] == "dup":
-            yield [treename, "dup"] + rel
-        elif events[node] == "spec":
-            yield [treename, "spec"] + rel
+
+        if conf.no_species_branch:
+            if events[node] == "dup":
+                yield ["dup"] + rel
+            elif events[node] == "spec":
+                yield ["spec"] + rel
+        else:
+            if events[node] == "dup":
+                yield ["dup"] + rel + [recon[node].name]
+            elif events[node] == "spec":
+                yield ["spec"] + rel + [recon[node].name]
 
 
     for gbranch, sbranch in phylo.find_loss(tree, stree, recon):
-        yield [treename, "loss", sorted(gbranch.leaf_names()),
+        yield ["loss", sorted(gbranch.leaf_names()),
                str(sbranch.name)]
+
 
 def relation_format(val):
     if isinstance(val, (list, tuple)):
@@ -72,8 +79,9 @@ def relation_format(val):
         return str(val)           
 
 
-def write_relation(out, rel):    
-    out.write("\t".join(relation_format(val) for val in rel) + "\n")
+def write_relation(out, treename, rel):    
+    out.write(treename + "\t" + "\t".join(relation_format(val)
+                                          for val in rel) + "\n")
 
 
 # process tree files
@@ -103,5 +111,5 @@ for filename in filenames:
 
 
     for rel in get_tree_relations(tree, recon, events):
-        write_relation(sys.stdout, rel)
+        write_relation(sys.stdout, treename, rel)
 

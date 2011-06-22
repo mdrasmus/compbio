@@ -13,13 +13,6 @@ Implements and standardizes Manolis style tab-delimited table file format.
 ##header:1
 #
 #
-# unimplemented for now
-##expect:
-##author:
-##delim:whitespace,space,tab,',',';'
-#
-#
-#
 name num
 data1 data2
 -------------------------------------------------------------
@@ -75,8 +68,6 @@ TABLE_VERSION = "1.0"
 DIR_VERSION  = 0
 DIR_TYPES    = 1
 DIR_HEADERS  = 2
-DIR_DEFAULTS = 3
-#DIR_DELIM    = 3
 
 # a special unique null type (more 'null' than None)
 NULL = object()
@@ -323,14 +314,12 @@ class Table (list):
 
     def __init__(self, rows=None, 
                        headers=None,
-                       defaults={},
                        types={},
                        filename=None,
                        type_lookup=None):
         
         # set table info
         self.headers = copy.copy(headers)
-        self.defaults = copy.copy(defaults)
         self.types = copy.copy(types)
         self.filename = filename
         self.comments = []
@@ -373,10 +362,6 @@ class Table (list):
                     # guess any types not specified
                     if key not in self.types:
                         self.types[key] = type(self[0][key])
-
-                    # guess any defaults not specified
-                    if key not in self.defaults:
-                        self.defaults[key] = self.types[key]()
                 
             except StopIteration:
                 pass
@@ -392,7 +377,6 @@ class Table (list):
             self.types = {}
         else:
             self.types = copy.copy(types)
-        self.defaults = {}
         self.comments = []
         self.delim = delim
         self.nheaders = nheaders
@@ -412,7 +396,6 @@ class Table (list):
         tab = type(self)(headers=headers)
         
         tab.types = util.subdict(self.types, headers)
-        tab.defaults = util.subdict(self.defaults, headers)
         tab.comments = copy.copy(self.comments)
         tab.delim = self.delim
         tab.nheaders = self.nheaders
@@ -468,7 +451,6 @@ class Table (list):
                 
         # temps for reading only
         self.tmptypes = None
-        self.tmpdefaults = None
 
         
         # line number for error reporting
@@ -503,22 +485,13 @@ class Table (list):
                     else:
                         self._parse_header(tokens)
 
+                assert len(tokens) == len(self.headers)
 
                 # parse data
                 row = {}
                 for i in xrange(len(tokens)):
                     key = self.headers[i]
-
-                    if len(tokens[i]) == 0:
-                        # default value
-                        row[key] = self.defaults[key]
-                    else:
-                        row[key] = self.types[key](tokens[i])
-
-                # default values for incomplete rows
-                for i in xrange(len(tokens), len(self.headers)):
-                    key = self.headers[i]
-                    row[key] = self.defaults[key]
+                    row[key] = self.types[key](tokens[i])
                 
                 # return completed row
                 yield row
@@ -533,7 +506,6 @@ class Table (list):
         
         # clear temps
         del self.tmptypes
-        del self.tmpdefaults
         
         raise StopIteration
 
@@ -568,17 +540,6 @@ class Table (list):
             # default to strings
             for header in self.headers:
                 self.types.setdefault(header, str)
-
-
-        # populate defaults
-        if self.tmpdefaults:
-            self.defaults = {}
-            for header, default in zip(self.headers, self.tmpdefaults):
-                self.defaults[header] = self.types[header](default)
-        else:        
-            self.defaults = util.mapdict(self.types,
-                                         valfunc=lambda x: x())
-
 
     
     
@@ -620,9 +581,6 @@ class Table (list):
                     self.types[key] = type(self[0][key])
                 else:
                     self.types[key] = str
-            
-            if key not in self.defaults:
-                self.defaults[key] = self.types[key]()
         
                     
         # ensure types are in directives
@@ -688,10 +646,7 @@ class Table (list):
              line.startswith("##types:"):
             # backwards compatible
             return DIR_TYPES
-            
-        elif line.startswith("##defaults:"):
-            return DIR_DEFAULTS
-            
+
         elif line.startswith("##headers:"):
             return DIR_HEADERS
             
@@ -719,10 +674,6 @@ class Table (list):
             self.tmptypes = self._type_lookup.parseTableTypes(rest, self.delim)
             return True
             
-        elif directive == DIR_DEFAULTS:
-            self.tmpdefaults = rest.split(self.delim)
-            return True
-            
         elif directive == DIR_HEADERS:
             self.nheaders = int(rest)
             #if self.nheaders not in [0, 1]:
@@ -748,10 +699,6 @@ class Table (list):
                       self._type_lookup.formatTableTypes(
                             util.mget(self.types, self.headers),
                             delim) + "\n")
-        elif line == DIR_DEFAULTS:
-            out.write("##defaults:" +
-                      delim.join(map(str, 
-                                util.mget(self.defaults, self.headers))) + "\n")
         
         elif line == DIR_HEADERS:
             out.write("##headers:%d\n" % self.nheaders)
@@ -802,7 +749,6 @@ class Table (list):
         # update table info
         self.headers.insert(pos, header)
         self.types[header] = coltype
-        self.defaults[header] = default
         
         # add data
         if data != None:
@@ -818,10 +764,6 @@ class Table (list):
         for col in cols:
             self.headers.remove(col)
             del self.types[col]
-            del self.defaults[col]
-
-            #for row in self.extraHeaders:
-            #    del row[col]
             
             for row in self:
                 del row[col]
@@ -844,8 +786,6 @@ class Table (list):
         # change info
         self.types[newname] = self.types[oldname]
         del self.types[oldname]
-        self.defaults[newname] = self.defaults[oldname]
-        del self.defaults[oldname]       
         
         # change data
         for row in self:
@@ -1508,6 +1448,7 @@ readMatrix = read_matrix
 # testing
 #
 
+'''
 if __name__ == "__main__":
     import StringIO
     
@@ -1516,7 +1457,6 @@ if __name__ == "__main__":
     #################################################
     text="""\
 ##types:str	int	int
-##defaults:none	0	0
 ##headers:0
 #
 # hello
@@ -1529,7 +1469,6 @@ mike	789	1
 
     tab = readTable(StringIO.StringIO(text))    
     
-    print tab.defaults
     print tab
     print tab[0][1]
     
@@ -1553,7 +1492,6 @@ mike	789	1
     tab.sort()
     
     print repr(tab)
-    print tab.defaults
     print tab
     print tab.cget('name', 'num')
 
@@ -1573,7 +1511,6 @@ mike	789	1
         tab.sort()
 
         print repr(tab)
-        print tab.defaults
         print tab
         print tab.cget('name', 'num')
 
@@ -1718,3 +1655,4 @@ john	False	hello\n\\\nthere
         
         print tab3
     
+'''

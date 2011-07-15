@@ -560,7 +560,7 @@ def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
     return logl, tree
 
 
-def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
+def draw_tree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
     cwd = create_temp_dir()
     
     fontfile = os.popen("which font4", "r").read().rstrip()

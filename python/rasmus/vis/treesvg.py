@@ -146,7 +146,6 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         canvas.endSvg()
     
     return canvas
-drawTree = draw_tree
 
 
 def draw_events(canvas, tree, coords, events, losses,
@@ -219,12 +218,12 @@ def drawDistRuler(names, dists, scale=500,
     out.endSvg()
 
 
-def getPairwiseDists(tree, mainsp):
+def get_pairwise_dists(tree, mainsp):
     """get pairwise distances between the main taxon and the rest of the taxa"""
     lst = []
 
     for sp in tree.leaf_names():
-        lst.append((sp, findDist(tree, mainsp, sp)))
+        lst.append((sp, treelib.find_dist(tree, mainsp, sp)))
 
     lst.sort(key=lambda x: x[1])
     names, dists = zip(* lst)
@@ -269,7 +268,6 @@ def draw_tree_lens(tree, *args, **kargs):
         labels[node.name] = "%.3f" % node.dist
     
     draw_tree(tree, labels, *args, **kargs)
-drawTreeLens = draw_tree_lens
 
 
 def show_tree(tree, *args, **kargs):
@@ -278,5 +276,5 @@ def show_tree(tree, *args, **kargs):
         kargs.setdefault('legendScale', True)
         draw_tree(tree, *args, **kargs)
         sys.exit(0)
-showTree = show_tree
+
     

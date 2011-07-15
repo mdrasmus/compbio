@@ -937,7 +937,7 @@ def read_nhx_data(tree, node, data):
 #
 
 def assert_tree(tree):
-    """Assert that the tree is internally consistent"""
+    """Assert that the tree datastructure is internally consistent"""
     
     visited = set()
     def walk(node):
@@ -1018,25 +1018,7 @@ def find_dist(tree, name1, name2):
         dist += path2[-j].dist
     
     return dist
-findDist = find_dist
         
-
-def count_descendants(node, sizes=None):
-    """Returns a dict with number of leaves beneath each node"""
-    if sizes == None:
-        sizes = {}
-    
-    if len(node.children) > 0:
-        sizes[node] = 0
-        for child in node.children:
-            countDescendants(child, sizes)
-            sizes[node] += sizes[child]
-    else:
-        sizes[node] = 1
-    
-    return sizes
-countDescendants = count_descendants
-
 
 def descendants(node, lst=None):
     """Return a list of all the descendants beneath a node"""
@@ -1046,6 +1028,22 @@ def descendants(node, lst=None):
         lst.append(child)
         descendants(child, lst=lst)
     return lst
+
+
+def count_descendants(node, sizes=None):
+    """Returns a dict with number of leaves beneath each node"""
+    if sizes == None:
+        sizes = {}
+    
+    if len(node.children) > 0:
+        sizes[node] = 0
+        for child in node.children:
+            count_descendants(child, sizes)
+            sizes[node] += sizes[child]
+    else:
+        sizes[node] = 1
+    
+    return sizes
 
 
 def subtree(tree, node):
@@ -1065,22 +1063,6 @@ def subtree(tree, node):
     walk(tree2.root)
     
     return tree2
-
-
-def smallSubtrees(tree, maxsize):
-    trees = []
-    sizes = countDescendants(tree.root)
-    
-    def walk(node):
-        if sizes[node] <= maxsize:
-            trees.append(subtree(tree, node))
-        else:
-            # if too big keep digging
-            for child in node.children:
-                walk(child)
-    walk(tree.root)
-    
-    return trees
 
 
 def max_disjoint_subtrees(tree, subroots):
@@ -1109,7 +1091,6 @@ def max_disjoint_subtrees(tree, subroots):
     walk(tree.root)
     
     return subroots2
-maxDisjointSubtrees = max_disjoint_subtrees
 
 
 def tree2graph(tree):
@@ -1117,10 +1098,10 @@ def tree2graph(tree):
     mat = {}
     
     # init all rows of adjacency matrix to 
-    for name, node in tree.nodes.items():
+    for name in tree.nodes:
         mat[name] = {}
     
-    for name, node in tree.nodes.items():
+    for name, node in tree.nodes.iteritems():
         for child in node.children:
             mat[name][child.name] = child.dist
         
@@ -1133,23 +1114,23 @@ def tree2graph(tree):
 def graph2tree(mat, root, closedset=None):
     """Convert a graph to a tree data structure"""
     
-    if closedset == None:
-        closedset = {}
+    if closedset is None:
+        closedset = set()
     tree = Tree()
 
     def walk(name):
         node = TreeNode(name)
         node.dist = 0
-        closedset[name] = 1
+        closedset.add(name)
         for child in mat[name]:
             if child not in closedset:
-                childNode = walk(child)
-                childNode.dist = mat[name][child]
-                tree.add_child(node, childNode)
+                child_node = walk(child)
+                child_node.dist = mat[name][child]
+                tree.add_child(node, child_node)
         return node            
     tree.root = walk(root)
     
-    tree.nextname = max(filter(lambda x: type(x) == int, tree.nodes.keys()))
+    tree.nextname = max(name for name in tree.nodes if isinstance(name, int))
     
     return tree
 
@@ -1254,17 +1235,10 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
-        tree = tree.copy()
-    
+        tree = tree.copy()    
     remove_set = set(tree.leaf_names()) - set(leaf_names)
-    #for sp in remove_set:
-    #    tree.remove(tree.nodes[sp])
     return subtree_by_leaves(tree, [tree.nodes[x] for x in leaf_names],
                              keep_single=keep_single)
-    #if not keep_single:
-    #    remove_single_children(tree)
-    #return tree
-
 
 
 def reorder_tree(tree, tree2, root=True):
@@ -1292,7 +1266,6 @@ def reorder_tree(tree, tree2, root=True):
 
             return leaves
         walk(tree.root)
-
     
 
     # reorder tree to match tree2
@@ -1351,8 +1324,171 @@ def set_tree_topology(tree, tree2):
 
     tree.root = nodes[tree2.root.name]
 
-    #assert_tree(tree2)
-    #assert_tree(tree)
+
+
+#=============================================================================
+# Rerooting functions
+#
+
+
+def is_rooted(tree):
+    return len(tree.root.children) <= 2
+    #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
+
+
+def unroot(tree, newCopy = True):
+    """Return an unrooted copy of tree"""
+    
+    if newCopy:
+        tree = tree.copy()
+    
+    if len(tree.root.children) == 2:
+        nodes = tree.root.children
+        dist = nodes[0].dist + nodes[1].dist
+        data = tree.merge_branch_data(nodes[0].data, nodes[1].data)
+        if len(nodes[0].children) < 2:
+            nodes.reverse()
+        tree.add_child(nodes[0], nodes[1])
+        nodes[1].dist = dist
+        tree.set_branch_data(nodes[1], data)
+        nodes[0].dist = 0
+        tree.set_branch_data(nodes[0], {})
+        nodes[0].parent = None
+        
+        # replace root
+        del tree.nodes[tree.root.name]
+        tree.root = nodes[0]
+    return tree
+
+
+def reroot(tree, newroot, onBranch=True, newCopy=True):
+    """
+    Change the rooting of a tree
+    """
+    
+    # TODO: remove newCopy (or assert newCopy=False)
+    if newCopy:
+        tree = tree.copy()
+    
+
+    # handle trivial case
+    if tree.root.name == newroot or \
+       (newroot in [x.name for x in tree.root.children] and \
+        len(tree.root.children) == 2):
+        return tree        
+    
+    
+    unroot(tree, newCopy=False)
+    
+    if onBranch:
+        # add new root in middle of branch
+        newNode = TreeNode(tree.new_name())
+        node1 = tree.nodes[newroot]
+        rootdist = node1.dist
+        rootdata1, rootdata2 = tree.split_branch_data(node1)
+        node1.dist = rootdist / 2.0
+        tree.set_branch_data(node1, rootdata1)
+        newNode.dist = rootdist / 2.0
+        tree.set_branch_data(newNode, rootdata2)
+        
+        node2 = node1.parent
+        node2.children.remove(node1)
+        tree.add_child(newNode, node1)
+        tree.add_child(node2, newNode)
+        
+        ptr = node2
+        ptr2 = newNode
+        newRoot = newNode
+    else:
+        # root directly on node
+        ptr2 = tree.nodes[newroot]
+        ptr = ptr2.parent
+        newRoot = ptr2
+    
+    newRoot.parent = None
+    
+    # reverse parent child relationship of all nodes on path node1 to root
+    oldroot = tree.root    
+    nextDist = ptr2.dist
+    nextData = tree.get_branch_data(ptr2)
+    ptr2.dist = 0
+    while True:
+        nextPtr = ptr.parent
+        ptr.children.remove(ptr2)
+        tree.add_child(ptr2, ptr)
+        
+        tmp = ptr.dist
+        tmpData = tree.get_branch_data(ptr)
+        ptr.dist = nextDist
+        tree.set_branch_data(ptr, nextData)
+        nextDist = tmp
+        nextData = tmpData
+        
+        ptr2 = ptr
+        ptr = nextPtr
+        
+        if nextPtr is None:
+            break
+    tree.root = newRoot
+    
+    return tree
+
+
+def midpoint_root(tree):
+    """
+    Reroot a tree using midpoint rerooting
+    """
+
+    # get maximum distance from leaves to each node
+    depths = {}
+    for node in tree.postorder():
+        if node.is_leaf():
+            depths[node] = (0.0, node)
+        else:
+            depths[node] = max((c.dist + depths[c][0], depths[c][1])
+                               for c in node.children)
+
+    # find maximum path
+    dists = []
+    for node in tree:
+        if node.is_leaf():
+            continue
+        assert len(node.children) != 1
+        tmp = sorted([(c.dist + depths[c][0], depths[c][1], c)
+                      for c in node.children])
+        dists.append((tmp[-1][0] + tmp[-2][0], node,
+                      tmp[-1][2], tmp[-1][1],
+                      tmp[-2][2], tmp[-2][1]))
+    
+    maxdist, top, child1, leaf1, child2, leaf2 = max(dists)
+    middist = maxdist / 2.0
+
+
+    # find longer part of path
+    if depths[child1][0] + child1.dist >= middist:
+        ptr = leaf1
+    else:
+        ptr = leaf2
+
+    # find branch that contains midpoint
+    dist = 0.0
+    while ptr != top:        
+        if ptr.dist + dist >= middist:
+            # reroot tree
+            reroot(tree, ptr.name, onBranch=True, newCopy=False)
+
+            # fixup branch lengths and return
+            pdist = sum(c.dist for c in tree.root.children)
+            other = filter(lambda x: x != ptr, tree.root.children)[0]
+            ptr.dist = middist - dist
+            other.dist = pdist - ptr.dist
+            return tree
+
+        dist += ptr.dist
+        ptr = ptr.parent
+    
+    
+    assert 0 # shouldn't get here
 
 
 #=============================================================================
@@ -1626,168 +1762,7 @@ def read_parent_table(filename):
     
     return ptable
 
-    
 
-#=============================================================================
-# Rerooting functions
-#
-
-
-def is_rooted(tree):
-    return len(tree.root.children) <= 2
-    #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
-
-
-def unroot(tree, newCopy = True):
-    """Return an unrooted copy of tree"""
-    
-    if newCopy:
-        tree = tree.copy()
-    
-    if len(tree.root.children) == 2:
-        nodes = tree.root.children
-        dist = nodes[0].dist + nodes[1].dist
-        data = tree.merge_branch_data(nodes[0].data, nodes[1].data)
-        if len(nodes[0].children) < 2:
-            nodes.reverse()
-        tree.add_child(nodes[0], nodes[1])
-        nodes[1].dist = dist
-        tree.set_branch_data(nodes[1], data)
-        nodes[0].dist = 0
-        tree.set_branch_data(nodes[0], {})
-        nodes[0].parent = None
-        
-        # replace root
-        del tree.nodes[tree.root.name]
-        tree.root = nodes[0]
-    return tree
-
-
-def reroot(tree, newroot, onBranch=True, newCopy=True):
-    """
-    Change the rooting of a tree
-    """
-    
-    # TODO: remove newCopy (or assert newCopy=False)
-    if newCopy:
-        tree = tree.copy()
-    
-
-    # handle trivial case
-    if tree.root.name == newroot or \
-       (newroot in [x.name for x in tree.root.children] and \
-        len(tree.root.children) == 2):
-        return tree        
-    
-    
-    unroot(tree, newCopy=False)
-    
-    if onBranch:
-        # add new root in middle of branch
-        newNode = TreeNode(tree.new_name())
-        node1 = tree.nodes[newroot]
-        rootdist = node1.dist
-        rootdata1, rootdata2 = tree.split_branch_data(node1)
-        node1.dist = rootdist / 2.0
-        tree.set_branch_data(node1, rootdata1)
-        newNode.dist = rootdist / 2.0
-        tree.set_branch_data(newNode, rootdata2)
-        
-        node2 = node1.parent
-        node2.children.remove(node1)
-        tree.add_child(newNode, node1)
-        tree.add_child(node2, newNode)
-        
-        ptr = node2
-        ptr2 = newNode
-        newRoot = newNode
-    else:
-        # root directly on node
-        ptr2 = tree.nodes[newroot]
-        ptr = ptr2.parent
-        newRoot = ptr2
-    
-    newRoot.parent = None
-    
-    # reverse parent child relationship of all nodes on path node1 to root
-    oldroot = tree.root    
-    nextDist = ptr2.dist
-    nextData = tree.get_branch_data(ptr2)
-    ptr2.dist = 0
-    while True:
-        nextPtr = ptr.parent
-        ptr.children.remove(ptr2)
-        tree.add_child(ptr2, ptr)
-        
-        tmp = ptr.dist
-        tmpData = tree.get_branch_data(ptr)
-        ptr.dist = nextDist
-        tree.set_branch_data(ptr, nextData)
-        nextDist = tmp
-        nextData = tmpData
-        
-        ptr2 = ptr
-        ptr = nextPtr
-        
-        if nextPtr is None:
-            break
-    tree.root = newRoot
-    
-    return tree
-
-
-def midpoint_root(tree):
-
-    # get maximum distance from leaves to each node
-    depths = {}
-    for node in tree.postorder():
-        if node.is_leaf():
-            depths[node] = (0.0, node)
-        else:
-            depths[node] = max((c.dist + depths[c][0], depths[c][1])
-                               for c in node.children)
-
-    # find maximum path
-    dists = []
-    for node in tree:
-        if node.is_leaf():
-            continue
-        assert len(node.children) != 1
-        tmp = sorted([(c.dist + depths[c][0], depths[c][1], c)
-                      for c in node.children])
-        dists.append((tmp[-1][0] + tmp[-2][0], node,
-                      tmp[-1][2], tmp[-1][1],
-                      tmp[-2][2], tmp[-2][1]))
-    
-    maxdist, top, child1, leaf1, child2, leaf2 = max(dists)
-    middist = maxdist / 2.0
-
-
-    # find longer part of path
-    if depths[child1][0] + child1.dist >= middist:
-        ptr = leaf1
-    else:
-        ptr = leaf2
-
-    # find branch that contains midpoint
-    dist = 0.0
-    while ptr != top:        
-        if ptr.dist + dist >= middist:
-            # reroot tree
-            reroot(tree, ptr.name, onBranch=True, newCopy=False)
-
-            # fixup branch lengths and return
-            pdist = sum(c.dist for c in tree.root.children)
-            other = filter(lambda x: x != ptr, tree.root.children)[0]
-            ptr.dist = middist - dist
-            other.dist = pdist - ptr.dist
-            return tree
-
-        dist += ptr.dist
-        ptr = ptr.parent
-    
-    
-    assert 0 # shouldn't get here
 
 #=============================================================================
 # conversion to other formats
@@ -1831,6 +1806,7 @@ def make_ptree(tree):
     
     return ptree, nodes, nodelookup
 
+    
 
 #=============================================================================
 # Tree visualization
@@ -1889,7 +1865,7 @@ def layout_tree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
     walk(tree.root, rootx, rooty)
     
     return coords
-layoutTree = layout_tree
+
 
 
 def layout_tree_hierarchical(tree, xscale, yscale,
@@ -1952,7 +1928,7 @@ def layout_tree_hierarchical(tree, xscale, yscale,
     walk(tree.root, rootx, rooty)
     
     return coords
-layoutTreeHierarchical = layout_tree_hierarchical
+
 
 
 #=============================================================================
@@ -1974,21 +1950,6 @@ def tree_color_map(leafmap=lambda x: (0, 0, 0)):
         walk(tree.root)
     return func
     
-
-
-def ensemblTreeColorMap(tree):
-    """Example of a color map for a tree of Enseml genes"""
-    
-    def leafmap(node):
-        if type(node.name) == str:
-            if node.name.startswith("ENSG"): return [1,0,0]
-            elif node.name.startswith("ENSCAFG"): return [1,1,0]
-            elif node.name.startswith("ENSMUSG"): return [0,0,1]
-            elif node.name.startswith("ENSRNOG"): return [0,1,0]
-        return [0,0,0]
-    
-    return treeColorMap(leafmap)(tree)
-
     
 def color_mix(colors):
     """Mixes together several color vectors into one"""
@@ -2003,7 +1964,7 @@ def color_mix(colors):
     return sumcolor
 
 
-def make_expr_mapping(maps):
+def make_expr_mapping(maps, default_color=(0, 0, 0)):
     """Returns a function that maps strings matching an expression to a value
     
        maps -- a list of pairs (expr, value)
@@ -2025,7 +1986,7 @@ def make_expr_mapping(maps):
         
         # return default color
         if not isinstance(key, str):
-            return (0, 0, 0)
+            return default_color
         
         # eval expressions first in order of appearance
         for exp, val in exps:
@@ -2138,8 +2099,6 @@ def draw_tree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
     
     if display:
         canvas.display(out)
-drawTree = draw_tree
-
 
 
 def draw_tree_lens(tree, *args, **kargs):
@@ -2148,7 +2107,6 @@ def draw_tree_lens(tree, *args, **kargs):
         labels[node.name] = "%f" % node.dist
     
     draw_tree(tree, labels, *args, **kargs)
-drawTreeLens = draw_tree_lens
 
 
 def draw_tree_boot_lens(tree, *args, **kargs):
@@ -2167,7 +2125,6 @@ def draw_tree_boot_lens(tree, *args, **kargs):
                 labels[node.name] = "(%.2f) %f" % (node.data["boot"], node.dist)
     
     draw_tree(tree, labels, *args, **kargs)
-drawTreeBootLens = draw_tree_boot_lens
 
 
 def draw_tree_names(tree, *args, **kargs):
@@ -2177,7 +2134,6 @@ def draw_tree_names(tree, *args, **kargs):
             labels[node.name] = "%s" % node.name
     
     draw_tree(tree, labels, *args, **kargs)
-drawTreeNames = draw_tree_names
 
 
 def draw_tree_name_lens(tree, *args, **kargs):
@@ -2190,7 +2146,6 @@ def draw_tree_name_lens(tree, *args, **kargs):
         labels[node.name] += "%f" % node.dist
     
     draw_tree(tree, labels, *args, **kargs)
-drawTreeNameLens = draw_tree_name_lens
 
 
 

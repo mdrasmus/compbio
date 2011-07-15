@@ -71,7 +71,6 @@ def splitTree(tree, stree, gene2species, reroot=False):
             recon = phylo.reconcile(tree, stree, gene2species)
             events = phylo.labelEvents(tree, recon)
         
-        #treelib.drawTree(tree, minlen=5)
         
         if events[tree.root] == "dup" and \
            recon[tree.root] == stree.root:

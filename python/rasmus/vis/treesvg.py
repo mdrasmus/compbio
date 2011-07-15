@@ -14,6 +14,7 @@ import os
 
 def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
               leafPadding=10,
+              leafFunc=lambda x: str(x.name),
               labelOffset=None, fontSize=10, labelSize=None,
               minlen=1, maxlen=util.INF, filename=sys.stdout,
               rmargin=150, lmargin=10, tmargin=0, bmargin=None,
@@ -88,7 +89,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         if node.parent:
             parentx = coords[node.parent][0]
         else:
-            parentx = 0
+            parentx = x
         
         # draw branch
         canvas.line(parentx, y, x, y, color=node.color)
@@ -107,7 +108,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             labelSize)
         
         if node.is_leaf():
-            canvas.text(str(node.name), 
+            canvas.text(leafFunc(node), 
                         x + leafPadding, y+fontSize/2., fontSize,
                         fillColor=node.color)
         else:

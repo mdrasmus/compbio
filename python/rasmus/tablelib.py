@@ -319,8 +319,8 @@ class Table (list):
                        type_lookup=None):
         
         # set table info
-        self.headers = copy.copy(headers)
-        self.types = copy.copy(types)
+        self.headers = list(headers)
+        self.types = dict(types)
         self.filename = filename
         self.comments = []
         self.delim = "\t"

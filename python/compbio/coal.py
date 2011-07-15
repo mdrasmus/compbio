@@ -19,6 +19,7 @@ import itertools
 from itertools import chain, izip
 from math import *
 import random
+from collections import defaultdict
 
 # rasmus imports
 from rasmus import treelib, stats, util, linked_list
@@ -1430,6 +1431,8 @@ def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
     return tree, children
     
 
+        
+
 
 #=============================================================================
 # helper data structures
@@ -1461,18 +1464,6 @@ class MultiPushQueue (object):
         else:
             return self._lst.pop_front()
                 
-
-
-class ARSampling (object):
-    """
-    Adapative Rejection Sampling
-    """
-
-    def __init__(self, pdf, x=[]):
-        self._pdf = pdf
-        self._x = x[:]
-        self._y = map(pdf, x)
-
 
 
 

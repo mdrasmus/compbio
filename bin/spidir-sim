@@ -321,7 +321,7 @@ def simSeq2(tree, outfile, seqlen=999, mutaterate=[1.0],
     # remove trailing ';'
     tree2 = tree.copy()
     flipTree(tree2)
-    top = tree2.getOnelineNewick()[:-1]
+    top = tree2.get_oneline_newick()[:-1]
 
     # mutation rates across bases
     mutateratestr = ",".join(map(str, mutaterate))

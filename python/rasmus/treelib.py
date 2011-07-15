@@ -845,7 +845,6 @@ class Tree:
         stream = StringIO.StringIO()
         self.write(stream, oneline=True, rootData=root_data)
         return stream.getvalue()
-    getOnelineNewick = get_one_line_newick
     
     #
     # should I make these external?
@@ -866,7 +865,6 @@ class Tree:
                 walk(child, d+1)
         walk(node, 0)
         return depths
-    findDepths = find_depths
 
 
 
@@ -879,7 +877,7 @@ def read_tree(filename):
     tree = Tree()
     tree.read_newick(filename)
     return tree
-readTree = read_tree
+
 
 def parse_newick(newick):
     """Read a tree from newick notation stored in a string"""
@@ -887,7 +885,7 @@ def parse_newick(newick):
     stream = StringIO.StringIO(newick)
     tree.read_newick(stream)
     return tree
-parseNewick = parse_newick
+
 
 def iter_trees(treefile):
     """read multiple trees from a tree file"""
@@ -1943,13 +1941,13 @@ def layout_tree_hierarchical(tree, xscale, yscale,
     # determine x, y coordinates
     maxdepth = depth[tree.root]
     def walk(node, x, y):
-        xchildren = xscale * (maxdepth - depth[node])
+        xchildren = x + xscale * (maxdepth - depth[node])
         coords[node] = [xchildren, y + nodept[node]]
         
         if not node.is_leaf():
             ychild = y
             for child in node.children:
-                walk(child, xchildren, ychild)
+                walk(child, x, ychild)
                 ychild += sizes[child] * yscale
     walk(tree.root, rootx, rooty)
     

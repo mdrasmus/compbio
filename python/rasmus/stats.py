@@ -651,20 +651,24 @@ def sample(weights):
     
     item i will be chosen with probability weights[i]/sum(weights)
     """
+
+    total = sum(weights)
+    pick = random.random() * total
+    x = 0
+    for i in xrange(len(weights)):
+        x += weights[i]
+        if x >= pick:
+            return i
+    return len(weights) - 1
     
-    probs = util.one_norm(weights)
-    
-    cdf = [0]
-    for i in range(1, len(probs)):
-        cdf.append(cdf[-1] + probs[i-1])
-    
-    pick = random.random()
-    
-    low,top = util.binsearch(cdf, pick)
-    
-    assert low != None
-    
-    return low
+    #probs = util.one_norm(weights)    
+    #cdf = [0]
+    #for i in range(1, len(probs)):
+    #    cdf.append(cdf[-1] + probs[i-1])
+    #pick = random.random()
+    #low,top = util.binsearch(cdf, pick)
+    #assert low != None
+    #return low
     
 
 def rhyper(m, n, M, N, report=0):

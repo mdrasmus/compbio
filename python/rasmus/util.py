@@ -441,11 +441,12 @@ def icumsum(vals):
 
 
 def frange(start, end, step):
-    """Generates a range of floats 
+    """
+    Generates a range of floats 
     
-       start -- begining of range
-       end   -- end of range
-       step  -- step size
+    start -- begining of range
+    end   -- end of range
+    step  -- step size
     """
     
     i = 0
@@ -456,6 +457,11 @@ def frange(start, end, step):
         val = start + i * step
 
 
+def ilen(iterator):
+    """
+    Returns the size of an iterator
+    """
+    return sum(1 for i in iterator)
 
 
 

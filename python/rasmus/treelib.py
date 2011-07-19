@@ -197,6 +197,11 @@ class Tree:
         """Adds a node to the tree"""
         node.name = key
         self.add(node)
+
+
+    def __contains__(self, name):
+        """Returns True if tree has node with name 'name'"""
+        return name in self.nodes
     
 
     def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):

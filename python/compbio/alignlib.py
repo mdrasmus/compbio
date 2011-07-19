@@ -655,7 +655,7 @@ class CoordConverter (object):
     def local2align(self, i, clamp=False):
         if clamp:
             return self.local2alignLookup[int(util.clamp(i, 0, 
-                                                len(self.local2alignLookup)-1))]
+                                           len(self.local2alignLookup)-1))]
         else:
             return self.local2alignLookup[i]
 
@@ -663,7 +663,7 @@ class CoordConverter (object):
     def align2local(self, i, clamp=False):
         if clamp:
             return self.align2localLookup[int(util.clamp(i, 0, 
-                                                len(self.align2localLookup)-1))]
+                                           len(self.align2localLookup)-1))]
         else:
             return self.align2localLookup[i]
 

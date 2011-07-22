@@ -18,9 +18,12 @@ from collections import defaultdict
 import heapq
 from math import *
 
+# compbio libs
+from . import fasta
+
 # rasmus libs
 from rasmus import treelib, util, stats
-#reload(stats)
+
 
 
 #=============================================================================
@@ -119,6 +122,13 @@ class ARG (object):
         for parent in node.parents:
             parent.children.remove(node)
         del self.nodes[node.name]
+
+
+    def rename(self, oldname, newname):
+        node = self.nodes[oldname]
+        node.name = newname
+        del self.nodes[oldname]
+        self.nodes[newname] = node
 
 
     def leaves(self, node=None):
@@ -392,6 +402,26 @@ class ARG (object):
                 seen.add(parent)
 
 
+    def preorder_marginal_tree(self, pos, node=None):
+        """
+        Iterate postorder over the nodes in the marginal tree at position 'pos'
+        """
+
+        if node is None:
+            node = arg.root
+
+        # initialize heap
+        heap = [node]
+        
+        # add all ancestor of lineages
+        while len(heap) > 0:
+            node = heap.pop()
+            yield node
+
+            for child in node.children:
+                if self.get_local_parent(child, pos) == node:
+                    heap.append(child)
+
 
     def get_local_parent(self, node, pos):
         """Return the local parent of 'node' for position 'pos'"""
@@ -551,11 +581,10 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
     arg = ARG(start, end)
 
     class Lineage (object):
-        def __init__(self, node, regions, seqlen, half=True):
+        def __init__(self, node, regions, seqlen):
             self.node = node
             self.regions = regions
             self.seqlen = seqlen
-            self.half = half
 
     # init ancestral lineages
     # (node, region, seqlen)
@@ -569,8 +598,8 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
     lineage_parents = {}
 
     # block start -> lineage count
-    block_starts = [0]
-    block_counts = {0: k}
+    block_starts = [start]
+    block_counts = {start: k}
 
     # perform coal, recomb
     while len(lineages) > 1:
@@ -600,32 +629,42 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
             a.node.parents.append(node)
             b.node.parents.append(node)
 
-            # coal regions
+            # coal each non-overlapping region
             regions = []
-            coal_complete = set()
+            lineage_regions = []
             seqlen = 0
-            for start, end, count in count_region_overlaps(a.regions, b.regions):
-                if count == 2:
-                    i = block_starts.index(start)
-                    pos = start
-                    while True:
-                        block_counts[pos] -= 1
-                        if block_counts[pos] == 1:
-                            coal_complete.add((i, pos))
-                        i += 1
-                        if i >= len(block_starts):
-                            break
-                        pos = block_starts[i]
-                        if pos >= end:
-                            break
-                if count >= 1:
-                    regions.append((start, end))
-                    seqlen += end - start
+            nblocks = len(block_starts)
+            i = 0
+            
+            for start, end, count in count_region_overlaps(
+                a.regions, b.regions):                
+                assert start != end, count in (0, 1, 2)
+                #assert end == arg.end or end in block_starts
+                i = block_starts.index(start, i)
+                start2 = start
+                while start2 < end:
+                    end2 = block_starts[i+1] if i+1 < nblocks else arg.end
+
+                    # region coalesces
+                    if count == 2:
+                        block_counts[start2] -= 1
+                    if count >= 1:
+                        regions.append((start2, end2)) # ancestral seq
+                        if block_counts[start2] > 1:
+                            # regions moves on, since not MRCA
+                            lineage_regions.append((start2, end2))
+                            seqlen += end2 - start2
+
+                    # move to next region
+                    i += 1
+                    start2 = end2
             node.data["ancestral"] = regions
 
             # create 1 new lineage if any regions remain
-            if len(regions) > 0:
-                lineages.add(Lineage(node, regions, seqlen))
+            if len(lineage_regions) > 0:
+                for reg in lineage_regions:
+                    assert block_counts[reg[0]] > 1, (reg, block_counts)
+                lineages.add(Lineage(node, lineage_regions, seqlen))
                 total_seqlen += seqlen
 
             
@@ -651,9 +690,10 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
             lens = [reg[1] - reg[0] for reg in lineage.regions]
             rstart, rend = lineage.regions[stats.sample(lens)]
             node.pos = rstart + random.random() * (rend - rstart)
-            block_counts[node.pos] = block_counts[rstart]
             block_starts.append(node.pos)  # could be done faster
-            block_starts.sort()            # 
+            block_starts.sort()            #
+            prev_pos = block_starts[block_starts.index(node.pos)-1]
+            block_counts[node.pos] = block_counts[prev_pos]
 
             # create 2 new lineages
             regions1 = list(split_regions(node.pos, 0, lineage.regions))
@@ -667,6 +707,7 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
         else:
             raise Exception("unknown event '%s'" % event)
 
+    assert len(lineages) == 0, lineages
 
     # fix recomb parent order, so that left is before pos and right after
     for node, (a, b) in recomb_parent_lineages.iteritems():
@@ -676,44 +717,13 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
         for reg in b.regions: assert reg[0] >= node.pos
         node.parents = [an, bn]
 
-    # set root
-    if len(lineages) == 1:
-        arg.root = lineages.pop().node
+    # TODO: set root(s)
 
     return arg
-
-
-def count_region_overlaps(*region_sets):
-    """
-    Count how many regions overlap each interval (start, end)
     
-    Iterates through (start, end, count) sorted
-    """
 
-    # build endpoints list
-    end_points = []
-    for regions in region_sets:
-        for reg in regions:
-            end_points.append((reg[0], 0))
-            end_points.append((reg[1], 1))
-    end_points.sort()
-
-    count = 0
-    start = None
-    end = None
-    last = None
-    for pos, kind in end_points:
-        if last is not None and pos != last:
-            yield last, pos, count
-        if kind == 0:
-            count += 1
-        elif kind == 1:
-            count -= 1
-        last = pos
-
-    if last is not None and pos != last:
-        yield last, pos, count
-    
+#=============================================================================
+# arg functions
 
 
 def lineages_over_time(k, events):
@@ -842,6 +852,10 @@ def remove_single_lineage(arg):
             parent.children[parent.children.index(node)] = child
 
 
+#=============================================================================
+# region functions
+
+
 def split_regions(pos, side, regions):
     """
     Iterates through the regions on the left (side=0) or right (side=1) of 'pos'
@@ -865,14 +879,82 @@ def split_regions(pos, side, regions):
         else:
             raise Exception("side not specified")
 
+
+def count_region_overlaps(*region_sets):
+    """
+    Count how many regions overlap each interval (start, end)
     
+    Iterates through (start, end, count) sorted
+    """
+
+    # build endpoints list
+    end_points = []
+    for regions in region_sets:
+        for reg in regions:
+            end_points.append((reg[0], 0))
+            end_points.append((reg[1], 1))
+    end_points.sort()
+
+    count = 0
+    start = None
+    end = None
+    last = None
+    for pos, kind in end_points:
+        if last is not None and pos != last:
+            yield last, pos, count
+        if kind == 0:
+            count += 1
+        elif kind == 1:
+            count -= 1
+        last = pos
+
+    if last is not None and pos != last:
+        yield last, pos, count
+    
+
+        
+def groupby_overlaps(regions, bygroup=True):
+    """
+    Group ranges into overlapping groups
+    Ranges must be sorted by start positions
+    """
+
+    start = -util.INF
+    end = -util.INF
+    group = None
+    groupnum = -1
+    for reg in regions:        
+        if reg[0] > end:
+            # start new group
+            start, end = reg
+            groupnum += 1
+
+            if bygroup:
+                if group is not None:
+                    yield group
+                group = [reg]
+            else:
+                yield (groupnum, reg)
+
+        else:
+            # append to current group
+            if reg[1] > end:
+                end = reg[1]
+
+            if bygroup:
+                group.append(reg)
+            else:
+                yield (groupnum, reg)
+
+    if bygroup and group is not None and len(group) > 0:
+        yield group
+
 
 #=============================================================================
 # mutations
 
 def sample_mutations(arg, u):
     """
-
     u -- mutation rate (mutations/locus/gen)
     """
 
@@ -894,7 +976,47 @@ def sample_mutations(arg, u):
                     mutations.append((node, parent, pos, t))
 
     return mutations
+
+
+def get_marginal_leaves(arg, node, pos):
+    return (x for x in arg.preorder_marginal_tree(pos, node) if x.is_leaf())
+
+
+#=============================================================================
+# alignments
+
+def make_alignment(arg, mutations, ancestral="A", derived="C"):
+    aln = fasta.FastaDict()
+    alnlen = int(arg.end - arg.start)
+    leaves = list(arg.leaf_names())
+    nleaves = len(leaves)
+
+    # sort mutations by position
+    mutations.sort(key=lambda x: x[2])
+
+    # make align matrix
+    mat = []
     
+    pos = arg.start
+    muti = 0
+    for i in xrange(alnlen):
+        if muti >= len(mutations) or i < int(mutations[muti][2]):
+            # no mut
+            mat.append(ancestral * nleaves)
+        else:
+            # mut
+            node, parent, mpos, t = mutations[muti]
+            row = []
+            split = set(x.name for x in get_marginal_leaves(arg, node, mpos))
+            mat.append("".join((derived if leaf in split else ancestral)
+                               for leaf in leaves))
+            muti += 1
+    
+    # make fasta
+    for i, leaf in enumerate(leaves):
+        aln[leaf] = "".join(x[i] for x in mat)
+
+    return aln
 
 
 #=============================================================================
@@ -1057,45 +1179,5 @@ def draw_mark(x, y, col=(1,0,0), size=.5, func=None):
         origin=(x, y),
         minx=4.0, miny=4.0, maxx=20.0, maxy=20.0,
         link=True)
-
-
-#=============================================================================
-# helper functions
-        
-def groupby_overlaps(regions, bygroup=True):
-    """
-    Group ranges into overlapping groups
-    Ranges must be sorted by start positions
-    """
-
-    start = -util.INF
-    end = -util.INF
-    group = None
-    groupnum = -1
-    for reg in regions:        
-        if reg[0] > end:
-            # start new group
-            start, end = reg
-            groupnum += 1
-
-            if bygroup:
-                if group is not None:
-                    yield group
-                group = [reg]
-            else:
-                yield (groupnum, reg)
-
-        else:
-            # append to current group
-            if reg[1] > end:
-                end = reg[1]
-
-            if bygroup:
-                group.append(reg)
-            else:
-                yield (groupnum, reg)
-
-    if bygroup and group is not None and len(group) > 0:
-        yield group
 
 

@@ -106,6 +106,27 @@ class ARG (object):
         self.nextname += 1
         return name
 
+
+    def new_node(self, parents=[], children=[],
+                 age=0, event="gene", pos=0):
+        """
+        Returns a new node
+        """
+        node = self.add(CoalNode(self.new_name(), age=age,
+                                 event=event, pos=pos))
+        node.parents = list(parents)
+        node.children = list(children)
+        return node
+
+
+    def new_root(self, age=0, event="gene", pos=0):
+        """
+        Returns a new root
+        """
+        self.root = self.new_node(age=age, event=event, pos=pos)
+        return self.root
+        
+
     def add(self, node):
         """
         Adds a node to the ARG
@@ -412,6 +433,7 @@ class ARG (object):
 
         # initialize heap
         heap = [node]
+        seen = set([node])
         
         # add all ancestor of lineages
         while len(heap) > 0:
@@ -420,7 +442,11 @@ class ARG (object):
 
             for child in node.children:
                 if self.get_local_parent(child, pos) == node:
-                    heap.append(child)
+                    if child not in seen:
+                        heap.append(child)
+                        seen.add(child)
+                        # NOTE: this prevents error when
+                        # children[0] == children[1]
 
 
     def get_local_parent(self, node, pos):
@@ -501,7 +527,7 @@ class ARG (object):
 
         # remove single children
         if remove_single:
-            remove_single_lineage(self)
+            remove_single_lineages(self)
             
         # set root
         # TODO: may need to actually use self.roots
@@ -838,7 +864,7 @@ def descendants(node, nodes=None):
     return nodes
 
 
-def remove_single_lineage(arg):
+def remove_single_lineages(arg):
     """
     Remove unnecessary nodes with single parent and single child
     """
@@ -850,6 +876,8 @@ def remove_single_lineage(arg):
             del arg.nodes[node.name]
             child.parents[child.parents.index(node)] = parent
             parent.children[parent.children.index(node)] = child
+
+    return arg
 
 
 #=============================================================================
@@ -965,6 +993,13 @@ def sample_mutations(arg, u):
     for node in arg:
         for parent in node.parents:
             for region in arg.get_ancestral(node, parent=parent):
+                # ensure node is not MRCA
+                for pregion in parent.data["ancestral"]:
+                    if pregion[0] <= region[0] < pregion[1]:
+                        break
+                else:
+                    continue
+                
                 frac = (region[1] - region[0]) / locsize
                 dist = parent.age - node.age
                 t = parent.age
@@ -980,6 +1015,83 @@ def sample_mutations(arg, u):
 
 def get_marginal_leaves(arg, node, pos):
     return (x for x in arg.preorder_marginal_tree(pos, node) if x.is_leaf())
+
+
+def get_mutation_split(arg, mutation):
+    node, parent, pos, t = mutation
+    return tuple(sorted(x.name for x in get_marginal_leaves(arg, node, pos)))
+
+
+def iter_tree_splits(tree):
+    for node in tree:
+        if len(node.children) != 2 or node.children[0] == node.children[1]:
+            continue
+        split = tuple(sorted(tree.leaf_names(node)))
+        if len(split) > 1:
+            yield split
+
+    
+
+def is_split_compatible(split1, split2):
+    """Returns True if two splits are compatible"""
+    i = j = 0
+    intersect = 0
+    while i < len(split1) and j < len(split2):
+        if split1[i] == split2[j]:
+            intersect += 1
+            i += 1
+            j += 1
+        elif split1[i] < split2[j]:
+            i += 1
+        else:
+            j += 1
+    #intersect = len(split1 & split2)
+    return intersect == 0 or intersect == min(len(split1), len(split2))
+
+
+def split_relation(split1, split2):
+
+    i = j = 0
+    intersect = 0
+    while i < len(split1) and j < len(split2):
+        if split1[i] == split2[j]:
+            intersect += 1
+            i += 1
+            j += 1
+        elif split1[i] < split2[j]:
+            i += 1
+        else:
+            j += 1
+
+    if intersect == 0:
+        return "disjoint"
+
+    elif intersect == len(split1):
+        if intersect == len(split2):
+            assert split1 == split2
+            return "equal"
+        else:
+            return "child"
+
+    elif intersect == len(split2):
+        return "parent"
+
+    else:
+        return "conflict"
+    
+    return intersect == 0 or intersect == min(len(split1), len(split2))
+
+
+def iter_mutation_splits(arg, mutations):
+
+    nleaves = sum(1 for x in arg.leaves())
+
+    for node, parent, pos, t in mutations:
+        split = tuple(sorted(x.name for x in get_marginal_leaves(
+            arg, node, pos)))
+        if len(split) != 1 and len(split) != nleaves:
+            yield pos, split
+
 
 
 #=============================================================================
@@ -1177,7 +1289,7 @@ def draw_mark(x, y, col=(1,0,0), size=.5, func=None):
         h,
         color(1,1,1),
         origin=(x, y),
-        minx=4.0, miny=4.0, maxx=20.0, maxy=20.0,
+        minx=10.0, miny=10.0, maxx=20.0, maxy=20.0,
         link=True)
 
 

@@ -220,6 +220,22 @@ class Tree:
         return self.nodes.itervalues()
 
 
+    def __len__(self):
+        """Returns number of nodes in tree"""
+        return len(self.nodes)
+
+
+    def __getitem__(self, key):
+        """Returns node by name"""
+        return self.nodes[key]
+
+
+    def __setitem__(self, key, node):
+        """Adds a node to the tree"""
+        node.name = key
+        self.add(node)
+
+
     def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in pre-order traversal"""
         
@@ -584,7 +600,7 @@ class Tree:
     readData = read_data
     
     
-    def write_data(self, node):
+    def write_data(self, node, writeDist=False):
         """Default data writer: writes optional bootstrap and branch length"""
         
         string = ""
@@ -600,7 +616,7 @@ class Tree:
             if not node.is_leaf() and isinstance(node.name, str):
                 string += node.name
 
-        if node.dist != 0:
+        if node.dist != 0 or writeDist:
             string += ":%f" % node.dist
         return string
     writeData = write_data
@@ -621,7 +637,9 @@ class Tree:
         
         # default data writer
         if writeData == None:
-            writeData = self.write_data
+            # write distance if any nodes have a distance
+            write_dist = any(node.dist != 0 for node in self)
+            writeData = lambda node: self.write_data(node, writeDist=write_dist)
         
         if not oneline:
             out.write(" " * depth)
@@ -1733,6 +1751,7 @@ def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
         return tree        
     
     if keepName:
+        # TODO: can only keep name if root is in middle of branch
         oldroot = tree.root.name
     unroot(tree, newCopy=False)
     

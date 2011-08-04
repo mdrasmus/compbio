@@ -532,7 +532,7 @@ def dup_consistency(tree, recon, events):
 
 def recon_root(gtree, stree, gene2species = gene2species, 
                rootby = "duploss", newCopy=True,
-	       returnCost=False):
+	       keepName=False, returnCost=False):
     """Reroot a tree by minimizing the number of duplications/losses/both"""
     
     # make a consistent unrooted copy of gene tree
@@ -541,12 +541,14 @@ def recon_root(gtree, stree, gene2species = gene2species,
         
     if len(gtree.leaves()) == 2:
         return
-        
+
+    if keepName:
+        oldroot = gtree.root.name
     treelib.unroot(gtree, newCopy=False)
     treelib.reroot(gtree, 
                    gtree.nodes[sorted(gtree.leaf_names())[0]].parent.name, 
                    onBranch=False, newCopy=False)
-    
+   
     
     # make recon root consistent for rerooting tree of the same names
     # TODO: there is the possibility of ties, they are currently broken
@@ -567,6 +569,8 @@ def recon_root(gtree, stree, gene2species = gene2species,
     
     # try initial root and recon    
     treelib.reroot(gtree, edges[0][0].name, newCopy=False)
+    if keepName:
+        gtree.rename(gtree.root.name, oldroot)
     recon = reconcile(gtree, stree, gene2species)
     events = label_events(gtree, recon)
     
@@ -606,7 +610,7 @@ def recon_root(gtree, stree, gene2species = gene2species,
             cost -= len(find_loss_under_node(node2, recon))
         
         # new root and recon
-        treelib.reroot(gtree, node1.name, newCopy=False)        
+        treelib.reroot(gtree, node1.name, newCopy=False, keepName=keepName)
         
         recon[node2] = reconcile_node(node2, stree, recon)
         recon[gtree.root] = reconcile_node(gtree.root, stree, recon)
@@ -634,7 +638,7 @@ def recon_root(gtree, stree, gene2species = gene2species,
         if node1.parent != node2:
             node1, node2 = node2, node1
         assert node1.parent == node2
-        treelib.reroot(gtree, node1.name, newCopy=False)
+        treelib.reroot(gtree, node1.name, newCopy=False, keepName=keepName)
     
     if returnCost:
         return gtree, mincost
@@ -1535,8 +1539,7 @@ class TreeSearchMix (TreeSearch):
 
     def set_tree(self, tree):
         self.tree = tree
-
-        for method in self.methods:
+	for method in self.methods:
             method[0].set_tree(tree)
 
     def add_proposer(self, proposer, weight):
@@ -1554,10 +1557,12 @@ class TreeSearchMix (TreeSearch):
 
         # make proposal
         self.last_propose = i
-        return self.methods[i][0].propose()
+        self.tree = self.methods[i][0].propose()
+	return self.tree
 
     def revert(self):
-        return self.methods[self.last_propose][0].revert()
+        self.tree = self.methods[self.last_propose][0].revert()
+	return self.tree
 
     def reset(self):
         for method in self.methods:
@@ -1577,6 +1582,7 @@ class TreeSearchUnique (TreeSearch):
         self._tree_hash = tree_hash if tree_hash else hash_tree
         self.maxtries = maxtries
         self.auto_add = auto_add
+        self.set_tree(tree)
 
     def set_tree(self, tree):
         self.tree = tree
@@ -1595,7 +1601,7 @@ class TreeSearchUnique (TreeSearch):
                 break
         else:            
             #util.logger("maxtries", len(self.seen))
-            pass
+	    pass
 
         if self.auto_add:
             self.seen.add(top)
@@ -1626,6 +1632,7 @@ class TreeSearchPrescreen (TreeSearch):
         self.prescreen = prescreen
         self.poolsize = poolsize
         self.oldtree = None
+        self.set_tree(tree)
 
 
     def set_tree(self, tree):

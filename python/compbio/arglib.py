@@ -44,6 +44,8 @@ class CoalNode (object):
         return "<node %s>" % self.name
 
     def get_dist(self, parent_index):
+        if len(self.parents) == 0:
+            return 0.0
         return self.parents[parent_index].age - self.age
 
     def get_dists(self):
@@ -394,6 +396,8 @@ class ARG (object):
     def postorder_marginal_tree(self, pos):
         """
         Iterate postorder over the nodes in the marginal tree at position 'pos'
+
+        NOTE: nodes are iterated in order of age
         """
 
         # initialize heap
@@ -413,6 +417,9 @@ class ARG (object):
                     # terminate iteration, we are past the MRCA
                     return
             yield node
+            if len(heap) == 0:
+                # MRCA reached
+                return
 
             # find correct marginal parent
             # add parent to lineages if it has not been seen before
@@ -461,6 +468,22 @@ class ARG (object):
             return node.parents[0 if pos < node.pos else 1]
         else:
             raise Exception("unknown event '%s'" % node.event)
+
+    def get_local_children(self, node, pos):
+        """Returns the local children of 'node' for position 'pos'"""
+
+        return [child for child in node.children
+                if self.get_local_parent(child, pos) == node]
+        
+
+    def get_local_dist(self, node, pos):
+        """Return the local parent of 'node' for position 'pos'"""
+
+        parent = self.get_local_parent(node, pos)
+        if parent:
+            return parent.age - node.age
+        else:
+            return 0.0
         
         
     def get_tree(self, pos=None):
@@ -541,6 +564,20 @@ class ARG (object):
                 self.root = node
             
 
+#=============================================================================
+
+def assert_arg(arg):
+
+    for node in arg:
+        # check parent, child links
+        for parent in node.parents:
+            assert node in parent.children
+        for child in node.children:
+            assert node in child.parents
+
+        # check ages
+        for parent in node.parents:
+            assert node.age <= parent.age, (node, parent)
         
 
 #=============================================================================
@@ -637,6 +674,7 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
         t2 = random.expovariate(rate)
         event = ("coal", "recomb")[int(random.random() < (recomb_rate / rate))]
         t += t2
+
         
         # process event
         if event == "coal":
@@ -658,7 +696,6 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
             # coal each non-overlapping region
             regions = []
             lineage_regions = []
-            seqlen = 0
             nblocks = len(block_starts)
             i = 0
             
@@ -679,7 +716,6 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
                         if block_counts[start2] > 1:
                             # regions moves on, since not MRCA
                             lineage_regions.append((start2, end2))
-                            seqlen += end2 - start2
 
                     # move to next region
                     i += 1
@@ -690,6 +726,7 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
             if len(lineage_regions) > 0:
                 for reg in lineage_regions:
                     assert block_counts[reg[0]] > 1, (reg, block_counts)
+                seqlen = lineage_regions[-1][1] - lineage_regions[0][0]
                 lineages.add(Lineage(node, lineage_regions, seqlen))
                 total_seqlen += seqlen
 
@@ -697,12 +734,12 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
         elif event == "recomb":
             node = arg.add(CoalNode(arg.new_name(), age=t, event=event))
 
-            # choose lineage to recombine (weighted by seqlen)
+            # choose lineage and pos to recombine (weighted by seqlen)
             pick = random.random() * total_seqlen
             i = 0
             for lineage in lineages:
                 i += lineage.seqlen
-                if i >= pick:
+                if i >= pick and lineage.seqlen > 0:
                     break
 
             # set parent, child links
@@ -713,27 +750,42 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
             node.data["ancestral"] = lineage.regions
 
             # choose recomb pos
-            lens = [reg[1] - reg[0] for reg in lineage.regions]
-            rstart, rend = lineage.regions[stats.sample(lens)]
-            node.pos = rstart + random.random() * (rend - rstart)
-            block_starts.append(node.pos)  # could be done faster
-            block_starts.sort()            #
-            prev_pos = block_starts[block_starts.index(node.pos)-1]
-            block_counts[node.pos] = block_counts[prev_pos]
+            node.pos = random.uniform(lineage.regions[0][0],
+                                      lineage.regions[-1][1])
+
+            # does recomb pos break an existing block?
+            for reg in lineage.regions:
+                if reg[0] < node.pos < reg[1]:
+                    # split block
+                    block_starts.append(node.pos)
+                    block_starts.sort()
+                    prev_pos = block_starts[block_starts.index(node.pos)-1]
+                    block_counts[node.pos] = block_counts[prev_pos]
+                
+            #lens = [reg[1] - reg[0] for reg in lineage.regions]
+            #rstart, rend = lineage.regions[stats.sample(lens)]
+            #node.pos = rstart + random.random() * (rend - rstart)
+            #block_starts.append(node.pos)  # could be done faster
+            #block_starts.sort()            #
+            #prev_pos = block_starts[block_starts.index(node.pos)-1]
+            #block_counts[node.pos] = block_counts[prev_pos]
 
             # create 2 new lineages
             regions1 = list(split_regions(node.pos, 0, lineage.regions))
             regions2 = list(split_regions(node.pos, 1, lineage.regions))
-            regions1_len = sum(reg[1] - reg[0] for reg in regions1)
+            
+            regions1_len = regions1[-1][1] - regions1[0][0]
+            regions2_len = regions2[-1][1] - regions2[0][0]
+            total_seqlen += regions1_len + regions2_len - lineage.seqlen
             a = Lineage(node, regions1, regions1_len)
-            b = Lineage(node, regions2, lineage.seqlen - regions1_len)
+            b = Lineage(node, regions2, regions2_len)
             lineages.add(a)
             lineages.add(b)
             recomb_parent_lineages[node] = (a, b)
         else:
             raise Exception("unknown event '%s'" % event)
 
-    assert len(lineages) == 0, lineages
+    assert len(lineages) == 0, (lineages, block_counts.values())
 
     # fix recomb parent order, so that left is before pos and right after
     for node, (a, b) in recomb_parent_lineages.iteritems():
@@ -746,6 +798,129 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
     # TODO: set root(s)
 
     return arg
+
+
+def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
+    """
+    ns = [[n1, end1], [n2, end2], ...]
+    """
+
+    # TODO: convert this into simply a SMC
+
+    arg = ARG(start, end)
+    ni = 0  # index into ns (list popsizes)
+    pos = 0 # position simulated so far
+
+    # sample initial coal tree with no recomb
+    times, events = sample_coal_recomb_times(k, ns[ni][0], 0)
+    lineages = set(arg.new_node() for i in xrange(k))
+    nlineages = []
+    for t in times:
+        a, b = random.sample(lineages, 2)
+        parent = arg.new_node(age=t, children=[a,b], event="coal")
+        a.parents.append(parent)
+        b.parents.append(parent)
+        lineages.remove(a)
+        lineages.remove(b)
+        lineages.add(parent)
+        nlineages.append(len(lineages))
+    oldest = parent
+
+    nrecomb = 0
+
+    while True:
+        # find correct ni
+        while ns[ni][1] < pos:
+            ni += 1
+
+        # sample next recomb
+        totlen = sum(arg.get_local_dist(x, pos+1)
+                     for x in arg.postorder_marginal_tree(pos+1))
+        recomb_per_site = rho * totlen;
+
+        # sample recomb pos
+        pos += random.expovariate(recomb_per_site)
+
+        if pos > end:
+            # no more recombinations
+            break
+
+        # sample recomb node
+        nodes = list(arg.postorder_marginal_tree(pos+1))
+        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
+        child = nodes[stats.sample(lens)]
+
+        # make recomb node and insert into arg
+        old_parent = arg.get_local_parent(child, pos+1)
+        recomb_node = arg.new_node(age=child.age + random.random() *
+                                   arg.get_local_dist(child, pos+1),
+                                   children=[child],
+                                   parents=[old_parent],
+                                   pos=pos, event="recomb")
+        #old_parent = child.parents[-1]
+        i = old_parent.children.index(child)
+        old_parent.children[i] = recomb_node
+        child.parents[child.parents.index(old_parent)] = recomb_node
+
+        # add recomb_node age into times
+        for i in xrange(len(times)):
+            if recomb_node.age < times[i]:                
+                times.insert(i, recomb_node.age)
+                if i == 0:
+                    nlineages.insert(i, k+1)
+                else:
+                    nlineages.insert(i, nlineages[i-1]+1)
+                break
+        else:
+            assert False
+
+        # coalesce recomb_node back into ARG
+        for i in xrange(i, len(times) - 1):
+            coal_time = times[i] + random.expovariate(
+                (nlineages[i]-1) / ns[ni][0])
+            if coal_time < times[i+1]:
+                # coal event, choose sister
+                candidates = [(node, parent) for node in arg
+                              for parent in node.parents
+                              if node.age < coal_time < parent.age]
+                sister, sister_parent = random.sample(candidates, 1)[0]
+                times.insert(i+1, coal_time)
+                nlineages.insert(i+1, nlineages[i]-1)
+                break
+            else:
+                # no coal, keep moving up
+                nlineages[i+1] += 1
+        else:
+            # no coal at all choose oldest sister
+            i += 1
+            sister, sister_parent = oldest, None
+            coal_time = times[i] + random.expovariate(
+                (nlineages[i]-1) / 2.0 / ns[ni][0])
+            times.append(coal_time)
+            nlineages.append(1)
+
+        print pos, ni, ns[ni][0]
+
+        # make coal node
+        coal_node = arg.new_node(age=coal_time, event="coal",
+                                 children=[sister, recomb_node])
+        recomb_node.parents.append(coal_node)
+        if sister_parent:
+            i = sister_parent.children.index(sister)
+            sister_parent.children[i] = coal_node
+            i = sister.parents.index(sister_parent)
+            sister.parents[i] = coal_node
+            coal_node.parents.append(sister_parent)
+        else:
+            sister.parents.append(coal_node)
+            oldest = coal_node
+
+        nrecomb += 1
+
+    arg.root = oldest
+
+    return arg
+
     
 
 #=============================================================================
@@ -1239,6 +1414,69 @@ def show_arg(arg, layout=None, leaves=None, mut=None,
 
     return win
     
+
+
+def show_marginal_trees(arg, mut=None):
+
+    import summon
+    from summon.core import translate, color, lines, input_key
+
+    def minlog(x, low=10):
+        return log(max(x, low))
+    #ymap = lambda x: x
+    ymap = minlog
+
+    win = summon.Window()
+    x = 0
+    step = 2
+    treewidth = len(list(arg.leaves())) + step
+
+    def trans_camera(win, x, y):
+        v = win.get_visible()
+        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
+
+    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
+    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
+
+    blocks = iter_recomb_blocks(arg)
+
+    for tree, block in izip(iter_marginal_trees(arg), blocks):
+        pos = block[0]
+        print pos
+        
+        leaves = sorted((x for x in tree.leaves()), key=lambda x: x.name)
+        layout = layout_arg(tree, leaves, yfunc=ymap)
+        win.add_group(translate(x, 0, color(1,1,1),
+                                draw_tree(tree, layout)))
+
+        # mark responsible recomb node
+        for node in tree:
+            if pos != 0.0 and node.pos == pos:
+                nx, ny = layout[node]
+                win.add_group(draw_mark(x + nx, ny))
+
+        # draw mut
+        if mut:
+            for node, parent, mpos, t in mut:
+                if (node.name in tree and node.name != tree.root.name and
+                    block[0] < mpos < block[1]):
+                    nx, ny = layout[tree[node.name]]
+                    win.add_group(draw_mark(x + nx, ymap(t), col=(0,0,1)))
+                if node.name in tree and tree[node.name].parents:
+                    nx, ny = layout[tree[node.name]]
+                    py = layout[tree[node.name].parents[0]][1]
+                    start = arg[node.name].data["ancestral"][0][0]
+                    win.add_group(lines(color(0,1,0), 
+                                        x+nx, ny, x+nx, py,
+                                        color(1,1,1)))
+            
+                
+        x += treewidth
+
+    win.set_visible(* win.get_root().get_bounding() + ("exact",))
+
+    return win
+
     
 
 

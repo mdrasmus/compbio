@@ -1431,7 +1431,34 @@ def make_tree_from_times(times, k=None, t=None, leaves=None, capped=False):
     return tree, children
     
 
-        
+
+#=============================================================================
+# popsize inference
+
+def mle_popsize_coal_times(k, times):
+    s = 0
+    i = k
+    last = 0
+    for t in times:
+        s += i*(i-1) * (t - last)
+        i -= 1
+        last = t
+    return s / float(2* k - 2)
+
+
+def mle_popsize_many_coal_times(k, times):
+
+    ntrees = len(times)    
+    s = 0
+
+    for times2 in times:
+        i = k
+        last = 0
+        for t in times2:
+            s += i*(i-1) * (t - last)
+            i -= 1
+            last = t
+    return s / float(2*ntrees*(k - 1))
 
 
 #=============================================================================

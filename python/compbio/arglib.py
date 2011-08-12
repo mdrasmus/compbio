@@ -578,7 +578,10 @@ def assert_arg(arg):
         # check ages
         for parent in node.parents:
             assert node.age <= parent.age, (node, parent)
-        
+
+    leaves = set(arg.leaf_names())
+    for tree in iter_marginal_trees(arg):
+        assert set(tree.leaf_names()) == leaves
 
 #=============================================================================
 # coalescence with recombination
@@ -761,14 +764,6 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
                     block_starts.sort()
                     prev_pos = block_starts[block_starts.index(node.pos)-1]
                     block_counts[node.pos] = block_counts[prev_pos]
-                
-            #lens = [reg[1] - reg[0] for reg in lineage.regions]
-            #rstart, rend = lineage.regions[stats.sample(lens)]
-            #node.pos = rstart + random.random() * (rend - rstart)
-            #block_starts.append(node.pos)  # could be done faster
-            #block_starts.sort()            #
-            #prev_pos = block_starts[block_starts.index(node.pos)-1]
-            #block_counts[node.pos] = block_counts[prev_pos]
 
             # create 2 new lineages
             regions1 = list(split_regions(node.pos, 0, lineage.regions))
@@ -798,6 +793,134 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
     # TODO: set root(s)
 
     return arg
+
+
+def sample_arg_smc(k, n, rho, start=0.0, end=0.0, t=0):
+
+    arg = ARG(start, end)
+    pos = start # position simulated so far
+
+    # sample initial coal tree with no recomb
+    times, events = sample_coal_recomb_times(k, n, 0)
+    # at time[i] we go from (k - i) lineages to (k - i - 1) lineages
+    
+    lineages = set(arg.new_node() for i in xrange(k))
+    for t in times:
+        a, b = random.sample(lineages, 2)
+        parent = arg.new_node(age=t, children=[a,b], event="coal")
+        a.parents.append(parent)
+        b.parents.append(parent)
+        lineages.remove(a)
+        lineages.remove(b)
+        lineages.add(parent)
+
+    '''
+    # get nodes from last tree
+    nodes = list(arg.postorder_marginal_tree(pos+1))
+    oldest = nodes.pop()
+    nodes_set = set(nodes)
+    nodes_set.add(oldest)
+    parent_count = defaultdict(lambda:0)
+    parents = {}
+    for node in nodes_set:
+        parent = arg.get_local_parent(node, start+1)
+        parents[node] = parent
+        parent_count[parent] += 1
+    '''
+
+    while True:
+
+        # TODO: could make faster by modifying nodes, parents, and parents_count
+        # get nodes from last tree
+        nodes = list(arg.postorder_marginal_tree(pos+1))
+        oldest = nodes.pop()
+        
+        # sample next recomb
+        totlen = sum(arg.get_local_dist(x, pos+1) for x in nodes)
+        recomb_per_site = rho * totlen
+
+        # sample recomb pos
+        pos += random.expovariate(recomb_per_site)
+        if pos > end:
+            # no more recombinations
+            break
+
+        # sample recomb node
+        nodes_set = set(nodes)
+        nodes_set.add(oldest)
+        parent_count = defaultdict(lambda:0)
+        parents = {}
+        for node in nodes_set:
+            parent = arg.get_local_parent(node, pos+1)
+            parents[node] = parent
+            parent_count[parent] += 1
+        times = [parent.age for parent in parent_count
+                 if parent_count[parent] == 2]
+        times.sort()
+        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
+        child = nodes[stats.sample(lens)]
+
+        # make recomb node and insert into arg
+        old_parent = arg.get_local_parent(child, pos+1)
+        recomb_node = arg.new_node(age=child.age + random.random() *
+                                   arg.get_local_dist(child, pos+1),
+                                   children=[child],
+                                   parents=[old_parent],
+                                   pos=pos, event="recomb")
+        i = old_parent.children.index(child)
+        old_parent.children[i] = recomb_node
+        child.parents[child.parents.index(old_parent)] = recomb_node
+
+
+        # coalesce recomb_node back into previous marginal tree
+        for i in xrange(len(times)):
+            if recomb_node.age < times[i]:
+                break
+        for i in xrange(i, len(times) - 1):
+            k2 = k - i - 1
+            # k2 = 0 = k - i - 1
+            # i = k - 1
+            coal_time = times[i] + random.expovariate(k2 / float(n))
+            if coal_time < times[i+1]:
+                # coal event, choose sister
+                candidates = [(node, parents[node]) for node in nodes
+                              if node.age < coal_time < parents[node].age]
+                assert len(candidates) > 0, (coal_time, times)
+                sister, sister_parent = random.sample(candidates, 1)[0]
+                if sister == child:
+                    sister = recomb_node
+                    assert sister_parent == old_parent
+                break
+        else:
+            # no coal at all choose oldest sister
+            sister, sister_parent = oldest, parents[oldest]
+            assert sister_parent is None or sister_parent in sister.parents, \
+                   (sister_parent, sister.parents)
+            coal_time = times[-1] + random.expovariate(1.0 / n)
+
+
+        # make coal node
+        coal_node = arg.new_node(age=coal_time, event="coal",
+                                 children=[sister, recomb_node])
+        recomb_node.parents.append(coal_node)
+        if sister_parent:
+            i = sister_parent.children.index(sister)
+            sister_parent.children[i] = coal_node
+            i = sister.parents.index(sister_parent)
+            sister.parents[i] = coal_node
+            coal_node.parents.append(sister_parent)
+        else:
+            sister.parents.append(coal_node)
+            
+
+    nodes = [(node.age, node) for node in arg]
+    nodes.sort()
+    arg.root = nodes[-1][1]
+
+    return arg
+
+    
+
 
 
 def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):

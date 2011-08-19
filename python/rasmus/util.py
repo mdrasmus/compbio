@@ -1722,15 +1722,3 @@ except ImportError:
     except ImportError:
         pass
 
-    
-try:
-    from rasmus.plotting import *
-except Exception, e:
-    try:
-        from plotting import *
-    except ImportError:
-        pass
-
-
-
-

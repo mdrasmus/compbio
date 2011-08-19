@@ -16,6 +16,9 @@ from collections import defaultdict
 # rasmus direct imports
 import rasmus
 from rasmus.util import *
+from rasmus.plotting import *
+from rasmus.gnuplot import *
+from rasmus.rplotting import *
 from rasmus.matrixlib import *
 from rasmus.stats import *
 from rasmus.treelib import *

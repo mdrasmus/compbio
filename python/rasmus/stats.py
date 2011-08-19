@@ -132,12 +132,14 @@ def corr_pvalue(r, n):
 def qqnorm(data, plot=None):
     """Quantile-quantile plot"""
     
-    data2 = util.sort(data)
+    from rasmus import gnuplot
+
+    data2 = sorted(data)
     norm = [random.normalvariate(0, 1) for x in range(len(data2))]
     norm.sort()
     
     if plot == None:
-        return util.plot(data2, norm)
+        return gnuplot.plot(data2, norm)
     else:
         plot.plot(data2, norm)
         return plot
@@ -1289,8 +1291,10 @@ def fitDistrib(func, paramsInit, data, start, end, step, perc=1.0):
 
 def plotfuncFit(func, paramsInit, xdata, ydata, start, end, step, plot = None,
                 **options):
+    from rasmus import gnuplot
+
     if not plot:
-        plot = util.Gnuplot()
+        plot = gnuplot.Gnuplot()
     
     options.setdefault('style', 'boxes')
     
@@ -1313,6 +1317,7 @@ def plotdistribFit(func, paramsInit, data, start, end, step, plot = None,
 def chi_square_fit(cdf, params, data, ndivs=20, minsamples=5, plot=False,
                    start=-util.INF, end=util.INF):
 
+    from rasmus import gnuplot
     import scipy
     import scipy.stats
 
@@ -1339,7 +1344,7 @@ def chi_square_fit(cdf, params, data, ndivs=20, minsamples=5, plot=False,
     chi2, pval = scipy.stats.chisquare(obs, expected)
 
     if plot:        
-        p = util.plot(util.mget(x, ind), obs)
+        p = gnuplot.plot(util.mget(x, ind), obs)
         p.plot(util.mget(x, ind), expected)
     
     return chi2, pval
@@ -1457,6 +1462,7 @@ if __name__ == "__main__":
 
     # iter_window
     from rasmus import util
+    from rasmus import gnuplot
 
     vals = sorted([random.random() * 20 for x in range(600)])
 
@@ -1483,5 +1489,5 @@ if __name__ == "__main__":
             return mean(v)
 
     x, y = zip(* iter_window_step(vals, 5, 1, len))
-    util.plot(x, y)
+    gnuplot.plot(x, y)
     

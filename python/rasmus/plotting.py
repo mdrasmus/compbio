@@ -13,10 +13,6 @@ from rasmus import svg
 import sys, os, copy
 import tempfile as temporaryfile
 
-# for backward compat import gnuplot here
-from gnuplot import *
-from rplotting import *
-
 
 #=============================================================================
 # Color maps

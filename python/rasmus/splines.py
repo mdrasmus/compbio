@@ -1,7 +1,7 @@
 from Numeric import *
 from LinearAlgebra import *
 
-from rasmus import util
+from rasmus import util, gnuplot
 
 def hermite(x0, x1, v0, v1, t):
     a = array([1, t, t**2, t**3])
@@ -92,13 +92,13 @@ g = lambda x: bezier(0,1,1,0,x)
 h = lambda x: catmullrom(-3,0,0,-3,x)
 
 if False:
-    p = util.plotfunc(f,0,1,.1)
+    p = gnuplot.plotfunc(f,0,1,.1)
     p.plotfunc(g,0,1,.1)
     p.plotfunc(h,0,1,.1)
 
 if False:
     pts = [1,2,2,3,3,1,-5,-4,-5,-3,-5,-2,-5,0]
-    p = util.plotfunc(interpolate(pts), 0, len(pts)-1, .1)
+    p = gnuplot.plotfunc(interpolate(pts), 0, len(pts)-1, .1)
 
 def frange(n):
     return map(lambda x: x/float(n), range(n+1))
@@ -106,7 +106,7 @@ def frange(n):
 pts = [0, 4, 0]
 pts2 = [0, 4, 6]
 
-p = util.Gnuplot()
+p = gnuplot.Gnuplot()
 
 def make(n):
     times = frange(n)

@@ -20,8 +20,8 @@ from summon import shapes, colors
 # rasmus libs
 from rasmus import util
 from rasmus import regionlib
-from rasmus.bio.synteny import SyntenyBlock
-#from rasmus.bio.synteny import read_synteny_blocks as readSyntenyBlocks
+from compbio.synteny import SyntenyBlock
+#from compbio.synteny import read_synteny_blocks as readSyntenyBlocks
 
 
 def make_chroms(genes):

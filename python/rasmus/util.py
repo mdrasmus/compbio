@@ -131,18 +131,6 @@ class Dict (dict):
 
 
 
-
-class Percent (float):
-    """Representation of a percentage"""
-    digits = 1
-    
-    def __str__(self):
-        return (("%%.%df" % self.digits) % (float(self) * 100))
-    
-    def __repr__(self):
-        return str(self)
-
-
 class PushIter (object):
     """Wrap an iterator in another iterator that allows one to push new
        items onto the front of the iteration stream"""
@@ -193,12 +181,8 @@ def equal(* vals):
 def remove(lst, *vals):
     """Returns a copy of list 'lst' with values 'vals' removed
     """
-    lst2 = []
     delset = set(vals)
-    for i in lst:
-        if i not in delset:
-            lst2.append(i)
-    return lst2
+    return [i for i in lst if i not in delset]
 
 
 def sort(lst, compare=cmp, key=None, reverse=False):
@@ -309,13 +293,9 @@ def list2lookup(lst):
     return lookup
 
 
-def mapdict(dic, key=lambda x: x, val=lambda x: x,
-            keyfunc=None, valfunc=None):
+def mapdict(dic, key=lambda x: x, val=lambda x: x):
     """
     Creates a new dict where keys and values are mapped
-    
-    keyfunc and valfunc are DEPRECATED
-    
     """
     
     if keyfunc is not None:
@@ -350,7 +330,7 @@ def groupby(func, lst, multi=False):
        func -- is a function of one argument that maps items to group objects
        lst  -- is a list of items
        multi -- if True, func must return a list of keys (key1, ..., keyn) for
-                item a.  groupby will retrun a nested dict 'dct' such that
+                item a.  groupby will return a nested dict 'dct' such that
                 dct[key1]...[keyn] == a
        
        returns:
@@ -469,14 +449,9 @@ def ilen(iterator):
 # simple matrix functions
 
 def make_matrix(nrows, ncols, val = 0):
-    mat = []
-    for i in xrange(nrows):
-        row = []
-        mat.append(row)
-        for j in xrange(ncols):
-            row.append(copy.copy(val))
-    return mat
-makeMatrix = make_matrix
+
+    return [[copy.copy(val) for i in xrange(ncols)]
+            for j in xrange(nrows)]
 
 
 def transpose(mat):
@@ -658,7 +633,7 @@ def islands(lst):
     """
     
     counts = {}
-    NULL = Bundle() # unique NULL
+    NULL = object() # unique NULL
     last = NULL
     start = 0
     
@@ -674,8 +649,8 @@ def islands(lst):
 
 
 
-def binsearch(lst, val, compare=cmp, order=1):
-    """Performs binary search for val in lst using compare
+def binsearch(lst, val, cmp=cmp, order=1, key=None):
+    """Performs binary search for val in lst
     
        if val in lst:
           Returns (i, i) where lst[i] == val
@@ -690,22 +665,25 @@ def binsearch(lst, val, compare=cmp, order=1):
     
     assert order == 1 or order == -1
     
+    if key is not None:
+        cmp = lambda a,b: cmp(key(a), key(b))
+
     low = 0
     top = len(lst) - 1
     
     if len(lst) == 0:
         return None, None
     
-    if compare(lst[-1], val) * order == -1:
+    if cmp(lst[-1], val) * order == -1:
         return (top, None)
     
-    if compare(lst[0], val) * order == 1:
+    if cmp(lst[0], val) * order == 1:
         return (None, low)
     
     while top - low > 1:
         ptr = (top + low) // 2
         
-        comp = compare(lst[ptr], val) * order
+        comp = cmp(lst[ptr], val) * order
         
         if comp == 0:
             # have we found val exactly?
@@ -718,9 +696,9 @@ def binsearch(lst, val, compare=cmp, order=1):
             
     
     # check top and low for exact hits
-    if compare(lst[low], val) == 0:
+    if cmp(lst[low], val) == 0:
         return low, low
-    elif compare(lst[top], val) == 0:
+    elif cmp(lst[top], val) == 0:
         return top, top
     else:
         return low, top
@@ -770,29 +748,6 @@ def argmin(lst, key=lambda x: x):
             low = i
             lowval = val
     return low
-
-def maxfunc(func, lst):
-    """Find the element 'e' in 'lst' with maximum func(e)"""
-    top = -INF
-    topi = None
-    for i in lst:
-        val = func(i)
-        if val > top:
-            top = val
-            topi = i
-    return topi
-
-
-def minfunc(func, lst):
-    """Find the element 'e' in 'lst' with minimum func(e)"""
-    low = INF
-    lowi = None
-    for i in lst:
-        val = func(i)
-        if val < low:
-            low = val
-            lowi = i
-    return lowi
 
 
 
@@ -923,7 +878,7 @@ def match(pattern, text):
     
     m = re.match(pattern, text)
     
-    if m == None:
+    if m is None:
         return {}
     else:
         return m.groupdict()
@@ -984,7 +939,7 @@ def read_ints(filename):
     for line in infile:
         vec.append(int(line))
     return vec
-readInts = read_ints
+
 
 
 def read_floats(filename):
@@ -997,7 +952,6 @@ def read_floats(filename):
     for line in infile:
         vec.append(float(line))
     return vec
-readFloats = read_floats
 
 
 def read_strings(filename):
@@ -1008,7 +962,7 @@ def read_strings(filename):
     infile = open_stream(filename)
     vec = [line.rstrip("\n") for line in infile]
     return vec
-readStrings = read_strings
+
 
 def read_dict(filename, delim="\t", keytype=str, valtype=str):
     """Read a dict from a file
@@ -1025,7 +979,7 @@ def read_dict(filename, delim="\t", keytype=str, valtype=str):
         dct[keytype(tokens[0])] = valtype(tokens[1])
     
     return dct
-readDict = read_dict
+
 
 def write_list(filename, lst):
     """Write a list of anything (ints, floats, strings, etc) to a file.
@@ -1035,7 +989,6 @@ def write_list(filename, lst):
     out = open_stream(filename, "w")
     for i in lst:
         print >>out, i
-writeVector = write_list
 
 
 def write_dict(filename, dct, delim="\t"):
@@ -1044,7 +997,6 @@ def write_dict(filename, dct, delim="\t"):
     out = open_stream(filename, "w")
     for k, v in dct.iteritems():
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
-writeDict = write_dict
 
 
 '''
@@ -1092,7 +1044,7 @@ def open_stream(filename, mode = "r"):
         return filename
     
     # if filename is a string then open it
-    elif isinstance(filename, str):
+    elif isinstance(filename, basestring):
         # open URLs
         if filename.startswith("http://"):
             import urllib2
@@ -1109,7 +1061,7 @@ def open_stream(filename, mode = "r"):
         
         # open regular file
         else:
-            return file(filename, mode)
+            return open(filename, mode)
     
     # cannot handle other types for filename
     else:
@@ -1147,7 +1099,7 @@ def read_delim(filename, delim=None):
     """Read an entire delimited file into memory as a 2D list"""
     
     return list(DelimReader(filename, delim))
-readDelim = read_delim
+
 
 def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
@@ -1155,7 +1107,7 @@ def write_delim(filename, data, delim="\t"):
     out = open_stream(filename, "w")
     for line in data:
         print >>out, delim.join(map(str, line))
-writeDelim = write_delim
+
 
 #=============================================================================
 # printing functions
@@ -1173,8 +1125,6 @@ def default_format(val):
     if isinstance(val, int) and \
        not isinstance(val, bool):
         return int2pretty(val)
-    elif isinstance(val, Percent):
-        return str(val)
     elif isinstance(val, float):
         if abs(val) < 1e-4:
             return "%.2e" % val
@@ -1347,26 +1297,11 @@ def print_dict(dic, key=lambda x: x, val=lambda x: x,
     
     printcols(items[:num], spacing=spacing, out=out, format=format, 
               justify=justify)
-printDict = print_dict
 
 
 #=============================================================================
 # Parsing
 #  
-
-class SafeReadIter:
-    def __init__(self, infile):
-        self.infile = infile
-    
-    def __iter__(self):
-        return self
-    
-    def next(self):
-        line = self.infile.readline()
-        if line == "":
-            raise StopIteration
-        else:
-            return line
 
 def read_word(infile, delims = [" ", "\t", "\n"]):
     word = ""
@@ -1459,7 +1394,6 @@ def list_files(path, ext=""):
     files = filter(lambda x: x.endswith(ext), os.listdir(path))
     files.sort()
     return [os.path.join(path, x) for x in files]
-listFiles = list_files
 
 
 def tempfile(path, prefix, ext):
@@ -1594,7 +1528,7 @@ def one_norm(vals):
     return [x/s for x in vals]
 
 
-def bucketSize(array, ndivs=None, low=None, width=None):
+def bucket_size(array, ndivs=None, low=None, width=None):
     """Determine the bucket size needed to divide the values in array into 
        'ndivs' evenly sized buckets"""
     
@@ -1613,7 +1547,7 @@ def bucketSize(array, ndivs=None, low=None, width=None):
     return ndivs, low, width
 
 
-def bucketBin(item, ndivs, low, width):
+def bucket_bin(item, ndivs, low, width):
     """
     Return the bin for an item
     """
@@ -1628,7 +1562,7 @@ def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     keys = map(key, array)
 
     # set bucket sizes
-    ndivs, low, width = bucketSize(keys, ndivs, low, width)
+    ndivs, low, width = bucket_size(keys, ndivs, low, width)
     
     # init histogram
     h = [[] for i in range(ndivs)]
@@ -1637,7 +1571,7 @@ def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     # bin items
     for i in array:
         if i >= low:
-            h[bucketBin(key(i), ndivs, low, width)].append(i)
+            h[bucket_bin(key(i), ndivs, low, width)].append(i)
     for i in xrange(ndivs):
         x.append(i * width + low)
     return (x, h)
@@ -1647,7 +1581,7 @@ def hist(array, ndivs=None, low=None, width=None):
     """Create a histogram of 'array' with 'ndivs' buckets"""
     
     # set bucket sizes
-    ndivs, low, width = bucketSize(array, ndivs, low, width)
+    ndivs, low, width = bucket_size(array, ndivs, low, width)
     
     # init histogram
     h = [0] * ndivs
@@ -1656,7 +1590,7 @@ def hist(array, ndivs=None, low=None, width=None):
     # count items
     for i in array:
         if i >= low:
-            j = bucketBin(i, ndivs, low, width)
+            j = bucket_bin(i, ndivs, low, width)
             if j < ndivs:
                 h[j] += 1
     for i in xrange(ndivs):
@@ -1672,8 +1606,8 @@ def hist2(array1, array2,
     
     
     # set bucket sizes
-    ndivs1, low1, width1 = bucketSize(array1, ndivs1, low1, width1)
-    ndivs2, low2, width2 = bucketSize(array2, ndivs2, low2, width2)
+    ndivs1, low1, width1 = bucket_size(array1, ndivs1, low1, width1)
+    ndivs2, low2, width2 = bucket_size(array2, ndivs2, low2, width2)
     
     # init histogram
     h = [[0] * ndivs1 for i in xrange(ndivs2)]
@@ -1681,8 +1615,8 @@ def hist2(array1, array2,
     
     for j,i in zip(array1, array2):
         if j > low1 and i > low2:
-            h[bucketBin(i, ndivs2, low2, width2)] \
-             [bucketBin(j, ndivs1, low1, width1)] += 1
+            h[bucket_bin(i, ndivs2, low2, width2)] \
+             [bucket_bin(j, ndivs1, low1, width1)] += 1
     
     for i in range(ndivs2):
         labels.append([])
@@ -1712,7 +1646,7 @@ def distrib(array, ndivs=None, low=None, width=None):
     """Find the distribution of 'array' using 'ndivs' buckets"""
     
     # set bucket sizes
-    ndivs, low, width = bucketSize(array, ndivs, low, width)
+    ndivs, low, width = bucket_size(array, ndivs, low, width)
     
     h = hist(array, ndivs, low, width)
     area = 0
@@ -1732,7 +1666,7 @@ def hist_int(array):
         else:
             negative.append(i)
     return hist
-histInt = hist_int
+
 
 def hist_dict(array):
     """Returns a histogram of any items as a dict.
@@ -1748,7 +1682,6 @@ def hist_dict(array):
         else:
             hist[i] = 1
     return hist
-histDict = hist_dict
 
 
 def print_hist(array, ndivs=20, low=None, width=None,
@@ -1767,8 +1700,6 @@ def print_hist(array, ndivs=20, low=None, width=None,
     data.append(bars)
     
     printcols(zip(* data), spacing=spacing, out=out)
-printHist = print_hist
-
 
 
 
@@ -1788,15 +1719,6 @@ try:
 except ImportError:
     try:
         from vector import *
-    except ImportError:
-        pass
-
-
-try:
-    from rasmus.options import *
-except ImportError:
-    try:
-        from options import *
     except ImportError:
         pass
 

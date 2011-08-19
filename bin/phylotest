@@ -4,7 +4,7 @@ from __future__ import division
 
 import sys, os, shutil, optparse
 from rasmus import util, treelib, stats, tablelib
-from rasmus.bio import phylo
+from compbio import phylo
 
 
 

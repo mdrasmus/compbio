@@ -11,7 +11,7 @@ import rasmus.regionlib
 from rasmus.regionlib import iter_chrom
 
 # rasmus bio libs
-from rasmus.bio import fasta
+from compbio import fasta
 
 
 # graphics libs
@@ -1162,7 +1162,7 @@ def visparts(parts, refGenome, outdir):
                       part)
         if len(refs) == 0:
             continue
-        counts = util.histDict([genes[ref].chrom for ref in refs])
+        counts = util.hist_dict([genes[ref].chrom for ref in refs])
         keys = counts.keys()
         keys.sort(lambda a,b: cmp(counts[b], counts[a]))
         refChrom = keys[0]

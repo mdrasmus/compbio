@@ -30,7 +30,7 @@ import optparse
 from rasmus import util
 from rasmus import regionlib
 from rasmus.regionlib import Region
-from rasmus.bio import gff
+from compbio import gff
 
 
 usage = "usage: %prog [options] BLASTFILES ..."

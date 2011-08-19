@@ -3,7 +3,7 @@
 import sys
 
 from rasmus import treelib, util
-from rasmus.bio import phylo
+from compbio import phylo
 
 
 if len(sys.argv) <= 3:

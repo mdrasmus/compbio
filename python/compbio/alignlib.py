@@ -251,7 +251,7 @@ def calcTransitionMatrix(seq1, seq2):
     c = util.hist_dict(map("".join, zip(seq1, seq2)))
     keys = filter(lambda x: "-" not in x, c.keys())
     total = float(sum(util.mget(c, keys)))
-    c = util.mapdict(c, valfunc=lambda x: x/total)
+    c = util.mapdict(c, val=lambda x: x/total)
     
     mat = [
         [" ",    "A",     "T",     "C",     "G"],

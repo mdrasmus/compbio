@@ -7,7 +7,7 @@ import optparse
 
 
 from rasmus import treelib
-from rasmus.bio import phylo
+from compbio import phylo
 
 
 o = optparse.OptionParser()

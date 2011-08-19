@@ -4,7 +4,7 @@
 
 import sys, time, os, optparse
 from rasmus import util
-from rasmus.bio import fasta, alignlib
+from compbio import fasta, alignlib
 
 
 #=============================================================================

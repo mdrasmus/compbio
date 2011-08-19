@@ -1,29 +1,25 @@
 #!/usr/bin/env python
 # Wed Oct 17 20:19:41 EDT 2007
 
-from rasmus import util
-from rasmus.bio import pfam
-from rasmus import tablelib
-
 import sys
 
-options = [
-    ]
+from rasmus import util
+from rasmus import tablelib
 
+from compbio import pfam
 
-conf = util.parseOptions(sys.argv, options)
 
 tab = tablelib.Table(headers=["gene", "domain", "start", "end", "evalue"],
                      types={"gene":str, "domain":str, 
                             "start":int, "end":int, "evalue":float})
-tab.writeHeader()
+tab.write_header()
 
-for filename in conf["REST"]:
+for filename in sys.argv[1:]:
     for query, domains in pfam.iterPfam(filename):
         for domain in domains:
-            tab.writeRow(sys.stdout, {"gene": query,
-                                      "domain": domain.name,
-                                      "start": domain.start,
-                                      "end": domain.end,
-                                      "evalue": domain.evalue})
+            tab.write_row(sys.stdout, {"gene": query,
+                                       "domain": domain.name,
+                                       "start": domain.start,
+                                       "end": domain.end,
+                                       "evalue": domain.evalue})
 

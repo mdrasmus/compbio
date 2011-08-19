@@ -383,9 +383,9 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
                                       blastfiles)
             
             if "output" in conf and len(node.parts) > 0:
-                util.writeDelim(conf["output"] + 
-                                str(node.name) + 
-                                ".part", node.parts)
+                util.write_delim(conf["output"] + 
+                                 str(node.name) + 
+                                 ".part", node.parts)
             
             util.logger("number of parts: ", len(node.parts))
             if len(node.parts) > 0:

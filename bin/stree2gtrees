@@ -5,8 +5,8 @@ import sys, optparse
 from rasmus import util
 from rasmus import treelib
 
-from rasmus.bio import fasta
-from rasmus.bio import phylo
+from compbio import fasta
+from compbio import phylo
 
 
 o = optparse.OptionParser()

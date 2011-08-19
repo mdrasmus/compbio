@@ -15,11 +15,11 @@ from rasmus import regionlib
 from rasmus.regionlib import Region, groupby_overlaps
 from rasmus.sets import UnionFind
 
-# rasmus.bio libs
-from rasmus.bio import gff
+# compbio libs
+from compbio import gff
 
-from rasmus.bio.synteny import fuzzy
-from rasmus.bio.synteny import write_synteny_blocks, block_bbh_hits
+from compbio.synteny import fuzzy
+from compbio.synteny import write_synteny_blocks, block_bbh_hits
 
 
 # hits input format:

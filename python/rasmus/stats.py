@@ -54,7 +54,7 @@ def mode(vals):
     """Computes the mode of a list of numbers"""
     top = 0
     topkey = None
-    for key, val in util.histDict(vals).iteritems():
+    for key, val in util.hist_dict(vals).iteritems():
         if val > top:
             top = val
             topkey = key

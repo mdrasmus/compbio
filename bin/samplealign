@@ -3,7 +3,7 @@
 import os, sys, random, optparse
 
 from rasmus import util
-from rasmus.bio import fasta, alignlib
+from compbio import fasta, alignlib
 
 
 o = optparse.OptionParser()

@@ -92,7 +92,7 @@ def cluster(mat, nclusters=10, prog="vcluster", options="", verbose=False):
     else:
         os.system("%s %s %d %s > /dev/null" % (prog, matfile, nclusters, options))
     
-    partids = util.readInts(partfile)
+    partids = util.read_ints(partfile)
     
     if tmpfile != None:
         os.remove(tmpfile)
@@ -173,7 +173,7 @@ def reorderTree(tree, mat, prog="vcluster"):
 
     permfile = os.popen("cluto_reorder_tree %s %s 2>/dev/null" % 
                         (matfile, treefile))
-    perm = util.readInts(permfile)
+    perm = util.read_ints(permfile)
     
     os.remove(matfile)
     os.remove(treefile)
@@ -207,7 +207,7 @@ def reorderPartids(partids, mat, prog="vcluster"):
 
     permfile = os.popen("cluto_reorder %s %s full 2>/dev/null" % 
                         (matfile, partidsfile))
-    perm = util.readInts(permfile)
+    perm = util.read_ints(permfile)
     
     os.remove(matfile)
     os.remove(partidsfile)

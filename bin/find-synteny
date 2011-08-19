@@ -11,11 +11,11 @@ from rasmus import util
 from rasmus import regionlib
 from rasmus.regionlib import Region
 
-# rasmus.bio libs
-from rasmus.bio import gff
+# compbio libs
+from compbio import gff
 
-from rasmus.bio import synteny
-import rasmus.bio.synteny.strict
+from compbio import synteny
+import compbio.synteny.strict
 
 
 usage = "usage: %prog [options] SPECIES1 SPECIES2"

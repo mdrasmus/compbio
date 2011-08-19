@@ -5,8 +5,8 @@ import sys, os, shutil
 import optparse
 
 from rasmus import util, treelib
-from rasmus.bio import phylip, fasta, mrbayes
-from rasmus.bio import phylorun as phy
+from compbio import phylip, fasta, mrbayes
+from compbio import phylorun as phy
 
 
 def write_dist_matrix(mat, labels, out=sys.stdout):

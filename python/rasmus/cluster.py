@@ -12,7 +12,7 @@ import sys
 from rasmus import graph
 from rasmus import util
 
-from rasmus.bio import blast
+from compbio import blast
 
 
 ##############################################
@@ -147,7 +147,7 @@ def partids2parts(partids, labels):
 
 def filterOne2ones(parts, gene2species):
     def isOne2one(part, gene2species):
-        counts = util.histDict(map(gene2species, part))
+        counts = util.hist_dict(map(gene2species, part))
         return (max(counts.values()) == 1)
 
     # get one2ones

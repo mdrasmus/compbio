@@ -5,8 +5,8 @@ import sys, os, shutil
 import optparse
 
 from rasmus import util, treelib
-from rasmus.bio import phylip, fasta
-from rasmus.bio import phylorun as phy
+from compbio import phylip, fasta
+from compbio import phylorun as phy
 
 
 o = optparse.OptionParser()

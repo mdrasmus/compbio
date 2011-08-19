@@ -1828,7 +1828,7 @@ def make_topology_matrix(tree, genes):
     # create topology matrix
     n = len(genes) 
     ndists = n*(n-1) / 2
-    topmat = util.makeMatrix(ndists, len(edges))
+    topmat = util.make_matrix(ndists, len(edges))
     
     vlookup = util.list2lookup(genes)
     n = len(genes)
@@ -2304,7 +2304,7 @@ def getGaplessDistMatrix(aln):
     else:
         madeOutfile = False
     
-    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
+    distmat = util.make_matrix(len(aln), len(aln), 0.0)
     keys = aln.keys()
     
     for i in xrange(0, len(aln)):
@@ -2429,7 +2429,7 @@ def mapRefTree(trees, reftree, refmapfunc):
 
 
 def findBranchLengths(collect):
-    return util.mapdict(collect, valfunc = lambda nodes: 
+    return util.mapdict(collect, val = lambda nodes: 
                         map(lambda node: node.dist, nodes))
 
 def findTreeLengths(collect):

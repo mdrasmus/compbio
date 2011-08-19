@@ -3,7 +3,8 @@
 import os, sys, optparse
 
 from rasmus import treelib, util
-from rasmus.bio import phylo
+from compbio import phylo
+
 
 o = optparse.OptionParser()
 o.set_usage("%prog [options] <trees>...")

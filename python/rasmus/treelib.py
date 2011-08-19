@@ -2,7 +2,7 @@
 # Tree data structures 
 #
 # Contains special features for representing phylogeny.  
-# See rasmus.bio.phylo for more.
+# See compbio.phylo for more.
 #
 #
 

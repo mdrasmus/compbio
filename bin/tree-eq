@@ -1,30 +1,23 @@
 #!/usr/bin/env python
 
-import sys
+import sys, optparse
 from rasmus import util, treelib
-from rasmus.bio import phylo
 
-options = [
-"""\
-    Compares two trees
-""",
+from compbio import phylo
 
-    ["u", "unroot", "unroot", "",
-     {"single": True,
-      "help": "match unrooted topology"}],
-]
+o = optparse.OptionParser()
+o.add_option("-u", "--unroot", action="store_true",
+             help="match unrooted topology")
 
+conf, args = o.parse_args()
 
-
-conf = util.parseOptions(sys.argv, options, quit=True)
-
-if len(conf["REST"]) != 2:
+if len(args) != 2:
     print >>sys.stderr, "must give two trees"
     sys.exit(1)
 
-tree1, tree2 = map(treelib.read_tree, conf["REST"])
+tree1, tree2 = map(treelib.read_tree, args)
 
-if conf["unroot"]:
+if conf.unroot:
     treelib.reroot(tree1, sorted(tree1.leaf_names())[0], newCopy=False)
     treelib.reroot(tree2, sorted(tree1.leaf_names())[0], newCopy=False)
 

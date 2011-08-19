@@ -7,8 +7,8 @@ import optparse
 import subprocess
 
 from rasmus import util, treelib
-from rasmus.bio import phylo, fasta
-from rasmus.bio import phylorun as phy
+from compbio import phylo, fasta
+from compbio import phylorun as phy
 
 
 o = optparse.OptionParser()

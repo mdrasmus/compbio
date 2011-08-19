@@ -1,8 +1,8 @@
 
 import copy
 
-from rasmus import regionlib, util
-
+from rasmus import util
+from compbio import regionlib
 
 
 

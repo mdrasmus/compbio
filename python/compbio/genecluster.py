@@ -16,10 +16,10 @@ from itertools import izip
 from rasmus import sets
 from rasmus import graph
 from rasmus import util
-from rasmus import regionlib
 from rasmus import tablelib
-from rasmus.cluster import *
+from compbio.cluster import *
 
+from . import regionlib
 from . import blast
 
 

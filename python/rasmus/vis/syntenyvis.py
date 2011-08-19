@@ -3,15 +3,14 @@
 import copy
 
 # rasmus libs
-
-from rasmus import regionlib
 from rasmus import stats
 from rasmus import util
-import rasmus.regionlib
-from rasmus.regionlib import iter_chrom
 
 # rasmus bio libs
 from compbio import fasta
+from compbio import regionlib
+import compbio.regionlib
+from compbio.regionlib import iter_chrom
 
 
 # graphics libs

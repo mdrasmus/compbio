@@ -11,12 +11,12 @@ from itertools import chain
 
 # rasmus libs
 from rasmus import util
-from rasmus import regionlib
-from rasmus.regionlib import Region, groupby_overlaps
 from rasmus.sets import UnionFind
 
 # compbio libs
 from compbio import gff
+from compbio import regionlib
+from compbio.regionlib import Region, groupby_overlaps
 
 from compbio.synteny import fuzzy
 from compbio.synteny import write_synteny_blocks, block_bbh_hits

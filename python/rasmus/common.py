@@ -18,18 +18,18 @@ import rasmus
 from rasmus.util import *
 from rasmus.matrixlib import *
 from rasmus.stats import *
-from rasmus.regionlib import *
-
+from rasmus.treelib import *
 
 # rasmus modules
 from rasmus import util, svg, tablelib, treelib
 from rasmus.tablelib import Table, read_table, iter_table, histtab
 from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
-from rasmus.treelib import *
 
-# bio tools
+
+# compbio tools
 try:
     from compbio.fasta import *
+    from compbio.regionlib import *
     from compbio import muscle, phylip, mrbayes, blast, alignlib
     from compbio import gff, phylo
 except ImportError:

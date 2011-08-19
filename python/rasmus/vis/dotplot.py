@@ -19,7 +19,7 @@ from summon import shapes, colors
 
 # rasmus libs
 from rasmus import util
-from rasmus import regionlib
+from compbio import regionlib
 from compbio.synteny import SyntenyBlock
 #from compbio.synteny import read_synteny_blocks as readSyntenyBlocks
 

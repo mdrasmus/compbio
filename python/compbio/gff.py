@@ -45,9 +45,10 @@ http://song.sourceforge.net/gff3.shtml
 import sys
 
 # rasmus imports
-from rasmus import regionlib
 from rasmus import util
 
+# compbio imports
+from compbio import regionlib
 
 
 #=============================================================================

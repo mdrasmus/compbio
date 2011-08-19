@@ -1,6 +1,0 @@
-#!/bin/sh
-
-DIR=`dirname $0`
-emacs -l $DIR/pyshell.el $*
-
-

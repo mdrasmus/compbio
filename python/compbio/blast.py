@@ -8,19 +8,6 @@ from rasmus import util
 from . import fasta
 
 
-"""
-try:
-    
-except:
-    # could not load BerkeleyDB
-    pass
-
-try:
-    
-except:
-    # could not load SQLITE
-    pass
-"""
 
 
 # NCBI BLASTALL 2.2.10 -m 8 tab-delimited output
@@ -87,149 +74,6 @@ class BlastListReader (BlastReader):
         else:
             return False
 
-
-
-class BlastDb:
-    """A database interface to Blast results"""
-    
-    def __init__(self, filename):
-        import bsddb
-        
-        self.db = bsddb.db.DB()
-        self.db.set_flags(bsddb.db.DB_DUP)
-        
-        self.db.open(filename, bsddb.db.DB_HASH, bsddb.db.DB_CREATE)
-        self.cur = self.db.cursor()  
-    
-    def __getitem__(self, key):
-        hits = {}
-        val = self.cur.get(key, None, bsddb.db.DB_SET)
-        
-        while val:
-            tokens = val[1].split("\t")
-            hits[tokens[1]] = tokens
-            val = self.cur.get(key, None, bsddb.db.DB_NEXT_DUP)
-        return hits
-    
-    def __setitem__(self, key, hits):
-        self.db.delete(key)
-        for hit in hits.values():
-            self.addHit(key, hit)
-    
-    def __delitem__(self, key):
-        self.db.delete(key)
-    
-    def keys(self):
-        return util.sort(util.unique(self.db.keys()))
-    
-    def has_key(self, key):
-        return self.db.has_key(key)
-    
-    def close(self):
-        return self.db.close()
-    
-    def __len__(self):
-        return len(self.db.keys())
-    
-    
-    def addHits(self, reader):
-        for hit in reader:
-            self.addHit(query(hit), hit)
-            self.addHit(subject(hit), flipHit(hit))
-    
-    def addHit(self, key, hit):
-        self.db.put(key, "\t".join(hit))
-
-
-
-class BlastDb2:
-    """A database interface to Blast results"""
-    
-    def __init__(self, filename):
-        import sqlite
-    
-        self.con = sqlite.connect(filename)
-        self.cur = self.con.cursor()
-        
-        # create hits table if it does not exist
-        self.cur.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-        tables = self.cur.fetchall()
-        
-        if ("hits",) not in tables:
-            self.cur.execute("""
-                CREATE TABLE hits (
-                    query TEXT,
-                    subject TEXT,
-                    percid NUMBER, 
-                    alignlen INT, 
-                    mismatches INT,
-                    gaps INT,
-                    qstart INT,
-                    qend INT,
-                    sstart INT,
-                    send INT,
-                    evalue NUMBER,
-                    bitscore NUMBER
-                )
-                """)
-    
-    def __del__(self):
-        self.close()
-    
-    def __getitem__(self, key):
-        self.cur.execute("SELECT * FROM hits WHERE query='%s' OR subject='%s'" % 
-                         (key, key))
-        
-        hits = {}
-        for hit in self.cur:
-            if hit[0] == key:
-                other = hit[1]
-            else:
-                other = hit[0]
-            hits[other] = hit
-    
-        return hits
-    
-    """def __setitem__(self, key, hits):
-        self.db.delete(key)
-        for hit in hits.values():
-            self.addHit(key, hit)
-    
-    def __delitem__(self, key):
-        self.db.delete(key)
-    
-    def keys(self):
-        return util.sort(util.uniq(self.db.keys()))
-    
-    def has_key(self, key):
-        return self.db.has_key(key)
-    """
-    
-    def close(self):
-        self.con.commit()
-        return self.con.close()
-    
-    """
-    def __len__(self):
-        return len(self.db.keys())
-    
-    """
-    
-    def addHits(self, reader):
-        for hit in reader:
-            self.addHit(hit)
-    
-    
-    def addHit(self, hit):
-        self.cur.execute("""
-            INSERT INTO hits VALUES(
-                '%s', '%s', %s, 
-                %s, %s, %s, 
-                %s, %s, %s, %s,
-                %s, %s)
-            """ % tuple(map(str, hit)))
-
-    
 
 
 #
@@ -489,125 +333,150 @@ def bestBidir(hits, scorefunc=bitscore):
 
 
 
-"""
-#
-# old code
-#
+
+#=============================================================================
+# These databases have not been used much 
+# Fri Aug 19 13:24:50 EDT 2011
 
 
-code_names = [
-    'ALIGNMENT_LENGTH',
-    'BLAST_VERSION',
-    'DESCRIPTION_ANNOTATION',
-    'DESCRIPTION_EVALUE',
-    'DESCRIPTION_HITNAME',
-    'DESCRIPTION_SCORE',
-    'END_OF_REPORT',
-    'EVALUE',
-    'GAPS',
-    'IDENTITIES',
-    'NOHITS',
-    'PERCENT_IDENTITIES',
-    'PERCENT_POSITIVES',
-    'POSITIVES',
-    'QUERY_ANNOTATION',
-    'QUERY_END',
-    'QUERY_FRAME',
-    'QUERY_LENGTH',
-    'QUERY_NAME',
-    'QUERY_ORIENTATION',
-    'QUERY_START',
-    'SCORE',
-    'SCORE_BITS',
-    'SUBJECT_ANNOTATION',
-    'SUBJECT_END',
-    'SUBJECT_FRAME',
-    'SUBJECT_LENGTH',
-    'SUBJECT_NAME',
-    'SUBJECT_ORIENTATION',
-    'SUBJECT_START',
-    'UNMATCHED']
-
-codes = {}
-for i in code_names:
-    codes[zerg.__dict__[i]] = i
-
-
-
-
-def blast2tab(filename, out):
-    zerg.open_file(filename)
+class BlastDb:
+    """A database interface to Blast results"""
     
-    fields = [
-        'QUERY_NAME',
-        'SUBJECT_NAME',
-        'PERCENT_IDENTITIES',
-        'ALIGNMENT_LENGTH',
-        'mismatch',
-        'GAPS',
-        'QUERY_START',
-        'QUERY_END',
-        'SUBJECT_START',
-        'SUBJECT_END',
-        'EVALUE',        
-        'SCORE_BITS']
-    
-    parsed = {}
-    
-    for field in fields:
-        parsed[field] = ''
-    
-    
-    while True:
-        (code, value) = zerg.get_token()
+    def __init__(self, filename):
+        import bsddb
         
-        if code == 0:
-            break
+        self.db = bsddb.db.DB()
+        self.db.set_flags(bsddb.db.DB_DUP)
         
-        name = codes[code]
-        if name in parsed:
-            parsed[name] = value
+        self.db.open(filename, bsddb.db.DB_HASH, bsddb.db.DB_CREATE)
+        self.cur = self.db.cursor()  
+    
+    def __getitem__(self, key):
+        hits = {}
+        val = self.cur.get(key, None, bsddb.db.DB_SET)
         
-        if code == zerg.SUBJECT_END:
-            if "ERROR" in parsed.values():
-                raise "PARSE ERROR", parsed
-            
-            print >>out, "\t".join(map(lambda x: parsed[x], fields))
-            for name in ['PERCENT_IDENTITIES',
-                         'ALIGNMENT_LENGTH',
-                         'GAPS',
-                         'QUERY_START',
-                         'QUERY_END',
-                         'SUBJECT_START',
-                         'SUBJECT_END',
-                         'EVALUE',        
-                         'SCORE_BITS']:
-                parsed[name] = "ERROR"
-        
+        while val:
+            tokens = val[1].split("\t")
+            hits[tokens[1]] = tokens
+            val = self.cur.get(key, None, bsddb.db.DB_NEXT_DUP)
+        return hits
+    
+    def __setitem__(self, key, hits):
+        self.db.delete(key)
+        for hit in hits.values():
+            self.addHit(key, hit)
+    
+    def __delitem__(self, key):
+        self.db.delete(key)
+    
+    def keys(self):
+        return util.sort(util.unique(self.db.keys()))
+    
+    def has_key(self, key):
+        return self.db.has_key(key)
+    
+    def close(self):
+        return self.db.close()
+    
+    def __len__(self):
+        return len(self.db.keys())
+    
+    
+    def addHits(self, reader):
+        for hit in reader:
+            self.addHit(query(hit), hit)
+            self.addHit(subject(hit), flipHit(hit))
+    
+    def addHit(self, key, hit):
+        self.db.put(key, "\t".join(hit))
 
 
 
-def blastCut(infile, outfilename):
-    maxline = 10000000
-    i = 0
-    j = 1
+class BlastDb2:
+    """A database interface to Blast results"""
     
-    cutline = "BLASTP 2.2.10 [Oct-19-2004]\n"
+    def __init__(self, filename):
+        import sqlite
     
-    out = file(outfilename + str(j), "w")
-    outs = [outfilename + str(j)]
+        self.con = sqlite.connect(filename)
+        self.cur = self.con.cursor()
+        
+        # create hits table if it does not exist
+        self.cur.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        tables = self.cur.fetchall()
+        
+        if ("hits",) not in tables:
+            self.cur.execute("""
+                CREATE TABLE hits (
+                    query TEXT,
+                    subject TEXT,
+                    percid NUMBER, 
+                    alignlen INT, 
+                    mismatches INT,
+                    gaps INT,
+                    qstart INT,
+                    qend INT,
+                    sstart INT,
+                    send INT,
+                    evalue NUMBER,
+                    bitscore NUMBER
+                )
+                """)
     
-    for line in infile:
-        if line == cutline and i > maxline:
-            out.close()
-            i = 0
-            j += 1
-            out = file(outfilename + str(j), "w")
-            outs.append(outfilename + str(j))
-        out.write(line)
-        i += 1
+    def __del__(self):
+        self.close()
     
-    return outs
+    def __getitem__(self, key):
+        self.cur.execute("SELECT * FROM hits WHERE query='%s' OR subject='%s'" % 
+                         (key, key))
+        
+        hits = {}
+        for hit in self.cur:
+            if hit[0] == key:
+                other = hit[1]
+            else:
+                other = hit[0]
+            hits[other] = hit
+    
+        return hits
+    
+    """def __setitem__(self, key, hits):
+        self.db.delete(key)
+        for hit in hits.values():
+            self.addHit(key, hit)
+    
+    def __delitem__(self, key):
+        self.db.delete(key)
+    
+    def keys(self):
+        return util.sort(util.uniq(self.db.keys()))
+    
+    def has_key(self, key):
+        return self.db.has_key(key)
+    """
+    
+    def close(self):
+        self.con.commit()
+        return self.con.close()
+    
+    """
+    def __len__(self):
+        return len(self.db.keys())
+    
+    """
+    
+    def addHits(self, reader):
+        for hit in reader:
+            self.addHit(hit)
     
     
-"""    
+    def addHit(self, hit):
+        self.cur.execute("""
+            INSERT INTO hits VALUES(
+                '%s', '%s', %s, 
+                %s, %s, %s, 
+                %s, %s, %s, %s,
+                %s, %s)
+            """ % tuple(map(str, hit)))
+
+    

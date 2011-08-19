@@ -2278,8 +2278,8 @@ def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
     else:
         args = "%s\nf\n%s\ny\n" % (infile, outfile)
     
-    phylip.writePhylipAlign(file(infile, "w"), aln)
-    phylip.execPhylip("dnadist", args, verbose=False)
+    phylip.write_phylip_align(file(infile, "w"), aln)
+    phylip.exec_phylip("dnadist", args, verbose=False)
     labels, distmat = phylip.read_dist_matrix(outfile)
 
     if madePhylip:

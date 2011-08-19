@@ -16,7 +16,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
     if nexfilename == "":
-        cwd = phylip.createTempDir()
+        cwd = phylip.create_temp_dir()
     else:
         cwd = None
     
@@ -66,9 +66,9 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     # clean up
     if cwd != None:
         if saveOutput != "":
-            phylip.saveTempDir(cwd, saveOutput)
+            phylip.save_temp_dir(cwd, saveOutput)
         else:
-            phylip.cleanupTempDir(cwd)
+            phylip.cleanup_temp_dir(cwd)
     
     util.toc()
     

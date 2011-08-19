@@ -81,8 +81,8 @@ def pamp(seqs, tree, seqtype="dna", saveOutput="", verbose=False, safe=True):
     if safe and seqtype == "dna":
         seqs = alignlib.mapalign(seqs, valfunc=removeStopCodons)
     
-    phylip.validateSeq(seqs)
-    cwd = phylip.createTempDir()
+    phylip.validate_seqs(seqs)
+    cwd = phylip.create_temp_dir()
 
     util.tic("pamp on %d of length %d" % (len(seqs), len(seqs.values()[0])))
 
@@ -124,9 +124,9 @@ def pamp(seqs, tree, seqtype="dna", saveOutput="", verbose=False, safe=True):
     renameTreeAlign(tree2, aln)
     
     if saveOutput != "":
-        phylip.saveTempDir(cwd, saveOutput)
+        phylip.save_temp_dir(cwd, saveOutput)
     else:
-        phylip.cleanupTempDir(cwd)
+        phylip.cleanup_temp_dir(cwd)
     
     util.toc()
 

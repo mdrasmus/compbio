@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# Fri Sep 18 16:00:03 EDT 2009
+
+import sys
+import os
+import optparse
+
+
+from rasmus import treelib
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.add_option("-s", "--stree", dest="stree")
+o.add_option("-S", "--smap", dest="smap")
+
+conf, args = o.parse_args()
+
+
+stree = treelib.read_tree(conf.stree)
+gene2species = phylo.read_gene2species(conf.smap)
+
+
+for filename in sys.stdin:
+    filename = filename.rstrip("\n")
+
+    tree = treelib.read_tree(filename)
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.label_events(tree, recon)
+
+    try:
+        dupcons = phylo.dup_consistency(tree, recon, events)
+    except:
+        print >>sys.stderr, "error: ", filename
+
+    scores = [(node, score) for (node, score) in dupcons.items()]
+    scores.sort()
+
+    for node, score in scores:
+        print "\t".join([filename, str(node.name),
+                         str(recon[node].name), str(score)])
+
+
+        

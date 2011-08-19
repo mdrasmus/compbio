@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+from collections import defaultdict
+import sys, optparse
+
+from rasmus import util
+
+#=============================================================================
+
+o = optparse.OptionParser()
+o.add_option("-f", "--fields", dest="fields", metavar="NAME1,NAME2,SCORE",
+             default="1,2,3")
+
+conf, args = o.parse_args()
+
+
+#=============================================================================
+
+fields = [int(x) - 1 for x in conf.fields.split(",")]
+
+best = defaultdict(lambda: [0, None, None])
+
+if len(args) == 0:
+    files = [sys.stdin]
+else:
+    files = map(open, args)
+
+# read in data
+for infile in files:
+    for line in infile:
+        name1, name2, score = util.mget(line.rstrip("\n").split("\t"), fields)
+        score = float(score)
+
+        if score > best[name1][0]:
+            best[name1] = [score, name2, line]
+        if score > best[name2][0]:
+            best[name2] = [score, name1, line]
+
+
+# write out best bi-directional hits
+for gene1 in best:
+    gene2 = best[gene1][1]
+    
+    # see if the best is bidirectional
+    # but only print one direction
+    if gene1 == best[gene2][1] and gene1 < gene2:
+        print best[gene1][2],
+
+

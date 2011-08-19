@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import os, sys, random, optparse
+
+from rasmus import util
+from compbio import fasta, alignlib
+
+
+o = optparse.OptionParser()
+o.add_option("-l", "--len", dest="len",
+             metavar="<length of new alignment>",
+             type="int")
+
+conf, args = o.parse_args()
+
+if conf.len is None:
+    print >>sys.stderr, "must supply alignment length: -l"
+    sys.exit(1)
+
+
+if len(args) == 0:
+    print >>sys.stderr, "must supply input alignment"
+    sys.exit(1)
+
+
+aln = fasta.read_fasta(args[0])
+newlen = conf.len
+oldlen = aln.alignlen()
+
+# sample columns
+cols = [random.randint(0, oldlen)
+        for i in xrange(newlen)]
+    
+aln2 = alignlib.subalign(aln, cols)
+aln2.write()
+

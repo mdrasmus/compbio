@@ -1131,8 +1131,8 @@ def find(name):
 printscreen = lambda *args, **kargs: svg.printScreen(vis.win, *args, **kargs)
 
 
-def readFasta(filename):
-    vis.seqs.update(fasta.readFasta(env.findFile(f)))
+def read_fasta(filename):
+    vis.seqs.update(fasta.read_fasta(env.findFile(f)))
 
 def readAllSeqs():
     util.tic("read sequences")

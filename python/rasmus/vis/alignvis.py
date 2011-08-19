@@ -1,6 +1,6 @@
 """
     
-    Visualizations for Distance Matrices of molecular sequences
+    Visualizations for alignments of molecular sequences
 
 """
 

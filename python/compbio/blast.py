@@ -215,7 +215,7 @@ def blast(prog, databaseFile, queryFile, options = "", split=100, resume = None)
         # this is a work around for ncbi blastall 2.2.10 problem with outputing
         # in -m 8 mode.  error was   "BioseqFindFunc: couldn't uncache"
                
-        seqs = fasta.readFasta(queryFile)
+        seqs = fasta.read_fasta(queryFile)
         closure = {
             "index": 0,
             "oldtmp": None,

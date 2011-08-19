@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+# Sun Aug 30 17:54:10 EDT 2009
+# filter only the best blast hits between two genes
+# blast hits need to be sorted by query and subject
+
+import sys
+
+last = [None, None]
+bestline = None
+bestscore = 0
+scorecol = 11
+
+for line in sys.stdin:
+    tokens = line.rstrip().split("\t")
+
+    if tokens[:2] != last:
+        if bestline is not None:
+            sys.stdout.write(bestline)
+        bestscore = 0
+        bestline = None
+        last = tokens[:2]
+
+    score = float(tokens[scorecol])
+    if score > bestscore:
+        bestline = line
+        bestscore = score
+
+if bestline is not None:
+    sys.stdout.write(bestline)

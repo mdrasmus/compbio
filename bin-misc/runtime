@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+# record runtimes of programs
+
+
+# imports
+import sys
+import time
+from subprocess import call
+
+# parse arguments
+if len(sys.argv) <= 1:
+    sys.exit()
+
+output = sys.stdout
+
+
+i = 1
+while sys.argv[i].startswith("-"):
+    if sys.argv[i] == "-o":
+        output = open(sys.argv[i+1], "w")
+        i += 2
+    elif sys.argv[i] == "--":
+        i += 1
+        break
+    else:
+        raise Exception("unknown option '%s'" % sys.argv[i])
+
+# remaining arguments are a commmand
+cmd = sys.argv[i:]
+
+
+start = time.time()
+call(cmd)
+duration = time.time() - start
+
+output.write("%f\n" % duration)

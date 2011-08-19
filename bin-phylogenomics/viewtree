@@ -1,0 +1,394 @@
+#!/usr/bin/env python
+
+import sys, optparse
+
+from rasmus import util, treelib, tablelib
+from compbio import phylo
+
+try:
+    from compbio  import paml
+    from rasmus.vis import treesvg
+except:
+    pass
+
+
+o = optparse.OptionParser()
+o.set_defaults(tree=[],
+               scale=20,
+               minlen=1,
+               maxlen=10000)
+
+o.add_option("-t", "--tree", dest="tree",
+             metavar="<newick file>",
+             action="append")
+o.add_option("-l", "--scale", dest="scale",
+             metavar="<scaling>",
+             type="float")
+o.add_option("-m", "--minlen", dest="minlen",
+             metavar="<minimum branch length>",
+             type="int")
+o.add_option("-M", "--maxlen", dest="maxlen",
+             metavar="<maximum branch length>",
+             type="int")
+o.add_option("-i", "--hist", dest="hist",
+             action="store_true",
+             default=False,
+             help="output histogram of tree topologies")
+o.add_option("--histsplit", dest="histsplit",
+             action="store_true",
+             default=False,
+             help="output histogram of tree splits")
+o.add_option("--hashes", dest="hashes",
+             action="store_true",
+             default=False)
+o.add_option("-n", "--names", dest="names",
+             action="store_true",
+             default=False,
+             help="display internal node names")
+o.add_option("--snames", dest="snames",
+             action="store_true",
+             default=False,
+             help="display species names")
+o.add_option("-N", "--newick", dest="newick",
+             action="store_true",
+             default=False,
+             help="write newick format")
+o.add_option("--len", dest="len",
+             action="store_true",
+             default=False,
+             help="display branch lengths")
+o.add_option("", "--hideboot", dest="hideboot",
+             action="store_true")
+o.add_option("", "--hidelegend", dest="hidelegend",
+             action="store_true")
+o.add_option("", "--eventsize", dest="eventsize",
+             metavar="<pixels>", default=10, type="int")
+o.add_option("-r", "--reroot", dest="reroot",
+             metavar="<branch to root tree>")
+o.add_option("", "--midpoint_root", dest="midpoint_root",
+             action="store_true")
+o.add_option("-O", "--order", dest="order",
+             metavar="<branch order newick file>")
+o.add_option("-c", "--colormap", dest="colormap",
+             metavar="<color map file>")
+o.add_option("--rootby", dest="rootby",
+             metavar="dup|loss|duploss")
+o.add_option("-d", "--dump", dest="dump",
+             action="store_true",
+             default=False,
+             help="covert to easy to parse format")
+o.add_option("-H", "--headings", dest="headings",
+             action="store_true",
+             default=False,
+             help="show heading information above each tree")
+o.add_option("-g", "--graphical", dest="graphical",
+             metavar="<filename>|-")
+o.add_option("-G", "--default-graphical", dest="default_graphical",
+             action="store_true",
+             default=False)
+o.add_option("-e", "--events", dest="events", 
+             action="store_true",
+             default=False)
+o.add_option("--paml-labels", dest="paml_labels",
+             action="store_true",
+             default=False)
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>",
+             help="species tree (newick format)")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>",
+             help="mapping of gene names to species names")
+
+
+#=============================================================================
+
+def iter_trees(treefile):
+    """read multiple trees from a tree file"""
+    
+    ntrees = 0
+    infile = util.open_stream(treefile)
+    
+    while True:
+        try:
+            if options.paml_labels:
+                tree = paml.read_tree(infile)
+            else:
+                tree = treelib.read_tree(infile)
+            ntrees += 1
+            yield tree
+        except Exception, e:
+            if ntrees < 1:
+                print >>sys.stderr, e
+            break
+
+def dump_tree(tree):
+    names = util.sort(tree.nodes.keys())
+        
+    print "# node  path-to-root"
+    for name in names:
+        path = []
+        ptr = tree.nodes[name]
+        while ptr != tree.root:
+            ptr = ptr.parent
+            path.append(ptr.name)
+            
+        print "%s\t%s" % (name, ",".join(map(str, path)))
+    print 
+        
+    print "# node branch-length"
+    for name in names:
+        print "%s\t%f" % (name, tree.nodes[name].dist)
+
+
+def get_branch_labels(tree):
+    
+    # init labels
+    labels = {}
+    for node in tree.nodes.values():
+        labels[node.name] = ""
+
+    # get species names
+    if options.snames:
+        assert stree is not None and gene2species is not None
+        recon = phylo.reconcile(tree, stree, gene2species)
+
+    # create branch labels
+    for node in tree.nodes.values():
+
+        # label distances
+        if options.len:
+            labels[node.name] += "%f" % node.dist
+
+        # label bootstraps
+        if (not options.hideboot and
+            "boot" in node.data and node.data["boot"] != 0):
+            if isinstance(node.data["boot"], int):
+                labels[node.name] = "(%d) %s" % (node.data["boot"], 
+                                                 labels[node.name])
+            else:
+                labels[node.name] = "(%.2f) %s" % (node.data["boot"], 
+                                                   labels[node.name])
+
+        # label node names
+        if options.names and not node.is_leaf():
+            labels[node.name] = "[%s] %s" % (node.name, 
+                                             labels[node.name])
+
+        # label species names
+        if options.snames:
+            labels[node.name] = "%s %s" % (str(recon[node].name),
+                                           labels[node.name])
+
+        # paml branch lables
+        if options.paml_labels and "label" in node.data:
+            labels[node.name] = "#%d %s" % (node.data["label"],
+                                            labels[node.name])
+
+    return labels
+    
+
+def display_tree(tree, options, labels=None,
+                 stree=None, gene2species=None):
+            
+    if options.headings:
+        print
+        print "------------------------------------------------"
+        print "filename: %s" % treefile
+        print "treelen:  %f" % sum(x.dist for x in tree.nodes.values())
+        print
+        
+        
+    # set default graphical settings
+    if options.default_graphical:
+        if options.graphical is None:
+            options.graphical = "-"
+        options.scale = 500.0
+
+    if labels is None:
+        labels = get_branch_labels(tree)
+    
+    if options.graphical is not None:
+        if options.graphical == "-":
+            treesvg.show_tree(tree, labels=labels,
+                              xscale=options.scale,
+                              minlen=options.minlen,
+                              maxlen=options.maxlen,
+                              legendScale=not options.hidelegend,
+                              colormap=colormap,
+                              stree=stree,
+                              fontSize=12,
+                              eventSize=options.eventsize,
+                              gene2species=gene2species)
+        else:
+            treesvg.draw_tree(tree, labels=labels,
+                              xscale=options.scale,
+                              minlen=options.minlen,
+                              maxlen=options.maxlen,
+                              filename=options.graphical,
+                              legendScale=not options.hidelegend,
+                              colormap=colormap,
+                              stree=stree,
+                              fontSize=12,
+                              eventSize=options.eventsize,
+                              gene2species=gene2species)
+    elif options.newick:
+        # write newick notation
+        tree.write()
+
+    else:
+        # draw ascii tree
+        treelib.draw_tree(tree, labels=labels,
+                          scale=options.scale,
+                          minlen=options.minlen,
+                          maxlen=options.maxlen)
+
+
+
+
+def process_tree(tree):
+    global gene2species, stree
+
+    #==================================================
+    # preprocess
+    if stree is not None and gene2species is not None and \
+       options.rootby is not None:
+        phylo.recon_root(tree, stree, gene2species, 
+                         rootby=options.rootby,
+                         newCopy=False)
+    
+    elif options.reroot is not None:
+        treelib.reroot(tree, options.reroot, newCopy=False)
+
+    elif options.midpoint_root:
+        treelib.midpoint_root(tree)
+
+    if order_tree:
+        treelib.reorder_tree(tree, order_tree)
+
+
+    #==============================
+    # process
+    
+    if options.hist or options.hashes:
+        # count topology
+        hashes.append(phylo.hash_tree(tree, gene2species))
+    
+    elif options.histsplit:
+        # count splits
+        for leaf in tree.leaves():
+            tree.rename(leaf.name, gene2species(leaf.name))
+        splits.extend(phylo.find_splits(tree))
+    
+    elif options.dump:
+        # dump mode
+        dump_tree(tree)
+
+    elif options.events:
+        # add event labels
+        assert stree != None and gene2species != None
+        phylo.count_dup_loss_tree(tree, stree, gene2species)
+        
+    else:
+        # default mode: display tree
+        display_tree(tree, options, gene2species=gene2species, stree=stree)
+
+
+
+#=============================================================================
+# parse options
+options, args = o.parse_args()
+options.tree.extend(args)
+
+
+if options.smap:
+    gene2species = phylo.read_gene2species(options.smap)
+else:
+    gene2species = lambda x: x
+if options.stree:
+    stree = treelib.read_tree(options.stree)
+else:
+    stree = None
+
+if options.order:
+    order_tree = treelib.read_tree(options.order)
+else:
+    order_tree = None
+
+if options.colormap:
+    colormap = treelib.read_tree_color_map(options.colormap)
+else:
+    colormap = None
+
+
+hashes = []
+splits = []
+ntrees = 0
+
+if options.reroot:
+    if options.reroot.isdigit():
+        options.reroot = int(options.reroot)
+
+# init event visualization
+if options.events:
+    assert stree is not None and gene2species is not None
+    phylo.init_dup_loss_tree(stree)
+    
+
+# read trees
+for treefile in options.tree:
+    for tree in iter_trees(treefile):
+        ntrees += 1
+        process_tree(tree)
+
+
+# display topology histogram
+if options.hist:
+    histogram = tablelib.histtab(hashes)
+    histogram.write(sys.stdout)
+
+
+# display splits histogram
+if options.histsplit:
+    s2 = []
+    for set1, set2 in splits:
+        s2.append(" ".join(set1) + "  |  " + " ".join(set2))
+    histogram = tablelib.histtab(s2)
+    
+    # modify percentages to total number of trees
+    splits_per_tree = len(splits) / ntrees
+    for row in histogram:
+        row["percent"] *= splits_per_tree
+    
+    histogram.write(sys.stdout)
+
+# display hashes
+if options.hashes:
+    for thash in hashes:
+        print thash
+
+
+# display events tree
+if options.events:
+    phylo.count_ancestral_genes(stree)
+
+    labels = {}
+    
+    for node in stree:
+        labels[node.name] = ""
+
+        if node.data['appear'] > 0:
+            labels[node.name] += " *%d" % node.data['appear']
+        
+        if node.data['dup'] > 0:
+            labels[node.name] += " +%d" % node.data['dup']
+
+        if node.data['loss'] > 0:
+            labels[node.name] += " -%d" %  node.data['loss']
+
+        labels[node.name] += " = %d" % node.data['genes']
+
+
+    display_tree(stree, options=options, labels=labels,
+                 stree=None, gene2species=None)
+
+    

@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+import sys
+
+from rasmus import treelib, util
+from compbio import phylo
+
+
+if len(sys.argv) <= 3:
+    print >>sys.stderr, "usage: tree-hashorder <old extension> <new extension> <tree files> ..."
+    sys.exit(1)
+
+
+oldext = sys.argv[1]
+newext = sys.argv[2]
+
+for filename in sys.argv[3:]:
+    print filename
+    tree = treelib.read_tree(filename)
+    phylo.hash_order_tree(tree)
+    
+    filename2 = util.replace_ext(filename, oldext, newext)
+    tree.write(filename2)
+
+    
+   

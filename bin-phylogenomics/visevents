@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# Fri Jun 12 14:20:06 EDT 2009
+# make tree with bars for events
+
+import optparse
+import sys
+
+from rasmus.common import *
+from rasmus.vis import treesvg
+
+o = optparse.OptionParser()
+o.add_option("-S", "--stree", dest="stree", metavar="SPECIES_TREE")
+o.add_option("-t", "--tab", dest="eventtab", metavar="EVENTS_TABLE")
+o.add_option("-o", "--out", dest="outfile", metavar="OUTPUT_FILE",
+             default=sys.stdout)
+o.add_option("-x", "--xscale", dest="xscale", metavar="PIXELS",
+             type="float", default=1)
+o.add_option("-y", "--yscale", dest="yscale", metavar="PIXELS",
+             type="float", default=40.0)
+o.add_option("-b", "--bscale", dest="bscale", metavar="BRANCH_SCALE",
+             type="float", default=1.0)
+
+conf, args = o.parse_args()
+
+
+stree = read_tree(conf.stree)
+pscale = conf.bscale
+
+tab = read_table(conf.eventtab)
+tree = treelib.parent_table2tree(tab.get_matrix()[0],
+                                 data_cols=tab.headers[3:])
+treelib.reorder_tree(tree, stree)
+
+
+def draw_branch(s, node, x, y, x2, y2, mid1, mid2,
+                pscale, fontsize, showmain=True):
+
+    # ending
+    genes = pscale * node.data["genes"]
+    dup = pscale * node.data["dup"]
+    loss = pscale * node.data["loss"]
+    appear = pscale * node.data["appear"]
+    if showmain:
+        main = genes - dup - appear
+    else:
+        main = 0
+
+    if node != tree.root:
+        # starting
+        pnode = node.parent
+        genes2 = pscale * pnode.data["genes"]
+
+    else:
+        # starting
+        genes2 = genes
+
+    w = x - x2
+    w1 = w * mid1
+    w2 = w * mid2
+    w3 = w - w1 - w2
+
+    ybot = y + main/2.0
+
+    xa = x2 + w1
+    xb = xa + w2
+
+    # main
+    s.rect(x2, ybot-main, w, main,
+           fillColor=(0, 0, 0), strokeColor=None) # main
+    if loss > 0:
+        s.line(x2, ybot-main, x2, ybot+loss, color=(0,0,0))
+
+
+    s.text("+%d" % node.data["dup"], x2, ybot - genes - 2, fontsize*.8,
+           fillColor=(0, .5, 0))
+    s.text("-%d" % node.data["loss"], x2, ybot + loss + fontsize + 2,
+           fontsize*.8, fillColor=(.5, 0, 0))
+
+
+    if appear > 0:
+        s.rect(xa, ybot-main-appear, w2+w3, appear,
+                   fillColor=(0, 0, 1), strokeColor=None) # appear
+    if dup > 0:
+        s.rect(xa, ybot-main-appear-dup, w2+w3, dup,
+                   fillColor=(0, 1, 0), strokeColor=None) # dup
+    if loss > 0:
+        s.rect(x2, ybot, w1+w2, loss,
+               fillColor=(1, 0, 0), strokeColor=None) # loss
+
+
+def draw_events_tree(tree, xscale=1, yscale=40, pscale=1.0,
+                     fontsize=14,
+                     lmargin=20,
+                     tmargin=40,
+                     bmargin=40,
+                     minlen=80,
+                     maxlen=140,
+                     leaf_padding=4,
+                     mid1=.2,
+                     mid2=.6,
+                     showmain=True,
+                     out=sys.stdout):
+
+
+    gene_margin = 4
+    maxgenes = max(node.data["genes"] for node in tree)
+    gene_width = len(str(maxgenes)) * .6 * fontsize + + 2*gene_margin
+    
+    # draw tree
+    layout = treelib.layout_tree(tree, xscale, yscale, minlen=minlen,
+                                 maxlen=maxlen)
+    s = treesvg.draw_tree(tree, layout=layout, filename=out,
+                          autoclose=False, lmargin=lmargin, tmargin=tmargin,
+                          bmargin=bmargin,
+                          leafPadding=leaf_padding, fontSize=fontsize)
+
+
+
+    s.beginTransform(("translate", lmargin, tmargin))
+
+    # draw branches
+    for node, (x,y) in layout.iteritems():
+        if node != tree.root:
+            # starting
+            pnode = node.parent
+            x2, y2 = layout[pnode]
+        else:
+            # starting
+            x2, y2 = x - minlen, y
+        
+        draw_branch(s, node, x-gene_width, y, x2, y2, mid1, mid2,
+                    pscale=pscale, fontsize=fontsize, showmain=showmain)
+
+
+    # draw gene counts
+    for node, (x, y) in layout.items():
+        gene_x = x - gene_width
+        gene_y = y - (fontsize + 2*gene_margin) / 2
+
+        # gene count
+        s.rect(gene_x, gene_y, gene_width,
+               fontsize+2*gene_margin,
+               fillColor=(1,1,1), strokeColor=(0,0,0))
+        s.text(str(node.data["genes"]), gene_x + gene_margin,
+               gene_y + gene_margin + fontsize, fontsize)
+
+
+
+    s.endTransform()
+    s.endSvg()
+
+
+draw_events_tree(tree, xscale=conf.xscale, yscale=conf.yscale,
+                 pscale=conf.bscale,
+                 out=conf.outfile)

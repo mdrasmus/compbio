@@ -28,6 +28,10 @@
 #
 
 
+# untar fungi example dataset
+tar zxvf data/fungi.tar.gz -C data
+
+
 
 # how many sequences are in this example?
 grep -c '>' data/fungi/fasta-pep/*.fa
@@ -163,7 +167,7 @@ EOF
 # clean up
 
 # remove BLAST index files
-rm -f data/fungi/fasta-pep/*.{phr,pin,psd,psq}
+rm -f data/fungi/fasta-pep/*.{phr,pin,psd,psq,psi}
 rm -f formatdb.log
 
 # remove output for fungi

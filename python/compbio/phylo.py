@@ -274,12 +274,17 @@ def count_dup(gtree, events, node=None):
     return var["dups"]
 
 
+def count_loss(gtree, stree, recon, node=None):
+    """Returns the number of losses in a gene tree"""
+    return len(find_loss(gtree, stree, recon, node))
+
+
 def count_dup_loss(gtree, stree, recon, events=None):
     """Returns the number of duplications + losses in a gene tree"""
     if events is None:
         events = label_events(gtree, recon)
     
-    nloss = len(find_loss(gtree, stree, recon))
+    nloss = count_loss(gtree, stree, recon)
     ndups = count_dup(gtree, events)
     return nloss + ndups
 
@@ -531,10 +536,18 @@ def dup_consistency(tree, recon, events):
 
 
 def recon_root(gtree, stree, gene2species = gene2species, 
-               rootby = "duploss", newCopy=True,
-	       keepName=False, returnCost=False):
-    """Reroot a tree by minimizing the number of duplications/losses/both"""
+               rootby = "duploss", newCopy = True,
+	       keepName = False, returnCost = False,
+	       dupcost = 1, losscost = 1):
+    """
+    Reroot a tree by minimizing the number of duplications/losses/both
+    Note that rootby trumps dupcost/losscost
+    """
     
+    # assert valid inputs
+    assert rootby in ["dup", "loss", "duploss"], "unknown rootby value '%s'" % rootby
+    assert dupcost >= 0 and losscost >= 0
+
     # make a consistent unrooted copy of gene tree
     if newCopy:
         gtree = gtree.copy()
@@ -574,17 +587,14 @@ def recon_root(gtree, stree, gene2species = gene2species,
     recon = reconcile(gtree, stree, gene2species)
     events = label_events(gtree, recon)
     
-    # find reconciliation that minimizes loss
+    # find reconciliation that minimizes dup/loss
     minroot = edges[0]
     rootedge = sorted(edges[0])
-    if rootby == "dup": 
-        cost = count_dup(gtree, events)
-    elif rootby == "loss":
-        cost = len(find_loss(gtree, stree, recon))
-    elif rootby == "duploss":
-        cost = count_dup_loss(gtree, stree, recon, events)
-    else:
-        raise "unknown rootby value '%s'"  % rootby
+    cost = 0
+    if rootby in ["dup", "duploss"] and dupcost != 0:
+        cost += count_dup(gtree, events) * dupcost
+    if rootby in ["loss", "duploss"] and losscost != 0:
+        cost += count_loss(gtree, stree,  recon) * losscost
     mincost = cost
     
     
@@ -600,14 +610,14 @@ def recon_root(gtree, stree, gene2species = gene2species,
         assert node1.parent == node2, "%s %s" % (node1.name, node2.name)
         
         # uncount cost
-        if rootby in ["dup", "duploss"]:
+        if rootby in ["dup", "duploss"] and dupcost != 0:
             if events[gtree.root] == "dup":
-                cost -= 1
+                cost -= dupcost
             if events[node2] == "dup":
-                cost -= 1
-        if rootby in ["loss", "duploss"]:
-            cost -= len(find_loss_under_node(gtree.root, recon))
-            cost -= len(find_loss_under_node(node2, recon))
+                cost -= dupcost
+        if rootby in ["loss", "duploss"] and losscost != 0:
+            cost -= len(find_loss_under_node(gtree.root, recon)) * losscost
+            cost -= len(find_loss_under_node(node2, recon)) * losscost
         
         # new root and recon
         treelib.reroot(gtree, node1.name, newCopy=False, keepName=keepName)
@@ -617,14 +627,14 @@ def recon_root(gtree, stree, gene2species = gene2species,
         events[node2] = label_events_node(node2, recon)
         events[gtree.root] = label_events_node(gtree.root, recon)
         
-        if rootby in ["dup", "duploss"]:
+        if rootby in ["dup", "duploss"] and dupcost != 0:
             if events[node2] ==  "dup":
-                cost += 1
+                cost += dupcost
             if events[gtree.root] ==  "dup":
-                cost += 1
-        if rootby in ["loss", "duploss"]:
-            cost += len(find_loss_under_node(gtree.root, recon))
-            cost += len(find_loss_under_node(node2, recon))
+                cost += dupcost
+        if rootby in ["loss", "duploss"] and losscost != 0:
+            cost += len(find_loss_under_node(gtree.root, recon)) * losscost
+            cost += len(find_loss_under_node(node2, recon)) * losscost
         
         # keep track of min cost
         if cost < mincost:

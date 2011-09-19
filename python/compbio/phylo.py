@@ -1980,7 +1980,7 @@ def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
             chars.append(nochar)
 
     return "".join(chars)
-    
+   
 
 def robinson_foulds_error(tree1, tree2):
     splits1 = find_splits(tree1)
@@ -2067,6 +2067,14 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
     return contree
 
 
+def splits2tree(splits, rooted=False):
+    
+    tree = treelib.Tree()
+    for split in splits:
+        _add_split_to_tree(tree, split, 1.0, rooted)
+    _post_process_split_tree(tree)
+    return tree
+
 
 def _add_split_to_tree(tree, split, count, rooted=False):
 
@@ -2078,7 +2086,6 @@ def _add_split_to_tree(tree, split, count, rooted=False):
         root.data["leaves"] = split[0] | split[1]
 
         if len(split[0]) == 1:
-            print "HERE"
             node = tree.add_child(root, treelib.TreeNode(list(split[0])[0]))
             node.data["leaves"] = split[0]
             node.data["boot"] = count
@@ -2091,17 +2098,17 @@ def _add_split_to_tree(tree, split, count, rooted=False):
             node = tree.add_child(root, treelib.TreeNode(list(split[1])[0]))
             node.data["leaves"] = split[1]
             node.data["boot"] = count
-        #else:
-        #    node = tree.add_child(root, treelib.TreeNode(tree.new_name()))
-        #    node.data["leaves"] = split[1]
-        #    node.data["boot"] = count
             
         return True
 
     def walk(node, clade):
         if node.is_leaf():
             # make new child
-            child = tree.add_child(node, treelib.TreeNode(tree.new_name()))
+            if len(clade) == 1:
+                name = list(clade)[0]
+            else:
+                name = tree.new_name()
+            child = tree.add_child(node, treelib.TreeNode(name))
             child.data["leaves"] = clade
             child.data["boot"] = count
             return True
@@ -2112,14 +2119,19 @@ def _add_split_to_tree(tree, split, count, rooted=False):
             leaves = child.data["leaves"]
             intersect = clade & leaves
             
-            if len(clade) == len(intersect) < len(leaves) :
-                # subset, recurse
-                return walk(child, clade)
+            if len(clade) == len(intersect):
+                if len(intersect) < len(leaves):
+                    # subset, recurse
+                    return walk(child, clade)
+                else:
+                    # len(intersect) == len(leaves), split is already present
+                    return True
 
             elif len(intersect) == 0:
                 continue
             
             elif len(intersect) == len(leaves):
+                # len(clade) > len(leaves)
                 # superset
                 intersects.append(child)
             else:
@@ -2127,7 +2139,11 @@ def _add_split_to_tree(tree, split, count, rooted=False):
                 return False
 
         # insert new node
-        new_node = tree.add_child(node, treelib.TreeNode(tree.new_name()))
+        if len(clade) == 1:
+            name = list(clade)[0]
+        else:
+            name = tree.new_name()
+        new_node = tree.add_child(node, treelib.TreeNode(name))
         new_node.data["leaves"] = clade
         new_node.data["boot"] = count
         for child in intersects:
@@ -2137,17 +2153,6 @@ def _add_split_to_tree(tree, split, count, rooted=False):
         return True
     
     # try to place split into tree
-    '''
-    for child in tree.root.children:
-        if rooted:
-            if split[0] < child.data["leaves"]:
-                return walk(child, split[0])
-        else:
-            for i in range(2):
-                if split[i] < child.data["leaves"]:
-                    return walk(child, split[i])
-    '''
-
     if rooted:
         walk(tree.root, split[0])
     else:
@@ -2170,6 +2175,8 @@ def _post_process_split_tree(tree):
                         break
                 else:
                     child = tree.add_child(node, treelib.TreeNode(leaf_name))
+        else:
+            assert node.name == list(node.data["leaves"])[0], node.name
 
     # remove leaf data and set root
     for node in tree:
@@ -2210,6 +2217,65 @@ def ensure_binary_tree(tree):
         # add last two to original node
         tree.add_child(node, children.pop())
         tree.add_child(node, children.pop())
+
+
+
+#=============================================================================
+# simulation
+
+def make_jc_matrix(t, a=1.):
+    eat = math.exp(-4*a/3.*t)
+    r =  .25 * (1 + 3*eat)
+    s =  .25 * (1 - eat)
+    
+    return [[r, s, s, s],
+            [s, r, s, s],
+            [s, s, r, s],
+            [s, s, s, r]]
+
+
+def sim_seq_tree(tree, seqlen, matrix_func=make_jc_matrix, 
+                 bgfreq=[.25,.25,.25,.25]):
+    """simulate the evolution of a sequence down a tree"""
+    
+    bases = "ACGT"
+
+    # make root sequence
+    rootseq = [bases[stats.sample(bgfreq)]
+               for i in xrange(seqlen)]
+
+    # leaf sequences
+    seqs = fasta.FastaDict()
+
+    # evolve sequences down tree
+    def walk(node, seq):
+        if node.is_leaf():
+            # save sequence
+            seqs[node.name] = seq
+
+        # recurse
+        for child in node.children:
+            seq2 = sim_seq_branch(seq, child.dist, matrix_func)
+            walk(child, seq2)        
+    walk(tree.root, rootseq)
+
+    return seqs
+    
+
+def sim_seq_branch(seq, time, matrix_func):
+    """Simulate sequence evolving down one branch"""
+    
+    matrix = matrix_func(time)
+    bases = "ACGT"
+    lookup = {"A": 0, "C": 1, "G": 2, "T": 3}
+    
+    seq2 = []
+    for a in seq:
+        seq2.append(bases[stats.sample(matrix[lookup[a]])])
+
+    return "".join(seq2)
+
+
 
 
 

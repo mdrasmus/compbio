@@ -1341,14 +1341,14 @@ def is_rooted(tree):
     #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
 
 
-def unroot(tree, newCopy = True):
+def unroot(tree, newCopy=True):
     """Return an unrooted copy of tree"""
     
     if newCopy:
         tree = tree.copy()
-    
-    if len(tree.root.children) == 2:
-        nodes = tree.root.children
+
+    nodes = tree.root.children
+    if len(nodes) == 2 and not (nodes[0].is_leaf() and nodes[1].is_leaf()):
         dist = nodes[0].dist + nodes[1].dist
         data = tree.merge_branch_data(nodes[0].data, nodes[1].data)
         if len(nodes[0].children) < 2:

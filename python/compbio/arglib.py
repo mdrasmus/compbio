@@ -642,7 +642,8 @@ def sample_coal_recomb_times(k, n, r, t=0):
     return times, events
 
 
-def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
+def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None, 
+               make_names=True):
 
     arg = ARG(start, end)
 
@@ -655,9 +656,16 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0):
     # init ancestral lineages
     # (node, region, seqlen)
     total_seqlen = k * (end - start)
-    lineages = set(Lineage(arg.add(CoalNode(arg.new_name())),
-                           [(start, end)], end-start)
-                   for i in xrange(k))
+    if make_names:
+        names = ["n%d" % i for i in range(k)]
+    if names is None:
+        lineages = set(Lineage(arg.add(CoalNode(arg.new_name())),
+                               [(start, end)], end-start)
+                       for i in xrange(k))
+    else:
+        lineages = set(Lineage(arg.add(CoalNode(names[i])),
+                               [(start, end)], end-start)
+                       for i in xrange(k))
     for lineage in lineages:
         lineage.node.data["ancestral"] = [(start, end)]
     recomb_parent_lineages = {}
@@ -1148,6 +1156,27 @@ def iter_marginal_trees(arg, start=None, end=None):
         yield arg.get_marginal_tree((a+b) / 2.0)
     
 
+def iter_tree_tracks(arg, start=None, end=None):
+    for a, b in iter_recomb_blocks(arg, start, end):
+        tree = arg.get_marginal_tree((a+b) / 2.0)
+        remove_single_lineages(tree)
+        yield (a, b), tree.get_tree()
+
+
+def write_tree_tracks(filename, arg, start=None, end=None):
+    out = util.open_stream(filename, "w")
+    for block, tree in iter_tree_tracks(arg, start, end):
+        out.write(str(int(block[0]))+"\t"+str(int(block[1]))+"\t")
+        tree.write(out, oneline=True)
+        out.write("\n")
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_tree_tracks(filename):
+    for row in util.DelimReader(filename):
+        yield (int(row[0]), int(row[1])), treelib.parse_newick(row[2])
+
     
 def descendants(node, nodes=None):
     """
@@ -1311,6 +1340,39 @@ def sample_mutations(arg, u):
     return mutations
 
 
+def sample_arg_mutations(arg, mu):
+    """
+    mu -- mutation rate (mutations/site/gen)
+    """
+
+    mutations = []
+
+    locsize = arg.end - arg.start
+    u = mu * locsize
+
+    for node in arg:
+        for parent in node.parents:
+            for region in arg.get_ancestral(node, parent=parent):
+                # ensure node is not MRCA
+                for pregion in parent.data["ancestral"]:
+                    if pregion[0] <= region[0] < pregion[1]:
+                        break
+                else:
+                    continue
+                
+                frac = (region[1] - region[0]) / locsize
+                dist = parent.age - node.age
+                t = parent.age
+                while True:
+                    t -= random.expovariate(u * frac)
+                    if t < node.age:
+                        break
+                    pos = random.uniform(region[0], region[1])
+                    mutations.append((node, parent, pos, t))
+
+    return mutations
+
+
 def get_marginal_leaves(arg, node, pos):
     return (x for x in arg.preorder_marginal_tree(pos, node) if x.is_leaf())
 
@@ -1345,6 +1407,36 @@ def is_split_compatible(split1, split2):
             j += 1
     #intersect = len(split1 & split2)
     return intersect == 0 or intersect == min(len(split1), len(split2))
+
+
+def is_split_compatible_unpolar2(split1, split2, leaves):
+
+    a = set(split1)
+    b = set(split2)
+    x00 = False
+    x01 = False
+    x10 = False
+    x11 = False
+    for l in leaves:
+        if l in a:
+            if l in b:
+                x11 = True
+            else:
+                x10 = True
+        else:
+            if l in b:
+                x01 = True
+            else:
+                x00 = True
+
+    return not (x00 and x01 and x10 and x11)
+
+def is_split_compatible_unpolar(split1, split2, leaves):
+    if is_split_compatible(split1, split2):
+        return True
+    else:
+        split1rev = tuple(x for x in leaves if x not in split1)
+        return is_split_compatible(split1rev, split2)
 
 
 def split_relation(split1, split2):
@@ -1389,6 +1481,24 @@ def iter_mutation_splits(arg, mutations):
             arg, node, pos)))
         if len(split) != 1 and len(split) != nleaves:
             yield pos, split
+
+
+def write_mutations(filename, arg, mutations):
+    out = util.open_stream(filename, "w")
+
+    for mut in mutations:
+        l = get_marginal_leaves(arg, mut[0], mut[2])
+        out.write("\t".join(map(
+                str, [mut[2], mut[3], ",".join(x.name for x in l)])) + "\n")
+
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_mutations(filename):
+    for row in util.DelimReader(filename):
+        chroms = row[2].split(",") if row[2] else []
+        yield int(row[0]), float(row[1]), chroms
 
 
 
@@ -1600,7 +1710,17 @@ def show_marginal_trees(arg, mut=None):
 
     return win
 
-    
+
+'''
+def mark_tree(tree, layout, name, y=None, time=None,
+              col=(1, 0, 0), ymap=lambda y: y):
+    nx, ny = layout[tree[name]]
+    if y is not None:
+        y += ny
+    else:
+        y = time
+    return draw_mark(nx, ymap(y), col=col)
+'''    
 
 
 def draw_tree(tree, layout, orient="vertical"):

@@ -68,6 +68,37 @@ class UnionFind:
 
 
 
+def connected_components(components):
+
+    sets = {}
+
+    for comp in components:
+        comp_sets = []
+        for item in comp:
+            if item not in sets:
+                s = UnionFind([item])
+                sets[item] = s
+                comp_sets.append(s)
+            else:
+                comp_sets.append(sets[item])
+
+        if len(comp_sets) > 1:
+            for s in comp_sets[1:]:
+                comp_sets[0].union(s)
+
+
+    # yield unique sets
+    done = set()
+    for s in sets.itervalues():
+        if s.root() not in done:
+            done.add(s.root())
+            yield s.members()
+
+
+
+
+
+
 
 if __name__ == "__main__":
     

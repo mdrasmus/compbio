@@ -802,7 +802,8 @@ def gaussianPdf(x, params):
 
 def normalPdf(x, params):
     mu, sigma = params
-    return 1.0/(sigma * sqrt(2.0*pi)) * exp(- (x - mu)**2 / (2.0 * sigma**2))
+    # sqrt(2*pi) = 2.5066282746310002
+    return exp(- (x - mu)**2 / (2.0 * sigma**2)) / (sigma * 2.5066282746310002)
 
 def normalCdf(x, params):
     mu, sigma = params
@@ -1491,3 +1492,6 @@ if __name__ == "__main__":
     x, y = zip(* iter_window_step(vals, 5, 1, len))
     gnuplot.plot(x, y)
     
+
+
+

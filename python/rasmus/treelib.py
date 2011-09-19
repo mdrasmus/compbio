@@ -690,61 +690,84 @@ class Tree:
         """Reads a big newick file with a custom parser"""
     
         infile = util.open_stream(filename) #file(filename)    
-        closure = {"opens": 0}
+        opens = [0]
         names = set()
 
         def readchar():
             while True:
                 char = infile.read(1)
                 if not char or char not in " \t\n": break
-            if char == "(": closure["opens"] += 1
-            if char == ")": closure["opens"] -= 1
+            if char == "(": opens[0] += 1
+            if char == ")": opens[0] -= 1
             return char
         
         def read_until(chars):
             token = ""
             while True:
-                char = readchar()
+                #char = readchar()
+                while True:
+                    char = infile.read(1)
+                    if not char or char not in " \t\n": break
+                if char == "(": opens[0] += 1
+                if char == ")": opens[0] -= 1
+
                 if char in chars or char == "":
-                    return [token, char]
+                    return token, char
                 token += char
         
         def read_dist():
             word = ""
             while True:
-                char = readchar()
+                #char = readchar()
+                while True:
+                    char = infile.read(1)
+                    if not char or char not in " \t\n": break
+                if char == "(": opens[0] += 1
+                if char == ")": opens[0] -= 1
+                
                 if not char in "-0123456789.e":
                     return float(word)
                 else:
                     word += char
 
+        def read_name():
+            token = ""
+            while True:
+                #char = readchar()
+                while True:
+                    char = infile.read(1)
+                    if not char or char not in " \t\n": break
+                if char == "(": opens[0] += 1
+                if char == ")": opens[0] -= 1
+                
+                if char in ":)," or char == "":
+                    return token, char
+                token += char
+
         def read_item():
-            try:
-                char1 = readchar()
+            char1 = readchar()
 
-                if char1 == "(":
-                    node = TreeNode(self.new_name())
-                    depth = closure["opens"]
-                    while closure["opens"] == depth:
-                        self.add_child(node, read_item())
-                    
-                    token, char = read_until("):,")
-                    if char == ":":
-                        node.dist = read_dist()
-                    return node
-                else:                   
-                    word, char = read_until(":),")
-                    word = char1 + word.rstrip()
+            if char1 == "(":
+                node = TreeNode(self.new_name())
+                depth = opens[0]
+                while opens[0] == depth:
+                    self.add_child(node, read_item())
 
-                    name = self.unique_name(word, names)
-                    
-                    node = TreeNode(name)
-                    if char == ":":
-                        node.dist = read_dist()
-                    return node
-            except:
-                print sys.exc_type, ": Tree too deep to read"
-                return TreeNode("TOO_DEEP")
+                token, char = read_until("):,")
+                if char == ":":
+                    node.dist = read_dist()
+                return node
+            else:                   
+                #word, char = read_until(":),")
+                word, char = read_name()
+                word = char1 + word.rstrip()
+
+                name = self.unique_name(word, names)
+
+                node = TreeNode(name)
+                if char == ":":
+                    node.dist = read_dist()
+                return node
         
 
         def read_root():
@@ -753,8 +776,8 @@ class Tree:
             assert char == "("
             
             node = TreeNode(self.new_name())
-            depth = closure["opens"]
-            while closure["opens"] == depth:
+            depth = opens[0]
+            while opens[0] == depth:
                 self.add_child(node, read_item())
             return node
 
@@ -1933,6 +1956,29 @@ def layout_tree_hierarchical(tree, xscale, yscale,
     walk(tree.root, rootx, rooty)
     
     return coords
+
+
+def layout_tree_vertical(layout, offset=None, root=0, leaves=None,
+                         ydir=-1):
+    """
+    Make layout vertical
+    """
+
+    if offset is None:
+        if leaves is not None:
+            for node in layout:
+                if node.is_leaf():
+                    offset = leaves - ydir*layout[node][0]
+                    break
+        else:
+            for node in layout:
+                if node.parent is None:
+                    offset = root - ydir*layout[node][0]
+                    break
+
+    for node, (x, y) in layout.iteritems():
+        layout[node] = [y, offset + ydir*x]
+    return layout
 
 
 

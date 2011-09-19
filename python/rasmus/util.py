@@ -298,11 +298,6 @@ def mapdict(dic, key=lambda x: x, val=lambda x: x):
     Creates a new dict where keys and values are mapped
     """
     
-    if keyfunc is not None:
-        key = keyfunc
-    if valfunc is not None:
-        val = valfunc
-    
     dic2 = {}
     for k, v in dic.iteritems():
         dic2[key(k)] = val(v)
@@ -352,6 +347,58 @@ def groupby(func, lst, multi=False):
             d.setdefault(keys[-1], []).append(i)
     
     return dct
+
+
+def iter_groups2(items, key):
+    """
+    Iterates over groups of consecutive values x from 'items' that have equal key(x)"""
+    
+    def iter_subgroup():
+        pass
+
+
+    NULL = object()
+    last_key = NULL
+    group = []
+
+    for item in items:
+        k = key(item)
+        if k != last_key:
+            if group:
+                yield group
+            
+            # start new group
+            group = []
+            last_key = k
+        group.append(item)
+
+    if group:
+        yield group
+
+
+def iter_groups(items, key):
+    """
+    Iterates over groups of consecutive values x from 'items' that have equal key(x)"""
+        
+
+    NULL = object()
+    last_key = NULL
+    group = []
+
+    for item in items:
+        k = key(item)
+        if k != last_key:
+            if group:
+                yield group
+            
+            # start new group
+            group = []
+            last_key = k
+        group.append(item)
+
+    if group:
+        yield group
+
 
 
 def unique(lst):
@@ -619,7 +666,7 @@ def findgt(a, lst): return find(gtfunc(a), lst)
 
 
 def islands(lst):
-    """Takes a iterable and returns islands of equal consequtive items 
+    """Takes a iterable and returns islands of equal consecutive items 
     
     Return value is a dict with the following format
     
@@ -999,27 +1046,26 @@ def write_dict(filename, dct, delim="\t"):
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
 
 
-'''
-def makeReopenStream(stream):
-    """Object used to wrap a stream that is 'opened' multiple times.
-       Will ignore first close"""
+# TODO: use this in open_stream()
+class IgnoreCloseFile (file):
+    def __init__(self, stream):
+        self._stream = stream
+
+    def read(self, *args, **kargs):
+        self._stream.read(*args, **kargs)
+
+    def readline(self, *args, **kargs):
+        self._stream.readline(*args, **kargs)
+
+    def write(self, *args, **kargs):
+        self._stream.write(*args, **kargs)
+
+    def close(self):
+        # ignore close call
+        pass
     
-    closecount = [0]
-    
-    # save old close
-    old_close = stream.close
-    
-    def new_close():
-        closecount[0] += 1
-        if closecount[0] > 1:
-            old_close()
-    
-    # dynamically replace close function
-    stream.close = new_close
-'''
 
 
-# TODO: add code for multiple close() calls
 def open_stream(filename, mode = "r"):
     """Returns a file stream depending on the type of 'filename' and 'mode'
     
@@ -1105,8 +1151,9 @@ def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
     
     out = open_stream(filename, "w")
-    for line in data:
-        print >>out, delim.join(map(str, line))
+    for row in data:
+        out.write(delim.join(str(x) for x in row))
+        out.write("\n")
 
 
 #=============================================================================
@@ -1719,6 +1766,14 @@ try:
 except ImportError:
     try:
         from vector import *
+    except ImportError:
+        pass
+
+try:
+    from rasmus.plotting import *
+except ImportError:
+    try:
+        from plotting import *
     except ImportError:
         pass
 

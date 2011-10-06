@@ -73,9 +73,6 @@ def pl(lines, out=sys.stdout):
     for line in lines:
         print >>out, line
 
-def make_row(*fields, delim="\t"):
-    return delim.join(str(x) for x in fields)
-
 
 def show_tree(tree, **options):
     from rasmus.vis import treevis

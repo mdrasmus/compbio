@@ -12,8 +12,9 @@
 from __future__ import division
 
 # python libs
+import sys
 import random
-from itertools import izip
+from itertools import izip, chain
 from collections import defaultdict
 import heapq
 from math import *
@@ -274,13 +275,13 @@ class ARG (object):
                     regions2 = []
                 else:
                     regions1 = self.get_ancestral(
-                        node.children[0],parent=node)
+                        node.children[0], parent=node)
                     regions2 = self.get_ancestral(
-                        node.children[1],parent=node)
+                        node.children[1], parent=node)
                 regions3 = []
 
                 i = j = 0
-                while True:                        
+                while True:
                     reg1 = regions1[i] if i < len(regions1) else None
                     reg2 = regions2[j] if j < len(regions2) else None
                     if reg1 is None and reg2 is None:
@@ -307,7 +308,7 @@ class ARG (object):
 
             elif node.event == "recomb":
                 # inherit all ancestral
-                assert len(node.children) == 1, node
+                assert len(node.children) == 1, (node, len(node.children))
                 node.data["ancestral"] = [
                     reg for reg in self.get_ancestral(
                     node.children[0], parent=node)
@@ -372,12 +373,14 @@ class ARG (object):
 
         # make new ARG to contain marginal tree
         tree = ARG()
+        tree.nextname = self.nextname
 
         # populate tree with marginal nodes
         for node in self.postorder_marginal_tree(pos):
             tree.add(node.copy())
         
         # set parent and children
+        roots = []
         for node2 in tree:
             node = self[node2.name]
             parent = self.get_local_parent(node, pos)
@@ -386,9 +389,20 @@ class ARG (object):
                 node2.parents = [parent2]
                 parent2.children.append(node2)
             else:
-                tree.root = node2
+                roots.append(node2)
 
-        assert tree.root is not None, tree.nodes
+        # make root
+        if len(roots) == 1:
+            tree.root = roots[0]
+        elif len(roots) > 1:
+            # make cap node since marginal tree does not fully coallesce
+            tree.root = tree.new_node(event="coal", 
+                                      age=max(x.age for x in roots)+1)
+            for node in roots:
+                tree.root.children.append(node)
+                node.parents.append(tree.root)
+
+        assert tree.root is not None, (tree.nodes, pos)
         
         return tree
 
@@ -411,7 +425,7 @@ class ARG (object):
             if "ancestral" in node.data:
                 # if ancestral is set require ancestral seq present at pos
                 for reg in node.data["ancestral"]:
-                    if reg[0] < pos < reg[1]:
+                    if reg[0] < pos <= reg[1]:
                         break
                 else:
                     # terminate iteration, we are past the MRCA
@@ -1112,19 +1126,34 @@ def make_arg_from_times(k, times, events):
     return arg
 
 
-def get_recomb_pos(arg):
+def get_recomb_pos(arg, visible=False):
     """
     Returns a sorted list of an ARG's recombination positions
+
+    visible -- if True only iterate recombination break points that are 
+               visible to extant sequences
     """
-    rpos = [node.pos for node in
-            arg if node.event == "recomb"]
-    rpos.sort()
-    return rpos
+    
+    if visible:
+        rpos = [node.pos for node in
+                arg if node.event == "recomb" and 
+                len(node.data["ancestral"]) > 0]
+        rpos.sort()
+        return rpos
+
+    else:
+        rpos = [node.pos for node in
+                arg if node.event == "recomb"]
+        rpos.sort()
+        return rpos
 
 
-def iter_recomb_blocks(arg, start=None, end=None):
+def iter_recomb_blocks(arg, start=None, end=None, visible=False):
     """
     Iterates over the recombination blocks of an ARG
+
+    visible -- if True only iterate recombination break points that are 
+               visible to extant sequences
     """
 
     if start is None:
@@ -1134,7 +1163,7 @@ def iter_recomb_blocks(arg, start=None, end=None):
 
     a = start
     b = start
-    for pos in get_recomb_pos(arg):
+    for pos in get_recomb_pos(arg, visible=visible):
         if pos < start:
             continue
         if pos > end:
@@ -1147,25 +1176,74 @@ def iter_recomb_blocks(arg, start=None, end=None):
     yield (a, end)
 
 
-def iter_marginal_trees(arg, start=None, end=None):
+def iter_marginal_trees2(arg, start=None, end=None, visible=False):
     """
     Iterate over the marginal trees of an ARG
     """
     
-    for a,b in iter_recomb_blocks(arg, start, end):
+    for a,b in iter_recomb_blocks(arg, start, end, visible=visible):
         yield arg.get_marginal_tree((a+b) / 2.0)
-    
+
+
+def iter_marginal_trees(arg, start=None, end=None):
+    """
+    Iterate over the marginal trees of an ARG
+    """
+    for block, tree in iter_tree_tracks(arg, start, end):
+        yield tree
+
 
 def iter_tree_tracks(arg, start=None, end=None):
-    for a, b in iter_recomb_blocks(arg, start, end):
+    """
+    Iterate over the marginal trees of an ARG
+    """
+
+    if start is None:
+        start = arg.start
+    if end is None:
+        end = arg.end
+
+    i = 0
+    rpos = get_recomb_pos(arg)
+    rpos.append(end)
+    if len(rpos) > 0:
+        r = rpos[i]
+    else:
+        r = end
+
+    while start < arg.end:
+        # find next rpos
+        while i < len(rpos) and r < start:
+            i += 1
+            r = rpos[i]
+
+        tree = arg.get_marginal_tree((start+r) / 2.0)
+        
+        # find block end
+        end = arg.end
+        for node in tree:
+            if node.event == "recomb" and start < node.pos < end:
+                end = node.pos
+
+        yield (start, end), tree
+        start = end
+
+    
+
+def iter_tree_tracks2(arg, start=None, end=None, visible=False):
+    for a, b in iter_recomb_blocks(arg, start, end, visible=visible):
         tree = arg.get_marginal_tree((a+b) / 2.0)
         remove_single_lineages(tree)
         yield (a, b), tree.get_tree()
 
 
-def write_tree_tracks(filename, arg, start=None, end=None):
+def write_tree_tracks(filename, arg, start=None, end=None, verbose=False):
     out = util.open_stream(filename, "w")
     for block, tree in iter_tree_tracks(arg, start, end):
+        if verbose:
+            print >>sys.stderr, "writing block", block
+        remove_single_lineages(tree)
+        tree = tree.get_tree()
         out.write(str(int(block[0]))+"\t"+str(int(block[1]))+"\t")
         tree.write(out, oneline=True)
         out.write("\n")
@@ -1649,7 +1727,7 @@ def show_arg(arg, layout=None, leaves=None, mut=None,
     
 
 
-def show_marginal_trees(arg, mut=None):
+def show_marginal_trees2(arg, mut=None):
 
     import summon
     from summon.core import translate, color, lines, input_key
@@ -1709,6 +1787,95 @@ def show_marginal_trees(arg, mut=None):
     win.set_visible(* win.get_root().get_bounding() + ("exact",))
 
     return win
+
+
+def show_tree_track(tree_track, mut=None, show_labels=False,
+                    use_blocks=False):
+    """
+    tree_track = [((start, end), tree), ...]
+    """
+
+    import summon
+    from summon.core import translate, color, lines, input_key, text_clip, \
+        text, rotate, group
+    from summon import sumtree
+
+    def draw_labels(tree, layout):
+        return group(*
+                [text_clip(leaf.name, layout[leaf][0], layout[leaf][1],
+                          1, layout[leaf][1] + 1e4, 4, 20, "middle", "left")
+                 for leaf in tree.leaves()])
+    
+
+
+    def minlog(x, low=10):
+        return log(max(x, low))
+    #ymap = lambda x: x
+    ymap = minlog
+
+    tree_track = iter(tree_track)
+    block, tree = tree_track.next()
+
+    win = summon.Window()
+    x = 0
+    step = 2
+    treewidth = len(list(tree.leaves())) + step
+
+    def trans_camera(win, x, y):
+        v = win.get_visible()
+        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
+
+    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
+    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
+
+    for block, tree in chain([(block, tree)], tree_track):
+        pos = block[0]
+        print pos
+
+        #if use_blocks:
+        #    treewidth = block[1] - block[0]
+        
+        layout = treelib.layout_tree(tree, xscale=1, yscale=1)
+        treelib.layout_tree_vertical(layout, leaves=0)
+        win.add_group(
+            translate(x, 0, color(1,1,1),
+                      sumtree.draw_tree(tree, layout, 
+                                        vertical=True),
+                      (draw_labels(tree, layout) if show_labels else group()),
+                      text_clip(
+                    "%d-%d" % (block[0], block[1]),
+                    treewidth*.05, 0, 
+                    treewidth*.95, -max(l[1] for l in layout.values()),
+                    4, 20, 
+                    "center", "top")))
+        
+        # TODO: update with tree width
+        # draw mut
+        if mut:
+            for node, parent, mpos, t in mut:
+                if (node.name in tree and node.name != tree.root.name and
+                    block[0] < mpos < block[1]):
+                    nx, ny = layout[tree[node.name]]
+                    win.add_group(draw_mark(x + nx, ymap(t), col=(0,0,1)))
+                if node.name in tree and tree[node.name].parents:
+                    nx, ny = layout[tree[node.name]]
+                    py = layout[tree[node.name].parents[0]][1]
+                    start = arg[node.name].data["ancestral"][0][0]
+                    win.add_group(lines(color(0,1,0), 
+                                        x+nx, ny, x+nx, py,
+                                        color(1,1,1)))
+            
+                
+        x += treewidth
+
+    win.set_visible(* win.get_root().get_bounding() + ("exact",))
+
+    return win
+
+
+        
+                  
+
 
 
 '''

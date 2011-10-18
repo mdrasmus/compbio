@@ -299,6 +299,13 @@ class Tree:
         return child
 
 
+    def new_node(self, name=None):
+        """Add a new node with name 'name' to the tree"""
+        if name is None:
+            name = self.new_name()
+        return self.add(TreeNode(name))
+
+
     def remove(self, node):
         """
         Removes a node from a tree.

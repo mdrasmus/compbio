@@ -1122,7 +1122,7 @@ def open_stream(filename, mode = "r"):
 class DelimReader:
     """Reads delimited files"""
 
-    def __init__(self, filename, delim="\t"):
+    def __init__(self, filename, delim="\t", types=None):
         """Constructor for DelimReader
             
            arguments:
@@ -1132,19 +1132,23 @@ class DelimReader:
         
         self.infile = open_stream(filename)
         self.delim = delim
+        self.types = types
         
     def __iter__(self):
         return self
     
     def next(self):
         line = self.infile.next()
-        return line.rstrip("\n").split(self.delim)
+        row = line.rstrip("\n").split(self.delim)
+        if self.types:
+            row = [func(x) for func, x in izip(self.types, row)]
+        return row
 
 
-def read_delim(filename, delim=None):
+def read_delim(filename, delim="\t", types=None):
     """Read an entire delimited file into memory as a 2D list"""
     
-    return list(DelimReader(filename, delim))
+    return list(DelimReader(filename, delim, types))
 
 
 def write_delim(filename, data, delim="\t"):

@@ -30,7 +30,10 @@ from rasmus import treelib, util, stats
 #=============================================================================
 # Ancestral Reconstruction Graph
 
-class CoalNode (object):
+class ArgNode (object):
+    """
+    A node in an ARG
+    """
 
     def __init__(self, name="n", age=0, event="gene", pos=0):
         self.name = name
@@ -45,26 +48,33 @@ class CoalNode (object):
         return "<node %s>" % self.name
 
     def get_dist(self, parent_index):
+        """Get branch length distance from node to parent_index'th parent"""
         if len(self.parents) == 0:
             return 0.0
         return self.parents[parent_index].age - self.age
 
     def get_dists(self):
+        """Get all branch length distances from node to parents"""
         return [p.age - self.age for p in self.parents]
 
     def copy(self):
-        node = CoalNode(self.name, age=self.age, event=self.event,
+        """Returns a copy of this node"""
+        node = ArgNode(self.name, age=self.age, event=self.event,
                         pos=self.pos)
         node.data = dict(self.data)
         return node
 
     def is_leaf(self):
+        """Returns True if this node is a leaf"""
         return len(self.children) == 0
     
 
 
 
 class ARG (object):
+    """
+    A ancestral recombination graph (ARG)
+    """
 
     def __init__(self, start=0.0, end=1.0):
         self.root = None
@@ -75,11 +85,12 @@ class ARG (object):
 
 
     def __iter__(self):
+        """Iterates over the nodes in the ARG"""
         return self.nodes.itervalues()
 
 
     def __len__(self):
-        """Returns number of nodes in tree"""
+        """Returns number of nodes in the ARG"""
         return len(self.nodes)
 
 
@@ -89,7 +100,7 @@ class ARG (object):
 
 
     def __setitem__(self, name, node):
-        """Adds a node to the tree"""
+        """Adds a node to the ARG"""
         node.name = name
         self.add(node)
 
@@ -101,6 +112,9 @@ class ARG (object):
         return name in self.nodes
 
 
+    #=================================
+    # node manipulation methods
+
     def new_name(self):
         """
         Returns a new name for a node
@@ -110,13 +124,14 @@ class ARG (object):
         return name
 
 
-    def new_node(self, parents=[], children=[],
+    def new_node(self, name=None, parents=[], children=[],
                  age=0, event="gene", pos=0):
         """
         Returns a new node
         """
-        node = self.add(CoalNode(self.new_name(), age=age,
-                                 event=event, pos=pos))
+        if name is None:
+            name = self.new_name()
+        node = self.add(ArgNode(name, age=age, event=event, pos=pos))
         node.parents = list(parents)
         node.children = list(children)
         return node
@@ -149,6 +164,9 @@ class ARG (object):
 
 
     def rename(self, oldname, newname):
+        """
+        Renames a node in the ARG
+        """
         node = self.nodes[oldname]
         node.name = newname
         del self.nodes[oldname]
@@ -181,7 +199,10 @@ class ARG (object):
             for node in self.preorder(node):
                 if len(node.children) == 0:
                     yield node.name
-            
+
+
+    #================================
+    # iterator methods
         
     def postorder(self, node=None):
         """
@@ -221,11 +242,104 @@ class ARG (object):
                 queue.append(child)
         
 
-    #==============================
+
+    def postorder_marginal_tree(self, pos):
+        """
+        Iterate postorder over the nodes in the marginal tree at position 'pos'
+
+        NOTE: nodes are iterated in order of age
+        """
+
+        # initialize heap
+        heap = [(node.age, node) for node in self.leaves()]
+        seen = set([None])
+        
+        # add all ancestor of lineages
+        while len(heap) > 0:
+            age, node = heapq.heappop(heap)
+
+            if "ancestral" in node.data:
+                # if ancestral is set require ancestral seq present at pos
+                for reg in node.data["ancestral"]:
+                    if reg[0] < pos <= reg[1]:
+                        break
+                else:
+                    # terminate iteration, we are past the MRCA
+                    return
+            yield node
+            if len(heap) == 0:
+                # MRCA reached
+                return
+
+            # find correct marginal parent
+            # add parent to lineages if it has not been seen before
+            parent = self.get_local_parent(node, pos)
+            
+            if parent not in seen:
+                heapq.heappush(heap, (parent.age, parent))
+                seen.add(parent)
+
+
+    def preorder_marginal_tree(self, pos, node=None):
+        """
+        Iterate postorder over the nodes in the marginal tree at position 'pos'
+        """
+
+        if node is None:
+            node = arg.root
+
+        # initialize heap
+        heap = [node]
+        seen = set([node])
+        
+        # add all ancestor of lineages
+        while len(heap) > 0:
+            node = heap.pop()
+            yield node
+
+            for child in node.children:
+                if self.get_local_parent(child, pos) == node:
+                    if child not in seen:
+                        heap.append(child)
+                        seen.add(child)
+                        # NOTE: this prevents error when
+                        # children[0] == children[1]
+
+
+    def get_local_parent(self, node, pos):
+        """Returns the local parent of 'node' for position 'pos'"""
+        if (node.event == "gene" or node.event == "coal"):
+            if len(node.parents) > 0:
+                return node.parents[0]
+            else:
+                return None
+        elif node.event == "recomb":
+            return node.parents[0 if pos < node.pos else 1]
+        else:
+            raise Exception("unknown event '%s'" % node.event)
+
+
+    def get_local_children(self, node, pos):
+        """Returns the local children of 'node' for position 'pos'"""
+        return [child for child in node.children
+                if self.get_local_parent(child, pos) == node]
+        
+
+    def get_local_dist(self, node, pos):
+        """Returns the local parent of 'node' for position 'pos'"""
+        parent = self.get_local_parent(node, pos)
+        if parent:
+            return parent.age - node.age
+        else:
+            return 0.0
+
+
+    #===============================
+    # ancestral sequence methods
 
     def set_recomb_pos(self, start=None, end=None, descrete=False):
         """
-        Set all recombination positions in the ARG
+        Randomly aample all recombination positions in the ARG
         """
 
         if start is not None:
@@ -362,175 +476,7 @@ class ARG (object):
             return node.data["ancestral"]
 
         else:
-            raise Exception("unknown event '%s'" % node.event)
-
-                            
-                
-    def get_marginal_tree(self, pos):
-        """
-        Returns the marginal tree of the ARG containing position 'pos'
-        """
-
-        # make new ARG to contain marginal tree
-        tree = ARG()
-        tree.nextname = self.nextname
-
-        # populate tree with marginal nodes
-        for node in self.postorder_marginal_tree(pos):
-            tree.add(node.copy())
-        
-        # set parent and children
-        roots = []
-        for node2 in tree:
-            node = self[node2.name]
-            parent = self.get_local_parent(node, pos)
-            if parent is not None and parent.name in tree.nodes:
-                parent2 = tree[parent.name]
-                node2.parents = [parent2]
-                parent2.children.append(node2)
-            else:
-                roots.append(node2)
-
-        # make root
-        if len(roots) == 1:
-            tree.root = roots[0]
-        elif len(roots) > 1:
-            # make cap node since marginal tree does not fully coallesce
-            tree.root = tree.new_node(event="coal", 
-                                      age=max(x.age for x in roots)+1)
-            for node in roots:
-                tree.root.children.append(node)
-                node.parents.append(tree.root)
-
-        assert tree.root is not None, (tree.nodes, pos)
-        
-        return tree
-
-
-    def postorder_marginal_tree(self, pos):
-        """
-        Iterate postorder over the nodes in the marginal tree at position 'pos'
-
-        NOTE: nodes are iterated in order of age
-        """
-
-        # initialize heap
-        heap = [(node.age, node) for node in self.leaves()]
-        seen = set([None])
-        
-        # add all ancestor of lineages
-        while len(heap) > 0:
-            age, node = heapq.heappop(heap)
-
-            if "ancestral" in node.data:
-                # if ancestral is set require ancestral seq present at pos
-                for reg in node.data["ancestral"]:
-                    if reg[0] < pos <= reg[1]:
-                        break
-                else:
-                    # terminate iteration, we are past the MRCA
-                    return
-            yield node
-            if len(heap) == 0:
-                # MRCA reached
-                return
-
-            # find correct marginal parent
-            # add parent to lineages if it has not been seen before
-            parent = self.get_local_parent(node, pos)
-            
-            if parent not in seen:
-                heapq.heappush(heap, (parent.age, parent))
-                seen.add(parent)
-
-
-    def preorder_marginal_tree(self, pos, node=None):
-        """
-        Iterate postorder over the nodes in the marginal tree at position 'pos'
-        """
-
-        if node is None:
-            node = arg.root
-
-        # initialize heap
-        heap = [node]
-        seen = set([node])
-        
-        # add all ancestor of lineages
-        while len(heap) > 0:
-            node = heap.pop()
-            yield node
-
-            for child in node.children:
-                if self.get_local_parent(child, pos) == node:
-                    if child not in seen:
-                        heap.append(child)
-                        seen.add(child)
-                        # NOTE: this prevents error when
-                        # children[0] == children[1]
-
-
-    def get_local_parent(self, node, pos):
-        """Return the local parent of 'node' for position 'pos'"""
-        
-        if (node.event == "gene" or node.event == "coal"):
-            if len(node.parents) > 0:
-                return node.parents[0]
-            else:
-                return None
-        elif node.event == "recomb":
-            return node.parents[0 if pos < node.pos else 1]
-        else:
-            raise Exception("unknown event '%s'" % node.event)
-
-    def get_local_children(self, node, pos):
-        """Returns the local children of 'node' for position 'pos'"""
-
-        return [child for child in node.children
-                if self.get_local_parent(child, pos) == node]
-        
-
-    def get_local_dist(self, node, pos):
-        """Return the local parent of 'node' for position 'pos'"""
-
-        parent = self.get_local_parent(node, pos)
-        if parent:
-            return parent.age - node.age
-        else:
-            return 0.0
-        
-        
-    def get_tree(self, pos=None):
-        """
-        Returns a treelib.Tree() object representing the ARG if it is a tree
-
-        if 'pos' is given, return a treelib.Tree() for the marginal tree at
-        position 'pos'.
-        """
-
-        # get marginal tree first
-        if pos is not None:
-            return self.get_marginal_tree(pos).get_tree()
-
-        tree = treelib.Tree()
-
-        # add all nodes
-        for node in self:
-            node2 = treelib.TreeNode(node.name)
-            tree.add(node2)
-
-        # set parent, children, dist
-        for node in tree:
-            node2 = self[node.name]
-            node.parent = (tree[node2.parents[0].name]
-                           if len(node2.parents) > 0 else None)
-            node.children = [tree[c.name] for c in node2.children]
-
-            if node.parent:
-                node.dist = self[node.parent.name].age - node2.age
-
-        tree.root = tree[self.root.name]
-        return tree
+            raise Exception("unknown event '%s'" % node.event)                
             
 
     def prune(self, remove_single=True):
@@ -576,11 +522,103 @@ class ARG (object):
                     node = node.children[0]
                     self.remove(delnode)
                 self.root = node
+
+
+    #===========================
+    # marginal tree methods
+                
+    def get_marginal_tree(self, pos):
+        """
+        Returns the marginal tree of the ARG containing position 'pos'
+        """
+
+        # make new ARG to contain marginal tree
+        tree = ARG()
+        tree.nextname = self.nextname
+
+        # populate tree with marginal nodes
+        for node in self.postorder_marginal_tree(pos):
+            tree.add(node.copy())
+        
+        # set parent and children
+        roots = []
+        for node2 in tree:
+            node = self[node2.name]
+            parent = self.get_local_parent(node, pos)
+            if parent is not None and parent.name in tree.nodes:
+                parent2 = tree[parent.name]
+                node2.parents = [parent2]
+                parent2.children.append(node2)
+            else:
+                roots.append(node2)
+
+        # make root
+        if len(roots) == 1:
+            tree.root = roots[0]
+        elif len(roots) > 1:
+            # make cap node since marginal tree does not fully coallesce
+            tree.root = tree.new_node(event="coal", 
+                                      age=max(x.age for x in roots)+1)
+            for node in roots:
+                tree.root.children.append(node)
+                node.parents.append(tree.root)
+
+        assert tree.root is not None, (tree.nodes, pos)
+        
+        return tree
+        
+        
+    def get_tree(self, pos=None):
+        """
+        Returns a treelib.Tree() object representing the ARG if it is a tree
+
+        if 'pos' is given, return a treelib.Tree() for the marginal tree at
+        position 'pos'.
+        """
+
+        # TODO: make for efficient
+
+        # get marginal tree first
+        if pos is not None:
+            return self.get_marginal_tree(pos).get_tree()
+
+        tree = treelib.Tree()
+
+        # add all nodes
+        for node in self:
+            node2 = treelib.TreeNode(node.name)
+            tree.add(node2)
+
+        # set parent, children, dist
+        for node in tree:
+            node2 = self[node.name]
+            node.parent = (tree[node2.parents[0].name]
+                           if len(node2.parents) > 0 else None)
+            node.children = [tree[c.name] for c in node2.children]
+
+            if node.parent:
+                node.dist = self[node.parent.name].age - node2.age
+
+        tree.root = tree[self.root.name]
+        return tree
+
+
+    #=======================
+    # input/output
+
+    def read(self, filename=sys.stdin):
+        read_arg(filename, arg=self)
+
+
+    def write(self, filename=sys.stdout):
+        write_arg(filename, self)
+
             
 
 #=============================================================================
 
 def assert_arg(arg):
+    """Asserts that the arg data structure is consistent"""
 
     for node in arg:
         # check parent, child links
@@ -596,6 +634,7 @@ def assert_arg(arg):
     leaves = set(arg.leaf_names())
     for tree in iter_marginal_trees(arg):
         assert set(tree.leaf_names()) == leaves
+
 
 #=============================================================================
 # coalescence with recombination
@@ -656,8 +695,24 @@ def sample_coal_recomb_times(k, n, r, t=0):
     return times, events
 
 
-def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None, 
+def sample_arg(k, n, rho, start=0.0, end=1.0, t=0, names=None, 
                make_names=True):
+    """
+    Returns an ARG sampled from the coalescent with recombination (pruned)
+
+    k   -- chromosomes
+    n   -- effective population size (haploid)
+    rho -- recombination rate (recombinations / site / generation)
+    start -- staring chromosome coordinate
+    end   -- ending chromsome coordinate
+    t   -- initial time (default: 0)
+    names -- names to use for leaves (default: None)
+    make_names -- make names using strings (default: True)
+
+    Returns (event, time) where
+    event -- 0 for coalesce event, 1 for recombination event
+    time  -- time (in generations) of event
+    """
 
     arg = ARG(start, end)
 
@@ -673,11 +728,10 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None,
     if make_names:
         names = ["n%d" % i for i in range(k)]
     if names is None:
-        lineages = set(Lineage(arg.add(CoalNode(arg.new_name())),
-                               [(start, end)], end-start)
+        lineages = set(Lineage(arg.new_node(), [(start, end)], end-start)
                        for i in xrange(k))
     else:
-        lineages = set(Lineage(arg.add(CoalNode(names[i])),
+        lineages = set(Lineage(arg.new_node(name=names[i]),
                                [(start, end)], end-start)
                        for i in xrange(k))
     for lineage in lineages:
@@ -703,7 +757,7 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None,
         
         # process event
         if event == "coal":
-            node = arg.add(CoalNode(arg.new_name(), age=t, event=event))
+            node = arg.new_node(age=t, event=event)
 
             # choose lineages to coal
             a, b = random.sample(lineages, 2)
@@ -757,7 +811,7 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None,
 
             
         elif event == "recomb":
-            node = arg.add(CoalNode(arg.new_name(), age=t, event=event))
+            node = arg.new_node(age=t, event=event)
 
             # choose lineage and pos to recombine (weighted by seqlen)
             pick = random.random() * total_seqlen
@@ -816,6 +870,9 @@ def sample_arg(k, n, rho, start=0.0, end=0.0, t=0, names=None,
 
     return arg
 
+
+# TODO: make a sample_trees_smc()
+# would be much faster
 
 def sample_arg_smc(k, n, rho, start=0.0, end=0.0, t=0):
 
@@ -944,6 +1001,10 @@ def sample_arg_smc(k, n, rho, start=0.0, end=0.0, t=0):
     
 
 
+'''
+# TODO: this mostly implements Hein's sampling method, just need to be
+# cleaned up and should remove bgsel features since its not exactly
+# acturate anyways.
 
 def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
     """
@@ -1065,7 +1126,7 @@ def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
     arg.root = oldest
 
     return arg
-
+'''
     
 
 #=============================================================================
@@ -1088,17 +1149,23 @@ def lineages_over_time(k, events):
         
 
 def make_arg_from_times(k, times, events):
+    """
+    Returns an ARG given 'k' samples and a list of 'times' and 'events'
+
+    times  -- ordered times of coalescence or recombination
+    events -- list of event types (either 'coal' or 'recomb')
+    """
 
     arg = ARG()
 
     # make leaves
-    lineages  = set((arg.add(CoalNode(arg.new_name())), 1)
+    lineages  = set((arg.add(ArgNode(arg.new_name())), 1)
                      for i in xrange(k))
 
     # process events
     for t, event in izip(times, events):
         if event == "coal":
-            node = arg.add(CoalNode(arg.new_name(), age=t, event=event))
+            node = arg.add(ArgNode(arg.new_name(), age=t, event=event))
             a, b = random.sample(lineages, 2)
             lineages.remove(a)
             lineages.remove(b)
@@ -1108,7 +1175,7 @@ def make_arg_from_times(k, times, events):
             lineages.add((node, 1))
             
         elif event == "recomb":
-            node = arg.add(CoalNode(arg.new_name(), age=t, event=event))
+            node = arg.add(ArgNode(arg.new_name(), age=t, event=event))
             a = random.sample(lineages, 1)[0]
             lineages.remove(a)
             node.children = [a[0]]
@@ -1152,6 +1219,9 @@ def iter_recomb_blocks(arg, start=None, end=None, visible=False):
     """
     Iterates over the recombination blocks of an ARG
 
+    arg     -- ARG to iterate over
+    start   -- starting position in chromosome to iterate over
+    end     -- ending position in chromosome to iterate over
     visible -- if True only iterate recombination break points that are 
                visible to extant sequences
     """
@@ -1176,15 +1246,6 @@ def iter_recomb_blocks(arg, start=None, end=None, visible=False):
     yield (a, end)
 
 
-def iter_marginal_trees2(arg, start=None, end=None, visible=False):
-    """
-    Iterate over the marginal trees of an ARG
-    """
-    
-    for a,b in iter_recomb_blocks(arg, start, end, visible=visible):
-        yield arg.get_marginal_tree((a+b) / 2.0)
-
-
 def iter_marginal_trees(arg, start=None, end=None):
     """
     Iterate over the marginal trees of an ARG
@@ -1196,6 +1257,9 @@ def iter_marginal_trees(arg, start=None, end=None):
 def iter_tree_tracks(arg, start=None, end=None):
     """
     Iterate over the marginal trees of an ARG
+
+    Yeilds ((start, end), tree) for each marginal tree where (start, end)
+    defines the block of the marginal tree
     """
 
     if start is None:
@@ -1227,33 +1291,6 @@ def iter_tree_tracks(arg, start=None, end=None):
 
         yield (start, end), tree
         start = end
-
-    
-
-def iter_tree_tracks2(arg, start=None, end=None, visible=False):
-    for a, b in iter_recomb_blocks(arg, start, end, visible=visible):
-        tree = arg.get_marginal_tree((a+b) / 2.0)
-        remove_single_lineages(tree)
-        yield (a, b), tree.get_tree()
-
-
-def write_tree_tracks(filename, arg, start=None, end=None, verbose=False):
-    out = util.open_stream(filename, "w")
-    for block, tree in iter_tree_tracks(arg, start, end):
-        if verbose:
-            print >>sys.stderr, "writing block", block
-        remove_single_lineages(tree)
-        tree = tree.get_tree()
-        out.write(str(int(block[0]))+"\t"+str(int(block[1]))+"\t")
-        tree.write(out, oneline=True)
-        out.write("\n")
-    if isinstance(filename, basestring):
-        out.close()
-
-
-def read_tree_tracks(filename):
-    for row in util.DelimReader(filename):
-        yield (int(row[0]), int(row[1])), treelib.parse_newick(row[2])
 
     
 def descendants(node, nodes=None):
@@ -1386,14 +1423,16 @@ def groupby_overlaps(regions, bygroup=True):
 #=============================================================================
 # mutations
 
-def sample_mutations(arg, u):
+
+def sample_arg_mutations(arg, mu):
     """
-    u -- mutation rate (mutations/locus/gen)
+    mu -- mutation rate (mutations/site/gen)
     """
 
     mutations = []
 
     locsize = arg.end - arg.start
+    u = mu * locsize
 
     for node in arg:
         for parent in node.parents:
@@ -1418,15 +1457,16 @@ def sample_mutations(arg, u):
     return mutations
 
 
-def sample_arg_mutations(arg, mu):
+def sample_mutations(arg, u):
     """
-    mu -- mutation rate (mutations/site/gen)
+    u -- mutation rate (mutations/locus/gen)
+
+    DEPRECATED: use sample_arg_mutations() instead
     """
 
     mutations = []
 
     locsize = arg.end - arg.start
-    u = mu * locsize
 
     for node in arg:
         for parent in node.parents:
@@ -1467,7 +1507,6 @@ def iter_tree_splits(tree):
         split = tuple(sorted(tree.leaf_names(node)))
         if len(split) > 1:
             yield split
-
     
 
 def is_split_compatible(split1, split2):
@@ -1561,24 +1600,6 @@ def iter_mutation_splits(arg, mutations):
             yield pos, split
 
 
-def write_mutations(filename, arg, mutations):
-    out = util.open_stream(filename, "w")
-
-    for mut in mutations:
-        l = get_marginal_leaves(arg, mut[0], mut[2])
-        out.write("\t".join(map(
-                str, [mut[2], mut[3], ",".join(x.name for x in l)])) + "\n")
-
-    if isinstance(filename, basestring):
-        out.close()
-
-
-def read_mutations(filename):
-    for row in util.DelimReader(filename):
-        chroms = row[2].split(",") if row[2] else []
-        yield int(row[0]), float(row[1]), chroms
-
-
 
 #=============================================================================
 # alignments
@@ -1618,326 +1639,172 @@ def make_alignment(arg, mutations, ancestral="A", derived="C"):
 
 
 #=============================================================================
-# visualization
-
-def layout_arg(arg, leaves=None, yfunc=lambda x: x):
-
-    layout = {}
-
-    if leaves is None:
-        leaves = sorted((i for i in arg.leaves()), key=lambda x: x.name)
-
-    # layout leaves
-    leafx = util.list2lookup(leaves)
-    
-    for node in arg.postorder():
-        if node.is_leaf():
-            layout[node] = [leafx[node], yfunc(node.age)]
-        else:
-            layout[node] = [
-                stats.mean(layout[child][0] for child in node.children),
-                yfunc(node.age)]
-
-    return layout
+# input/output
 
 
-def show_arg(arg, layout=None, leaves=None, mut=None,
-             recomb_width=.4, recomb_width_expand=0):
-    from summon.core import lines, line_strip, zoom_clamp, color, hotspot
-    from summon.shapes import box
-    import summon
+def write_arg(filename, arg):
+    out = util.open_stream(filename, "w")
 
-    win = summon.Window()
-    
-    if layout is None:
-        layout = layout_arg(arg, leaves)
+    # TODO: write arg.start, arg.end
 
-    def branch_hotspot(node, parent, x, y, y2):
-        def func():
-            print node.name, parent.name
-        return hotspot("click", x-.5, y, x+.5, y2, func)
+    # write ARG key values
+    out.write("start=%s\tend=%s\n" % (arg.start, arg.end))
 
-    for node in layout:
-        recomb_width2 = recomb_width + node.age * recomb_width_expand
+    # write nodes header
+    out.write("\t".join(("name", "event", "age", "pos", "parents", "children"))
+              + "\n")
+
+    # write nodes
+    for node in arg:
+        out.write("\t".join(map(str, (
+                        node.name, node.event, node.age, node.pos,
+                        ",".join(str(x.name) for x in node.parents),
+                        ",".join(str(x.name) for x in node.children)))) + "\n")
         
-        if not node.is_leaf():
-            x, y = layout[node]
-            for i, child in enumerate(node.children):
-                x2, y2 = layout[child]
-                step = 0.0
-                
-                if child.event == "recomb":
-                    if (len(child.parents) == 2 and
-                        child.parents[0] == child.parents[1]):
-                        step = recomb_width2 * [-1, 1][i]
-                    else:
-                        step = recomb_width2 * [-1, 1][
-                            child.parents.index(node)]
-                    win.add_group(line_strip(x, y,
-                                             x2+step, y,
-                                             x2+step, y2,
-                                             x2, y2))                    
-                else:
-                    win.add_group(line_strip(x, y, x2, y, x2, y2))
-
-                win.add_group(
-                    branch_hotspot(child, node, x2+step, y, y2))
-
-            # draw mutation
-            if node.event == "recomb":
-                win.add_group(zoom_clamp(
-                    color(1, 0, 0),
-                    box(x-.5, y-.5, x+.5, y+.5, fill=True),
-                    color(1,1,1),
-                    origin=(x, y),
-                    minx=4.0, miny=4.0, maxx=20.0, maxy=20.0,
-                    link=True))
+    if isinstance(filename, basestring):
+        out.close()
 
 
-    # draw mutations
-    if mut:
-        for node, parent, pos, t in mut:
-            x, y = layout[parent]
-            x2, y2 = layout[node]
-            recomb_width2 = recomb_width + node.age * recomb_width_expand
-            
-            if node.event == "recomb":
-                if (len(node.parents) == 2 and
-                    node.parents[0] == node.parents[1]):
-                    step = recomb_width2 * [-1, 1][i]
-                else:
-                    step = recomb_width2 * [-1, 1][node.parents.index(parent)]
+def parse_number(text):
+    if text.isdigit():
+        return int(text)
+    else:
+        return float(text)
+
+
+def parse_node_name(text):
+    if text.isdigit():
+        return int(text)
+    else:
+        return text
+
+
+def read_arg(filename, arg=None):
+    infile = util.DelimReader(filename)
+
+    if arg is None:
+        arg = ARG()
+
+    # read ARG key values
+    row = infile.next()
+    for field in row:
+        i = field.index("=")
+        key, val = field[:i], field[i+1:]
+        if key == "start":
+            arg.start = int(val)
+        elif key == "end":
+            arg.end = int(val)
+    
+    # read header
+    row = infile.next()
+    assert row == ["name", "event", "age", "pos", "parents", "children"]
+
+    # read nodes
+    clinks = {}
+    plinks = {}
+    for row in infile:
+        node = arg.new_node(name=parse_node_name(row[0]), event=row[1], 
+                            age=float(row[2]), 
+                            pos=parse_number(row[3]))
+        if len(row) > 4 and len(row[4]) > 0:
+            plinks[node.name] = map(parse_node_name, row[4].split(","))
+        if len(row) > 5 and len(row[5]) > 0:
+            clinks[node.name] = map(parse_node_name, row[5].split(","))
+
+    # setup parents
+    for node in arg:
+        for parent_name in plinks.get(node.name, ()):
+            parent = arg.nodes.get(parent_name)
+            if parent:
+                node.parents.append(parent)
             else:
-                step = 0.0
+                raise Exception("node '%s' has unknown parent '%s'" % 
+                                (node.name, parent_name))
 
-            mx = x2+step
-            my = t
-            
-            win.add_group(zoom_clamp(
-                    color(0, 0, 1),
-                    box(mx-.5, my-.5, mx+.5, my+.5, fill=True),
-                    color(1,1,1),
-                    origin=(mx, my),
-                    minx=4.0, miny=4.0, maxx=20.0, maxy=20.0,
-                    link=True))
+        # detect root
+        if parent_name not in plinks:
+            arg.root = node
 
-
-
-    return win
-    
-
-
-def show_marginal_trees2(arg, mut=None):
-
-    import summon
-    from summon.core import translate, color, lines, input_key
-
-    def minlog(x, low=10):
-        return log(max(x, low))
-    #ymap = lambda x: x
-    ymap = minlog
-
-    win = summon.Window()
-    x = 0
-    step = 2
-    treewidth = len(list(arg.leaves())) + step
-
-    def trans_camera(win, x, y):
-        v = win.get_visible()
-        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
-
-    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
-    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
-
-    blocks = iter_recomb_blocks(arg)
-
-    for tree, block in izip(iter_marginal_trees(arg), blocks):
-        pos = block[0]
-        print pos
-        
-        leaves = sorted((x for x in tree.leaves()), key=lambda x: x.name)
-        layout = layout_arg(tree, leaves, yfunc=ymap)
-        win.add_group(translate(x, 0, color(1,1,1),
-                                draw_tree(tree, layout)))
-
-        # mark responsible recomb node
-        for node in tree:
-            if pos != 0.0 and node.pos == pos:
-                nx, ny = layout[node]
-                win.add_group(draw_mark(x + nx, ny))
-
-        # draw mut
-        if mut:
-            for node, parent, mpos, t in mut:
-                if (node.name in tree and node.name != tree.root.name and
-                    block[0] < mpos < block[1]):
-                    nx, ny = layout[tree[node.name]]
-                    win.add_group(draw_mark(x + nx, ymap(t), col=(0,0,1)))
-                if node.name in tree and tree[node.name].parents:
-                    nx, ny = layout[tree[node.name]]
-                    py = layout[tree[node.name].parents[0]][1]
-                    start = arg[node.name].data["ancestral"][0][0]
-                    win.add_group(lines(color(0,1,0), 
-                                        x+nx, ny, x+nx, py,
-                                        color(1,1,1)))
-            
-                
-        x += treewidth
-
-    win.set_visible(* win.get_root().get_bounding() + ("exact",))
-
-    return win
+    # setup children
+    for node in arg:
+        for child_name in clinks.get(node.name, ()):
+            child = arg.nodes.get(child_name)
+            if child:
+                node.children.append(child)
+                assert node in child.parents, \
+                    "node '%s' doesn't have parent '%s' (%s)" % (
+                    child.name, node.name, str(child.parents))
+            else:
+                raise Exception("node '%s' has unknown child '%s'" % 
+                                (node.name, child_name))
 
 
-def show_tree_track(tree_track, mut=None, show_labels=False,
-                    use_blocks=False):
+    # set nextname
+    for name in arg.nodes:
+        if isinstance(name, int):
+            arg.nextname = max(arg.nextname, name+1)
+
+    return arg
+
+
+def write_tree_tracks(filename, arg, start=None, end=None, verbose=False):
+    out = util.open_stream(filename, "w")
+    for block, tree in iter_tree_tracks(arg, start, end):
+        if verbose:
+            print >>sys.stderr, "writing block", block
+        remove_single_lineages(tree)
+        tree = tree.get_tree()
+        out.write(str(int(block[0]))+"\t"+str(int(block[1]))+"\t")
+        tree.write(out, oneline=True)
+        out.write("\n")
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_tree_tracks(filename):
+    for row in util.DelimReader(filename):
+        yield (int(row[0]), int(row[1])), treelib.parse_newick(row[2])
+
+
+
+def write_mutations(filename, arg, mutations):
+    out = util.open_stream(filename, "w")
+
+    for mut in mutations:
+        l = get_marginal_leaves(arg, mut[0], mut[2])
+        out.write("\t".join(map(
+                str, [mut[2], mut[3], ",".join(x.name for x in l)])) + "\n")
+
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_mutations(filename):
+    for row in util.DelimReader(filename):
+        chroms = row[2].split(",") if row[2] else []
+        yield int(row[0]), float(row[1]), chroms
+
+
+#=============================================================================
+
+'''
+OLD CODE
+
+def iter_marginal_trees2(arg, start=None, end=None, visible=False):
     """
-    tree_track = [((start, end), tree), ...]
+    Iterate over the marginal trees of an ARG
     """
-
-    import summon
-    from summon.core import translate, color, lines, input_key, text_clip, \
-        text, rotate, group
-    from summon import sumtree
-
-    def draw_labels(tree, layout):
-        return group(*
-                [text_clip(leaf.name, layout[leaf][0], layout[leaf][1],
-                          1, layout[leaf][1] + 1e4, 4, 20, "middle", "left")
-                 for leaf in tree.leaves()])
     
+    for a,b in iter_recomb_blocks(arg, start, end, visible=visible):
+        yield arg.get_marginal_tree((a+b) / 2.0)
 
 
-    def minlog(x, low=10):
-        return log(max(x, low))
-    #ymap = lambda x: x
-    ymap = minlog
 
-    tree_track = iter(tree_track)
-    block, tree = tree_track.next()
-
-    win = summon.Window()
-    x = 0
-    step = 2
-    treewidth = len(list(tree.leaves())) + step
-
-    def trans_camera(win, x, y):
-        v = win.get_visible()
-        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
-
-    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
-    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
-
-    for block, tree in chain([(block, tree)], tree_track):
-        pos = block[0]
-        print pos
-
-        #if use_blocks:
-        #    treewidth = block[1] - block[0]
-        
-        layout = treelib.layout_tree(tree, xscale=1, yscale=1)
-        treelib.layout_tree_vertical(layout, leaves=0)
-        win.add_group(
-            translate(x, 0, color(1,1,1),
-                      sumtree.draw_tree(tree, layout, 
-                                        vertical=True),
-                      (draw_labels(tree, layout) if show_labels else group()),
-                      text_clip(
-                    "%d-%d" % (block[0], block[1]),
-                    treewidth*.05, 0, 
-                    treewidth*.95, -max(l[1] for l in layout.values()),
-                    4, 20, 
-                    "center", "top")))
-        
-        # TODO: update with tree width
-        # draw mut
-        if mut:
-            for node, parent, mpos, t in mut:
-                if (node.name in tree and node.name != tree.root.name and
-                    block[0] < mpos < block[1]):
-                    nx, ny = layout[tree[node.name]]
-                    win.add_group(draw_mark(x + nx, ymap(t), col=(0,0,1)))
-                if node.name in tree and tree[node.name].parents:
-                    nx, ny = layout[tree[node.name]]
-                    py = layout[tree[node.name].parents[0]][1]
-                    start = arg[node.name].data["ancestral"][0][0]
-                    win.add_group(lines(color(0,1,0), 
-                                        x+nx, ny, x+nx, py,
-                                        color(1,1,1)))
-            
-                
-        x += treewidth
-
-    win.set_visible(* win.get_root().get_bounding() + ("exact",))
-
-    return win
-
-
-        
-                  
-
+def iter_tree_tracks2(arg, start=None, end=None, visible=False):
+    for a, b in iter_recomb_blocks(arg, start, end, visible=visible):
+        tree = arg.get_marginal_tree((a+b) / 2.0)
+        remove_single_lineages(tree)
+        yield (a, b), tree.get_tree()
 
 
 '''
-def mark_tree(tree, layout, name, y=None, time=None,
-              col=(1, 0, 0), ymap=lambda y: y):
-    nx, ny = layout[tree[name]]
-    if y is not None:
-        y += ny
-    else:
-        y = time
-    return draw_mark(nx, ymap(y), col=col)
-'''    
-
-
-def draw_tree(tree, layout, orient="vertical"):
-    from summon.core import lines, line_strip, zoom_clamp, color, hotspot, \
-         group
-    import summon
-    from summon.shapes import box
-    
-    vis = group()
-    bends = {}
-
-    for node in tree.postorder():
-        # get node coordinates
-        nx, ny = layout[node]
-        px, py = layout[node.parents[0]] if node.parents else (nx, ny)
-
-        # determine bend point
-        if orient == "vertical":
-            bends[node] = (nx, py)
-        else:
-            bends[node] = (px, ny)
-        
-        # draw branch
-        vis.append(lines(nx, ny, bends[node][0], bends[node][1]))
-
-        # draw cross bar
-        if len(node.children) > 0:
-            a = bends[node.children[-1]]
-            b = bends[node.children[0]]
-            vis.append(lines(a[0], a[1], b[0], b[1]))
-
-    return vis
-
-
-def draw_mark(x, y, col=(1,0,0), size=.5, func=None):
-    from summon.core import zoom_clamp, color, group
-    from summon.shapes import box
-
-    if func:
-        h = hotspot("click", x-size, y-size, x+size, y+size, func)
-    else:
-        h = group()
-    
-    return zoom_clamp(
-        color(*col),
-        box(x-size, y-size, x+size, y+size, fill=True),
-        h,
-        color(1,1,1),
-        origin=(x, y),
-        minx=10.0, miny=10.0, maxx=20.0, maxy=20.0,
-        link=True)
-
-

@@ -24,7 +24,7 @@ from . import fasta
 
 # rasmus libs
 from rasmus import treelib, util, stats
-
+from rasmus.intervals import iter_intersections
 
 
 #=============================================================================
@@ -257,15 +257,6 @@ class ARG (object):
         # add all ancestor of lineages
         while len(heap) > 0:
             age, node = heapq.heappop(heap)
-
-            if "ancestral" in node.data:
-                # if ancestral is set require ancestral seq present at pos
-                for reg in node.data["ancestral"]:
-                    if reg[0] < pos <= reg[1]:
-                        break
-                else:
-                    # terminate iteration, we are past the MRCA
-                    return
             yield node
             if len(heap) == 0:
                 # MRCA reached
@@ -356,8 +347,149 @@ class ARG (object):
                 else:
                     node.pos = random.random() * length + self.start
 
-    
+
     def set_ancestral(self):
+        """
+        Set all ancestral regions for the nodes of the ARG
+
+        NOTE: recombination positions must be set first (set_recomb_pos)
+        """
+
+        for node in self:
+            node.data["ancestral"] = []
+
+        for block, tree in iter_tree_tracks(self):
+            for node in tree:
+                if node.name in self.nodes:
+                    ancestral = self[node.name].data["ancestral"]
+                    if len(ancestral) > 0 and ancestral[-1][1] == block[0]:
+                        # extend
+                        ancestral[-1] = (ancestral[-1][0], block[1])
+                    else:
+                        ancestral.append(block)
+                else:
+                    # cap node?
+                    pass
+
+
+    def set_ancestral3(self):
+        """
+        Set all ancestral regions for the nodes of the ARG
+
+        NOTE: recombination positions must be set first (set_recomb_pos)
+        """
+
+        # NOTE: block_counts is used to determine when the MRCA of a block
+        # is found.
+        
+        # get all non-recomb blocks (identified by starting pos)
+        nleaves = len(list(self.leaves()))
+        block_counts = [[self.start, self.end, nleaves]]
+
+        
+        
+        for node in self.postorder():
+            print "node", node.age
+
+            if node.is_leaf():
+                # initialize leaves with entire extant sequence
+                node.data["ancestral"] = [(self.start, self.end)]
+
+            elif node.event == "coal":
+                # union of ancestral of children
+                # get all child regions
+                assert len(node.children) == 2, node
+                
+                # walk through regions for both children and determine
+                # whether they coal
+                regions = list(block_counts)
+                regions3 = []
+                if node.children[0] == node.children[1]:
+                    # special case
+                    regions.extend((start, end, "coal") for (start, end) in 
+                                    node.children[0].data["ancestral"])
+                else:
+                    regions.extend(
+                        (start, end, "coal") for (start, end) 
+                        in chain(self.get_ancestral(
+                                node.children[0], parent=node),
+                                 self.get_ancestral(
+                                node.children[1], parent=node)))
+
+                regions.sort()
+
+                print "block_counts", block_counts
+                print "regions", regions
+
+                block_counts = []
+                for start, end, regs in iter_intersections(regions):
+
+                    ncoals = util.ilen(reg for reg in regs
+                                       if reg[2] == "coal")
+                    count = sum(reg[2] for reg in regs if reg[2] != "coal")
+                    
+                    print ncoals, count, regs
+
+                    if ncoals == 2:
+                        # region coal
+                        block_counts.append((start, end, count - 1))
+                        regions3.append((start, end))
+                    
+                    elif ncoals == 1:
+                        # pass single block upwards
+                        block_counts.append((start, end, count))
+                        if count > 1:
+                            regions3.append((start, end))
+
+                    elif ncoals == 0:
+                        block_counts.append((start, end, count))
+
+                    else:
+                        print (self.get_ancestral(
+                                node.children[0], parent=node), 
+                               self.get_ancestral(
+                                node.children[1], parent=node))
+                        print (node.children[0].data["ancestral"],
+                               node.children[1].data["ancestral"])
+
+                        raise Exception("unknown error")
+                        
+                
+                node.data["ancestral"] = regions3
+                if max([0] + util.hist_dict(regions3).values()) > 1:
+                    print regions3
+                    raise Exception("unknown error2")
+
+
+            elif node.event == "recomb":
+                # inherit all ancestral
+                assert len(node.children) == 1, (node, len(node.children))
+                regions3 = []
+                regions = [(start, end, "node") for start, end in 
+                           self.get_ancestral(node.children[0], parent=node)]
+                regions.extend(block_counts)
+                regions.sort()
+
+                for start, end, regs in iter_intersections(regions):
+                    nnodes = util.ilen(reg for reg in regions
+                                       if reg[2] == "node")
+                    count = sum(reg[2] for reg in regions
+                                       if reg[2] != "node")
+                    if nnodes > 0 and count > 1:
+                        regions3.append((start, end))
+                node.data["ancestral"] = regions3
+
+                if max([0] + util.hist_dict(regions3).values()) > 1:
+                    print regions3
+                    raise Exception("unknown error2")
+
+            else:
+                raise Exception("unknown event '%s'" % node.event)
+
+
+        print block_counts
+    
+    def set_ancestral2(self):
         """
         Set all ancestral regions for the nodes of the ARG
 
@@ -371,7 +503,7 @@ class ARG (object):
         nleaves = len(list(self.leaves()))
         all_blocks = list(iter_recomb_blocks(self))
         block_counts = dict((block, nleaves) for block in all_blocks)
-
+        
         for node in self.postorder():
             if node.is_leaf():
                 # initialize leaves with entire extant sequence
@@ -1277,7 +1409,7 @@ def iter_tree_tracks(arg, start=None, end=None):
 
     while start < arg.end:
         # find next rpos
-        while i < len(rpos) and r < start:
+        while i < len(rpos) and r <= start:
             i += 1
             r = rpos[i]
 
@@ -1310,14 +1442,29 @@ def remove_single_lineages(arg):
     """
     Remove unnecessary nodes with single parent and single child
     """
-    for node in list(arg):
-        if len(node.children) == 1 and len(node.parents) == 1:
-            child = node.children[0]
-            parent = node.parents[0]
+    queue = list(arg)
 
-            del arg.nodes[node.name]
-            child.parents[child.parents.index(node)] = parent
-            parent.children[parent.children.index(node)] = child
+    for node in queue:
+        if node.name not in arg:
+            continue
+        
+        if len(node.children) == 1:
+            if len(node.parents) == 1:
+                child = node.children[0]
+                parent = node.parents[0]
+
+                del arg.nodes[node.name]
+                child.parents[child.parents.index(node)] = parent
+                parent.children[parent.children.index(node)] = child
+
+            elif len(node.parents) == 0:
+                child = node.children[0]
+
+                del arg.nodes[node.name]
+                child.parents.remove(node)
+                arg.root = node
+
+                queue.append(child)
 
     return arg
 

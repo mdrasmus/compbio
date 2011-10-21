@@ -328,6 +328,111 @@ def sample_birth_death_gene_tree(stree, birth, death,
     return tree, recon, events
 
 
+
+
+def sample_dlt_gene_tree(stree, duprate, lossrate, transrate,
+                         genename=lambda sp, x: sp + "_" + str(x),
+                         removeloss=True):
+    """Simulate a gene tree within a species tree with dup, loss, transfer"""
+    
+    stimes = treelib.get_tree_timestamps(stree)
+
+    # initialize gene tree
+    tree = treelib.Tree()
+    tree.make_root()
+    recon = {tree.root: stree.root}
+    events = {tree.root: "spec"}
+    losses = set()
+
+    totalrate = duprate + lossrate + transrate
+
+    
+    def sim_branch(node, snode, dist):
+
+        # sample next event
+        if totalrate > 0.0:
+            time = random.expovariate(totalrate)
+        else:
+            time = dist
+
+        if time >= dist:
+            # no events just evolve to end of species branch
+            node = tree.add_child(node, tree.new_node())
+            node.dist = dist
+            recon[node] = snode
+            events[node] = "spec"
+            sim_spec(node, snode)
+        else:
+            # event occurs, choose event
+            pick = random.random()
+            if pick <= duprate / totalrate:
+                # dup occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "dup"
+                
+                # recurse
+                sim_branch(node, snode, dist - time)
+                sim_branch(node, snode, dist - time)
+            
+            elif pick <= (duprate + lossrate) / totalrate:
+                # loss occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "loss"
+                losses.add(node)
+
+            else:
+                # transfer occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "trans"
+
+                # choose destination species
+                age = stimes[snode] + dist - time
+
+                others = []
+                for snode2, sage in stimes.iteritems():
+                    if sage < age < sage + snode.dist and snode2 != snode:
+                        others.append(snode2)
+
+                assert len(others) > 0, (age, stimes)
+
+                dest = random.sample(others, 1)[0]
+                
+                # recurse
+                sim_branch(node, snode, dist - time)
+                sim_branch(node, dest, age - stimes[dest])
+        
+        
+
+    def sim_spec(node, snode):
+        if snode.is_leaf():
+            # leaf in species tree, terminal gene lineage
+            tree.rename(node.name, genename(snode.name, node.name))
+            events[node] = "gene"
+        else:
+            # speciation in species tree, follow each branch
+            for schild in snode.children:
+                sim_branch(node, schild, schild.dist)
+            
+    sim_spec(tree.root, stree.root)
+
+
+    if removeloss:
+        keep = [node for node in tree.leaves() if node not in losses]
+        treelib.subtree_by_leaves(tree, keep, keep_single=False)
+    
+    return tree, recon, events
+
+
+
+
+
+
 #=============================================================================
 # testing functions
 # These are functions that are not efficient but implement the distributions

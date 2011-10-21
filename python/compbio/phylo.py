@@ -2234,15 +2234,72 @@ def make_jc_matrix(t, a=1.):
             [s, s, s, r]]
 
 
+def make_hky_matrix(t, bgfreq=(.25,.25,.25,.25), kappa=1.0):
+
+    # bases = "ACGT"
+    # pi = bfreq
+
+    pi_r = bgfreq[0] + bgfreq[2]
+    pi_y = bgfreq[1] + bgfreq[3]
+    rho = pi_r / pi_y
+
+   
+    # convert the usual ratio definition (kappa) to Felsenstein's 
+    # definition (R)
+    ratio = (bgfreq[3]*bgfreq[1] + bgfreq[0]*bgfreq[2]) * kappa / (pi_y*pi_r)
+
+
+    # determine HKY parameters alpha_r, alpha_y, and beta
+    b = 1.0 / (2.0 * pi_r * pi_y * (1.0+ratio))
+    a_y = ((pi_r*pi_y*ratio - bgfreq[0]*bgfreq[2] - bgfreq[1]*bgfreq[3]) / 
+           (2.0*(1+ratio)*(pi_y*bgfreq[0]*bgfreq[2]*rho + 
+                           pi_r*bgfreq[1]*bgfreq[3])))
+    a_r = rho * a_y
+
+
+    # make transition probability P(j | i, t)
+
+    mat = [[0, 0, 0, 0],
+           [0, 0, 0, 0],
+           [0, 0, 0, 0],
+           [0, 0, 0, 0]]
+    
+    for i in (0, 1, 2, 3):
+        for j in (0, 1, 2, 3):
+            # convenience variables
+            # NOTE: it is ok to assign pi_ry, because it is only used when
+            # dnatype[i] == dnatype[j]
+            if i in (0, 2):  # purine
+                a_i = a_r
+                pi_ry = pi_r
+            else: # prymidine
+                a_i = a_y
+                pi_ry = pi_y
+            delta_ij = int(i == j)            
+            e_ij = int((i in (0, 2)) == (j in (0, 2)))
+
+            ait = math.exp(-a_i*t)
+            ebt = math.exp(-b*t)
+
+            mat[i][j] = (ait*ebt * delta_ij + 
+                         ebt * (1.0 - ait) * (bgfreq[j]*e_ij/pi_ry) + 
+                         (1.0 - ebt) * bgfreq[j])
+
+    return mat
+
+
+
 def sim_seq_tree(tree, seqlen, matrix_func=make_jc_matrix, 
-                 bgfreq=[.25,.25,.25,.25]):
+                 bgfreq=[.25,.25,.25,.25], rootseq=None,
+                 keep_internal=False):
     """simulate the evolution of a sequence down a tree"""
     
     bases = "ACGT"
 
     # make root sequence
-    rootseq = [bases[stats.sample(bgfreq)]
-               for i in xrange(seqlen)]
+    if rootseq is None:
+        rootseq = [bases[stats.sample(bgfreq)]
+                   for i in xrange(seqlen)]
 
     # leaf sequences
     seqs = fasta.FastaDict()
@@ -2251,6 +2308,8 @@ def sim_seq_tree(tree, seqlen, matrix_func=make_jc_matrix,
     def walk(node, seq):
         if node.is_leaf():
             # save sequence
+            seqs[node.name] = seq
+        elif keep_internal:
             seqs[node.name] = seq
 
         # recurse

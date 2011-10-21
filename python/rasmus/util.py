@@ -1350,6 +1350,12 @@ def print_dict(dic, key=lambda x: x, val=lambda x: x,
               justify=justify)
 
 
+def print_row(*args, **kargs):
+    out = kargs.get("out", sys.stdout)
+    delim = kargs.get("delim", "\t")
+    out.write(delim.join(map(str, args)) + "\n")
+
+
 #=============================================================================
 # Parsing
 #  

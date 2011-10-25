@@ -4,7 +4,7 @@
 
     file: util.py 
     authors: Matt Rasmussen
-    date: 11/30/05
+    date: 11/30/2005
  
     Provides basic functional programming functions for manipulating lists and 
     dicts.  Also provides common utilities (timers, plotting, histograms)

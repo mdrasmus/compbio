@@ -5,16 +5,8 @@
 """
 
 # python libs
+from collections import defaultdict
 import copy
-
-# rasmus libs
-try:
-    from rasmus import util
-except ImportError:
-    try:
-        import util
-    except ImportError:
-        pass
 
 
 
@@ -53,7 +45,7 @@ def transpose(mat):
     """
     Transpose a matrix
     
-    Works better than zip() in that rows are lists not tuples
+    Works better than zip() in that returned rows are lists not tuples
     """
     
     assert len(set(map(len, mat))) == 1, "rows are not equal length"
@@ -117,7 +109,6 @@ def imat2dmat(nrows, ncols, nnz, imat):
     """Converts sparse index matrix to a dense matrix"""
 
     dmat = make_matrix(nrows, ncols)
-
     for i, j, v in imat:
         dmat[i][j] = v
 
@@ -126,8 +117,8 @@ def imat2dmat(nrows, ncols, nnz, imat):
 
 def ilmat2lmat(ilmat, default=0):
     """Converts a labeled matrix iterator (ilmat) to a dict of dicts (lmat)"""
-
-    lmat = util.Dict(2, default)
+    
+    lmat = defaultdict(lambda: defaultdict(lambda: default))
     for r, c, v in ilmat:
         lmat[r][c] = v
     return lmat
@@ -146,8 +137,8 @@ def ilmat2imat(ilmat, rowlabels, collabels):
     Converts labeled matrix iterator (ilmat) to indexed matrix iterator (imat)
     """
 
-    rowlookup = util.list2lookup(rowlabels)
-    collookup = util.list2lookup(collabels)
+    rowlookup = dict((l, i) for i, l in enumerate(rowlabels))
+    collookup = dict((l, i) for i, l in enumerate(rowlabels))
 
     for r, c, v in ilmat:
         yield rowlookup[r], collookup[c], v
@@ -406,8 +397,8 @@ def write_rmat(out, nrows, ncols, nnz, rmat, square=False):
 def read_lmat(infile, delim=None, default=0):
     """
     Reads a labeled sparsed matrix
-    Returns matrix as a dict of dicts"""
-
+    Returns matrix as a dict of dicts
+    """
     return ilmat2lmat(iter_lmat(infile, delim=delim), default=default)
 
 

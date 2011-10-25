@@ -14,7 +14,10 @@ o.add_option("-S", "--smap", dest="smap", metavar="<gene2species mapping>")
 conf, alignfiles = o.parse_args()
 
 # read options
-gene2species = phylo.read_gene2species(conf.smap)
+if conf.smap:
+    gene2species = phylo.read_gene2species(conf.smap)
+else:
+    gene2species = lambda x: x
 
 
 if len(alignfiles) > 0:

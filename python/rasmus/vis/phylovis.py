@@ -126,12 +126,12 @@ class PhyloViewer (object):
         else:
             # setup default
             self.matrix_colormap = util.ColorMap([[-1e-10, (1, .7, .8)],
-                                                 [0, util.black],
-                                                 [1e-10, util.blue],
-                                                 [.5, util.green],
-                                                 [1.0, util.yellow],
-                                                 [5.0, util.red],
-                                                 [10, util.white]])
+                                                  [0, util.black],
+                                                  [1e-10, util.blue],
+                                                  [.5, util.green],
+                                                  [1.0, util.yellow],
+                                                  [5.0, util.red],
+                                                  [10, util.white]])
         
         # initialize data
         self.init_trees()

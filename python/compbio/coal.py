@@ -1461,6 +1461,14 @@ def mle_popsize_many_coal_times(k, times):
     return s / float(2*ntrees*(k - 1))
 
 
+def mle_popsize_tree(tree):
+    timestamps = treelib.get_tree_timestamps(tree)
+    times = sorted([timestamps[node] for node in tree.postorder() 
+                    if len(node.children) == 2])
+    k = len(tree.leaves())
+    return mle_popsize_coal_times(k, times)
+
+
 #=============================================================================
 # helper data structures
 

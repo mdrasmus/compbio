@@ -69,8 +69,6 @@ pc = util.printcols
 pa = alignlib.print_align
 pd = util.print_dict
 
-
-
 def pl(lines, out=sys.stdout):
     for line in lines:
         print >>out, line

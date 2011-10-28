@@ -30,8 +30,8 @@ else:
 
 
 if conf.table:
-    tab = tablelib.readTable(infile)
-    tab.writePretty()
+    tab = tablelib.read_table(infile)
+    tab.write_pretty()
 else:
     mat = []
     headers = []

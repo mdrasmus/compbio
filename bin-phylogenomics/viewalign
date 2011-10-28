@@ -24,6 +24,7 @@ o.add_option("", "--codon", dest="codon", action="store_true",
 
 conf, alnfiles = o.parse_args()
 
+#=============================================================================
 
 def codon_align(aln):
     aln2 = fasta.FastaDict()
@@ -60,11 +61,30 @@ def print_align(conf, alnfile):
 
 
 
+def check_align_overlap(aln, minperc):
+    """
+    Check the overlap percentage of each pair of sequences in alignment
+    """
+    mat = aln.values()
+    
+    for i in range(len(mat)):
+        for j in range(i+1, len(mat)):
+            overlaps = alignlib.get_seq_overlap(mat[i], mat[j])
+            perc = overlaps / float(aln.alignlen())
+            
+            if perc < minperc:
+                print "%s\t%s\t%f\toverlap %d (%2.0f%%) out of %d" % \
+                    (aln.keys()[i], aln.keys()[j], perc,
+                     overlaps, 100 * perc, aln.alignlen())
+
+
+#=============================================================================
+
 # main
 for alnfile in alnfiles:
     if conf.check:
         aln = fasta.read_fasta(alnfile)
-        alignlib.check_align_overlap(aln, conf.check)
+        check_align_overlap(aln, conf.check)
     else:
         print_align(conf, alnfile)
     

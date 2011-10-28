@@ -756,18 +756,18 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
         qval = qvalues(tab.cget("pval"))
         qval_under = qvalues(tab.cget("pval_under"))
         
-        tab.addCol("qval", data=qval)
-        tab.addCol("qval_under", data=qval_under)
+        tab.add_col("qval", data=qval)
+        tab.add_col("qval_under", data=qval_under)
     
     if extra:
-        tab.addCol("in_size", data=[M]*len(tab))
-        tab.addCol("out_size", data=[N-M]*len(tab))
-        tab.addCol("item_ratio", data=[
+        tab.add_col("in_size", data=[M]*len(tab))
+        tab.add_col("out_size", data=[N-M]*len(tab))
+        tab.add_col("item_ratio", data=[
             row["in_count"] / float(row["in_count"] + row["out_count"])
             for row in tab])
-        tab.addCol("size_ratio", data=[
+        tab.add_col("size_ratio", data=[
             M / float(N) for row in tab])
-        tab.addCol("fold", data=[row["item_ratio"] / row["size_ratio"]
+        tab.add_col("fold", data=[row["item_ratio"] / row["size_ratio"]
                                  for row in tab])
     
     tab.sort(col='pval')

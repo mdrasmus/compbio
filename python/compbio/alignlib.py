@@ -6,6 +6,7 @@
 
 # python libs
 import sys
+from collections import defaultdict
 
 # rasmus libs
 from rasmus import util
@@ -18,9 +19,7 @@ from seqlib import *
 
 #=============================================================================
 # Alignment functions
-#
 
-# TODO: maybe ignore dict alignments altogether?
 
 def new_align(aln=None):
     """Makes a new alignment object based on the given object
@@ -31,7 +30,7 @@ def new_align(aln=None):
        other      other
     """
     
-    if aln == None:
+    if aln is None:
         return fasta.FastaDict()
     elif isinstance(aln, SeqDict):
         return type(aln)()
@@ -91,6 +90,19 @@ def require_nseqs(aln, n):
     ind = [i for i in range(aln.alignlen())
            if sum(1 for seq in seqs if seq[i] != "-") >= n]
     return subalign(aln, ind)
+
+
+def get_seq_overlap(seq1, seq2):
+    """
+    Count number of overlapping bases between two gapped sequences
+    """
+
+    overlap = 0
+    for i in range(len(seq1)):
+        if seq1[i] != "-" and seq2[i] != "-":
+            overlap += 1
+            
+    return overlap
 
 
 def calc_conservation_string(aln):
@@ -225,88 +237,12 @@ def revtranslate_align(aaseqs, dnaseqs, check=False, trim=False):
 
 
 
-def substitutionType(char1, char2):
-    """Determine the subsitution type of a pair of bases"""
-
-    return SUBSTITUTION_TYPES[char1.upper() + char2.upper()]
-
-
-def tsitTver(seq1, seq2):
-    """Find the transition and transversion ratio of two sequences"""
-    
-    assert len(seq1) == len(seq2), "sequences are not same length"
-    
-    subs = map(substitutionType, seq1, seq2)
-    counts = util.hist_int(subs)
-    
-    return counts[SUB_TSIT] / float(counts[SUB_TVER])
-
-
-def calcTransitionMatrix(seq1, seq2):
-    """Produce a transition matrix based on two sequences"""
-
-    assert len(seq1) == len(seq2), "sequences are not same length"
-    seq1, seq2 = seq1.upper(), seq2.upper()
-    
-    c = util.hist_dict(map("".join, zip(seq1, seq2)))
-    keys = filter(lambda x: "-" not in x, c.keys())
-    total = float(sum(util.mget(c, keys)))
-    c = util.mapdict(c, val=lambda x: x/total)
-    
-    mat = [
-        [" ",    "A",     "T",     "C",     "G"],
-        ["A", c["AA"], c["AT"], c["AC"], c["AG"]],
-        ["T", c["TA"], c["TT"], c["TC"], c["TG"]],
-        ["C", c["CA"], c["CT"], c["CC"], c["CG"]],
-        ["G", c["GA"], c["GT"], c["GC"], c["GG"]]
-    ]
-    
-    return mat
-    
-def countTransitions(seq1, seq2, counts=None):
-    """Count the substitution types between two sequences"""
-    chars = "ATCGN-"
-    
-    if counts == None:
-        counts = {}
-    
-        for a in chars:
-            for b in chars:
-                counts[a+b] = 0
-    
-    for a, b in zip(seq1, seq2):
-        counts[a+b] += 1
-    
-    return counts
-
-
-# TODO: add documentation
-def check_align_overlap(aln, overlap):
-    mat = aln.values()
-    
-    for i in range(len(mat)):
-        for j in range(i+1, len(mat)):
-            overlaps = 0
-            
-            for k in range(aln.alignlen()):
-                gap1 = (mat[i][k] == '-')
-                gap2 = (mat[j][k] == '-')
-                
-                if gap1 == gap2 == False:
-                    overlaps += 1
-            
-            if overlaps < overlap * aln.alignlen():
-                print "%s\t%s\toverlap %d (%2.0f%%) out of %d" % \
-                    (aln.keys()[i], aln.keys()[j], overlaps, 
-                     100 * (overlaps / float(aln.alignlen())),
-                     aln.alignlen())
-
 
 #=============================================================================
-# Ka, Ks, four fold degeneracy
-#
+# four fold degeneracy
 
-def markCodonPos(seq, pos=0):
+
+def mark_codon_pos(seq, pos=0):
     """
     return the codon position for each base in a gapped sequence
 
@@ -330,7 +266,7 @@ def markCodonPos(seq, pos=0):
     return codons
 
 
-def makeCodonPosAlign(aln):
+def make_codon_pos_align(aln):
     """Get the codon position of every base in an alignment"""
     
     def func(seq):
@@ -338,54 +274,43 @@ def makeCodonPosAlign(aln):
                0: "0",
                1: "1",
                2: "2"}
-        return "".join(util.mget(dct, markCodonPos(seq)))
+        return "".join(util.mget(dct, mark_codon_pos(seq)))
     return mapalign(aln, valfunc=func)
 
 
-def findAlignedCodons(aln, ref=None):
-    """returns the columns indices of the alignment that represent aligned 
+def find_aligned_codons(aln):
+    """Returns the columns indices of the alignment that represent aligned 
        codons.  
-       
-       aln - alignment (FastaDict)
-       ref - reference sequence (default: None)
-             if not None, all columns with gap in reference are removed
     """
 
-    # throw out cols with gap in reference species
-    if ref != None:
-        ind = util.find(util.neqfunc("-"), aln[ref])
-    else:
-        ind = range(aln.alignlen())
+    ind = range(aln.alignlen())
     
     # throw out codons with non mod 3 gaps
     ind2 = []
-    for i in range(0, len(ind), 3):
+    for i in range(0, aln.alignlen(), 3):
         bad = False
         
         for key, val in aln.iteritems():
-            codon = util.mget(val, ind[i:i+3])
-            if "-" in codon and \
-               codon != ["-", "-", "-"]:
+            codon = val[i:i+3]
+            if "-" in codon and codon != "---":
                 bad = True
                 break
 
         if not bad:
-            ind2.extend(ind[i:i+3])
+            ind2.extend([i, i+1, i+2])
 
     return ind2
-findAlignCodons = findAlignedCodons
 
 
 
-def filterAlignedCodons(aln, ref=None):
+def filter_aligned_codons(aln):
     """filters an alignment for only aligned codons"""
 
-    ind = findAlignCodons(aln, ref=ref)
+    ind = find_align_codons(aln)
     return subalign(aln, ind)
-filterAlignCodons = filterAlignedCodons
 
 
-def findFourFold(aln):
+def find_four_fold(aln):
     """Returns index of all columns in alignment that are completely 
        fourfold degenerate
        
@@ -411,7 +336,6 @@ def findFourFold(aln):
             del hist["X"]
         
         # column is conserved if only one AA appears
-        
         if len(hist) == 1:
             pepcons.append(True)
             pep.append(hist.keys()[0])
@@ -427,93 +351,27 @@ def findFourFold(aln):
         # process only those columns that are conserved at the peptide level
         if pepcons[i//3]:
             degen = AA_DEGEN[pep[i//3]]
-            
             for j in range(3):
                 if degen[j] == 4:
                     ind.append(i+j)
     return ind
 
 
-def filterFourFold(aln, ref=None):
+def filter_four_fold(aln):
     """returns an alignment of only four-fold degenerate sites from an 
        alignment of coding sequences
     
        This function performs the following steps:
        
-       1. remove all columns that are a gap in ref sequence (if not None)
-       2. remove all codon columns that don't have 0 or 3 gaps
-       3. keep all codon columns that code for identical AA
-       4. if the codon column codes for a 4D AA, then keep its 3rd position
+       1. remove all codon columns that don't have 0 or 3 gaps
+       2. keep all codon columns that code for identical AA
+       3. if the codon column codes for a 4D AA, then keep its 3rd position
     """
 
-    aln_codons = filterAlignCodons(aln, ref=ref)
-    ind = findFourFold(aln_codons)
+    aln_codons = filter_align_codons(aln)
+    ind = find_four_fold(aln_codons)
     return subalign(aln_codons, ind)
 
-'''
-def findAlignCodons(aln):
-    """find all columns of aligned codons"""
-    
-    codonAln = mapalign(aln, valfunc=markCodonPos)
-    cols = map(util.hist_dict, zip(* codonAln.values()))
-
-    ind = []
-    codon = []
-    gaps = util.Dict(default=0)
-    for i in range(len(cols)):
-
-        if len(cols[i]) == 1:
-            codon.append(i)
-        elif len(cols[i]) == 2 and -1 in cols[i]:
-            for key, val in aln.iteritems():
-                if val[i] == "-":
-                    gaps[key] += 1 
-            codon.append(i)
-        else:
-            codon = []
-        if len(codon) == 3:
-            if len(gaps) == 0 or \
-               util.unique([x % 3 for x in gaps.values()]) == [0]:
-                ind.extend(codon)
-            codon = []
-            for key in gaps:
-                gaps[key] = 0
-
-    return ind
-
-
-def findFourFold(aln):
-    """Returns index of all columns in alignment that are completely 
-       fourfold degenerate
-    """
-    
-    aln = filterAlignCodons(aln)
-    pepAln = mapalign(aln, valfunc=translate)
-    pep = pepAln.values()[0]
-    
-    # pep conservation
-    pepcons = []
-    for i in xrange(pepAln.alignlen()):
-        col = [seq[i] for seq in pepAln.itervalues()]
-        hist = util.hist_dict(col)
-        if "-" in hist:
-            del hist["-"]
-        if "X" in hist:
-            del hist["X"]
-        pepcons.append(len(hist) == 1)
-        
-
-    ind = []
-
-    for i in range(0, len(aln.values()[0]), 3):
-        if pepcons[i//3]:
-            degen = AA_DEGEN[pep[i//3]]
-            
-            for j in range(3):
-                if degen[j] == 4:
-                    ind.append(i+j)
-    return ind
-'''
 
 def calc_four_fold_dist_matrix(aln):
     names = aln.keys()
@@ -523,7 +381,7 @@ def calc_four_fold_dist_matrix(aln):
     for i in range(len(names)):
         mat.append([0.0] * (i+1))
         for j in range(i+1, len(names)):
-            ind = findFourFold(aln.get([names[i], names[j]]))
+            ind = find_four_fold(aln.get([names[i], names[j]]))
 
             mismatches = 0
             for k in ind:
@@ -546,22 +404,22 @@ def calc_four_fold_dist_matrix(aln):
 def find_degen(aln):
     """Determine the degeneracy of each column in an alignment"""
 
-    codonInd = findAlignCodons(aln)
-    aln2 = filterAlignCodons(aln)
+    codon_ind = find_align_codons(aln)
+    aln2 = subalign(aln, codon_ind)
     
-    pepAln = mapalign(aln2, valfunc=translate)
-    pep = pepAln.values()[0]
-    identies = calc_conservation(pepAln)
+    pep_aln = mapalign(aln2, valfunc=translate)
+    pep = pep_aln.values()[0]
+    identies = calc_conservation(pep_aln)
     
-    degens = [-1] * len(aln.values()[0])
+    degens = [-1] * aln.alignlen()
     
-    for i in range(0, len(codonInd), 3):
+    for i in range(0, len(codon_ind), 3):
         if pep[i/3] == "X":
             continue
         degen = AA_DEGEN[pep[i/3]]
         if identies[i/3] == 1.0:
             for j in range(3):
-                degens[codonInd[i+j]] = degen[j]
+                degens[codon_ind[i+j]] = degen[j]
                     
     return degens
 
@@ -591,16 +449,16 @@ def print_degen(aln, **args):
     print_align(aln, extra=extra, **args)
 
 
-#-------------------------------------------------------------------------------
+#=============================================================================
 # Position Specific Scoring Matrix (PSSM)
-#-------------------------------------------------------------------------------
+
 
 def align2pssm(aln, pseudocounts = {}):
     pssm = []
     denom = float(len(aln)) + sum(pseudocounts.values())
     
     for i in xrange(aln.alignlen()):
-        freqs = util.Dict(default=0)
+        freqs = defaultdict(lambda: 0)
         for j in xrange(len(aln)):
             freqs[aln[j][i]] += 1
         
@@ -621,7 +479,7 @@ def pssmSeq(pssm, seq):
 
 
 
-#--------------------------------------------------------------------------------
+#=============================================================================
 # Coordinate conversions
 #
 # Coordinate systems
@@ -641,7 +499,6 @@ def pssmSeq(pssm, seq):
 # 1. 0-based, end exclusive (local/align coordinates)
 # 2. 1-based, end inclusive (global coordinates)
 #
-#--------------------------------------------------------------------------------
 
 
 class CoordConverter (object):
@@ -768,3 +625,70 @@ def align2global(align_coord, start, end, strand, localLookup):
 
 
 
+#=============================================================================
+# old code
+
+'''
+def findAlignCodons(aln):
+    """find all columns of aligned codons"""
+    
+    codonAln = mapalign(aln, valfunc=mark_codon_pos)
+    cols = map(util.hist_dict, zip(* codonAln.values()))
+
+    ind = []
+    codon = []
+    gaps = defaultdict(lambda: 0)
+    for i in range(len(cols)):
+
+        if len(cols[i]) == 1:
+            codon.append(i)
+        elif len(cols[i]) == 2 and -1 in cols[i]:
+            for key, val in aln.iteritems():
+                if val[i] == "-":
+                    gaps[key] += 1 
+            codon.append(i)
+        else:
+            codon = []
+        if len(codon) == 3:
+            if len(gaps) == 0 or \
+               util.unique([x % 3 for x in gaps.values()]) == [0]:
+                ind.extend(codon)
+            codon = []
+            for key in gaps:
+                gaps[key] = 0
+
+    return ind
+
+
+def findFourFold(aln):
+    """Returns index of all columns in alignment that are completely 
+       fourfold degenerate
+    """
+    
+    aln = filterAlignCodons(aln)
+    pepAln = mapalign(aln, valfunc=translate)
+    pep = pepAln.values()[0]
+    
+    # pep conservation
+    pepcons = []
+    for i in xrange(pepAln.alignlen()):
+        col = [seq[i] for seq in pepAln.itervalues()]
+        hist = util.hist_dict(col)
+        if "-" in hist:
+            del hist["-"]
+        if "X" in hist:
+            del hist["X"]
+        pepcons.append(len(hist) == 1)
+        
+
+    ind = []
+
+    for i in range(0, len(aln.values()[0]), 3):
+        if pepcons[i//3]:
+            degen = AA_DEGEN[pep[i//3]]
+            
+            for j in range(3):
+                if degen[j] == 4:
+                    ind.append(i+j)
+    return ind
+'''

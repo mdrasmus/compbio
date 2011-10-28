@@ -4,7 +4,7 @@
 
 import os, sys, optparse
 from itertools import chain
-from rasmus import treelib, util, tablelib
+from rasmus import treelib, util
 from compbio import phylo
 
 

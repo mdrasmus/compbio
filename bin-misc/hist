@@ -20,7 +20,7 @@ lines = []
 for line in infile:
     lines.append(line.rstrip())
 
-hist = tablelib.histTable(lines)
+hist = tablelib.histtab(lines)
 
 for row in hist:
     row['percent'] *= 100

@@ -441,7 +441,7 @@ def famtab2parts(famtab):
 class FamilyDb (object):
     def __init__(self, filename=None, datadir=None, olddatadir=None):
         if filename != None:
-            self.famtab = tablelib.readTable(filename)
+            self.famtab = tablelib.read_table(filename)
         else:
             self.famtab = tablelib.Table(headers=["famid", "genes"])
         

@@ -12,7 +12,6 @@ import sys
 
 
 # rasmus imports
-from rasmus import tablelib
 from rasmus import stats
 from rasmus import treelib
 from rasmus import util
@@ -787,6 +786,31 @@ def hash_order_tree(tree, smap = lambda x: x):
 # branch-based reconciliations
 # useful for modeling HGT
 
+'''
+
+brecon = {node: branch_path, ...}
+branch_path = [(snode, event), ...]
+
+The path is from parent to node, so that the last pair is the actual
+node reconciliation (mapping).
+
+event is one of the following:
+  gene      -- leaf node
+  dup       -- duplication
+  spec      -- speciation
+  specloss  -- speciation point but only one lineage survives (other is lost)
+  trans     -- transfer event, one child horizontally transferred
+  transloss -- transfer event, native copy is lost
+
+
+These events happen at the end of a branch_path:
+  gene, dup, spec, trans
+
+These events happen everywhere else:
+  specloss, transloss
+
+'''
+
 
 def brecon2recon_events(brecon):
     """
@@ -810,7 +834,83 @@ def recon_events2brecon(recon, events):
     for node, snode in recon.iteritems():
         brecon[node] = [(snode, events[node])]
 
+    # TODO: make more general, so that all specloss events are present
+
     return brecon
+
+
+def subtree_brecon_by_leaves(tree, brecon, leaves):
+    """
+    Find a subtree of tree and branch reconciliation 'brecon'
+
+    tree   -- tree to subset
+    brecon -- branch reconciliation
+    leaves -- leaf nodes to keep in tree
+    """
+    
+    # record orignal parent pointers
+    parents = dict((node, node.parent) for node in tree)
+
+    # NOTE: calculating doomed nodes requires single children
+    nnodes = len(tree.nodes)
+    treelib.subtree_by_leaves(tree, leaves, keep_single=True)
+    doomed = nnodes - len(tree.nodes)
+
+    # now remove single children
+    treelib.remove_single_children(tree)
+
+    # modify brecon structure
+    for node in tree:
+        # find path for branch
+        ptr = node
+        path = []
+        while ptr != node.parent:
+            path.append(ptr)
+            ptr = parents[ptr]
+        path.reverse()
+
+        # concatenate brecon info
+        if len(path) == 1:
+            continue
+        else:
+            branch_path = []
+            for node2 in path:
+                size = len(brecon[node2])
+                for i, (snode, event) in enumerate(brecon[node2]):
+                    if node2 == node and i == size - 1:
+                        # last event does not need editing
+                        branch_path.append((snode, event))
+                    elif event == "trans":
+                        branch_path.append((snode, "transloss"))
+                    elif event == "spec":
+                        branch_path.append((snode, "specloss"))
+                    elif event == "dup":
+                        # skip these events, they're "doomed"
+                        continue
+                    elif event in ("transloss", "specloss"):
+                        # these events don't need editing
+                        branch_path.append((snode, event))
+                    else:
+                        raise Exception("unknown event '%s'" %
+                                        str((snode, event)))
+
+            # post process path: remove transloss where destination lineage
+            # is lost.
+            remove = [i for i in xrange(len(branch_path)-1, -1, -1)
+                      if (branch_path[i][1] == "transloss" and
+                          branch_path[i][0] == branch_path[i+1][0])]
+            for i in remove:
+                del branch_path[i]
+            
+            brecon[node] = branch_path
+
+    # remove unused nodes from brecon
+    for node in brecon.keys():
+        if node.name not in tree:
+            del brecon[node]
+    
+    return doomed
+
 
 
 def write_brecon(out, brecon):
@@ -857,7 +957,6 @@ def read_brecon(infile, tree, stree):
     return brecon
 
 
-
 def find_bevents(brecon):
     """
     Iterates over branch events (bevents) implied by a branch reconciliation
@@ -865,7 +964,7 @@ def find_bevents(brecon):
     Events have the format
       (gene_node, 'v'|'e', event, details)
     where gene_node is the vertex ('v') or edge ('e') where the event occurs
-    and event, details are one of the following
+    and (event, details) are one of the following
 
       'spec', snode = speciation event at species node snode
       'gene', snode = extant gene (leaf) at species node snode
@@ -912,6 +1011,21 @@ def find_bevents(brecon):
 
             else:
                 raise Exception("unknown event '%s'" % event)
+
+
+def write_bevents(out, bevents):
+    """
+    Writes branch events to file
+    """
+
+    for node, kind, event, details in bevents:
+        if event == "trans":
+            out.write("%s\t%s\t%s\t%s\t%s\n" %
+                      (str(node.name), kind, event, str(details[0].name),
+                       str(details[1].name)))
+        else:
+            out.write("%s\t%s\t%s\t%s\n" %
+                      (str(node.name), kind, event, str(details.name)))
 
 
 
@@ -1079,59 +1193,6 @@ def enum_recon(tree, stree, depth=None,
             
                 change_recon_down(recon, node, schild, events)
 
-
-
-    
-'''
-class EnumRecon (object):
-    """
-    Enumerate reconciliations between a gene tree and species tree
-    """
-
-    def __init__(self, tree, stree, depth=1,
-                 step=-1, preorder=None,
-                 recon=None, events=None,
-                 gene2species=None):
-        self.tree = tree
-        self.stree = stree
-        self.depth = 1
-        self.step = step
-
-        if recon:
-            self.recon = recon
-            self.events = events
-        else:
-            self.recon = reconcile(tree, stree, gene2species)
-            self.events = label_events(tree, self.recon)
-
-        if preorder:
-            self.preorder = preorder
-        else:
-            self.preorder = list(tree.preorder())
-            
-        
-        self.sprev = None
-
-
-    def __iter__(self):
-        return self
-
-    
-    def next(self):
-        if self.step >= 0:
-            # perform a rearrangement
-            if self.step >= len(self.preorder):
-                # no more mappings to move up, take 1 step back
-                change_recon_down(self.recon, node, schild, self.events)
-            
-            node = self.preorder[self.step]
-            if can_change_recon_up(self.recon, node, self.events):
-                self.sprev = self.recon[node]
-                change_recon_up(self.recon, node, self.events)
-        self.step += 1
-        
-        return self.recon
-'''
 
 
 
@@ -1983,6 +2044,14 @@ def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
    
 
 def robinson_foulds_error(tree1, tree2):
+    """
+    Returns RF error
+
+    This definition of RF error is the fraction of branches in larger
+    tree that are not present in the smaller tree.
+
+    Of course, trees can be the same size as well.
+    """
     splits1 = find_splits(tree1)
     splits2 = find_splits(tree2)
 
@@ -2068,6 +2137,14 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
 
 
 def splits2tree(splits, rooted=False):
+    """
+    Builds a tree from a set of splits
+
+    Silently reject splits that are in conflict.  Process splits in order.
+
+    splits -- iterable of splits
+    rooted -- if True treat splits as rooted/polarized
+    """
     
     tree = treelib.Tree()
     for split in splits:
@@ -2077,6 +2154,10 @@ def splits2tree(splits, rooted=False):
 
 
 def _add_split_to_tree(tree, split, count, rooted=False):
+    """
+    Add split to tree
+    private method
+    """
 
     split = (set(split[0]), set(split[1]))
 
@@ -2166,6 +2247,10 @@ def _add_split_to_tree(tree, split, count, rooted=False):
     
 
 def _post_process_split_tree(tree):
+    """
+    Post-process a tree built from splits
+    private method
+    """
     
     for node in list(tree):
         if len(node.data["leaves"]) > 1:
@@ -2224,6 +2309,12 @@ def ensure_binary_tree(tree):
 # simulation
 
 def make_jc_matrix(t, a=1.):
+    """
+    Returns Juke Cantor transition matrix
+
+    t -- time span
+    a -- mutation rate (sub/site/time)
+    """
     eat = math.exp(-4*a/3.*t)
     r =  .25 * (1 + 3*eat)
     s =  .25 * (1 - eat)
@@ -2235,7 +2326,16 @@ def make_jc_matrix(t, a=1.):
 
 
 def make_hky_matrix(t, bgfreq=(.25,.25,.25,.25), kappa=1.0):
+    """
+    Returns HKY transition matrix
 
+    Assume base order A,C,G,T.
+
+    t      -- time span
+    bgfreq -- background base frequency
+    kappa  -- transition/transversion ratio
+    """
+    
     # bases = "ACGT"
     # pi = bfreq
 
@@ -2288,11 +2388,24 @@ def make_hky_matrix(t, bgfreq=(.25,.25,.25,.25), kappa=1.0):
     return mat
 
 
+def sim_seq_branch(seq, time, matrix_func):
+    """Simulate sequence evolving down one branch"""
+    
+    matrix = matrix_func(time)
+    bases = "ACGT"
+    lookup = {"A": 0, "C": 1, "G": 2, "T": 3}
+    
+    seq2 = []
+    for a in seq:
+        seq2.append(bases[stats.sample(matrix[lookup[a]])])
+
+    return "".join(seq2)
+
 
 def sim_seq_tree(tree, seqlen, matrix_func=make_jc_matrix, 
                  bgfreq=[.25,.25,.25,.25], rootseq=None,
                  keep_internal=False):
-    """simulate the evolution of a sequence down a tree"""
+    """Simulate the evolution of a sequence down a tree"""
     
     bases = "ACGT"
 
@@ -2321,18 +2434,259 @@ def sim_seq_tree(tree, seqlen, matrix_func=make_jc_matrix,
     return seqs
     
 
-def sim_seq_branch(seq, time, matrix_func):
-    """Simulate sequence evolving down one branch"""
-    
-    matrix = matrix_func(time)
-    bases = "ACGT"
-    lookup = {"A": 0, "C": 1, "G": 2, "T": 3}
-    
-    seq2 = []
-    for a in seq:
-        seq2.append(bases[stats.sample(matrix[lookup[a]])])
 
-    return "".join(seq2)
+#=============================================================================
+# gene tree simulation
+
+
+def sample_dlt_gene_tree(stree, duprate, lossrate, transrate,
+                         genename=lambda sp, x: sp + "_" + str(x),
+                         removeloss=True):
+    """Simulate a gene tree within a species tree with dup, loss, transfer"""
+
+    # TODO: return brecon instead of (recon, events)
+    
+    stimes = treelib.get_tree_timestamps(stree)
+
+    # initialize gene tree
+    tree = treelib.Tree()
+    tree.make_root()
+    recon = {tree.root: stree.root}
+    events = {tree.root: "spec"}
+    losses = set()
+
+    totalrate = duprate + lossrate + transrate
+
+    
+    def sim_branch(node, snode, dist):
+
+        # sample next event
+        if totalrate > 0.0:
+            time = random.expovariate(totalrate)
+        else:
+            time = dist
+
+        if time >= dist:
+            # no events just evolve to end of species branch
+            node = tree.add_child(node, tree.new_node())
+            node.dist = dist
+            recon[node] = snode
+            events[node] = "spec"
+            sim_spec(node, snode)
+        else:
+            # event occurs, choose event
+            pick = random.random()
+            if pick <= duprate / totalrate:
+                # dup occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "dup"
+                
+                # recurse
+                sim_branch(node, snode, dist - time)
+                sim_branch(node, snode, dist - time)
+            
+            elif pick <= (duprate + lossrate) / totalrate:
+                # loss occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "loss"
+                losses.add(node)
+
+            else:
+                # transfer occurs
+                node = tree.add_child(node, tree.new_node())
+                node.dist = time
+                recon[node] = snode
+                events[node] = "trans"
+
+                # choose destination species
+                age = stimes[snode] + dist - time
+
+                others = []
+                for snode2, sage in stimes.iteritems():
+                    if sage < age < sage + snode2.dist and snode2 != snode:
+                        others.append(snode2)
+
+                assert len(others) > 0, (age, stimes)
+
+                dest = random.sample(others, 1)[0]
+                
+                # recurse
+                sim_branch(node, snode, dist - time)
+                sim_branch(node, dest, age - stimes[dest])
+        
+        
+    def sim_spec(node, snode):
+        if snode.is_leaf():
+            # leaf in species tree, terminal gene lineage
+            tree.rename(node.name, genename(snode.name, node.name))
+            events[node] = "gene"
+        else:
+            # speciation in species tree, follow each branch
+            for schild in snode.children:
+                sim_branch(node, schild, schild.dist)
+            
+    sim_spec(tree.root, stree.root)
+
+
+    if removeloss:
+        keep = [node for node in tree.leaves() if node not in losses]
+        treelib.subtree_by_leaves(tree, keep, keep_single=False)
+
+
+    brecon = recon_events2brecon(recon, events)
+    
+    return tree, brecon
+
+
+
+def sample_dltr_gene_tree(stree, duprate, lossrate, transrate, recombrate,
+                          genename=lambda sp, x: sp + "_" + str(x),
+                          removeloss=True):
+    """Simulate a gene tree within a species tree with dup, loss, transfer"""
+    
+    stimes = treelib.get_tree_timestamps(stree)
+    spec_times = sorted((x for x in stimes.values() if x > 0.0), reverse=True)
+    spec_times.append(0.0)
+
+    # initialize gene tree
+    tree = treelib.Tree()
+    tree.make_root()
+    times = {tree.root: stimes[stree.root]}
+    brecon = {tree.root: [(stree.root, "spec")]}
+    losses = set()
+
+    totalrate = duprate + lossrate + transrate + recombrate
+
+    class Lineage (object):
+        def __init__(self, node, snode):
+            self.node = node
+            self.snode = snode
+    
+    lineages = set()
+    for schild in stree.root:
+        lineages.add(Lineage(tree.root, schild))
+    age = stimes[stree.root]
+    i = 1
+
+    while len(lineages) > 0:
+        if totalrate > 0.0:
+            age -= random.expovariate(totalrate * len(lineages))
+        else:
+            age = 0.0
+
+        if age <= spec_times[i]:
+            if spec_times[i] == 0.0:
+                # create leaves
+                for l in lineages:
+                    child = tree.add_child(l.node, tree.new_node())
+                    tree.rename(child.name, genename(l.snode.name, child.name))
+                    child.dist = times[l.node]
+                    times[child] = 0.0
+                    brecon[child] = [(l.snode, "gene")]
+                break
+            else:
+                # speciation
+                age = spec_times[i]
+                i += 1
+                for l in list(lineages):
+                    if stimes[l.snode] == age:
+                        lineages.remove(l)
+                        child = tree.add_child(l.node, tree.new_node())
+                        child.dist = times[l.node] - age
+                        times[child] = age
+                        brecon[child] = [(l.snode, "spec")]
+                        for schild in l.snode.children:
+                            lineages.add(Lineage(child, schild))
+                continue
+        
+        # choose event type and lineage
+        lineage = random.sample(lineages, 1)[0]
+        node, snode = lineage.node, lineage.snode
+        pick = stats.sample((duprate, lossrate, transrate, recombrate))
+        
+        if pick == 0:
+            # duplication
+            child = tree.add_child(node, tree.new_node())
+            child.dist = times[node] - age
+            times[child] = age
+            brecon[child] = [(snode, "dup")]
+            lineages.remove(lineage)
+            lineages.add(Lineage(child, snode))
+            lineages.add(Lineage(child, snode))
+
+        elif pick == 1:
+            # loss
+            child = tree.add_child(node, tree.new_node())
+            child.dist = times[node] - age
+            times[child] = age
+            brecon[child] = [(snode, "loss")]
+            losses.add(child)
+            lineages.remove(lineage)
+
+        elif pick == 2:
+            # transfer
+            # choose destination species
+            others = []
+            for snode2, sage in stimes.iteritems():
+                if sage < age < sage + snode2.dist and snode2 != snode:
+                    others.append(snode2)
+            dest = random.sample(others, 1)[0]
+
+            # make transfer node
+            child = tree.add_child(node, tree.new_node())
+            child.dist = times[node] - age
+            times[child] = age
+            brecon[child] = [(snode, "trans")]
+            lineages.remove(lineage)
+            lineages.add(Lineage(child, dest))
+            lineages.add(Lineage(child, snode))
+
+        elif pick == 3:
+            # recomb
+            # choose destination species
+            others = []
+            for snode2, sage in stimes.iteritems():
+                if sage < age < sage + snode2.dist and snode2 != snode:
+                    others.append(snode2)
+            dest = random.sample(others, 1)[0]
+
+            # find gene to replace
+            genes = []
+            for l in lineages:
+                if l.snode == dest:
+                    genes.append(l)
+            if len(genes) == 0:
+                # nothing to replace, no recombination
+                continue
+            else:
+                gene = random.sample(genes, 1)[0]
+
+            # make transfer node
+            child = tree.add_child(node, tree.new_node())
+            child.dist = times[node] - age
+            times[child] = age
+            brecon[child] = [(snode, "trans")]
+            lineages.remove(lineage)
+            lineages.add(Lineage(child, dest))
+            lineages.add(Lineage(child, snode))
+
+            # mark gene as loss
+            child2 = tree.add_child(gene.node, tree.new_node())
+            child2.dist = times[gene.node] - age
+            times[child2] = age
+            brecon[child2] = [(gene.snode, "loss")]
+            lineages.remove(gene)
+    
+    if removeloss:
+        keep =  [x for x in tree.leaves() if isinstance(x.name, str)]
+        subtree_brecon_by_leaves(tree, brecon, keep)
+        
+    return tree, brecon
+
 
 
 
@@ -2351,332 +2705,5 @@ def phylofile(famdir, famid, ext):
 
 
 
-#=============================================================================
-# visualization
-
-def view_tree(tree, options = "-t 1"):
-    tmpfile = util.tempfile(".", "vistree", ".tree")
-    tree.write(tmpfile)
-    os.system("vistree -n %s %s" % (tmpfile, options))
-    os.remove(tmpfile)
-viewTree = view_tree
 
 
-
-
-'''
-#=============================================================================
-# Sequence Distance Estimation
-
-
-def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
-    aln = fasta.FastaDict()
-    aln["0"] = seq1
-    aln["1"] = seq2
-    
-    if os.path.isfile("infile"):
-        raise Exception("infile already exists")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madePhylip = True
-    else:
-        madePhylip = False
-    
-    
-    
-    # write file
-    if infile == None:
-        infile = util.tempfile(".", "tmp_in", ".align")
-        madeInfile = True
-    else:
-        madeInfile = False
-    if outfile == None:    
-        outfile = util.tempfile(".", "tmp_out", ".dist")
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    if os.path.exists(outfile):
-        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
-    else:
-        args = "%s\nf\n%s\ny\n" % (infile, outfile)
-    
-    phylip.write_phylip_align(file(infile, "w"), aln)
-    phylip.exec_phylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.read_dist_matrix(outfile)
-
-    if madePhylip:
-        os.remove("outfile")
-    
-    if madeInfile:
-        os.remove(infile)
-    if madeOutfile:
-        os.remove(outfile)
-    
-    return distmat[0][1]
-
-
-def getGaplessDistMatrix(aln):
-    infile = util.tempfile("/tmp/", "tmp_in", ".align")
-    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    distmat = util.make_matrix(len(aln), len(aln), 0.0)
-    keys = aln.keys()
-    
-    for i in xrange(0, len(aln)):
-        for j in xrange(i+1, len(aln)):
-            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
-                                           infile=infile, outfile=outfile)
-            distmat[j][i] = distmat[i][j]
-    
-    
-    if madeOutfile:
-        os.remove("outfile")
-    
-    os.remove(infile)
-    os.remove(outfile)
-
-    return distmat
-
-
-#=============================================================================
-# old split code
-
-def find_all_branch_splits(network, leaves):
-    # find vertice and edge visit history
-    start = network.keys()[0]
-
-    openset = [start]
-    closedset = {}
-    
-    vhistory = []
-    ehistory = []
-    elookup = util.Dict(1, [])
-    
-    
-    while len(openset) > 0:
-        vertex = openset.pop()
-        
-        vhistory.append(vertex)
-        
-        if len(vhistory) > 1:
-            edge = tuple(util.sort(vhistory[-2:]))        
-            ehistory.append(edge)
-            elookup[edge].append(len(ehistory) - 1)
-        
-        # skip closed vertices
-        if vertex in closedset:
-            continue
-        
-        for v in network[vertex].keys():
-            if v not in closedset:
-                openset.append(vertex)            
-                openset.append(v)
-        
-
-        # close new vertex
-        closedset[vertex] = 1
-    
-    
-    # use histories to define half each split
-    splits = {}
-    for edge in elookup:
-        set1 = {}
-        
-        start, end = elookup[edge]
-        for i in range(start+1, end+1):
-            if vhistory[i] in leaves:
-                set1[vhistory[i]] = 1
-        
-        # fill in other half of splits using complement
-        set2 = {}
-        for v in leaves:
-            if v not in set1:
-                set2[v] = 1
-        
-        if edge[0] == vhistory[start]:
-            splits[edge] = [set2, set1]
-        else:
-            splits[edge] = [set1, set2]
-        
-    
-    return splits
-
-
-def find_branch_splits(tree):
-    splits = find_all_branch_splits(treelib.tree2graph(tree),
-                                    tree.leaf_names())
-    splits2 = {}
-    
-    for edge, sets in splits.iteritems():
-        # skip external edges
-        if len(sets[0]) == 1 or len(sets[1]) == 1:
-            continue
-        
-        s = tuple(sorted([tuple(sorted(i.keys())) for i in sets]))
-        splits2[edge] = s
-    
-    # if tree is rooted, remove duplicate edge
-    if treelib.is_rooted(tree):
-        edge1 = tuple(sorted([tree.root.name, tree.root.children[0].name]))
-        edge2 = tuple(sorted([tree.root.name, tree.root.children[1].name]))
-        if edge1 > edge2:
-            edge1, edge2 = edge2, edge1
-        if edge1 in splits2 and edge2 in splits2:
-            del splits2[edge1]
-    
-    return splits2
-
-
-#=============================================================================
-# old branch length analysis code
-
-
-def mapRefTree(trees, reftree, refmapfunc):
-    collect = util.Dict(1, [])
-    
-    for tree in trees:
-        nodemap = refmapfunc(tree, reftree)
-        
-        for name, node in tree.nodes.iteritems():
-            collect[nodemap[name]].append(node)
-    
-    return collect
-
-
-def findBranchLengths(collect):
-    return util.mapdict(collect, val = lambda nodes: 
-                        map(lambda node: node.dist, nodes))
-
-def findTreeLengths(collect):
-    totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
-    return totals
-    
-
-
-def get_species_inorder(tree):
-    return [node.name for node in tree.inorder()]
-
-
-def get_branch_lens(trees, stree, gene2species=gene2species):
-    # determine species nanes
-    species = map(str, stree.nodes.keys())
-    species.remove(str(stree.root.name))
-    
-    # make rates table
-    rates = tablelib.Table(headers=species)
-    
-    # loop through trees
-    for tree in trees:
-        if isinstance(tree, str):
-            tree = treelib.read_tree(tree)
-        recon = reconcile(tree, stree, gene2species)
-        events = label_events(tree, recon)
-        
-        # skip trees with duplications or with extremly long branch lengths
-        assert "dup" not in events.values()
-        
-        row = {}
-        for node in tree.nodes.values():
-            row[str(recon[node].name)] = node.dist
-        rates.append(row)
-    
-    return rates
-
-
-def find_branch_distrib(trees, stree, gene2species = gene2species, 
-                      relative = True):
-    """Older version of getBranchLens()
-    
-       Will probably be deprecated soon.
-    """
-    
-    lengths = util.Dict(1, [])
-    used = []
-
-    for tree in trees:
-        recon = reconcile(tree, stree, gene2species)
-        events = label_events(tree, recon)
-        
-        # skip trees with duplications or with extremly long branch lengths
-        if "dup" in events.values():
-            used.append(False)
-            continue
-        else:
-            used.append(True)
-        
-        for node in tree.nodes.values():
-            if relative:
-                # find total length of tree
-                totalLength = 0
-                for node in tree.nodes.values():
-                    totalLength += node.dist
-            
-                lengths[recon[node]].append(node.dist/totalLength)
-            else:                
-                lengths[recon[node]].append(node.dist)
-    
-    
-    return lengths, used
-
-
-
-def getRelBranchLens(rates, species=None):
-    if species == None:
-        species = rates.headers
-    
-    nonspecies = set(rates.headers) - set(species)
-    
-    relrates = rates.new()
-    
-    for row in rates:
-        row2 = {}
-        tot = sum(util.mget(row, species))
-        
-        for sp in species:
-            row2[sp] = row[sp] / tot
-        
-        # copy over non-species data
-        for key in nonspecies:
-            row2[key] = row[key]
-        
-        relrates.append(row2)
-    
-    return relrates
-        
-
-def getBranchZScores(rates, params):
-    zscores = rates.new()
-    
-    # determine column to species mapping
-    col2species = {}
-    for species in params:
-        col2species[str(species)] = species
-    
-    for row in rates:
-        row2 = {}
-        for key, val in row.iteritems():
-            if key in col2species:
-                # compute zscore
-                mu, sigma = params[col2species[key]]
-                row2[key] = (val - mu) / sigma
-            else:
-                # not a branch, copy value unchanged
-                row2[key] = val
-        
-        zscores.append(row2)
-    
-    return zscores
-
-
-
-'''

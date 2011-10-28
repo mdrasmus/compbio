@@ -20,6 +20,10 @@ try:
     from rasmus import util
 except ImportError:
     import util
+try:
+    from rasmus import textdraw
+except:
+    pass
 
 
 # ply parsing support
@@ -107,7 +111,6 @@ class TreeNode:
     def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
         out.write(str(self.dist))
-    writeData = write_data
 
     def __repr__(self):
         """Returns a representation of the node"""
@@ -275,7 +278,7 @@ class Tree:
 
     def make_root(self, name = None):
         """Create a new root node"""
-        if name == None:
+        if name is None:
             name = self.new_name()
         self.root = TreeNode(name)
         return self.add(self.root)
@@ -408,8 +411,10 @@ class Tree:
     
     def leaves(self, node=None):
         """Return the leaves of the tree in order"""
-        if node == None:
-            node = self.root                   
+        if node is None:
+            node = self.root
+            if node is None:
+                return []
         return node.leaves()
     
     
@@ -563,7 +568,6 @@ class Tree:
 
         string += ":%f" % node.dist
         return string
-    writeData = write_data
     
     
     def write_newick(self, out = sys.stdout, writeData=None, oneline=False,
@@ -580,7 +584,7 @@ class Tree:
         """Write the node in newick format to the out file stream"""
         
         # default data writer
-        if writeData == None:
+        if writeData is None:
             writeData = self.write_data
         
         if not oneline:
@@ -645,7 +649,7 @@ class Tree:
         """read with PLY"""
         
         # default data reader
-        if readData == None:
+        if readData is None:
             readData = self.read_data
 
         # get parse tree
@@ -986,7 +990,7 @@ def assert_tree(tree):
         node.recurse(walk)
     walk(tree.root)
     
-    assert tree.root.parent == None
+    assert tree.root.parent is None
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
 
 
@@ -1057,7 +1061,7 @@ def find_dist(tree, name1, name2):
 
 def descendants(node, lst=None):
     """Return a list of all the descendants beneath a node"""
-    if lst == None:
+    if lst is None:
         lst = []
     for child in node.children:
         lst.append(child)
@@ -1067,7 +1071,7 @@ def descendants(node, lst=None):
 
 def count_descendants(node, sizes=None):
     """Returns a dict with number of leaves beneath each node"""
-    if sizes == None:
+    if sizes is None:
         sizes = {}
     
     if len(node.children) > 0:
@@ -1175,7 +1179,6 @@ def remove_single_children(tree, simplify_root=True):
     Remove all nodes from the tree that have exactly one child
     
     Branch lengths are added together when node is removed.
-    
     """
     
     # find single children
@@ -1199,7 +1202,7 @@ def remove_single_children(tree, simplify_root=True):
         del tree.nodes[node.name]
 
     # remove singleton from root
-    if simplify_root and len(tree.root.children) == 1:
+    if simplify_root and tree.root and len(tree.root.children) == 1:
         oldroot = tree.root
         tree.root = tree.root.children[0]
         oldroot.children = []
@@ -1241,11 +1244,15 @@ def remove_exposed_internal_nodes(tree, leaves=None):
     walk(tree.root)
 
 
-def subtree_by_leaves(tree, leaves=None, keep_single=False):
+def subtree_by_leaves(tree, leaves=None, keep_single=False,
+                      simplify_root=True):
     """
     Remove any leaf not in leaves set
     
-    leaves -- a list of leaves that should stay    
+    leaves        -- a list of leaves that should stay
+    keep_single   -- if False, remove all single child nodes
+    simplify_root -- if True, basal branch is removed when removing single
+                     children nodes
     """
     
     stay = set(leaves)    
@@ -1258,10 +1265,13 @@ def subtree_by_leaves(tree, leaves=None, keep_single=False):
 
         if node.is_leaf() and node not in stay:
             tree.remove(node)
-    walk(tree.root)
+    if len(stay) == 0:
+        tree.clear()
+    else:
+        walk(tree.root)
 
     if not keep_single:
-        remove_single_children(tree)
+        remove_single_children(tree, simplify_root=simplify_root)
 
     return tree
 
@@ -1367,8 +1377,9 @@ def set_tree_topology(tree, tree2):
 
 
 def is_rooted(tree):
+    """Returns True if tree is rooted"""
     return len(tree.root.children) <= 2
-    #return len(tree.root.children) == 3 or len(tree.leaves()) <= 2
+
 
 
 def unroot(tree, newCopy=True):
@@ -1528,7 +1539,10 @@ def midpoint_root(tree):
 
 #=============================================================================
 # timestamps
-
+#
+# Methods for calculating the ages (timestamps) of nodes in the tree given
+# the branch lengths.
+#
 
 def get_tree_timestamps(tree, root=None, leaves=None, times=None):
     """
@@ -1565,19 +1579,6 @@ def get_tree_timestamps(tree, root=None, leaves=None, times=None):
     return times
 
 
-def check_timestamps(tree, times):    
-    for node in tree:
-        if node.parent:
-            if times[node.parent] - times[node] < 0.0 or \
-               abs(((times[node.parent] - times[node]) -
-                    node.dist)/node.dist) > .001:
-                draw_tree_names(tree, maxlen=7, minlen=7)
-                util.printcols([(a.name, b) for a, b in times.items()])
-                print
-                print node.name, node.dist, times[node.parent] - times[node]
-                raise Exception("negative time span")
-
-
 def set_dists_from_timestamps(tree, times):
     """
     Sets the branch lengths of a tree using a timestamp dict
@@ -1590,6 +1591,21 @@ def set_dists_from_timestamps(tree, times):
             node.dist = 0.0
 
 
+def check_timestamps(tree, times):
+    """Asserts that timestamps are consistent with tree"""
+    
+    for node in tree:
+        if node.parent:
+            if times[node.parent] - times[node] < 0.0 or \
+               abs(((times[node.parent] - times[node]) -
+                    node.dist)/node.dist) > .001:
+                draw_tree_names(tree, maxlen=7, minlen=7)
+                util.printcols([(a.name, b) for a, b in times.items()])
+                print
+                print node.name, node.dist, times[node.parent] - times[node]
+                raise Exception("negative time span")
+
+
 
 
 #=============================================================================
@@ -1598,7 +1614,7 @@ def set_dists_from_timestamps(tree, times):
 def tree2parent_table(tree, data_cols=[]):
     """Converts tree to a parent table
 
-    This parent table will have a special numbering for the internodes,
+    This parent table will have a special numbering for the internal nodes,
     such that their id is also their row in the table.
     
     parent table is a standard format of the Compbio Lab as of 02/01/2007.
@@ -1672,7 +1688,7 @@ def parent_table2tree(ptable, data_cols=[], convert_names=True):
 def tree2parent_table_ordered(tree, leaf_names=None):
     """Converts tree to a parent table
 
-    This parent table will have a special numbering for the internodes,
+    This parent table will have a special numbering for the internal nodes,
     such that their id is also their row in the table.
     
     parent table is a standard format of the Compbio Lab as of 02/01/2007.
@@ -2080,16 +2096,14 @@ def read_tree_color_map(filename):
 # Draw Tree ASCII art 
 #
 
-try:
-    from rasmus import textdraw
-except:
-    pass
-
 
 def draw_tree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
              canvas=None, x=0, y=0, display=True, labelOffset=-1,
              minlen=1,maxlen=10000):
-    if canvas == None:
+    """
+    Print a ASCII Art representation of the tree
+    """
+    if canvas is None:
         canvas = textdraw.TextCanvas()
     
     xscale = scale
@@ -2207,6 +2221,10 @@ def draw_tree_name_lens(tree, *args, **kargs):
 
 
 
+
+#=============================================================================
+# testing
+
 if __name__ == "__main__":
     from StringIO import StringIO
     
@@ -2267,3 +2285,4 @@ if __name__ == "__main__":
         print "\t".join(map(str, [node.name, node.data]))
 
 
+    

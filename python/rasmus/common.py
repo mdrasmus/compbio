@@ -26,7 +26,7 @@ from rasmus.treelib import *
 # rasmus modules
 from rasmus import util, svg, tablelib, treelib
 from rasmus.tablelib import Table, read_table, iter_table, histtab
-from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
+from rasmus.tablelib import showtab, sqlget, sqlput, sqlexe
 
 
 # compbio tools

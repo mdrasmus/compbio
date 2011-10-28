@@ -22,6 +22,11 @@ def make_matrix(nrows, ncols, val=0):
     return mat
 
 
+def make_lmat(default=0):
+    """Returns an empty lmat"""
+    return defaultdict(lambda: defaultdict(lambda: default))
+    
+
 def submatrix(mat, rows=None, cols=None):
     """Returns the submatrix of mat"""
     

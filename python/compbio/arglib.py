@@ -1133,133 +1133,6 @@ def sample_arg_smc(k, n, rho, start=0.0, end=0.0, t=0):
     
 
 
-'''
-# TODO: this mostly implements Hein's sampling method, just need to be
-# cleaned up and should remove bgsel features since its not exactly
-# acturate anyways.
-
-def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
-    """
-    ns = [[n1, end1], [n2, end2], ...]
-    """
-
-    # TODO: convert this into simply a SMC
-
-    arg = ARG(start, end)
-    ni = 0  # index into ns (list popsizes)
-    pos = 0 # position simulated so far
-
-    # sample initial coal tree with no recomb
-    times, events = sample_coal_recomb_times(k, ns[ni][0], 0)
-    lineages = set(arg.new_node() for i in xrange(k))
-    nlineages = []
-    for t in times:
-        a, b = random.sample(lineages, 2)
-        parent = arg.new_node(age=t, children=[a,b], event="coal")
-        a.parents.append(parent)
-        b.parents.append(parent)
-        lineages.remove(a)
-        lineages.remove(b)
-        lineages.add(parent)
-        nlineages.append(len(lineages))
-    oldest = parent
-
-    nrecomb = 0
-
-    while True:
-        # find correct ni
-        while ns[ni][1] < pos:
-            ni += 1
-
-        # sample next recomb
-        totlen = sum(arg.get_local_dist(x, pos+1)
-                     for x in arg.postorder_marginal_tree(pos+1))
-        recomb_per_site = rho * totlen;
-
-        # sample recomb pos
-        pos += random.expovariate(recomb_per_site)
-
-        if pos > end:
-            # no more recombinations
-            break
-
-        # sample recomb node
-        nodes = list(arg.postorder_marginal_tree(pos+1))
-        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
-        child = nodes[stats.sample(lens)]
-
-        # make recomb node and insert into arg
-        old_parent = arg.get_local_parent(child, pos+1)
-        recomb_node = arg.new_node(age=child.age + random.random() *
-                                   arg.get_local_dist(child, pos+1),
-                                   children=[child],
-                                   parents=[old_parent],
-                                   pos=pos, event="recomb")
-        #old_parent = child.parents[-1]
-        i = old_parent.children.index(child)
-        old_parent.children[i] = recomb_node
-        child.parents[child.parents.index(old_parent)] = recomb_node
-
-        # add recomb_node age into times
-        for i in xrange(len(times)):
-            if recomb_node.age < times[i]:                
-                times.insert(i, recomb_node.age)
-                if i == 0:
-                    nlineages.insert(i, k+1)
-                else:
-                    nlineages.insert(i, nlineages[i-1]+1)
-                break
-        else:
-            assert False
-
-        # coalesce recomb_node back into ARG
-        for i in xrange(i, len(times) - 1):
-            coal_time = times[i] + random.expovariate(
-                (nlineages[i]-1) / ns[ni][0])
-            if coal_time < times[i+1]:
-                # coal event, choose sister
-                candidates = [(node, parent) for node in arg
-                              for parent in node.parents
-                              if node.age < coal_time < parent.age]
-                sister, sister_parent = random.sample(candidates, 1)[0]
-                times.insert(i+1, coal_time)
-                nlineages.insert(i+1, nlineages[i]-1)
-                break
-            else:
-                # no coal, keep moving up
-                nlineages[i+1] += 1
-        else:
-            # no coal at all choose oldest sister
-            i += 1
-            sister, sister_parent = oldest, None
-            coal_time = times[i] + random.expovariate(
-                (nlineages[i]-1) / 2.0 / ns[ni][0])
-            times.append(coal_time)
-            nlineages.append(1)
-
-        print pos, ni, ns[ni][0]
-
-        # make coal node
-        coal_node = arg.new_node(age=coal_time, event="coal",
-                                 children=[sister, recomb_node])
-        recomb_node.parents.append(coal_node)
-        if sister_parent:
-            i = sister_parent.children.index(sister)
-            sister_parent.children[i] = coal_node
-            i = sister.parents.index(sister_parent)
-            sister.parents[i] = coal_node
-            coal_node.parents.append(sister_parent)
-        else:
-            sister.parents.append(coal_node)
-            oldest = coal_node
-
-        nrecomb += 1
-
-    arg.root = oldest
-
-    return arg
-'''
-    
 
 #=============================================================================
 # arg functions
@@ -1955,3 +1828,130 @@ def iter_tree_tracks2(arg, start=None, end=None, visible=False):
 
 
 '''
+'''
+# TODO: this mostly implements Hein's sampling method, just need to be
+# cleaned up and should remove bgsel features since its not exactly
+# acturate anyways.
+
+def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
+    """
+    ns = [[n1, end1], [n2, end2], ...]
+    """
+
+    # TODO: convert this into simply a SMC
+
+    arg = ARG(start, end)
+    ni = 0  # index into ns (list popsizes)
+    pos = 0 # position simulated so far
+
+    # sample initial coal tree with no recomb
+    times, events = sample_coal_recomb_times(k, ns[ni][0], 0)
+    lineages = set(arg.new_node() for i in xrange(k))
+    nlineages = []
+    for t in times:
+        a, b = random.sample(lineages, 2)
+        parent = arg.new_node(age=t, children=[a,b], event="coal")
+        a.parents.append(parent)
+        b.parents.append(parent)
+        lineages.remove(a)
+        lineages.remove(b)
+        lineages.add(parent)
+        nlineages.append(len(lineages))
+    oldest = parent
+
+    nrecomb = 0
+
+    while True:
+        # find correct ni
+        while ns[ni][1] < pos:
+            ni += 1
+
+        # sample next recomb
+        totlen = sum(arg.get_local_dist(x, pos+1)
+                     for x in arg.postorder_marginal_tree(pos+1))
+        recomb_per_site = rho * totlen;
+
+        # sample recomb pos
+        pos += random.expovariate(recomb_per_site)
+
+        if pos > end:
+            # no more recombinations
+            break
+
+        # sample recomb node
+        nodes = list(arg.postorder_marginal_tree(pos+1))
+        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
+        child = nodes[stats.sample(lens)]
+
+        # make recomb node and insert into arg
+        old_parent = arg.get_local_parent(child, pos+1)
+        recomb_node = arg.new_node(age=child.age + random.random() *
+                                   arg.get_local_dist(child, pos+1),
+                                   children=[child],
+                                   parents=[old_parent],
+                                   pos=pos, event="recomb")
+        #old_parent = child.parents[-1]
+        i = old_parent.children.index(child)
+        old_parent.children[i] = recomb_node
+        child.parents[child.parents.index(old_parent)] = recomb_node
+
+        # add recomb_node age into times
+        for i in xrange(len(times)):
+            if recomb_node.age < times[i]:                
+                times.insert(i, recomb_node.age)
+                if i == 0:
+                    nlineages.insert(i, k+1)
+                else:
+                    nlineages.insert(i, nlineages[i-1]+1)
+                break
+        else:
+            assert False
+
+        # coalesce recomb_node back into ARG
+        for i in xrange(i, len(times) - 1):
+            coal_time = times[i] + random.expovariate(
+                (nlineages[i]-1) / ns[ni][0])
+            if coal_time < times[i+1]:
+                # coal event, choose sister
+                candidates = [(node, parent) for node in arg
+                              for parent in node.parents
+                              if node.age < coal_time < parent.age]
+                sister, sister_parent = random.sample(candidates, 1)[0]
+                times.insert(i+1, coal_time)
+                nlineages.insert(i+1, nlineages[i]-1)
+                break
+            else:
+                # no coal, keep moving up
+                nlineages[i+1] += 1
+        else:
+            # no coal at all choose oldest sister
+            i += 1
+            sister, sister_parent = oldest, None
+            coal_time = times[i] + random.expovariate(
+                (nlineages[i]-1) / 2.0 / ns[ni][0])
+            times.append(coal_time)
+            nlineages.append(1)
+
+        print pos, ni, ns[ni][0]
+
+        # make coal node
+        coal_node = arg.new_node(age=coal_time, event="coal",
+                                 children=[sister, recomb_node])
+        recomb_node.parents.append(coal_node)
+        if sister_parent:
+            i = sister_parent.children.index(sister)
+            sister_parent.children[i] = coal_node
+            i = sister.parents.index(sister_parent)
+            sister.parents[i] = coal_node
+            coal_node.parents.append(sister_parent)
+        else:
+            sister.parents.append(coal_node)
+            oldest = coal_node
+
+        nrecomb += 1
+
+    arg.root = oldest
+
+    return arg
+'''
+    

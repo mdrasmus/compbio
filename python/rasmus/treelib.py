@@ -1418,13 +1418,18 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     
 
     # handle trivial case
-    if tree.root.name == newroot or \
-       (newroot in [x.name for x in tree.root.children] and \
+    if (not onBranch and tree.root.name == newroot) or \
+       (onBranch and newroot in [x.name for x in tree.root.children] and \
         len(tree.root.children) == 2):
-        return tree        
-    
-    
+        return tree
+
+    assert not onBranch or newroot != tree.root.name, "No branch specified"
+
     unroot(tree, newCopy=False)
+
+    # handle trivial case
+    if not onBranch and tree.root.name == newroot:
+        return tree
     
     if onBranch:
         # add new root in middle of branch

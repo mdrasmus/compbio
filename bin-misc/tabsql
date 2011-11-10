@@ -16,6 +16,7 @@ o.add_option("-t", "--table", action="append", default=[])
 o.add_option("-f", "--fields", action="append", default=[])
 #o.add_option("-m", "--mem", action="store_true")
 o.add_option("-z", "--zero", action="store_true")
+o.add_option("-x", "--index", action="append", default=[])
 
 #=============================================================================
 
@@ -98,6 +99,13 @@ for i, tabfile in enumerate(conf.input):
         con.execute(insertsql, row)
 
     infile.close()
+
+# create indices
+for indexstr in conf.index:
+    table, field = indexstr.split(".")
+    con.execute("CREATE INDEX %s ON %s (%s);" % (
+        indexstr.replace(".", "__"), table, field))
+    
 
 con.commit()
 

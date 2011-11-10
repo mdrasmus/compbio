@@ -2,6 +2,27 @@
 
     Common dense and sparse matrix input/output/conversion
 
+    imat  -- sparse index matrix
+             [(i, j, v), ...]
+             
+    rmat  -- sparse row compressed matrix
+             [{j1: v1, j2: v2, ...}, ...]
+             
+    dmat  -- dense matrix
+             [[v11, v12, ...], [v21, v22, ...], ...]
+             
+    lmat  -- sparse labeled matrix
+             {"row1": {"col2": v, ...}, ...}
+
+    dlmat -- dense labeled matrix
+             [["", "col1", "col2", ...],
+              ["row1", v11, v12, ...],
+              ["row2", v21, v22, ...]]
+             
+    ilmat -- iterate sparse label matrix
+             [(labeli, labelj, v), ...]
+
+
 """
 
 # python libs
@@ -43,7 +64,6 @@ def submatrix(mat, rows=None, cols=None):
             mat2[-1].append(mat[i][j])
     
     return mat2
-
 
 
 def transpose(mat):
@@ -158,12 +178,69 @@ def imat2ilmat(imat, rowlabels, collabels):
         yield rowlabels[i], collabels[j], v
 
 
+def imat2dlmat(imat, rowlabels, collabels):
+    """
+    Converts indexed matrix iterator (imat) to dense labeled matrix (dlmat)
+    """
+
+    dlmat = make_matrix(len(rowlabels)+1, len(collabels)+1)
+    rowlookup = dict((l, i+1) for i, l in enumerate(rowlabels))
+    collookup = dict((l, i+1) for i, l in enumerate(rowlabels))    
+
+    # set labels
+    dlmat[0][0] = ""
+    for i, label in enumerate(rowlabels):
+        dlmat[i+1][0] = label
+    for i, label in enumerate(collabels):
+        dlmat[0][i+1] = label
+
+    # set values
+    for i, j, v in imat:
+        dlmat[rowlookup[i]][collookup[j]] = v
+
+    return dlmat
+
+
+def dlmat2imat(dlmat):
+    """
+    Converts dense labeled matrix (dlmat) to indexed matrix iterator (imat)
+    """
+
+    for i, row in enumerate(dlmat):
+        if i > 0:
+            for j, v in enumerate(row):
+                if j > 0:
+                    yield i-1, j-1, v
+    
+
+def dmat2dlmat(dmat, rowlabels, collabels):
+    """
+    Converts dense matrix (dmat) to dense labeled matrix (dlmat)
+    """
+    
+    dlmat = make_matrix(len(rowlabels)+1, len(collabels)+1)
+    rowlookup = dict((l, i+1) for i, l in enumerate(rowlabels))
+    collookup = dict((l, i+1) for i, l in enumerate(rowlabels))    
+
+    # set labels
+    dlmat[0][0] = ""
+    for i, label in enumerate(rowlabels):
+        dlmat[i+1][0] = label
+    for i, label in enumerate(collabels):
+        dlmat[0][i+1] = label
+
+    # set values
+    for i in xrange(len(rowlabels)):
+        for j in xrange(len(collabels)):
+            dlmat[i+1][j+1] = dmat[i][j]
+
+    return dlmat
 
 
 #=============================================================================
 # dense matrix I/O
 
-def parse_dmat_header(first_row, header):
+def parse_dmat_header(first_row, header, rows):
 
     # parse possible header
     if header is None:
@@ -211,7 +288,7 @@ def read_dmat(infile, header=False):
 
     # read file
     rows = [line.rstrip().split() for line in infile]    
-    nrows, ncols = parse_dmat_header(rows[0], header)
+    nrows, ncols = parse_dmat_header(rows[0], header, rows)
     if nrows is not None:
         # skip header
         rows = rows[1:]
@@ -249,7 +326,7 @@ def iter_dmat(infile, header=False):
     
     # read file
     rows = [line.rstrip().split() for line in infile]    
-    nrows, ncols = parse_dmat_header(rows[0], header)
+    nrows, ncols = parse_dmat_header(rows[0], header, rows)
     if nrows is not None:
         # skip header
         nnz = nrows * ncols
@@ -426,3 +503,29 @@ def write_lmat(out, lmat):
     for row in lmat:
         for col, val in lmat.iteritems():
             out.write("%s\t%s\t%f\n" % (row, col, val))
+            
+#=============================================================================
+# dense labeled matrix I/O
+
+def read_dlmat(infile, delim=None, default=0):
+
+    infile = iter(infile)
+
+    # read col labels
+    dlmat = [infile.next().rstrip().split(delim)]
+
+    for line in infile:
+        tokens = line.rstrip().split(delim)
+        dlmat = [tokens[0]] + map(float, tokens[1:])
+
+    return dlmat
+
+
+def write_dlmat(out, dlmat):
+    
+    # write data
+    for row in dlmat:
+        for i in xrange(len(row)-1):
+            out.write(str(row[i]) + "\t")
+        out.write(str(row[-1]) + "\n")
+

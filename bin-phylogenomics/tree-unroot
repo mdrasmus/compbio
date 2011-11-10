@@ -4,6 +4,6 @@ import sys
 from rasmus import treelib
 
 for treefile in sys.argv[1:]:
-    tree = treelib.readTree(treefile)
+    tree = treelib.read_tree(treefile)
     treelib.unroot(tree, newCopy=False)
     tree.write(treefile)

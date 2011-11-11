@@ -2,8 +2,6 @@
 
 import os, sys, optparse
 
-from rasmus import util, tablelib
-
 
 o = optparse.OptionParser()
 o.add_option("-r", "--rows", metavar="<number of row to align at a time>",
@@ -12,16 +10,59 @@ o.add_option("-r", "--rows", metavar="<number of row to align at a time>",
 o.add_option("-s", "--spacing", metavar="<column spacing>",
              default=2, type="int")
 o.add_option("-w", "--maxwidth", metavar="<# chars>",
-             default=util.INF, type="int")
+             default=float("inf"), type="int")
 o.add_option("-d", "--delim", metavar="<delimiter>",
              default="\t")
 o.add_option("-H", "--header", metavar="<# rows>",
              type="int", default=0)
-o.add_option("-t", "--table", action="store_true")
 
+#=============================================================================
+
+def printcols(data, width=None, spacing=1, out=sys.stdout,
+              colwidth=100000, overflow="!"):
+    """Prints a list or matrix in aligned columns
+
+       data    - a list or matrix
+       width   - maxium number of characters per line (default: 75 for lists)
+       spacing - number of spaces between columns (default: 1)
+       out     - stream to print to (default: sys.stdout)
+    """
+    
+    if len(data) == 0:
+        return
+        
+    # turn all entries into strings
+    matstr = [[str(x) for x in row] for row in data]
+    
+    # overflow
+    for row in matstr:
+        for j in xrange(len(row)):
+            if len(row[j]) > colwidth:
+                row[j] = row[j][:colwidth-len(overflow)] + overflow
+    
+    # ensure every row has same number of columns
+    maxcols = max(map(len, matstr))
+    for row in matstr:
+        if len(row) < maxcols:
+            row.extend([""] * (maxcols - len(row)))
+    
+    
+    # find the maximum width char in each column
+    maxwidths = [max(len(matstr[i][j]) for i in xrange(len(matstr)))
+                 for j in xrange(maxcols)]
+    
+    # print out matrix with whitespace padding
+    for i in xrange(len(mat)):
+        fields = []
+        for j in xrange(len(mat[i])):
+            fields.append(matstr[i][j] + 
+                          (" " * (maxwidths[j] - len(matstr[i][j]) + spacing)))
+        out.write("".join(fields)[:width] + "\n")
+
+
+#=============================================================================
 
 conf, args = o.parse_args()
-
 
 if len(args) > 0 and args[0] != "-":
     infile = file(args[0])
@@ -29,26 +70,22 @@ else:
     infile = sys.stdin
 
 
-if conf.table:
-    tab = tablelib.read_table(infile)
-    tab.write_pretty()
-else:
-    mat = []
-    headers = []
-    
-    for i, line in enumerate(infile):
-        tokens = line.rstrip().split(conf.delim)
-        mat.append(tokens)
+mat = []
+headers = []
 
-        if i < conf.header:
-            headers.append(tokens)
+for i, line in enumerate(infile):
+    tokens = line.rstrip().split(conf.delim)
+    mat.append(tokens)
 
-        if conf.rows > 0 and len(mat) >= conf.rows:
-            if len(headers) > 0 and i > len(mat):
-                mat = headers + mat
-            
-            util.printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
-            mat = []
+    if i < conf.header:
+        headers.append(tokens)
 
-    util.printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
+    if conf.rows > 0 and len(mat) >= conf.rows:
+        if len(headers) > 0 and i > len(mat):
+            mat = [[]] + headers + mat
+
+        printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
+        mat = []
+
+printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
 

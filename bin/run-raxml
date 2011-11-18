@@ -109,17 +109,10 @@ for fn in files:
     else:
 
         if conf.boot or conf.fastboot:
-            # perform consensus
-            if subprocess.call(
-                ["treecons", 
-                 "-o", outdir + "/RAxML_result.out",
-                 "--binary",
-                 "-a", basename + conf.alignext,
-                 outdir+"/RAxML_bootstrap.out"]) != 0:
-                result = 1
-                continue
-        
-        tree = treelib.read_tree(outdir + "/RAxML_result.out")
+	    # note: consensus topologies from treecons and RAxML may NOT match
+            tree = treelib.read_tree(outdir + "/RAxML_bipartitions.out")
+        else:
+            tree = treelib.read_tree(outdir + "/RAxML_result.out")
         
         # reorder tree
         if usertree:

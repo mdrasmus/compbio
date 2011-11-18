@@ -118,6 +118,8 @@ def report_test(argv):
                  default="")
     o.add_option("--rooted", dest="rooted", action="store_true",
                  default=False)
+    o.add_option("--skip-no-data", dest="skip_no_data", action="store_true",
+                 default=False, help="set to skip input file if data file does not exist")
     
     # parse options
     conf, args = o.parse_args(argv[2:])
@@ -201,6 +203,11 @@ def report_test(argv):
         resultfile = os.path.join(evaldir, name, name+resultext)
         
         if os.path.exists(evaltreefile):
+	    if conf.skip_no_data:
+	        if not os.path.exists(datatreefile):
+	            print "skipping %s: date file %s does not exist" % (name, datatreefile)
+		    continue
+
             datatree = treelib.read_tree(datatreefile)
             evaltree = treelib.read_tree(evaltreefile)
 

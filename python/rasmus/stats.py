@@ -709,17 +709,20 @@ def rhyper(m, n, M, N, report=0):
         raise "unknown option"
 
 
-def cdf(vals):
+def cdf(vals, fixed=True):
     """Computes the CDF of a list of values"""
     
     vals = sorted(vals)
     tot = float(len(vals))
     x = []
     y = []
+
+    if fixed: f = lambda i: i+1
+    else: f = lambda i: i
     
     for i, x2 in enumerate(vals):
         x.append(x2)
-        y.append(i / tot)
+        y.append(f(i) / tot)
         
     return x, y
     

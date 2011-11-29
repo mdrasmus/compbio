@@ -299,7 +299,7 @@ class ARG (object):
 
     def get_local_parent(self, node, pos):
         """Returns the local parent of 'node' for position 'pos'"""
-        if (node.event == "gene" or node.event == "coal"):
+        if node.event == "gene" or node.event == "coal":
             if len(node.parents) > 0:
                 return node.parents[0]
             else:
@@ -308,6 +308,19 @@ class ARG (object):
             return node.parents[0 if pos < node.pos else 1]
         else:
             raise Exception("unknown event '%s'" % node.event)
+
+
+    def get_local_parents(self, node, start, end):
+        """Returns the parents of 'node' with ancestral sequence within (start, end)"""
+        if node.event == "recomb":
+            parents = []
+            if node.pos > start:
+                parents.append(node.parents[0])
+            if node.pos < end:
+                parents.append(node.parents[1])
+        else:
+            parents = node.parents
+        return parents
 
 
     def get_local_children(self, node, pos):
@@ -1259,7 +1272,7 @@ def iter_marginal_trees(arg, start=None, end=None):
         yield tree
 
 
-def iter_tree_tracks(arg, start=None, end=None):
+def iter_tree_tracks(arg, start=None, end=None, convert=False):
     """
     Iterate over the marginal trees of an ARG
 
@@ -1294,6 +1307,8 @@ def iter_tree_tracks(arg, start=None, end=None):
             if node.event == "recomb" and start < node.pos < end:
                 end = node.pos
 
+        if convert:
+            tree = tree.get_tree()
         yield (start, end), tree
         start = end
 
@@ -1339,7 +1354,60 @@ def remove_single_lineages(arg):
 
                 queue.append(child)
 
+    # relabel events for leaves that were recombinations
+    for node in arg:
+        if node.is_leaf() and len(node.parents) == 1:
+            node.event = "gene"
+
     return arg
+
+
+
+def postorder_subarg(arg, start, end):
+    """Iterates postorder over the nodes of the 'arg' that are ancestral to (start,end)"""
+
+    # initialize heap
+    heap = [(node.age, node) for node in arg.leaves()]
+    seen = set([None])
+
+    # add all ancestor of lineages
+    while len(heap) > 0:
+        age, node = heapq.heappop(heap)
+        yield node
+        if len(heap) == 0:
+            # MRCA reached
+            return
+
+        # find parents within (start, end)
+        # add parent to lineages if it has not been seen before
+        for parent in arg.get_local_parents(node, start, end):
+            if parent not in seen:
+                heapq.heappush(heap, (parent.age, parent))
+                seen.add(parent)
+
+
+def subarg(arg, start, end):
+    """Returns a new ARG that only contains recombination within (start, end)"""
+
+    arg2 = ARG(start, end)
+
+    # add nodes
+    for node in postorder_subarg(arg, start, end):
+        arg2.root = arg2.new_node(node.name, event=node.event, age=node.age,
+                                  pos=node.pos)
+
+    # add edges
+    for node2 in arg2:
+        node = arg[node2.name]
+        for parent in arg.get_local_parents(node, start, end):
+            pname = parent.name
+            if pname in arg2:
+                parent2 = arg2[pname]
+                node2.parents.append(parent2)
+                parent2.children.append(node2)
+
+    return arg2
+    
 
 
 #=============================================================================
@@ -1441,7 +1509,7 @@ def groupby_overlaps(regions, bygroup=True):
 
 
 #=============================================================================
-# mutations
+# mutations and splits
 
 
 def sample_arg_mutations(arg, mu):
@@ -1477,40 +1545,6 @@ def sample_arg_mutations(arg, mu):
     return mutations
 
 
-def sample_mutations(arg, u):
-    """
-    u -- mutation rate (mutations/locus/gen)
-
-    DEPRECATED: use sample_arg_mutations() instead
-    """
-
-    mutations = []
-
-    locsize = arg.end - arg.start
-
-    for node in arg:
-        for parent in node.parents:
-            for region in arg.get_ancestral(node, parent=parent):
-                # ensure node is not MRCA
-                for pregion in parent.data["ancestral"]:
-                    if pregion[0] <= region[0] < pregion[1]:
-                        break
-                else:
-                    continue
-                
-                frac = (region[1] - region[0]) / locsize
-                dist = parent.age - node.age
-                t = parent.age
-                while True:
-                    t -= random.expovariate(u * frac)
-                    if t < node.age:
-                        break
-                    pos = random.uniform(region[0], region[1])
-                    mutations.append((node, parent, pos, t))
-
-    return mutations
-
-
 def get_marginal_leaves(arg, node, pos):
     return (x for x in arg.preorder_marginal_tree(pos, node) if x.is_leaf())
 
@@ -1518,6 +1552,27 @@ def get_marginal_leaves(arg, node, pos):
 def get_mutation_split(arg, mutation):
     node, parent, pos, t = mutation
     return tuple(sorted(x.name for x in get_marginal_leaves(arg, node, pos)))
+
+
+def split_to_tree_branch(tree, split):
+    
+    node = treelib.lca([tree[name] for name in split])
+
+    if sorted(split) != sorted(node.leaf_names()):
+        inv = [x for x in tree.leaf_names() if x not in split]
+        node = treelib.lca([tree[name] for name in inv])
+        if sorted(inv) != sorted(node.leaf_names()):
+            # split does not conform to tree
+            return None
+
+    return node
+
+
+def split_to_arg_branch(arg, pos, split):
+
+    # TODO: make more efficient
+    tree = arg.get_tree(pos)
+    return arg[split_to_tree_branch(tree, split).name]
 
 
 def iter_tree_splits(tree):
@@ -1618,6 +1673,7 @@ def iter_mutation_splits(arg, mutations):
             arg, node, pos)))
         if len(split) != 1 and len(split) != nleaves:
             yield pos, split
+
 
 
 
@@ -1806,9 +1862,45 @@ def read_mutations(filename):
 
 
 #=============================================================================
+# OLD CODE
+
+
+
+def sample_mutations(arg, u):
+    """
+    u -- mutation rate (mutations/locus/gen)
+
+    DEPRECATED: use sample_arg_mutations() instead
+    """
+
+    mutations = []
+
+    locsize = arg.end - arg.start
+
+    for node in arg:
+        for parent in node.parents:
+            for region in arg.get_ancestral(node, parent=parent):
+                # ensure node is not MRCA
+                for pregion in parent.data["ancestral"]:
+                    if pregion[0] <= region[0] < pregion[1]:
+                        break
+                else:
+                    continue
+                
+                frac = (region[1] - region[0]) / locsize
+                dist = parent.age - node.age
+                t = parent.age
+                while True:
+                    t -= random.expovariate(u * frac)
+                    if t < node.age:
+                        break
+                    pos = random.uniform(region[0], region[1])
+                    mutations.append((node, parent, pos, t))
+
+    return mutations
+
 
 '''
-OLD CODE
 
 def iter_marginal_trees2(arg, start=None, end=None, visible=False):
     """

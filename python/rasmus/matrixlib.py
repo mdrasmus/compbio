@@ -220,7 +220,7 @@ def dmat2dlmat(dmat, rowlabels, collabels):
     
     dlmat = make_matrix(len(rowlabels)+1, len(collabels)+1)
     rowlookup = dict((l, i+1) for i, l in enumerate(rowlabels))
-    collookup = dict((l, i+1) for i, l in enumerate(rowlabels))    
+    collookup = dict((l, i+1) for i, l in enumerate(collabels))    
 
     # set labels
     dlmat[0][0] = ""

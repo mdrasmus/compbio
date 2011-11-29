@@ -234,6 +234,27 @@ def pearsonsRegressionLine(x, y, m, b):
     return pearsonsRegression(observed, expected)
 
 
+def rank(vals, x, norm=False, sort=True):
+    """
+    Returns the rank of x in list vals
+    rank(x) = i if vals[i-1] <= x < vals[i]
+    """
+
+    if sort:
+        vals = sorted(vals)
+    n = len(vals)
+
+    for r, v in enumerate(vals):
+        if v > x:
+            break
+    else:
+        r = n
+
+    if norm:
+        r /= float(n + 1)
+
+    return r
+
 
 def percentile(vals, perc, rounding=-1, sort=True):
     """Give the value at a percentile

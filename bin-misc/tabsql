@@ -14,7 +14,6 @@ o.add_option("-s", "--sep", default="\t")
 o.add_option("-d", "--db")
 o.add_option("-t", "--table", action="append", default=[])
 o.add_option("-f", "--fields", action="append", default=[])
-#o.add_option("-m", "--mem", action="store_true")
 o.add_option("-z", "--zero", action="store_true")
 o.add_option("-x", "--index", action="append", default=[])
 o.add_option("-H", "--headers")
@@ -24,7 +23,8 @@ o.add_option("-H", "--headers")
 ftype_names = {
     "str": str,
     "int": int,
-    "float": float
+    "float": float,
+    "bool": bool
     }
 
 

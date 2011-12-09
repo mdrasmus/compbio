@@ -1699,7 +1699,7 @@ def neighborjoin(distmat, genes, usertree=None):
     
     tree = treelib.Tree()
     leaves = {}
-    dists = util.Dict(2, None)
+    dists = util.Dict(dim=2)
     restdists = {}
     
     
@@ -2084,7 +2084,7 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
 
     nleaves = len(trees[0].leaves())
     ntrees = len(trees)
-    split_counts = util.Dict(1, 0)
+    split_counts = util.Dict(default=0)
 
     # handle special cases
     if not rooted and nleaves == 3:

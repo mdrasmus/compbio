@@ -1572,7 +1572,11 @@ def split_to_arg_branch(arg, pos, split):
 
     # TODO: make more efficient
     tree = arg.get_tree(pos)
-    return arg[split_to_tree_branch(tree, split).name]
+    node = split_to_tree_branch(tree, split)
+    if node is not None:
+        return arg[node.name]
+    else:
+        None
 
 
 def iter_tree_splits(tree):
@@ -1721,8 +1725,6 @@ def make_alignment(arg, mutations, ancestral="A", derived="C"):
 def write_arg(filename, arg):
     out = util.open_stream(filename, "w")
 
-    # TODO: write arg.start, arg.end
-
     # write ARG key values
     out.write("start=%s\tend=%s\n" % (arg.start, arg.end))
 
@@ -1732,10 +1734,11 @@ def write_arg(filename, arg):
 
     # write nodes
     for node in arg:
-        out.write("\t".join(map(str, (
-                        node.name, node.event, node.age, node.pos,
-                        ",".join(str(x.name) for x in node.parents),
-                        ",".join(str(x.name) for x in node.children)))) + "\n")
+        util.print_row(
+            node.name, node.event, node.age, node.pos,
+            ",".join(str(x.name) for x in node.parents),
+            ",".join(str(x.name) for x in node.children),
+            out=out)
         
     if isinstance(filename, basestring):
         out.close()
@@ -1754,6 +1757,14 @@ def parse_node_name(text):
     else:
         return text
 
+def parse_key_value(field):
+    try:
+        i = field.index("=")
+        return field[:i], field[i+1:]
+    except:
+        raise Exception("improper key-value field '%s'" % text)
+    
+
 
 def read_arg(filename, arg=None):
     infile = util.DelimReader(filename)
@@ -1764,8 +1775,7 @@ def read_arg(filename, arg=None):
     # read ARG key values
     row = infile.next()
     for field in row:
-        i = field.index("=")
-        key, val = field[:i], field[i+1:]
+        key, val = parse_key_value(field)
         if key == "start":
             arg.start = int(val)
         elif key == "end":
@@ -1848,8 +1858,7 @@ def write_mutations(filename, arg, mutations):
 
     for mut in mutations:
         l = get_marginal_leaves(arg, mut[0], mut[2])
-        out.write("\t".join(map(
-                str, [mut[2], mut[3], ",".join(x.name for x in l)])) + "\n")
+        util.print_row(mut[2], mut[3], ",".join(x.name for x in l), out=out)
 
     if isinstance(filename, basestring):
         out.close()
@@ -1859,6 +1868,24 @@ def read_mutations(filename):
     for row in util.DelimReader(filename):
         chroms = row[2].split(",") if row[2] else []
         yield int(row[0]), float(row[1]), chroms
+
+
+def write_ancestral(filename, arg):
+    out = util.open_stream(filename, "w")
+
+    for node in arg:
+        regions = util.flatten(node.data.get("ancestral", ()))
+        util.print_row(node.name, *regions, out=out)
+
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_ancestral(filename, arg):
+    for row in util.DelimReader(filename):
+        node = arg[parse_node_name(row[0])]
+        node.data["ancestral"] = [(int(row[i]), int(row[i+1]))
+                                  for i in xrange(1, len(row), 2)]
 
 
 #=============================================================================

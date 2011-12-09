@@ -30,7 +30,7 @@ class Feature:
 
 class FeatureIndex:
     def __init__(self):
-        self.data = util.Dict(2, [])
+        self.data = util.Dict(dim=2, default=[])
         self.infiles = {}
         self.features = {}
     

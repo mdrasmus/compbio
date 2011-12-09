@@ -9,7 +9,7 @@ from StringIO import StringIO
 
 
 #=============================================================================
-# test coalescence times (normal, censored, bounded)
+
 
     
 class Test (unittest.TestCase):

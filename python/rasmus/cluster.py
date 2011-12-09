@@ -15,6 +15,9 @@ from rasmus import util
 from compbio import blast
 
 
+# TODO: update function name styles
+
+
 ##############################################
 # comparing clusterings/partitions
 #
@@ -35,7 +38,7 @@ def confusionMatrix(parts1, parts2):
     """Returns a confusion matrix of two different partitions of the same 
        items"""
     
-    confuse = util.Dict(2, 0)
+    confuse = util.Dict(dim=2, default=0)
     
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)

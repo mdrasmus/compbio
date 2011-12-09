@@ -4,6 +4,7 @@
 #
 
 import heapq
+from itertools import chain
 
 from rasmus import util
 
@@ -150,7 +151,45 @@ def iter_intersections(regions):
             yield (start, end, [x[1] for x in group])
         heapq.heappop(group)
         start = end
+
+
+def iter_substract(regions1, regions2):
+    """
+    Substract regions2 from regions1
+
+    Yields (start, end, original_region_from_regions1)
+
+    NOTE: regions must be sorted by start and
+    regions1 and regions2 should each be non-overlaping.
+    """
+
+    # add a tag to regions
+    regions1 = [(reg[0], reg[1], 1, reg) for reg in regions1]
+    regions2 = [(reg[0], reg[1], 2, reg) for reg in regions2]
+                
+    # combine all regions into one list
+    regions = sorted(chain(regions1, regions2), key=lambda x: x[0])
+
+    for a, b, group in iter_intersections(regions):
+        if len(group) == 1 and group[0][2] == 1:
+            yield (a, b, group[0][3])
             
+'''
+def iter_combine_regions(*regionsets):
+    """
+    Combine two or more region sets into one sorted region set
+
+    NOTE: region sets must be sorted by start
+    """
+
+    regionsets = map(iter, regionsets)
+    next = set()
+
+    for regions in regionsets:
+        pass
+'''        
+    
+
 
 def query_point_regions(point, regions, inc=True):
 
@@ -179,6 +218,8 @@ def query_point_regions(point, regions, inc=True):
 def query_regions_regions(query_regions, regions, inc=True):
 
     pass
+
+
 
     
 

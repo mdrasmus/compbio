@@ -240,7 +240,6 @@ class ARG (object):
             
             for child in node.children:
                 queue.append(child)
-        
 
 
     def postorder_marginal_tree(self, pos):
@@ -249,23 +248,56 @@ class ARG (object):
 
         NOTE: nodes are iterated in order of age
         """
-
+        
         # initialize heap
         heap = [(node.age, node) for node in self.leaves()]
         seen = set([None])
+        visited = set([])
+        visit_age = min(x[0] for x in heap) - 1
         
+        def unreachable(node):
+            # returns True if node is unreachable from leaves
+            if node in visited:
+                return False
+            if node.age < visit_age:
+                return True
+            for child in self.get_local_children(node, pos):
+                if not unreachable(child):
+                    return False
+            return True
+
+        def ready(node):
+            # returns True if node is ready to yield
+            # node is ready if all unvisited child are unreachable
+            for child in self.get_local_children(node, pos):
+                if child not in visited:
+                    if not unreachable(child):
+                        return False
+            return True
+        
+
         # add all ancestor of lineages
+        unready = []
         while len(heap) > 0:
-            age, node = heapq.heappop(heap)
+            # yield next ready node
+            del unready[:]
+            while True:
+                age, node = heapq.heappop(heap)
+                if ready(node):
+                    break
+                unready.append((age, node))
+            for x in unready:
+                heapq.heappush(heap, x)
             yield node
+            visited.add(node)
+            visit_age = node.age
             if len(heap) == 0:
                 # MRCA reached
                 return
-
+            
             # find correct marginal parent
             # add parent to lineages if it has not been seen before
             parent = self.get_local_parent(node, pos)
-            
             if parent not in seen:
                 heapq.heappush(heap, (parent.age, parent))
                 seen.add(parent)
@@ -273,7 +305,9 @@ class ARG (object):
 
     def preorder_marginal_tree(self, pos, node=None):
         """
-        Iterate postorder over the nodes in the marginal tree at position 'pos'
+        Iterate preorder over the nodes in the marginal tree at position 'pos'
+
+        NOTE: this might also include unreachable nodes
         """
 
         if node is None:
@@ -324,7 +358,13 @@ class ARG (object):
 
 
     def get_local_children(self, node, pos):
-        """Returns the local children of 'node' for position 'pos'"""
+        """
+        Returns the local children of 'node' for position 'pos'
+        
+        NOTE: the local children are not necessarily in the local tree
+        because the children may be unreachable from the leaves
+        """
+
         return [child for child in node.children
                 if self.get_local_parent(child, pos) == node]
         
@@ -676,7 +716,7 @@ class ARG (object):
         """
         Returns the marginal tree of the ARG containing position 'pos'
         """
-
+        
         # make new ARG to contain marginal tree
         tree = ARG()
         tree.nextname = self.nextname
@@ -703,7 +743,9 @@ class ARG (object):
         elif len(roots) > 1:
             # make cap node since marginal tree does not fully coallesce
             tree.root = tree.new_node(event="coal", 
+                                      name=self.new_name(),
                                       age=max(x.age for x in roots)+1)
+            tree.nextname = self.nextname
             for node in roots:
                 tree.root.children.append(node)
                 node.parents.append(tree.root)

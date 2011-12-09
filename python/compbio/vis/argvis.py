@@ -295,7 +295,6 @@ def show_coal_track(tree_track):
     
     win = summon.Window()
     
-    
     bgcolor = (1, 1, 1, .1)
     cmap = util.rainbow_color_map(low=0.0, high=1.0)
 
@@ -306,14 +305,57 @@ def show_coal_track(tree_track):
         times = treelib.get_tree_timestamps(tree)
         nleaves = len(tree.leaves())
         maxage2 = 0
-        for node in tree:            
+        for node in tree:
             if len(node.children) > 1:
                 age = times[node]
-                sizes = [len(x.leaves()) for x in node.children]
-                m = max(sizes)
-                n = sum(sizes)
-                pval = 2 * (n - m) / float(n - 1)
-                l.extend([color(*cmap.get(1 - pval)), start, age, end, age])
+                freq = len(node.leaves()) / float(nleaves)
+                l.extend([color(*cmap.get(freq)), start, age, end, age])
+                if age > maxage2:
+                    maxage2 = age
+        win.add_group(group(lines(*l), color(*bgcolor),
+                      box(start, 0, end, maxage2, fill=True)))
+        if maxage2 > maxage:
+            maxage = maxage2
+
+    # hotspot
+    def func():
+        x, y = win.get_mouse_pos()
+        print "pos=%s age=%f" % (util.int2pretty(int(x)), y)
+    win.add_group(hotspot("click", 0, 0, end, maxage,
+                          func))
+    
+    win.home("exact")
+
+
+    return win
+
+
+
+def show_coal_track3(tree_track):
+    
+    win = summon.Window()
+    
+    
+    bgcolor = (1, 1, 1, .1)
+    cmap = util.rainbow_color_map(low=0.0, high=1.0)
+    tracks = {}
+
+    maxage = 0
+    for (start, end), tree in tree_track:
+        print start
+        l = []
+        times = treelib.get_tree_timestamps(tree)
+        nleaves = len(tree.leaves())
+        maxage2 = 0
+        for node in tree:
+            if len(node.children) > 1:
+                age = times[node]
+                freq = len(node.leaves()) / float(nleaves)
+                #sizes = [len(x.leaves()) for x in node.children]
+                #m = max(sizes)
+                #n = sum(sizes)
+                #pval = 2 * (n - m) / float(n - 1)
+                l.extend([color(*cmap.get(freq)), start, age, end, age])
                 if age > maxage2:
                     maxage2 = age
         win.add_group(group(lines(*l), color(*bgcolor),

@@ -34,7 +34,7 @@ def visualize(mat, outfile, format="undirected",
     
 
 if __name__ == "__main__":
-    mat = util.Dict(2)
+    mat = util.Dict(dim=2)
 
     mat[1][2] = 1
     mat[1][3] = 1

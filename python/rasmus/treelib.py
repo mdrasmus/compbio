@@ -565,10 +565,10 @@ class Tree:
     #
     
     def write(self, out = sys.stdout, writeData=None, oneline=False,
-              rootData=False):
+              rootData=False, namefunc=lambda name: name):
         """Write the tree in newick notation"""
         self.write_newick(util.open_stream(out, "w"), writeData=writeData, 
-                          oneline=oneline, rootData=rootData)
+                          oneline=oneline, rootData=rootData, namefunc=namefunc)
     
     def read_data(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
@@ -623,16 +623,16 @@ class Tree:
     
     
     def write_newick(self, out = sys.stdout, writeData=None, oneline=False,
-                    rootData=False):
+                    rootData=False, namefunc=lambda name: name):
         """Write the tree in newick notation"""
         self.write_newick_node(self.root, util.open_stream(out, "w"), 
                                writeData=writeData, oneline=oneline,
-                               rootData=rootData)
+                               rootData=rootData, namefunc=namefunc)
 
     
     def write_newick_node(self, node, out = sys.stdout, 
                           depth=0, writeData=None, oneline=False,
-                          rootData=False):
+                          rootData=False, namefunc=lambda name: name):
         """Write the node in newick format to the out file stream"""
         
         # default data writer
@@ -646,7 +646,7 @@ class Tree:
 
         if len(node.children) == 0:
             # leaf
-            out.write(node.name)
+            out.write(namefunc(node.name))
         else:
             # internal node
             if oneline:
@@ -655,13 +655,15 @@ class Tree:
                 out.write("(\n")
             for child in node.children[:-1]:
                 self.write_newick_node(child, out, depth+1, 
-                                     writeData=writeData, oneline=oneline)
+                                       writeData=writeData, oneline=oneline,
+                                       namefunc=namefunc)
                 if oneline:
                     out.write(",")
                 else:
                     out.write(",\n")
             self.write_newick_node(node.children[-1], out, depth+1,
-                                   writeData=writeData, oneline=oneline)
+                                   writeData=writeData, oneline=oneline,
+                                   namefunc=namefunc)
             if oneline:
                 out.write(")")
             else:            
@@ -679,7 +681,7 @@ class Tree:
             out.write(writeData(node))
     
     
-    def read_newick(self, filename, readData=None):
+    def read_newick(self, filename, readData=None, namefunc=lambda name: name):
         """
         Reads newick tree format from a file stream
         
@@ -690,7 +692,7 @@ class Tree:
 
         try:
             if treelib_parser is not None:
-                return self._read_newick(filename, readData)
+                return self._read_newick(filename, readData, namefunc=namefunc)
         except RuntimeError:
             pass
 
@@ -699,7 +701,7 @@ class Tree:
     readNewick = read_newick
 
 
-    def _read_newick(self, filename, readData=None):
+    def _read_newick(self, filename, readData=None, namefunc=lambda name: name):
         """read with PLY"""
         
         # default data reader
@@ -724,7 +726,7 @@ class Tree:
             if name == "":
                 node = TreeNode(self.new_name())
             else:
-                node = TreeNode(name)
+                node = TreeNode(namefunc(name))
 
             # parse data
             readData(node, data)
@@ -944,34 +946,34 @@ class Tree:
 # Convenient Input/Output functions
 #
 
-def read_tree(filename):
+def read_tree(filename, readData=None, namefunc=lambda name: name):
     """Read a tree from a newick file"""
     tree = Tree()
-    tree.read_newick(filename)
+    tree.read_newick(filename, readData, namefunc)
     return tree
 readTree = read_tree
 
-def parse_newick(newick):
+def parse_newick(newick, readData=None, namefunc=lambda name: name):
     """Read a tree from newick notation stored in a string"""
     tree = Tree()
     stream = StringIO.StringIO(newick)
-    tree.read_newick(stream)
+    tree.read_newick(stream, readData, namefunc)
     return tree
 parseNewick = parse_newick
 
-def iter_trees(filename):
+def iter_trees(filename, readData=None, namefunc=lambda name: name):
     infile = open(filename)
     try:
         while True:
-            yield read_tree(infile)
+            yield read_tree(infile, readData, namefunc)
     except:
         pass
     finally:
         infile.close()
 iterTrees = iter_trees
 
-def read_trees(filename):
-    return list(iter_trees(filename))
+def read_trees(filename, readData=None, namefunc=lambda name: name):
+    return list(iter_trees(filename, readData, namefunc))
 readTrees = read_trees
 
 

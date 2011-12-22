@@ -95,7 +95,7 @@ class Dict (dict):
     def __getitem__(self, i):
         if not i in self:
             if self._dim > 1:
-                ret = Dict(self._dim - 1, self._null)
+                ret = Dict(dim=self._dim - 1, default=self._null)
             else:
                 ret = copy.copy(self._null)
             if self._insert:

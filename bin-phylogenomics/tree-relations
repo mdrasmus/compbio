@@ -11,13 +11,17 @@ from compbio import phylo
 o = optparse.OptionParser()
 o.add_option("-d", "--dir", dest="dir", action="store_true",
              help="identify trees by their directory")
-o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
-o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
-o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
-o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
-
+o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE",
+             help="species tree in newick format")
+o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP",
+             help="gene to species map")
+o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT",
+             help="gene tree file extension")
+o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT",
+             help="reconciliation file extension")
 o.add_option("--no-species-branch", dest="no_species_branch",
-             action="store_true")
+             action="store_true",
+             help="if given, suppress 'species id' for dup relations")
 
 conf, args = o.parse_args()
 

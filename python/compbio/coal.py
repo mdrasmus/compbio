@@ -28,6 +28,16 @@ from rasmus.symbolic import *
 # compbio imports
 from . import birthdeath
 
+# import root finder
+try:
+    from scipy.optimize import brentq
+except ImportError:
+    def brentq(f, a, b, disp=False):
+        return stats.bisect_root(f, a, b)
+
+
+
+
 #=============================================================================
 # single coalescent PDFs, CDFs, and sampling functions
 
@@ -160,8 +170,6 @@ def sample_coal_cond_counts(a, b, t, n):
     # this code solves this equation for t
     #   cdf(t) - p = 0
     # where p ~ U(0, 1)
-
-    import scipy.optimize
     
     p = random.random()
 
@@ -190,7 +198,7 @@ def sample_coal_cond_counts(a, b, t, n):
 
         return s * d - p
     
-    return scipy.optimize.brentq(f, 0.0, t, disp=False)
+    return brentq(f, 0.0, t, disp=False)
 
 
 
@@ -292,8 +300,6 @@ def sample_bounded_coal(k, n, T):
     #   cdf(t) - p = 0
     # where p ~ U(0, 1)
 
-    import scipy.optimize
-
     i = k - 1
     p = random.random()
 
@@ -316,7 +322,7 @@ def sample_bounded_coal(k, n, T):
              - sum(F[j-1] * (exp(((j+1)*j/2.0/n - lam_i)*t)-1)
                    for j in xrange(1, i)))) - p
     
-    return scipy.optimize.brentq(f, 0.0, T, disp=False)
+    return brentq(f, 0.0, T, disp=False)
 
 
 def sample_bounded_coal2(n, T):
@@ -1502,6 +1508,7 @@ class MultiPushQueue (object):
 
 
 
+
 #=============================================================================
 # allele frequency
 
@@ -1610,7 +1617,6 @@ def sample_freq_CDF(p, N, t):
     elif t == 0.0:
         return p
     
-    import scipy.optimize
     y = random.random()
     leg_r = legendre(1.0-2*p)
     extinction = prob_fix(1.0-p, N, t) # probability of allele extinction
@@ -1625,7 +1631,7 @@ def sample_freq_CDF(p, N, t):
               - y + extinction  # trims extinction probability, assures brentq works
 
         try:
-            return scipy.optimize.brentq(f, 0.0, 1.0, disp=False)
+            return brentq(f, 0.0, 1.0, disp=False)
         except:
             print p, N, t
             raise

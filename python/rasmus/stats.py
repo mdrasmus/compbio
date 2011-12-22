@@ -1378,6 +1378,27 @@ def _solveCubic_test(n=100):
         test(a, b, c)
 
 
+def bisect_root(f, x0, x1, err=1e-7):
+    """Find a root of a function func(x) using the bisection method"""
+    f0 = f(x0)
+    f1 = f(x1)
+    
+    while (x1 - x0) / 2.0 > err:
+        x2 = (x0 + x1) / 2.0
+        f2 = f(x2)
+        
+        if f0 * f2 > 0:
+            x0 = x2
+            f0 = f2
+        else:
+            x1 = x2
+            f1 = f2
+
+    return (x0 + x1) / 2.0
+
+
+
+
 
 #=============================================================================
 # testing

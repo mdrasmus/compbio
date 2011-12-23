@@ -71,17 +71,16 @@ def eq_sample_pdf(samples, pdf,
     assert p >= pval, p
 
 
+_do_pause = False
+def pause(text="press enter to continue: "):
+    """Pause until the user presses enter"""
+    if _do_pause:
+        raw_input(text)
+
+
 
 #=============================================================================
 # common unittest functions
-
-
-class OptionParser (optparse.OptionParser):
-    def __init__(self, *args):
-        optparse.OptionParser.__init__(self, *args)
-
-    def exit(self, code, text):
-        pass
 
 
 def list_tests(stack=0):
@@ -102,15 +101,36 @@ def list_tests(stack=0):
 
 
 def test_main():
+    global _do_pause
 
-    o = OptionParser()
+    o = optparse.OptionParser()
+    o.add_option("-v", "--verbose", action="store_true",
+                 help="Verbose output")
+    o.add_option("-q", "--quiet", action="store_true",
+                 help="Minimal output")
     o.add_option("-l", "--list_tests", action="store_true")
+    o.add_option("-p", "--pause", action="store_true")
 
-    conf, args = o.parse_args(sys.argv)
+    conf, args = o.parse_args()
+
 
     if conf.list_tests:
         list_tests(1)
         return
 
-    unittest.main()
+    if conf.pause:
+        _do_pause = True
 
+
+    # process unittest arguments
+    argv = [sys.argv[0]]
+
+    if conf.verbose:
+        argv.append("-v")
+    if conf.quiet:
+        argv.append("-q")
+
+    argv.extend(args)
+
+    # run unittest
+    unittest.main(argv=argv)

@@ -1043,6 +1043,9 @@ class IgnoreCloseFile (object):
     def __init__(self, stream):
         self.__stream = stream
 
+    def __iter__(self):
+        return iter(self.__stream)
+
     def __getattr__(self, name):
         return getattr(self.__stream, name)
 

@@ -81,6 +81,8 @@ def prob_coal_counts(a, b, t, n):
     The probabiluty of going from 'a' lineages to 'b' lineages in time 't'
     with population size 'n'
     """
+
+    print a, b, t, n
     
     C = stats.prod((b+y)*(a-y)/(a+y) for y in xrange(b))
     s = exp(-b*(b-1)*t/2.0/n) * C

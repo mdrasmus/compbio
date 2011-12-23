@@ -1,5 +1,4 @@
 
-import unittest
 
 from rasmus.common import *
 from rasmus import stats
@@ -26,7 +25,7 @@ class Coal (unittest.TestCase):
         plotdistrib(x, 40, plot=p)
 
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
-        show_plot()
+        pause()
         
 
     def test_prob_coal2(self):
@@ -40,11 +39,7 @@ class Coal (unittest.TestCase):
         plotdistrib(x, 40, plot=p)
 
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
-        show_plot()
-
-    #def test_prob_coal_counts_extreme(self):
-    #
-    #    assert coal.prob_coal_counts(8, 4, 2000, 400000000) >= 0.0
+        pause()
 
 
     def test_prob_coal_cond_counts_simple(self):
@@ -62,7 +57,7 @@ class Coal (unittest.TestCase):
         plotfunc(lambda x: coal.prob_bounded_coal(x, a, n, t), 0, 2000, 10,
                  ymin=0, plot=p)
         
-        show_plot()
+        pause()
 
 
     def test_prob_coal_cond_counts(self):
@@ -77,7 +72,7 @@ class Coal (unittest.TestCase):
         plotfunc(lambda x: coal.prob_coal_cond_counts_simple(
             x, a, b, t, n), 0, 2000, 10, plot=p)
         
-        show_plot()
+        pause()
 
     def test_prob_coal_cond_counts2_simple(self):
 
@@ -104,7 +99,7 @@ class Coal (unittest.TestCase):
             print eq_sample_pdf(x2,
                                 lambda x: coal.prob_coal_cond_counts_simple(
                 x, a, b, t, n), 40)
-            show_plot()
+            pause()
 
 
     def test_prob_coal_cond_counts2(self):
@@ -131,7 +126,7 @@ class Coal (unittest.TestCase):
 
             eq_sample_pdf(x2, lambda x: coal.prob_coal_cond_counts(
                 x, a, b, t, n), 40)
-            show_plot()
+            pause()
 
 
     def test_cdf_coal_cond_counts(self):
@@ -160,7 +155,7 @@ class Coal (unittest.TestCase):
             #print eq_sample_pdf(x2,
             #                    lambda x: coal.prob_coal_cond_counts(
             #    x, a, b, t, n), 40)
-            show_plot()
+            pause()
 
 
     def test_sample_coal_cond_counts(self):
@@ -181,7 +176,7 @@ class Coal (unittest.TestCase):
 
             print eq_sample_pdf(s, lambda x: coal.prob_coal_cond_counts(
                 x, a, b, t, n), 40)
-            show_plot()
+            pause()
 
 
     def test_sample_coal_tree(self):
@@ -214,7 +209,7 @@ class Coal (unittest.TestCase):
                    0, max(x), max(x) / 100.0)
 
         eq_sample_pdf(x, lambda t: coal.prob_mrca(t, k, n), 40)
-        show_plot()
+        pause()
         
 
     def test_cdf_mrca(self):
@@ -230,7 +225,7 @@ class Coal (unittest.TestCase):
         p.plot(x, y3, style="lines")
 
         eq_sample_pdf(x, lambda t: coal.cdf_mrca(t, k, n), 40)
-        show_plot()
+        pause()
 
 
     def test_cdf_mrca2(self):
@@ -249,7 +244,7 @@ class Coal (unittest.TestCase):
 
         fequals(y2, y3, eabs=.01)
         fequals(y3, y4)
-        show_plot()
+        pause()
 
 
 class BoundedCoal (unittest.TestCase):
@@ -265,7 +260,7 @@ class BoundedCoal (unittest.TestCase):
         p.plotfunc(lambda t: coal.prob_coal(t, k, n),
                    0, 1000, 10)
         
-        show_plot()
+        pause()
 
 
     def test_cdf_coal_bounded(self):
@@ -283,7 +278,7 @@ class BoundedCoal (unittest.TestCase):
         p.plot([0, 500], [1, 1], style="lines")
 
         fequals(y2, y3, eabs=.01)
-        show_plot()
+        pause()
 
 
     def test_sample_bounded_coal2(self):        
@@ -297,7 +292,7 @@ class BoundedCoal (unittest.TestCase):
         p.plotfunc(lambda t: coal.prob_bounded_coal(t, k, n, T), 0, T, T/200.0)
         
         eq_sample_pdf(d, lambda t: coal.prob_bounded_coal(t, k, n, T), 40)
-        show_plot()
+        pause()
     
 
     def test_sample_bounded_coal(self):
@@ -311,7 +306,7 @@ class BoundedCoal (unittest.TestCase):
         p.plotfunc(lambda t: coal.prob_bounded_coal(t, k, n, T), 0, T, T/200)
 
         eq_sample_pdf(d, lambda t: coal.prob_bounded_coal(t, k, n, T), 40)
-        show_plot()
+        pause()
     
 
 
@@ -345,7 +340,7 @@ class BoundedCoal (unittest.TestCase):
         p.plot(x, y2, style="lines", xmax=500)
 
         fequals(y, y2, rel=.05, eabs=.01)
-        show_plot()
+        pause()
     
 
     def test_fast_sample_bounded_coal(self):
@@ -393,7 +388,7 @@ class BoundedCoal (unittest.TestCase):
         time.sleep(1)
         p.enableOutput(True)
         p.replot()
-        show_plot()
+        pause()
 
 
 
@@ -432,6 +427,12 @@ class CoalCounts (unittest.TestCase):
                 print i, j
                 fequal(i, j)
         toc()
+
+
+    #def test_prob_coal_counts_extreme(self):
+    #
+    #    assert coal.prob_coal_counts(8, 4, 2000, 400000000) >= 0.0
+
 
 #=============================================================================
 # multicoal
@@ -644,7 +645,7 @@ class BMC (unittest.TestCase):
 
         p = plot(x, y)
         p.plot([min(x), max(x)], [min(x), max(x)], style="lines")
-        show_plot()
+        pause()
     
         
 
@@ -683,26 +684,12 @@ class BMC (unittest.TestCase):
 
         p = plotfunc(pdf, 0, 500, 10)
         plotfunc(lambda t: coal.prob_coal(t, ucount, n), 0, 500, 10, plot=p)
-        show_plot()
+        pause()
 
         draw_tree_names(stree, maxlen=8)
     '''
 
 
 #=============================================================================
-
-show_plots = False
-def show_plot():
-    if show_plots:
-        raw_input()
-
-
 if __name__ == "__main__":
-
-    if "--" in sys.argv:
-        args = sys.argv[sys.argv.index("--")+1:]
-        if "plot" in args:
-            show_plots = True
-        sys.argv = sys.argv[:sys.argv.index("--")]
-    
-    unittest.main()
+    test_main()

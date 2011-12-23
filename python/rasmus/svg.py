@@ -140,7 +140,6 @@ class Svg:
         self.out.write(" />\n")
             
     
-    
     def polygon(self, verts, strokeColor=black, fillColor=black):
         self.out.write(
             "<polygon %s points='" % colorFields(strokeColor, fillColor))

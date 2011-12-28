@@ -199,6 +199,22 @@ def reverse(lst):
     return lst2
 
 
+def replace(lst, old_item, new_item, replace_all=False):
+    """Replace an item in a list"""
+    if replace_all:
+        try:
+            i = -1
+            end = len(lst)
+            while i < end:
+                i = lst.index(old_item, i+1)
+                lst[i] = new_item
+        except:
+            pass
+    else:
+        i = lst.index(old_item)
+        lst[i] = new_item
+
+
 def cget(mat, *i):
     """Returns the column(s) '*i' of a 2D list 'mat'
         

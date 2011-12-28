@@ -87,6 +87,8 @@ SDEG_0318	sde2	gene
 """)
 
 
+
+
 #=============================================================================
 
 treefile2 = StringIO("""\
@@ -146,6 +148,41 @@ SpyM3_0853	spy1	gene
 9	4	spec
 MGAS10750_Spy1866	spy2	gene
 """)
+
+#=============================================================================
+# 17-1
+
+treefile3 = StringIO("""\
+(
+ SEQ_0864:0.094945,
+ (
+  SDEG_0677:0.117023,
+  (
+   SDD27957_05160:0.022882,
+   (
+    SpyM3_1656:0.005147,
+    MGAS10750_Spy1732:0.004911
+   )1.000000:0.011928
+  )1.000000:0.237151
+ )0:0.094945
+);
+""")
+
+breconfile3 = StringIO("""\
+SEQ_0864	see	gene
+SDEG_0677	3	specloss	4	specloss	sde2	gene
+MGAS10750_Spy1732	spy2	gene
+4	5	spec
+SpyM3_1656	spy1	gene
+3	5	trans
+2	2	spec
+1	1	spec
+SDD27957_05160	sdd	gene
+""")
+
+
+
+#=============================================================================
     
 class Vis (unittest.TestCase):
 
@@ -171,6 +208,21 @@ class Vis (unittest.TestCase):
         transsvg.draw_tree(tree, brecon, stree, filename="tmp/tree.svg")
         os.system("display tmp/tree.svg")
 
+
+    def test3(self):
+        
+        stree = treelib.read_tree(streefile)
+        #gene2species = phylo.read_gene2species(smapfile)
+        
+        tree = treelib.read_tree(treefile3)
+        brecon = phylo.read_brecon(breconfile3, tree, stree)
+
+        phylo.add_implied_spec_nodes_brecon(tree, brecon)
+
+        phylo.write_brecon(sys.stdout, brecon)
+        
+        transsvg.draw_tree(tree, brecon, stree, filename="tmp/tree.svg")
+        os.system("display tmp/tree.svg")
 
 
 

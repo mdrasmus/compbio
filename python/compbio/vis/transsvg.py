@@ -1,6 +1,4 @@
 
-import copy
-
 from collections import defaultdict
 
 from rasmus import treelib, svg, util, stats
@@ -44,7 +42,7 @@ def draw_tree(tree, brecon, stree,
               font_size=12,
               stree_font_size=20,
               canvas=None, autoclose=True,
-              rmargin=10, lmargin=10, tmargin=0, bmargin=None,
+              rmargin=10, lmargin=10, tmargin=0, bmargin=0,
               tree_color=(0, 0, 0),
               tree_trans_color=(0, 0, 0),
               stree_color=(.4, .4, 1),
@@ -53,7 +51,8 @@ def draw_tree(tree, brecon, stree,
               dup_color_border=(.5, 0, 0),
               trans_color=(0, 1, 0),
               trans_color_border=(0, .5, 0),
-              event_size = 10,
+              event_size=10,
+              snames=None,
               rootlen=None,
               stree_width=.8,
               filename="tree.svg"
@@ -69,12 +68,12 @@ def draw_tree(tree, brecon, stree,
     #if label_offset is None:
     #    label_offset = -1
 
-    if bmargin is None:
-        bmargin = yscale
-
     if sum(x.dist for x in tree.nodes.values()) == 0:
         legend_scale = False
         minlen = xscale
+
+    if snames is None:
+        snames = dict((x, x) for x in stree.leaf_names())
 
     # layout stree
     slayout = treelib.layout_tree(stree, xscale, yscale)
@@ -83,11 +82,10 @@ def draw_tree(tree, brecon, stree,
         rootlen = .1 * max(l[0] for l in slayout.values())
 
     # setup slayout
-    for node, (x, y) in slayout.items():
-        slayout[node] = (x + rootlen, y)
     x, y = slayout[stree.root]
     slayout[None] =  (x - rootlen, y)
-
+    for node, (x, y) in slayout.items():
+        slayout[node] = (x + rootlen, y  - .5 * yscale)
 
     # layout tree
     ylists = defaultdict(lambda: [])
@@ -194,7 +192,7 @@ def draw_tree(tree, brecon, stree,
     
     xcoords, ycoords = zip(* slayout.values())
     maxwidth = max(xcoords) + max_label_size + max_slabel_size
-    maxheight = max(ycoords)
+    maxheight = max(ycoords) + .5 * yscale
     
     
     # initialize canvas
@@ -204,6 +202,7 @@ def draw_tree(tree, brecon, stree,
         height = int(tmargin + maxheight + bmargin)
         
         canvas.beginSvg(width, height)
+        canvas.beginStyle("font-family: \"Sans\";")
         
         if autoclose == None:
             autoclose = True
@@ -223,7 +222,7 @@ def draw_tree(tree, brecon, stree,
     for node in stree:
         x, y = slayout[node]
         if node.is_leaf():
-            canvas.text(node.name, 
+            canvas.text(snames[node.name], 
                         x + leaf_padding + max_label_size,
                         y+stree_font_size/2., stree_font_size,
                         fillColor=snode_color)
@@ -289,6 +288,7 @@ def draw_tree(tree, brecon, stree,
     canvas.endTransform()
     
     if autoclose:
+        canvas.endStyle()
         canvas.endSvg()
     
     return canvas

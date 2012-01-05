@@ -4,7 +4,7 @@
 import sys
 import optparse
 
-from rasmus import treelib
+from rasmus import treelib, util
 from compbio import phylo
 from compbio.vis import transsvg
 
@@ -26,10 +26,8 @@ o.add_option("-m", "--minlen", dest="minlen",
 o.add_option("-M", "--maxlen", dest="maxlen",
              metavar="<maximum branch length>",
              type="int")
-o.add_option("-n", "--names", dest="names",
-             action="store_true",
-             default=False,
-             help="display internal node names")
+o.add_option("-n", "--names", dest="names", metavar="SPECIES_NAMES",
+             help="Use a species names file")
 o.add_option("-s", "--stree", dest="stree",
              metavar="<species tree>",
              help="species tree (newick format)")
@@ -87,6 +85,11 @@ gene2species = phylo.read_gene2species(conf.smap)
 stree = treelib.read_tree(conf.stree)
 tree = treelib.read_tree(conf.tree)
 
+if conf.names:
+    snames = dict(util.read_delim(conf.names))
+else:
+    snames = None
+
 if conf.recon:
     recon, events = phylo.read_recon_events(open(conf.recon), tree, stree)
     brecon = phylo.recon_events2brecon(recon, events)
@@ -99,7 +102,8 @@ else:
 phylo.add_implied_spec_nodes_brecon(tree, brecon)
 #phylo.write_brecon(sys.stdout, brecon)
 
-transsvg.draw_tree(tree, brecon, stree, filename=conf.output)
+transsvg.draw_tree(tree, brecon, stree, filename=conf.output,
+                   snames=snames)
 
 
 

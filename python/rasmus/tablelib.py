@@ -893,7 +893,7 @@ iterTable = iter_table
 def histtab(items, headers=["item", "count", "percent"]):
     h = util.hist_dict(items)
     tab = Table(headers=headers)
-    tot = float(len(items))
+    tot = float(sum(h.itervalues()))
 
     if len(headers) == 2:    
         for key, val in h.items():

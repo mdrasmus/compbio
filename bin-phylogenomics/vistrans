@@ -94,13 +94,12 @@ if conf.recon:
     recon, events = phylo.read_recon_events(open(conf.recon), tree, stree)
     brecon = phylo.recon_events2brecon(recon, events)
     
-else: 
-    brecon = phylo.read_brecon(open(conf.brecon), tree, stree)
+else:
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.label_events(tree, recon)
+    brecon = phylo.recon_events2brecon(recon, events)
 
-#phylo.write_brecon(sys.stdout, brecon)
-#print
 phylo.add_implied_spec_nodes_brecon(tree, brecon)
-#phylo.write_brecon(sys.stdout, brecon)
 
 transsvg.draw_tree(tree, brecon, stree, filename=conf.output,
                    snames=snames)

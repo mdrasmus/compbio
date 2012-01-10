@@ -831,11 +831,26 @@ def recon_events2brecon(recon, events):
     """
     Returns a branch reconciliation from 'recon' and 'events' data structures
     """
+    
     brecon = {}
     for node, snode in recon.iteritems():
-        brecon[node] = [(snode, events[node])]
+        branch = []
+        if node.parent:
+            sparent = recon[node.parent]
+            if sparent != snode:
+                if events[node.parent] == "dup":
+                    branch.append((sparent, "specloss"))
 
-    # TODO: make more general, so that all specloss events are present
+                losses = []
+                ptr = snode.parent
+                while ptr != sparent:
+                    losses.append((ptr, "specloss"))
+                    ptr = ptr.parent
+                
+                branch.extend(reversed(losses))
+
+        branch.append((snode, events[node]))
+        brecon[node] = branch
 
     return brecon
 

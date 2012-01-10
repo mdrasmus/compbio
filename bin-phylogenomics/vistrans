@@ -86,12 +86,18 @@ gene2species = phylo.read_gene2species(conf.smap)
 stree = treelib.read_tree(conf.stree)
 tree = treelib.read_tree(conf.tree)
 
-if conf.recon:
+if conf.brecon: 
+    brecon = phylo.read_brecon(open(conf.brecon), tree, stree)
+
+elif conf.recon:
     recon, events = phylo.read_recon_events(open(conf.recon), tree, stree)
     brecon = phylo.recon_events2brecon(recon, events)
     
-else: 
-    brecon = phylo.read_brecon(open(conf.brecon), tree, stree)
+else:
+    recon = phylo.reconcile(tree, stree, gene2species)
+    events = phylo.label_events(tree, recon)
+    brecon = phylo.recon_events2brecon(recon, events)
+
 
 transsvg.draw_tree(tree, brecon, stree, filename=conf.output)
 

@@ -18,12 +18,17 @@
 """
 
 import random
+from math import log, exp
 
 from rasmus import util, stats
 from stats import logadd
 
 
 class HMM (object):
+    """
+    Base class for defining an Hidden Markov Model (HMM)
+    """
+    
     def __init__(self):
         pass
 
@@ -45,18 +50,30 @@ class HMM (object):
 
 
     def get_num_states(self, pos):
+        """Returns the number of states at position 'pos'"""
         return 0
 
     def prob_prior(self, state):
+        """Returns the prior probability of a state"""
         return 0.0
 
     def prob_emission(self, pos, state):
+        """
+        Returns the emission probability at position 'pos' with state 'state'
+        """
         return 0.0
 
-    def prob_transition(self, pos1, pos2, state2):
+    def prob_transition(self, pos1, state1, pos2, state2):
+        """
+        Returns transition probability for transitioning between states
+        'state1' and 'state2' between position 'pos1' and position 'pos2'
+        """
         return 0.0
 
-    def emit(self, state):
+    def emit(self, pos, state):
+        """
+        Returns emission data given state 'state'
+        """
         return None
 
 
@@ -104,12 +121,15 @@ def sample_hmm_data(model, states=None):
     if states is None:
         states = sample_hmm_states(model)
 
-    for state in states:
-        yield model.emit(state)
+    for i, state in enumerate(states):
+        yield model.emit(i, state)
 
 
 
 def viterbi(model, n, verbose=False):
+    """
+    Compute argmax_path P(path|data)
+    """
 
     probs = []
     ptrs = []
@@ -261,65 +281,32 @@ def get_posterior_probs(model, n, verbose=False):
     return probs_post
 
 
-        
-if __name__ == "__main__":
-    from rasmus.common import *
+def sample_posterior(model, n, forward_probs=None, verbose=False):
 
-    def trans(pos1, state1, pos2, state2):
-        if state1 == state2:
-            return log(.9)
-        else:
-            return log(.1)
+    path = range(n)
 
-    def emit(state):
-        if state == 0:
-            if random.random() < .9:
-                return "H"
-            else:
-                return "T"
-        elif state == 1:
-            if random.random() < .1:
-                return "H"
-            else:
-                return "T"
+    # get forward probabilities
+    if forward_probs is None:
+        forward_probs = forward_algorithm(model, n, verbose=verbose)
+
+    # base case i=n-1
+    B = 0.0
+    i = n-1
+    A = [forward_probs[i][j] for j in range(model.get_num_states(i))]
+    path[i] = j = stats.sample(map(exp, A))
+  
+    # recurse
+    for i in xrange(n-2, -1, -1):
+        C = []
+        A = []
+        for j in range(model.get_num_states(i)):
+            # !$A_{j,i} = F_{i,j} C_{i,j} B_{i+1,l}$!
+            C.append(
+                model.prob_transition(i, j, i+1, path[i+1]) +
+                model.prob_emission(i+1, path[i+1]))
+            A.append(forward_probs[i][j] + C[j] + B)
+        path[i] = j = stats.sample(map(exp, A))
+        # !$B_{i,j} = C_{i,j} B_{i+1,l}$!
+        B *= C[j]
     
-    def prob_emission(state, data):
-        if state == 0:
-            if data == "H":
-                return log(.9)
-            else:
-                return log(.1)
-        elif state == 1:
-            if data == "H":
-                return log(.1)
-            else:
-                return log(.9)
-            
-
-    model = HMM()
-    model.set_callbacks(get_num_states=lambda pos: 2,
-                        prob_prior=lambda state: log(.5),
-                        prob_transition=trans,
-                        emit=emit)
-
-    ndata = 100
-
-    s = sample_hmm_states(model)
-    states = [s.next() for i in xrange(ndata)]
-    p = plot(states, style="lines")
-
-    s = sample_hmm_data(model, states)
-    data = [s.next() for i in xrange(len(states))]
-    print data
-
-    model.prob_emission = lambda pos, state: prob_emission(state, data[pos])
-    states2 = viterbi(model, len(data))
-
-    probs = get_posterior_probs(model, len(data))
-    states3 = [exp(probs[i][1]) for i in xrange(len(data))]
-
-    p.plot(util.vadds(states2, 1.5), style="lines", miny=-1, maxy=4)
-    p.plot(util.vadds(states3, 2.5), style="lines", miny=-1, maxy=4)
-
-    
-
+    return path

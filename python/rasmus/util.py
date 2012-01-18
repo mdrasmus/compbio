@@ -14,7 +14,6 @@
 
 
 # python libs
-import abc
 import copy
 import math
 import os
@@ -197,6 +196,22 @@ def reverse(lst):
     lst2 = list(lst)
     lst2.reverse()
     return lst2
+
+
+def replace(lst, old_item, new_item, replace_all=False):
+    """Replace an item in a list"""
+    if replace_all:
+        try:
+            i = -1
+            end = len(lst)
+            while i < end:
+                i = lst.index(old_item, i+1)
+                lst[i] = new_item
+        except:
+            pass
+    else:
+        i = lst.index(old_item)
+        lst[i] = new_item
 
 
 def cget(mat, *i):
@@ -1042,6 +1057,9 @@ def write_dict(filename, dct, delim="\t"):
 class IgnoreCloseFile (object):
     def __init__(self, stream):
         self.__stream = stream
+
+    def __iter__(self):
+        return iter(self.__stream)
 
     def __getattr__(self, name):
         return getattr(self.__stream, name)

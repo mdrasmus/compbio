@@ -30,6 +30,13 @@ def overlap(region1, region2, inc=True):
 
 
 def iter_groups(items, key):
+    """
+    Iterates through groups of consequentive items x that have the same key(x)
+
+    items -- iterable of values
+    key   -- function of one argument
+    """
+    
     NULL = object()
     last_key = NULL
     group = []
@@ -57,6 +64,8 @@ def iter_union_ids(regions):
 
     NOTE: regions must be sorted by start
     """
+
+    # TODO: add inclusive option
     
     start = -util.INF
     end = -util.INF
@@ -78,6 +87,20 @@ def iter_union_ids(regions):
         yield (groupnum, reg)
 
 
+def groupby_unions(regions):
+    """
+    Iterate over union groups
+    
+    NOTE: regions must be sorted by start
+    """
+
+    # TODO: add inclusive option
+    
+    for group in iter_groups(iter_union_ids(regions), lambda x: x[0]):
+        # remove group index from each region
+        yield [x[1] for x in group]
+
+
 def iter_unions(regions):
      """
      Iterate over union groups
@@ -85,25 +108,14 @@ def iter_unions(regions):
      Yields (start, end, [region1, region2, ...]) for each union group
 
      NOTE: regions must be sorted by start
-    """
+     """
+
+     # TODO: add inclusive option
 
      for group in groupby_unions(regions):
          start = min(r[0] for r in group)
          end = max(r[1] for r in group)
-         yield (start, end, group)
-
-
-def groupby_unions(regions):
-    """
-    Iterate over union groups
-    
-    NOTE: regions must be sorted by start
-    """
-    
-    for group in iter_groups(iter_union_ids(regions), lambda x: x[0]):
-        # remove group index from each region
-        yield [x[1] for x in group]
-    
+         yield (start, end, group)    
 
 
 def iter_intersections(regions):
@@ -114,6 +126,9 @@ def iter_intersections(regions):
     
     NOTE: regions must be sorted by start
     """
+
+    # TODO: think about whether this is inclusive or not
+    # useful for DNA coordinates
 
     # endpoints queue
     group = []

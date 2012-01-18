@@ -49,13 +49,13 @@ class BD (unittest.TestCase):
         birth = 0.5
         death = 0.2
 
-        counts = [birthdeath.sample_birth_death_count(t, birth, death)
+        counts = [birthdeath.sample_birth_death_count(1, t, birth, death)
                   for i in xrange(10000)]
 
         p = plotdistrib(counts, width=1, low=-.5)
         p.plot([birthdeath.prob_birth_death1(i, t, birth, death)
                 for i in xrange(0, max(counts))])
-        raw_input()
+        pause()
 
 
     def test_rannala1996_prob_birth_death1(self):
@@ -64,19 +64,19 @@ class BD (unittest.TestCase):
         birth = 0.5
         death = 0.2
 
-        counts = [birthdeath.sample_birth_death_count(t, birth, death)
+        counts = [birthdeath.sample_birth_death_count(1, t, birth, death)
                   for i in xrange(10000)]
 
         p = plotdistrib(counts, width=1, low=-.5)
         p.plot([rannala1996_prob_birth_death1(i, t, birth, death)
                 for i in xrange(0, max(counts))])
-        raw_input()
+        pause()
 
 
         p = plotdistrib(counts, width=1, low=-.5)
         p.plot([rannala1996_prob_birth_death1_fix(i, t, birth, death)
                 for i in xrange(0, max(counts))])
-        raw_input()
+        pause()
 
         #print 
 
@@ -150,18 +150,6 @@ class BD (unittest.TestCase):
 
 #=============================================================================
 
-show_plots = False
-def show_plot():
-    if show_plots:
-        raw_input()
-
 
 if __name__ == "__main__":
-
-    if "--" in sys.argv:
-        args = sys.argv[sys.argv.index("--")+1:]
-        if "plot" in args:
-            show_plots = True
-        sys.argv = sys.argv[:sys.argv.index("--")]
-    
-    unittest.main()
+    test_main()

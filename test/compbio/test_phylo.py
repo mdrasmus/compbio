@@ -69,18 +69,6 @@ class Search (TestCase):
 
 #=============================================================================
 
-show_plots = False
-def show_plot():
-    if show_plots:
-        raw_input()
-
 
 if __name__ == "__main__":
-
-    if "--" in sys.argv:
-        args = sys.argv[sys.argv.index("--")+1:]
-        if "plot" in args:
-            show_plots = True
-        sys.argv = sys.argv[:sys.argv.index("--")]
-    
-    unittest.main()
+    test_main()

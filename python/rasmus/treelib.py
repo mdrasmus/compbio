@@ -1280,8 +1280,7 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
-        tree = tree.copy()    
-    remove_set = set(tree.leaf_names()) - set(leaf_names)
+        tree = tree.copy()
     return subtree_by_leaves(tree, [tree.nodes[x] for x in leaf_names],
                              keep_single=keep_single)
 

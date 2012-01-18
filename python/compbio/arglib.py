@@ -47,7 +47,7 @@ class ArgNode (object):
     def __repr__(self):
         return "<node %s>" % self.name
 
-    def get_dist(self, parent_index):
+    def get_dist(self, parent_index=0):
         """Get branch length distance from node to parent_index'th parent"""
         if len(self.parents) == 0:
             return 0.0

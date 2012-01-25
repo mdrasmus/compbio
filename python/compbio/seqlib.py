@@ -9,7 +9,7 @@ from rasmus import util
 
 
 class SeqDict (dict):
-    """\
+    """
     A dictionary for molecular sequences.  Also keeps track of their order,
     useful for reading and writing sequences from fasta's.  See fasta.FastaDict
     for subclass that implements FASTA reading and writing.
@@ -335,12 +335,18 @@ def revtranslate(aa, dna, check=False):
        Must supply original ungapped DNA.
     """
 
-    a = len(dna.replace("-", ""))
-    b = len(aa.replace("-", "")) * 3
+    # trim stop codon
+    #if aa[-1] in "*X" and CODON_TABLE.get(dna[-3:], "") == "*":
+    #    aa = aa[:-3]
+    #    dna = dna[:-3]
+
+    a = len(aa.replace("-", "")) * 3
+    b = len(dna.replace("-", ""))
 
     if a != b:
-        raise TranslateError("sequences have wrong lengths (%d != %d)" %
-                             (a, b), aa, dna, None, None)
+        raise TranslateError(
+            "sequences have wrong lengths (pep %d != dna %d)" %
+            (a, b), aa, dna, None, None)
 
     seq = []
     i = 0

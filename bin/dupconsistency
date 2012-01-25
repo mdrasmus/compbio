@@ -27,7 +27,11 @@ for filename in sys.stdin:
     tree = treelib.read_tree(filename)
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.label_events(tree, recon)
-    dupcons = phylo.dup_consistency(tree, recon, events)
+
+    try:
+        dupcons = phylo.dup_consistency(tree, recon, events)
+    except:
+        print >>sys.stderr, "error: ", filename
 
     scores = [(node, score) for (node, score) in dupcons.items()]
     scores.sort()

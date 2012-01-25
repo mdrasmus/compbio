@@ -1573,11 +1573,11 @@ def sortindex(lst, cmp=cmp, key=None, reverse=False):
     ind = range(len(lst))
     
     if key is None:
-        compare2 = lambda a, b: cmp(lst[a], lst[b])
+        compare = lambda a, b: cmp(lst[a], lst[b])
     else:
-        compare2 = lambda a, b: cmp(key(lst[a]), key(lst[b]))
+        compare = lambda a, b: cmp(key(lst[a]), key(lst[b]))
     
-    ind.sort(compare2, reverse=reverse)
+    ind.sort(compare, reverse=reverse)
     return ind
 
 

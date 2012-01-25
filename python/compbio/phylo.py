@@ -306,10 +306,11 @@ def find_species_roots(tree, stree, recon):
     return roots       
 
 
-def find_orthologs(gtree, stree, recon, counts=True):
+def find_orthologs(gtree, stree, recon, events=None, counts=True):
     """Find all ortholog pairs within a gene tree"""
 
-    events = label_events(gtree, recon)
+    if events is None:
+        events = label_events(gtree, recon)
     orths = []
     
     for node, event in events.items():
@@ -509,6 +510,9 @@ def dup_consistency(tree, recon, events):
 
     See Vilella2009 (Ensembl)
     """
+
+    if len(tree.leaves()) == 1:
+        return {}
     
     spset = {}
     def walk(node):
@@ -516,9 +520,13 @@ def dup_consistency(tree, recon, events):
             walk(child)
         if node.is_leaf():
             spset[node] = set([recon[node]])
-        else:
+        elif len(node.children) == 1:
+            pass
+        elif len(node.children) == 2:
             spset[node] = (spset[node.children[0]] |
                            spset[node.children[1]])
+        else:
+            raise Exception("too many children (%d)" % len(node.children))
     walk(tree.root)
     
     conf = {}
@@ -814,153 +822,137 @@ def hash_order_tree(tree, smap = lambda x: x):
     walk(tree.root)
 
 
-
 #=============================================================================
-# Branch length distributions
-#
+# branch-based reconciliations
+# useful for modeling HGT
 
 
-def mapRefTree(trees, reftree, refmapfunc):
-    collect = util.Dict(1, [])
-    
-    for tree in trees:
-        nodemap = refmapfunc(tree, reftree)
-        
-        for name, node in tree.nodes.iteritems():
-            collect[nodemap[name]].append(node)
-    
-    return collect
-
-
-def findBranchLengths(collect):
-    return util.mapdict(collect, valfunc = lambda nodes: 
-                        map(lambda node: node.dist, nodes))
-
-def findTreeLengths(collect):
-    totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
-    return totals
-    
-
-
-
-#=============================================================================
-# Branch length analysis
-#
-
-
-def get_species_inorder(tree):
-    return [node.name for node in tree.inorder()]
-
-
-def get_branch_lens(trees, stree, gene2species=gene2species):
-    # determine species nanes
-    species = map(str, stree.nodes.keys())
-    species.remove(str(stree.root.name))
-    
-    # make rates table
-    rates = tablelib.Table(headers=species)
-    
-    # loop through trees
-    for tree in trees:
-        if isinstance(tree, str):
-            tree = treelib.read_tree(tree)
-        recon = reconcile(tree, stree, gene2species)
-        events = label_events(tree, recon)
-        
-        # skip trees with duplications or with extremly long branch lengths
-        assert "dup" not in events.values()
-        
-        row = {}
-        for node in tree.nodes.values():
-            row[str(recon[node].name)] = node.dist
-        rates.append(row)
-    
-    return rates
-
-
-def find_branch_distrib(trees, stree, gene2species = gene2species, 
-                      relative = True):
-    """Older version of getBranchLens()
-    
-       Will probably be deprecated soon.
+def brecon2recon_events(brecon):
     """
-    
-    lengths = util.Dict(1, [])
-    used = []
+    Returns 'recon' and 'events' data structures from a branch reconciliation 
+    """
+    recon = {}
+    events = {}
 
-    for tree in trees:
-        recon = reconcile(tree, stree, gene2species)
-        events = label_events(tree, recon)
-        
-        # skip trees with duplications or with extremly long branch lengths
-        if "dup" in events.values():
-            used.append(False)
-            continue
-        else:
-            used.append(True)
-        
-        for node in tree.nodes.values():
-            if relative:
-                # find total length of tree
-                totalLength = 0
-                for node in tree.nodes.values():
-                    totalLength += node.dist
-            
-                lengths[recon[node]].append(node.dist/totalLength)
-            else:                
-                lengths[recon[node]].append(node.dist)
-    
-    
-    return lengths, used
+    for node, branch_path in brecon.iteritems():
+        recon[node] = branch_path[-1][0]
+        events[node] = branch_path[-1][1]
+
+    return recon, events
 
 
+def recon_events2brecon(recon, events):
+    """
+    Returns a branch reconciliation from 'recon' and 'events' data structures
+    """
+    brecon = {}
+    for node, snode in recon.iteritems():
+        brecon[node] = [(snode, events[node])]
 
-def getRelBranchLens(rates, species=None):
-    if species == None:
-        species = rates.headers
-    
-    nonspecies = set(rates.headers) - set(species)
-    
-    relrates = rates.new()
-    
-    for row in rates:
-        row2 = {}
-        tot = sum(util.mget(row, species))
-        
-        for sp in species:
-            row2[sp] = row[sp] / tot
-        
-        # copy over non-species data
-        for key in nonspecies:
-            row2[key] = row[key]
-        
-        relrates.append(row2)
-    
-    return relrates
-        
+    return brecon
 
-def getBranchZScores(rates, params):
-    zscores = rates.new()
-    
-    # determine column to species mapping
-    col2species = {}
-    for species in params:
-        col2species[str(species)] = species
-    
-    for row in rates:
-        row2 = {}
-        for key, val in row.iteritems():
-            if key in col2species:
-                # compute zscore
-                mu, sigma = params[col2species[key]]
-                row2[key] = (val - mu) / sigma
+
+def write_brecon(out, brecon):
+    """
+    Writes a branch reconciliation to file
+    """
+
+    for node, branch_path in brecon.iteritems():
+        out.write(str(node.name))
+        for snode, event in branch_path:
+            out.write("\t" + str(snode.name) + "\t" + event)
+        out.write("\n")
+
+
+def read_brecon(infile, tree, stree):
+    """
+    Reads branch reconciliation from file
+    """
+
+    brecon = {}
+
+    for line in infile:
+        tokens = line.rstrip().split("\t")
+
+        # parse node
+        node_name = tokens[0]
+        if node_name.isdigit():
+            node_name = int(node_name)
+        node = tree[node_name]
+
+        events = []
+        for i in range(1, len(tokens), 2):
+            snode_name = tokens[i]
+            event = tokens[i+1]
+
+            if snode_name.isdigit():
+                snode_name = int(snode_name)
+            snode = stree[snode_name]
+
+            events.append([snode, event])
+
+        brecon[node] = events
+
+    return brecon
+
+
+
+def find_bevents(brecon):
+    """
+    Iterates over branch events (bevents) implied by a branch reconciliation
+
+    Events have the format
+      (gene_node, 'v'|'e', event, details)
+    where gene_node is the vertex ('v') or edge ('e') where the event occurs
+    and event, details are one of the following
+
+      'spec', snode = speciation event at species node snode
+      'gene', snode = extant gene (leaf) at species node snode
+      'dup', snode  = duplication event along species branch snode
+      'loss', snode = loss event occuring along species branch snode
+      'trans', (src, dst) = horizontal transfer event from source species src
+                           to destination species dst
+
+    """
+
+    for node, branch_path in brecon.iteritems():
+        for i, (snode, event) in enumerate(branch_path):
+            if event == "dup":
+                yield (node, "v", "dup", snode)
+            elif event == "spec":
+                yield (node, "v", "spec", snode)
+            elif event == "gene":
+                yield (node, "v", "gene", snode)
+            elif event == "specloss":
+                yield (node, "e", "spec", snode)
+
+                # mark the species branch in which we expected a gene lineage
+                # but it is absent
+                next_snode = branch_path[i+1][0]
+                for schild in snode.children:
+                    if schild != next_snode:
+                        yield (node, "e", "loss", schild)
+            elif event == "trans":
+                # the target species is the species that one of the children
+                # map to
+                assert len(node.children) == 2, len(node.children)
+                starget = brecon[node.children[0]][0][0]
+                if starget == snode:
+                    starget = brecon[node.children[1]][0][0]
+                    assert starget != snode
+                yield (node, "v", "trans", (snode, starget))
+
+            elif event == "transloss":
+                # the gene is lost in this species
+                yield (node, "e", "loss", snode)
+
+                # it transfers to the next species
+                yield (node, "e", "trans", (snode, branch_path[i+1][0]))
+
             else:
-                # not a branch, copy value unchanged
-                row2[key] = val
-        
-        zscores.append(row2)
-    
-    return zscores
+                raise Exception("unknown event '%s'" % event)
+
+
 
 
 #=============================================================================
@@ -1067,6 +1059,143 @@ def remove_implied_spec_nodes(tree, added_nodes):
     """
     for node in added_nodes:
         remove_spec_node(tree, node)
+
+
+#=============================================================================
+# reconciliation rearrangements
+
+def change_recon_up(recon, node, events=None):
+    """
+    Move the mapping of a node up one branch
+    """
+        
+    if events is not None and events[node] == "spec":
+        # promote speciation to duplication
+        # R'(v) = e(R(u))
+        events[node] = "dup"
+    else:
+        # R'(v) = p(R(u))
+        recon[node] = recon[node].parent
+
+
+def change_recon_down(recon, node, schild, events=None):
+    """
+    Move the mapping of a node down one branch
+    """
+
+    if events is not None and recon[node] == schild:
+        events[node] = "spec"
+    else:
+        recon[node] = schild
+
+
+def can_change_recon_up(recon, node, events=None):
+    """Returns True is recon can remap node one 'step' up"""
+
+    if events is not None and events[node] == "spec" and not node.is_leaf():
+        # promote speciation to duplication
+        return True
+    else:
+        # move duplication up one branch
+        rnode = recon[node]
+        prnode = rnode.parent
+
+        # rearrangement is valid if
+        return (not node.is_leaf() and 
+            prnode is not None and #  1. there is parent sp. branch
+            (node.parent is None or # 2. no parent to restrict move
+             rnode != recon[node.parent] # 3. not already matching parent
+             ))
+
+
+def enum_recon(tree, stree, depth=None,
+               step=0, preorder=None,
+               recon=None, events=None,
+               gene2species=None):
+    """
+    Enumerate reconciliations between a gene tree and a species tree
+    """
+    
+    if recon is None:
+        recon = reconcile(tree, stree, gene2species)
+        events = label_events(tree, recon)
+
+    if preorder is None:
+        preorder = list(tree.preorder())
+
+    # yield current recon
+    yield recon, events
+
+    if depth is None or depth > 0:
+        for i in xrange(step, len(preorder)):
+            node = preorder[i]
+            if can_change_recon_up(recon, node, events):
+                schild = recon[node]
+                change_recon_up(recon, node, events)
+            
+                # recurse
+                depth2 = depth - 1 if depth is not None else None
+                for r, e in enum_recon(tree, stree, depth2,
+                                       i, preorder,
+                                       recon, events):
+                    yield r, e
+            
+                change_recon_down(recon, node, schild, events)
+
+
+
+    
+'''
+class EnumRecon (object):
+    """
+    Enumerate reconciliations between a gene tree and species tree
+    """
+
+    def __init__(self, tree, stree, depth=1,
+                 step=-1, preorder=None,
+                 recon=None, events=None,
+                 gene2species=None):
+        self.tree = tree
+        self.stree = stree
+        self.depth = 1
+        self.step = step
+
+        if recon:
+            self.recon = recon
+            self.events = events
+        else:
+            self.recon = reconcile(tree, stree, gene2species)
+            self.events = label_events(tree, self.recon)
+
+        if preorder:
+            self.preorder = preorder
+        else:
+            self.preorder = list(tree.preorder())
+            
+        
+        self.sprev = None
+
+
+    def __iter__(self):
+        return self
+
+    
+    def next(self):
+        if self.step >= 0:
+            # perform a rearrangement
+            if self.step >= len(self.preorder):
+                # no more mappings to move up, take 1 step back
+                change_recon_down(self.recon, node, schild, self.events)
+            
+            node = self.preorder[self.step]
+            if can_change_recon_up(self.recon, node, self.events):
+                self.sprev = self.recon[node]
+                change_recon_up(self.recon, node, self.events)
+        self.step += 1
+        
+        return self.recon
+'''
+
 
 
 #=============================================================================
@@ -1304,145 +1433,6 @@ def propose_random_spr(tree):
     newpos = e
 
     return subtree, newpos
-
-
-
-
-#=============================================================================
-# reconciliation rearrangements
-
-def change_recon_up(recon, node, events=None):
-    """
-    Move the mapping of a node up one branch
-    """
-        
-    if events is not None and events[node] == "spec":
-        # promote speciation to duplication
-        # R'(v) = e(R(u))
-        events[node] = "dup"
-    else:
-        # R'(v) = p(R(u))
-        recon[node] = recon[node].parent
-
-
-def change_recon_down(recon, node, schild, events=None):
-    """
-    Move the mapping of a node down one branch
-    """
-
-    if events is not None and recon[node] == schild:
-        events[node] = "spec"
-    else:
-        recon[node] = schild
-
-
-def can_change_recon_up(recon, node, events=None):
-    """Returns True is recon can remap node one 'step' up"""
-
-    if events is not None and events[node] == "spec" and not node.is_leaf():
-        # promote speciation to duplication
-        return True
-    else:
-        # move duplication up one branch
-        rnode = recon[node]
-        prnode = rnode.parent
-
-        # rearrangement is valid if
-        return (not node.is_leaf() and 
-            prnode is not None and #  1. there is parent sp. branch
-            (node.parent is None or # 2. no parent to restrict move
-             rnode != recon[node.parent] # 3. not already matching parent
-             ))
-
-
-def enum_recon(tree, stree, depth=None,
-               step=0, preorder=None,
-               recon=None, events=None,
-               gene2species=None):
-    """
-    Enumerate reconciliations between a gene tree and a species tree
-    """
-    
-    if recon is None:
-        recon = reconcile(tree, stree, gene2species)
-        events = label_events(tree, recon)
-
-    if preorder is None:
-        preorder = list(tree.preorder())
-
-    # yield current recon
-    yield recon, events
-
-    if depth is None or depth > 0:
-        for i in xrange(step, len(preorder)):
-            node = preorder[i]
-            if can_change_recon_up(recon, node, events):
-                schild = recon[node]
-                change_recon_up(recon, node, events)
-            
-                # recurse
-                depth2 = depth - 1 if depth is not None else None
-                for r, e in enum_recon(tree, stree, depth2,
-                                       i, preorder,
-                                       recon, events):
-                    yield r, e
-            
-                change_recon_down(recon, node, schild, events)
-
-
-
-    
-'''
-class EnumRecon (object):
-    """
-    Enumerate reconciliations between a gene tree and species tree
-    """
-
-    def __init__(self, tree, stree, depth=1,
-                 step=-1, preorder=None,
-                 recon=None, events=None,
-                 gene2species=None):
-        self.tree = tree
-        self.stree = stree
-        self.depth = 1
-        self.step = step
-
-        if recon:
-            self.recon = recon
-            self.events = events
-        else:
-            self.recon = reconcile(tree, stree, gene2species)
-            self.events = label_events(tree, self.recon)
-
-        if preorder:
-            self.preorder = preorder
-        else:
-            self.preorder = list(tree.preorder())
-            
-        
-        self.sprev = None
-
-
-    def __iter__(self):
-        return self
-
-    
-    def next(self):
-        if self.step >= 0:
-            # perform a rearrangement
-            if self.step >= len(self.preorder):
-                # no more mappings to move up, take 1 step back
-                change_recon_down(self.recon, node, schild, self.events)
-            
-            node = self.preorder[self.step]
-            if can_change_recon_up(self.recon, node, self.events):
-                self.sprev = self.recon[node]
-                change_recon_up(self.recon, node, self.events)
-        self.step += 1
-        
-        return self.recon
-'''
-
 
 
 #=============================================================================
@@ -1984,6 +1974,439 @@ def tree2distmat(tree, leaves):
 # branch splits
 #
 
+def find_splits(tree, rooted=False):
+    """
+    Find branch splits for a tree
+
+    If 'rooted' is True, then orient splits based on rooting
+    """
+    
+    all_leaves = set(tree.leaf_names())
+    nall_leaves = len(all_leaves)
+
+    # find descendants
+    descendants = {}
+    def walk(node):
+        if node.is_leaf():
+            s = descendants[node] = set([node.name])
+        else:
+            s = set()
+            for child in node.children:
+                s.update(walk(child))
+            descendants[node] = s
+        return s
+    for child in tree.root.children:
+        walk(child)
+
+    # left child's descendants immediately defines
+    # right child's descendants (by complement)
+    if len(tree.root.children) == 2:
+        # in order to work with rooted, be consistent about which descendents
+        # to keep
+        a, b = tree.root.children
+        if descendants[a] < descendants[b]:
+            del descendants[b]
+        else:
+            del descendants[a]
+
+    # build splits list
+    splits = []
+    for leaves in descendants.itervalues():
+        if 1 < len(leaves) and (rooted or len(leaves) < nall_leaves - 1):
+            set1 = tuple(sorted(leaves))
+            set2 = tuple(sorted(all_leaves - leaves))
+            if not rooted and len(set1) > len(set2):
+                set1, set2 = set2, set1
+                
+            splits.append((set1, set2))
+    
+    return splits
+
+
+def split_string(split, leaves=None, leafDelim=" ", splitDelim="|"):
+    """
+    Returns a string representing a split
+
+    If leaves are specified, leaf names will be displayed in that order.
+    """
+
+    if leaves is not None:
+        lookup = util.list2lookup(leaves)
+        split = (sorted(split[0], key=lambda x: lookup[x]),
+                 sorted(split[0], key=lambda x: lookup[x]))
+
+    return leafDelim.join(split[0]) + splitDelim + leafDelim.join(split[1])
+
+
+def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
+    """Returns a bit string representation of a split"""
+
+    if leaves is None:
+        leaves = split[0] + split[1]
+    set1, set2 = map(set, split)
+
+    chars = []
+    for leaf in leaves:
+        if leaf in set1:
+            chars.append(char1)
+        elif leaf in set2:
+            chars.append(char2)
+        else:
+            chars.append(nochar)
+
+    return "".join(chars)
+    
+
+def robinson_foulds_error(tree1, tree2):
+    """Returns the normalized Robinson Foulds Error metric, e.g. (A+B)/max(C,D),
+       where A is the number of partitions implied by tree1 but not by tree2,
+       B is the number of partitions implied by tree2 but not by tree1,
+       C is the total number of partitions implied by tree1, and
+       D is the total number of partitions implied by tree2.
+    """
+    splits1 = find_splits(tree1)
+    splits2 = find_splits(tree2)
+
+    overlap = set(splits1) & set(splits2)
+    
+    #assert len(splits1) == len(splits2)
+
+    denom = float(max(len(splits1), len(splits2)))
+    
+    if denom == 0.0:
+        return 0.0
+    else:
+        return 1 - (len(overlap) / denom)
+
+
+#=============================================================================
+# consensus methods
+
+
+def consensus_majority_rule(trees, extended=True, rooted=False):
+    """
+    Performs majority rule on a set of trees
+
+    extended -- if True, performs the extended majority rule
+    rooted   -- if True, assumes trees are rooted
+    """
+
+    # consensus tree
+    contree = treelib.Tree()
+
+    nleaves = len(trees[0].leaves())
+    ntrees = len(trees)
+    split_counts = util.Dict(1, 0)
+
+    # handle special cases
+    if not rooted and nleaves == 3:
+        leaves = trees[0].leaf_names()
+        root = tree.make_root()
+        n = tree.add_child(root, treelib.TreeNode(tree.new_name()))
+        tree.add_child(n, treelib.TreeNode(leaves[0]))
+        tree.add_child(n, treelib.TreeNode(leaves[1]))
+        tree.add_child(root, treelib.TreeNode(leaves[2]))
+        return tree
+    
+    elif nleaves == 2:
+        leaves = trees[0].leaf_names()
+        root = tree.make_root()
+        tree.add_child(root, treelib.TreeNode(leaves[0]))
+        tree.add_child(root, treelib.TreeNode(leaves[1]))
+        return tree
+        
+
+    # count all splits
+    for tree in trees:
+        for split in find_splits(tree, rooted):
+            split_counts[split] += 1
+
+    #util.print_dict(split_counts)
+    
+    # choose splits
+    pick_splits = 0
+    rank_splits = split_counts.items()
+    rank_splits.sort(key=lambda x: x[1], reverse=True)
+
+    # add splits to the contree in increasing frequency
+    for split, count in rank_splits:
+        if not extended and count <= ntrees / 2.0:
+            continue
+        
+        # choose split if it is compatiable
+        if _add_split_to_tree(contree, split, count / float(ntrees), rooted):
+            pick_splits += 1
+
+        # stop if enough splits are choosen
+        if ((rooted and pick_splits >= nleaves - 2) or
+            (not rooted and pick_splits >= nleaves - 3)):
+            break
+
+    # add remaining leaves and remove clade data
+    _post_process_split_tree(contree)
+    
+    return contree
+
+
+
+def _add_split_to_tree(tree, split, count, rooted=False):
+
+    split = (set(split[0]), set(split[1]))
+
+    # init first split
+    if len(tree) == 0:
+        root = tree.make_root()
+        root.data["leaves"] = split[0] | split[1]
+
+        if len(split[0]) == 1:
+            print "HERE"
+            node = tree.add_child(root, treelib.TreeNode(list(split[0])[0]))
+            node.data["leaves"] = split[0]
+            node.data["boot"] = count
+        else:
+            node = tree.add_child(root, treelib.TreeNode(tree.new_name()))
+            node.data["leaves"] = split[0]
+            node.data["boot"] = count
+
+        if len(split[1]) == 1:
+            node = tree.add_child(root, treelib.TreeNode(list(split[1])[0]))
+            node.data["leaves"] = split[1]
+            node.data["boot"] = count
+        #else:
+        #    node = tree.add_child(root, treelib.TreeNode(tree.new_name()))
+        #    node.data["leaves"] = split[1]
+        #    node.data["boot"] = count
+            
+        return True
+
+    def walk(node, clade):
+        if node.is_leaf():
+            # make new child
+            child = tree.add_child(node, treelib.TreeNode(tree.new_name()))
+            child.data["leaves"] = clade
+            child.data["boot"] = count
+            return True
+        
+        # which children intersect this clade?
+        intersects = []
+        for child in node:
+            leaves = child.data["leaves"]
+            intersect = clade & leaves
+            
+            if len(clade) == len(intersect) < len(leaves) :
+                # subset, recurse
+                return walk(child, clade)
+
+            elif len(intersect) == 0:
+                continue
+            
+            elif len(intersect) == len(leaves):
+                # superset
+                intersects.append(child)
+            else:
+                # conflict
+                return False
+
+        # insert new node
+        new_node = tree.add_child(node, treelib.TreeNode(tree.new_name()))
+        new_node.data["leaves"] = clade
+        new_node.data["boot"] = count
+        for child in intersects:
+            tree.remove(child)
+            tree.add_child(new_node, child)
+
+        return True
+    
+    # try to place split into tree
+    '''
+    for child in tree.root.children:
+        if rooted:
+            if split[0] < child.data["leaves"]:
+                return walk(child, split[0])
+        else:
+            for i in range(2):
+                if split[i] < child.data["leaves"]:
+                    return walk(child, split[i])
+    '''
+
+    if rooted:
+        walk(tree.root, split[0])
+    else:
+        if walk(tree.root, split[0]):
+            return True
+        else:
+            return walk(tree.root, split[1])
+    
+    # split is in conflict
+    return False
+    
+
+def _post_process_split_tree(tree):
+    
+    for node in list(tree):
+        if len(node.data["leaves"]) > 1:
+            for leaf_name in node.data["leaves"]:
+                for child in node:
+                    if leaf_name in child.data.get("leaves", ()):
+                        break
+                else:
+                    child = tree.add_child(node, treelib.TreeNode(leaf_name))
+
+    # remove leaf data and set root
+    for node in tree:
+        if "leaves" in node.data:
+            del node.data["leaves"]
+    
+            
+
+def ensure_binary_tree(tree):
+    """
+    Arbitrarly expand multifurcating nodes
+    """
+
+    # first tree just rerooting root branch
+    if len(tree.root.children) > 2:
+        treelib.reroot(tree, tree.root.children[0].name, newCopy=False)
+    
+    multibranches = [node for node in tree
+                     if len(node.children) > 2]
+
+    for node in multibranches:
+        children = list(node.children)
+        
+        # remove children
+        for child in children:
+            tree.remove(child)
+        
+        # add back in binary
+        while len(children) > 2:
+            left = children.pop()
+            right = children.pop()
+            newnode = treelib.TreeNode(tree.new_name())
+            newnode.data['boot'] = 0
+            tree.add_child(newnode, left)
+            tree.add_child(newnode, right)
+            children.append(newnode)
+        
+        # add last two to original node
+        tree.add_child(node, children.pop())
+        tree.add_child(node, children.pop())
+
+
+
+#=============================================================================
+# file functions
+
+def phylofile(famdir, famid, ext):
+    """
+    Creates a filename using my gene family format
+
+    famdir/famid/famid.ext
+    """
+    return os.path.join(famdir, famid, famid + ext)
+
+
+
+#=============================================================================
+# visualization
+
+def view_tree(tree, options = "-t 1"):
+    tmpfile = util.tempfile(".", "vistree", ".tree")
+    tree.write(tmpfile)
+    os.system("vistree -n %s %s" % (tmpfile, options))
+    os.remove(tmpfile)
+viewTree = view_tree
+
+
+
+
+'''
+#=============================================================================
+# Sequence Distance Estimation
+
+
+def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
+    aln = fasta.FastaDict()
+    aln["0"] = seq1
+    aln["1"] = seq2
+    
+    if os.path.isfile("infile"):
+        raise Exception("infile already exists")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madePhylip = True
+    else:
+        madePhylip = False
+    
+    
+    
+    # write file
+    if infile == None:
+        infile = util.tempfile(".", "tmp_in", ".align")
+        madeInfile = True
+    else:
+        madeInfile = False
+    if outfile == None:    
+        outfile = util.tempfile(".", "tmp_out", ".dist")
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    if os.path.exists(outfile):
+        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
+    else:
+        args = "%s\nf\n%s\ny\n" % (infile, outfile)
+    
+    phylip.writePhylipAlign(file(infile, "w"), aln)
+    phylip.execPhylip("dnadist", args, verbose=False)
+    labels, distmat = phylip.read_dist_matrix(outfile)
+
+    if madePhylip:
+        os.remove("outfile")
+    
+    if madeInfile:
+        os.remove(infile)
+    if madeOutfile:
+        os.remove(outfile)
+    
+    return distmat[0][1]
+
+
+def getGaplessDistMatrix(aln):
+    infile = util.tempfile("/tmp/", "tmp_in", ".align")
+    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
+    
+    # force PHYLIP to ask for outfile
+    if not os.path.exists("outfile"):
+        file("outfile", "w").close()
+        madeOutfile = True
+    else:
+        madeOutfile = False
+    
+    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
+    keys = aln.keys()
+    
+    for i in xrange(0, len(aln)):
+        for j in xrange(i+1, len(aln)):
+            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
+                                           infile=infile, outfile=outfile)
+            distmat[j][i] = distmat[i][j]
+    
+    
+    if madeOutfile:
+        os.remove("outfile")
+    
+    os.remove(infile)
+    os.remove(outfile)
+
+    return distmat
+
+
+#=============================================================================
+# old split code
+
 def find_all_branch_splits(network, leaves):
     # find vertice and edge visit history
     start = network.keys()[0]
@@ -2070,330 +2493,146 @@ def find_branch_splits(tree):
     return splits2
 
 
-def find_splits(tree):
-    """Find branch splits for a tree"""
-    
-    allLeaves = set(tree.leaf_names())
-
-    # find descendants
-    descendants = []
-    def walk(node):
-        if node.is_leaf():
-            descendants.append(set([node.name]))
-        else:
-            s = set()
-            for child in node.children:
-                s.update(walk(child))
-            descendants.append(s)
-        return descendants[-1]
-    for child in tree.root.children:
-        walk(child)
-
-    # left child's descendants immediately defines
-    # right child's descendants (by complement)
-    if len(tree.root.children) == 2:
-        descendants.pop()
-
-    # build splits list
-    splits = []
-    for leaves in descendants:
-        if len(leaves) > 1:
-            set1 = tuple(sorted(leaves))
-            set2 = tuple(sorted(allLeaves - leaves))
-            if len(set1) > len(set2):
-                set1, set2 = set2, set1
-                
-            splits.append((set1, set2))
-    
-    return splits
-
-
-def split_string(split, leaves=None, leafDelim=" ", splitDelim="|"):
-    """
-    Returns a string representing a split
-
-    If leaves are specified, leaf names will be displayed in that order.
-    """
-
-    if leaves is not None:
-        lookup = util.list2lookup(leaves)
-        split = (sorted(split[0], key=lambda x: lookup[x]),
-                 sorted(split[0], key=lambda x: lookup[x]))
-
-    return leafDelim.join(split[0]) + splitDelim + leafDelim.join(split[1])
-
-
-def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
-    """Returns a bit string representation of a split"""
-
-    if leaves is None:
-        leaves = split[0] + split[1]
-    set1, set2 = map(set, split)
-
-    chars = []
-    for leaf in leaves:
-        if leaf in set1:
-            chars.append(char1)
-        elif leaf in set2:
-            chars.append(char2)
-        else:
-            chars.append(nochar)
-
-    return "".join(chars)
-    
-    
-
-
-def robinson_foulds_error(tree1, tree2):
-    """Returns the normalized Robinson Foulds Error metric, e.g. (A+B)/max(C,D),
-       where A is the number of partitions implied by tree1 but not by tree2,
-       B is the number of partitions implied by tree2 but not by tree1,
-       C is the total number of partitions implied by tree1, and
-       D is the total number of partitions implied by tree2.
-    """
-    splits1 = find_branch_splits(tree1)
-    splits2 = find_branch_splits(tree2)
-
-    overlap = set(splits1.values()) & set(splits2.values())
-    
-    #assert len(splits1) == len(splits2)
-
-    denom = float(max(len(splits1), len(splits2)))
-    
-    if denom == 0.0:
-        return 0.0
-    else:
-        return 1 - (len(overlap) / denom)
-
-
 #=============================================================================
-# file functions
+# old branch length analysis code
 
-def phylofile(famdir, famid, ext):
-    """Creates a filename using my gene family format
 
-    famdir/famid/famid.ext
+def mapRefTree(trees, reftree, refmapfunc):
+    collect = util.Dict(1, [])
+    
+    for tree in trees:
+        nodemap = refmapfunc(tree, reftree)
+        
+        for name, node in tree.nodes.iteritems():
+            collect[nodemap[name]].append(node)
+    
+    return collect
+
+
+def findBranchLengths(collect):
+    return util.mapdict(collect, valfunc = lambda nodes: 
+                        map(lambda node: node.dist, nodes))
+
+def findTreeLengths(collect):
+    totals = map(sum, util.map2(lambda x: x.dist, zip(* collect.values())))
+    return totals
+    
+
+
+def get_species_inorder(tree):
+    return [node.name for node in tree.inorder()]
+
+
+def get_branch_lens(trees, stree, gene2species=gene2species):
+    # determine species nanes
+    species = map(str, stree.nodes.keys())
+    species.remove(str(stree.root.name))
+    
+    # make rates table
+    rates = tablelib.Table(headers=species)
+    
+    # loop through trees
+    for tree in trees:
+        if isinstance(tree, str):
+            tree = treelib.read_tree(tree)
+        recon = reconcile(tree, stree, gene2species)
+        events = label_events(tree, recon)
+        
+        # skip trees with duplications or with extremly long branch lengths
+        assert "dup" not in events.values()
+        
+        row = {}
+        for node in tree.nodes.values():
+            row[str(recon[node].name)] = node.dist
+        rates.append(row)
+    
+    return rates
+
+
+def find_branch_distrib(trees, stree, gene2species = gene2species, 
+                      relative = True):
+    """Older version of getBranchLens()
+    
+       Will probably be deprecated soon.
     """
-    return os.path.join(famdir, famid, famid + ext)
-
-
-
-#=============================================================================
-# visualization
-
-def view_tree(tree, options = "-t 1"):
-    tmpfile = util.tempfile(".", "vistree", ".tree")
-    tree.write(tmpfile)
-    os.system("vistree.py -n %s %s" % (tmpfile, options))
-    os.remove(tmpfile)
-viewTree = view_tree
-
-
-
-#=============================================================================
-# miscellaneous code that is not used frequently
-
-
-
-def findRootedSubtrees(tree):
-    """tree is unrooted"""
     
-    trees = []
-    
-    # convert tree to graph
-    mat = treelib.tree2graph(tree)
-    
-    donei = {}
-    
-    # loop over branches, and collect rooted trees on each node of branch
-    for i in mat:
-        donei[i] = 1
-        for j in mat[i]:
-            if j not in donei:
-                tree1 = treelib.graph2tree(mat, i, closedset={j:1})
-                tree2 = treelib.graph2tree(mat, j, closedset={i:1})
-                treelib.removeSingleChildren(tree1)
-                treelib.removeSingleChildren(tree2)
-                trees.append(tree1)
-                trees.append(tree2)
-    
-    return trees
+    lengths = util.Dict(1, [])
+    used = []
 
-
-def findOrthoNeighbors(parts, hits):
-
-    from . import blast
-
-    lookup = {}
-    for i in xrange(len(parts)):
-        for item in parts[i]:
-            lookup[item] = i
-
-    mat = util.Dict(1, (0, None))
-    
-    # find unidirectional best hits at partition level
-    for hit in hits:
-        try:
-            part1 = lookup[blast.query(hit)]
-            part2 = lookup[blast.subject(hit)]
-            score = blast.bitscore(hit)
-        except:
-            # skip genes not in parts
+    for tree in trees:
+        recon = reconcile(tree, stree, gene2species)
+        events = label_events(tree, recon)
+        
+        # skip trees with duplications or with extremly long branch lengths
+        if "dup" in events.values():
+            used.append(False)
             continue
-        
-        # don't count hits within a cluster
-        if part1 == part2:
-            continue
-        
-        if score > mat[part1][0]:
-            mat[part1] = (score, part2)
-        
-        if score > mat[part2][0]:
-            mat[part2] = (score, part1)
-    
-    # find best bidirectional hits
-    nbrs = []
-    touched = {}
-    for part in xrange(len(parts)):
-        other = mat[part][1]
-        if mat[other][1] == part and \
-           part not in touched and \
-           other not in touched:
-            nbrs.append((part, other))
-            touched[part] = 1
-    
-    return nbrs
-
-
-
-def partition_tree(tree, stree, gene2species):
-    recon = reconcile(tree, stree, gene2species)
-    sroots = find_species_roots(tree, stree, recon)
-    
-    # extend subroots
-    sroots = treelib.maxDisjointSubtrees(tree, sroots)
-    
-    # partition
-    trees = []
-    for sroot in sroots:
-        trees.append(treelib.subtree(tree, sroot))
-        trees[-1].root.parent = None
-    
-    return trees
-partitionTree = partition_tree
-
-
-def findSpeciesSets(stree):
-    """
-    returns a mapping for each species tree node 
-    to a set of modern day species
-    """
-    
-    setmap = {}
-    def walk(node):
-        node.recurse(walk)
-        if node.is_leaf():
-            setmap[node] = {node.name:1}
         else:
-            setmap[node] = {}
-            for child in node.children:
-                setmap[node].update(setmap[child])
-    walk(stree.root)
+            used.append(True)
+        
+        for node in tree.nodes.values():
+            if relative:
+                # find total length of tree
+                totalLength = 0
+                for node in tree.nodes.values():
+                    totalLength += node.dist
+            
+                lengths[recon[node]].append(node.dist/totalLength)
+            else:                
+                lengths[recon[node]].append(node.dist)
     
-    return setmap
+    
+    return lengths, used
 
 
 
-def jukesCantorCorrection(dist):
-    """Applies the Jukes Cantor correction to distances
-       
-       Only valid for distances less than .75 sub/site
-    """
-    assert (dist < .75)
-    return - (3/4.0) * log(1 - (4/3.) * dist)
+def getRelBranchLens(rates, species=None):
+    if species == None:
+        species = rates.headers
+    
+    nonspecies = set(rates.headers) - set(species)
+    
+    relrates = rates.new()
+    
+    for row in rates:
+        row2 = {}
+        tot = sum(util.mget(row, species))
+        
+        for sp in species:
+            row2[sp] = row[sp] / tot
+        
+        # copy over non-species data
+        for key in nonspecies:
+            row2[key] = row[key]
+        
+        relrates.append(row2)
+    
+    return relrates
+        
+
+def getBranchZScores(rates, params):
+    zscores = rates.new()
+    
+    # determine column to species mapping
+    col2species = {}
+    for species in params:
+        col2species[str(species)] = species
+    
+    for row in rates:
+        row2 = {}
+        for key, val in row.iteritems():
+            if key in col2species:
+                # compute zscore
+                mu, sigma = params[col2species[key]]
+                row2[key] = (val - mu) / sigma
+            else:
+                # not a branch, copy value unchanged
+                row2[key] = val
+        
+        zscores.append(row2)
+    
+    return zscores
 
 
-'''
-#=============================================================================
-# Sequence Distance Estimation
-
-
-def getSeqPairDist(seq1, seq2, infile=None, outfile=None):
-    aln = fasta.FastaDict()
-    aln["0"] = seq1
-    aln["1"] = seq2
-    
-    if os.path.isfile("infile"):
-        raise Exception("infile already exists")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madePhylip = True
-    else:
-        madePhylip = False
-    
-    
-    
-    # write file
-    if infile == None:
-        infile = util.tempfile(".", "tmp_in", ".align")
-        madeInfile = True
-    else:
-        madeInfile = False
-    if outfile == None:    
-        outfile = util.tempfile(".", "tmp_out", ".dist")
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    if os.path.exists(outfile):
-        args = "%s\nf\n%s\nr\ny\n" % (infile, outfile)
-    else:
-        args = "%s\nf\n%s\ny\n" % (infile, outfile)
-    
-    phylip.writePhylipAlign(file(infile, "w"), aln)
-    phylip.execPhylip("dnadist", args, verbose=False)
-    labels, distmat = phylip.read_dist_matrix(outfile)
-
-    if madePhylip:
-        os.remove("outfile")
-    
-    if madeInfile:
-        os.remove(infile)
-    if madeOutfile:
-        os.remove(outfile)
-    
-    return distmat[0][1]
-
-
-def getGaplessDistMatrix(aln):
-    infile = util.tempfile("/tmp/", "tmp_in", ".align")
-    outfile = util.tempfile("/tmp/", "tmp_out", ".dist")
-    
-    # force PHYLIP to ask for outfile
-    if not os.path.exists("outfile"):
-        file("outfile", "w").close()
-        madeOutfile = True
-    else:
-        madeOutfile = False
-    
-    distmat = util.makeMatrix(len(aln), len(aln), 0.0)
-    keys = aln.keys()
-    
-    for i in xrange(0, len(aln)):
-        for j in xrange(i+1, len(aln)):
-            distmat[i][j] = getSeqPairDist(aln[keys[i]], aln[keys[j]], 
-                                           infile=infile, outfile=outfile)
-            distmat[j][i] = distmat[i][j]
-    
-    
-    if madeOutfile:
-        os.remove("outfile")
-    
-    os.remove(infile)
-    os.remove(outfile)
-
-    return distmat
 
 '''

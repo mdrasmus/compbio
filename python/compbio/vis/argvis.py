@@ -284,6 +284,7 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                 x, y = layout[node]
                 x2, y2 = layout[node.parent]
                 clicking.append(branch_hotspot(node, node.parent, x, y, y2))
+        win.add_group(clicking)
 
         
         # draw mut

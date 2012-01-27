@@ -6,7 +6,7 @@
   Methods need the following user-defined functions:
 
     get_num_states(pos)
-    prob_prior(state)
+    prob_prior(pos, state)
     prob_emission(pos, state)
     prob_transition(pos1, state1, pos2, state2)
 
@@ -53,7 +53,7 @@ class HMM (object):
         """Returns the number of states at position 'pos'"""
         return 0
 
-    def prob_prior(self, state):
+    def prob_prior(self, pos, state):
         """Returns the prior probability of a state"""
         return 0.0
 
@@ -81,11 +81,11 @@ class HMM (object):
 def sample_hmm_first_state(model):
     state = 0
     nstates = model.get_num_states(0)
-    p = model.prob_prior(state)
+    p = model.prob_prior(0, state)
     pick = log(random.random())
     while pick > p and state < nstates:
         state += 1
-        p = logadd(p, model.prob_prior(state))
+        p = logadd(p, model.prob_prior(0, state))
     return state
 
 
@@ -136,7 +136,7 @@ def viterbi(model, n, verbose=False):
 
     # calc first position
     nstates = model.get_num_states(0)
-    probs.append([model.prob_prior(j) + model.prob_emission(0, j)
+    probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
     ptrs.append([-1] * nstates)
     
@@ -190,7 +190,7 @@ def forward_algorithm(model, n, verbose=False):
 
     # calc first position
     nstates = model.get_num_states(0)
-    probs.append([model.prob_prior(j) + model.prob_emission(0, j)
+    probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
     
     if n > 20:
@@ -199,11 +199,11 @@ def forward_algorithm(model, n, verbose=False):
         step = 1
     
     # loop through positions
+    nstates1 = nstates
     for i in xrange(1, n):
         if verbose and i % step == 0:
             print " forward iter=%d/%d, lnl=%f" % (i+1, n, max(probs[i-1]))
 
-        nstates1 = model.get_num_states(i-1)
         nstates2 = model.get_num_states(i)
         col1 = probs[i-1]
 
@@ -218,8 +218,45 @@ def forward_algorithm(model, n, verbose=False):
             col2.append(tot)
                 
         probs.append(col2)
+        nstates1 = nstates2
 
     return probs
+
+
+
+def iter_forward_algorithm(model, n, verbose=False):
+    
+    # calc first position
+    nstates = model.get_num_states(0)
+    col1 = [model.prob_prior(0, j) + model.prob_emission(0, j)
+            for j in xrange(nstates)]
+    
+    if n > 20:
+        step = (n // 20)
+    else:
+        step = 1
+    
+    # loop through positions
+    nstates1 = nstates
+    for i in xrange(1, n):
+        if verbose and i % step == 0:
+            print " forward iter=%d/%d, lnl=%f" % (i+1, n, max(col1))
+
+        nstates2 = model.get_num_states(i)
+
+        # find total transition and emission
+        col2 = []
+        for k in xrange(nstates2):
+            tot = -util.INF
+            emit = model.prob_emission(i, k)
+            for j in xrange(nstates1):
+                p = col1[j] + model.prob_transition(i-1, j, i, k) + emit
+                tot = logadd(tot, p)
+            col2.append(tot)
+
+        yield col2
+        col1 = col2
+        nstates1 = nstates2
 
 
 
@@ -231,7 +268,7 @@ def backward_algorithm(model, n, verbose=False):
     nstates = model.get_num_states(n-1)
     for i in xrange(n):
         probs.append(None)
-    probs[n-1] = [model.prob_prior(j) + model.prob_emission(n-1, j)
+    probs[n-1] = [model.prob_prior(n-1, j) + model.prob_emission(n-1, j)
                   for j in xrange(nstates)]
     
     if n > 20:
@@ -250,11 +287,11 @@ def backward_algorithm(model, n, verbose=False):
 
         # find total transition and emission
         col1 = []
+        emit = [model.prob_emission(i+1, k) for k in xrange(nstates2)]
         for j in xrange(nstates1):
             tot = -util.INF
             for k in xrange(nstates2):
-                p = (col2[k] + model.prob_emission(i+1, k) + 
-                     model.prob_transition(i, j, i+1, k))
+                p = col2[k] + emit[k] + model.prob_transition(i, j, i+1, k)
                 tot = logadd(tot, p)
             col1.append(tot)
                 
@@ -269,9 +306,11 @@ def get_posterior_probs(model, n, verbose=False):
     probs_backward = backward_algorithm(model, n, verbose=verbose)
 
     total_prob = -util.INF
-    for j in xrange(model.get_num_states(n-1)):
-        total_prob = logadd(total_prob, probs_forward[n-1][j] +
-                            model.prob_prior(j))
+    for j in xrange(model.get_num_states(0)):
+        total_prob = logadd(total_prob,
+                            model.prob_prior(0, j) +
+                            model.prob_emission(0, j) +
+                            probs_backward[0][j])
 
     probs_post = [
         [probs_forward[i][j] + probs_backward[i][j] - total_prob

@@ -47,7 +47,7 @@ class ArgNode (object):
     def __repr__(self):
         return "<node %s>" % self.name
 
-    def get_dist(self, parent_index):
+    def get_dist(self, parent_index=0):
         """Get branch length distance from node to parent_index'th parent"""
         if len(self.parents) == 0:
             return 0.0
@@ -339,7 +339,10 @@ class ARG (object):
             else:
                 return None
         elif node.event == "recomb":
-            return node.parents[0 if pos < node.pos else 1]
+            if len(node.parents) > 0:
+                return node.parents[0 if pos < node.pos else 1]
+            else:
+                return None
         else:
             raise Exception("unknown event '%s'" % node.event)
 
@@ -1449,7 +1452,41 @@ def subarg(arg, start, end):
                 parent2.children.append(node2)
 
     return arg2
+
+
+def subarg_by_leaves(arg, leaves, keep_single=False):
+    """
+    Removes any leaf from the arg that is not in leaves set
+    """
+
+    stay = set(leaves)
+    remove = []
+
+    # find nodes to remove
+    for node in arg.postorder():
+        nchildren = sum(1 for child in node.children if child in stay)
+        if nchildren == 0 and node not in stay:
+            remove.append(node)
+        else:
+            stay.add(node)
+
+    # remove nodes
+    for node in remove:
+        arg.remove(node)
     
+    if not keep_single:
+        remove_single_lineages(arg)
+
+    return arg
+
+
+def subarg_by_leaf_names(arg, leaf_names, keep_single=False):
+    """
+    Removes any leaf from the arg that is not in leaf name set
+    """
+
+    return subarg_by_leaves(arg, [arg[x] for x in leaf_names],
+                            keep_single=keep_single)
 
 
 #=============================================================================
@@ -1719,6 +1756,8 @@ def iter_mutation_splits(arg, mutations):
             arg, node, pos)))
         if len(split) != 1 and len(split) != nleaves:
             yield pos, split
+
+
 
 
 

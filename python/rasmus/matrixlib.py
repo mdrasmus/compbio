@@ -153,7 +153,7 @@ def lmat2ilmat(lmat):
     """Converts a dict of dicts (lmat) to labeled matrix iterator (ilmat)"""
 
     for row in lmat:
-        for col, val in row.iteritems():
+        for col, val in lmat[row].iteritems():
             yield row, col, val
 
 
@@ -167,6 +167,13 @@ def ilmat2imat(ilmat, rowlabels, collabels):
 
     for r, c, v in ilmat:
         yield rowlookup[r], collookup[c], v
+
+
+def lmat2imat(lmat, rowlabels, collabels):
+    """
+    Converts a dict of dicts (lmat) to a indexed matrix iterator (imat)
+    """
+    return ilmat2imat(lmat2ilmat(lmat), rowlabels, collabels)
 
 
 def imat2ilmat(imat, rowlabels, collabels):
@@ -501,7 +508,7 @@ def write_lmat(out, lmat):
     """
     
     for row in lmat:
-        for col, val in lmat.iteritems():
+        for col, val in lmat[row].iteritems():
             out.write("%s\t%s\t%f\n" % (row, col, val))
             
 #=============================================================================

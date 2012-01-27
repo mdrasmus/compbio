@@ -114,6 +114,25 @@ class Test (unittest.TestCase):
         pause()
 
 
+    def test_coin_post(self):
+        
+        print "test posterior"
+        model = make_coin_model()
+
+        # sample states and data
+        ndata = 100
+        states = list(islice(hmm.sample_hmm_states(model), ndata))
+        data = list(hmm.sample_hmm_data(model, states))
+        model.prob_emission = (lambda pos, state:
+            model.prob_emission_data(state, data[pos]))
+        
+        probs = hmm.get_posterior_probs(model, len(data))
+        for col in probs:
+            p = sum(map(exp, col))
+            print p, map(exp, col)
+
+
+
 
 #=============================================================================
 if __name__ == "__main__":   

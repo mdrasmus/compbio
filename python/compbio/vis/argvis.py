@@ -217,7 +217,7 @@ def show_marginal_trees(arg, mut=None):
 
 
 def show_tree_track(tree_track, mut=None, show_labels=False,
-                    use_blocks=False):
+                    use_blocks=False, branch_click=None):
     """
     tree_track = [((start, end), tree), ...]
     """
@@ -227,15 +227,25 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                 [text_clip(leaf.name, layout[leaf][0], layout[leaf][1],
                           1, layout[leaf][1] + 1e4, 4, 20, "middle", "left")
                  for leaf in tree.leaves()])
+
+    def branch_hotspot(node, parent, x, y, y2):
+        def func():
+            branch_click(node, parent)
+        return hotspot("click", x-.5, y, x+.5, y2, func)
+
+    def print_branch(node, parent):
+        print "node", node.name
     
 
     tree_track = iter(tree_track)
     if mut:
         mut = util.PushIter(mut)
     block, tree = tree_track.next()
+    if branch_click is True:
+        branch_click = print_branch
 
     win = summon.Window()
-    x = 0
+    treex = 0
     step = 2
     treewidth = len(list(tree.leaves())) + step
 
@@ -249,14 +259,11 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
     for block, tree in chain([(block, tree)], tree_track):
         pos = block[0]
         print pos
-
-        #if use_blocks:
-        #    treewidth = block[1] - block[0]
         
         layout = treelib.layout_tree(tree, xscale=1, yscale=1)
         treelib.layout_tree_vertical(layout, leaves=0)
-        win.add_group(
-            translate(x, 0, color(1,1,1),
+        g = win.add_group(
+            translate(treex, 0, color(1,1,1),
                       sumtree.draw_tree(tree, layout, 
                                         vertical=True),
                       (draw_labels(tree, layout) if show_labels else group()),
@@ -266,6 +273,18 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                     treewidth*.95, -max(l[1] for l in layout.values()),
                     4, 20, 
                     "center", "top")))
+
+
+        clicking = group()
+        g.append(clicking)
+
+        # hotspots
+        for node in tree:
+            if node.parent:
+                x, y = layout[node]
+                x2, y2 = layout[node.parent]
+                clicking.append(branch_hotspot(node, node.parent, x, y, y2))
+
         
         # draw mut
         if mut:
@@ -276,13 +295,13 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                     if node and parent:
                         t = random.uniform(layout[node][1], layout[parent][1])
                         nx, ny = layout[node]
-                        win.add_group(draw_mark(x + nx, t, col=(0,0,1)))
+                        win.add_group(draw_mark(treex + nx, t, col=(0,0,1)))
                 elif mpos > block[1]:
                     mut.push((mpos, age, chroms))
                     break
                     
                 
-        x += treewidth
+        treex += treewidth
 
     #win.set_visible(* win.get_root().get_bounding() + ("exact",))
     win.home("exact")

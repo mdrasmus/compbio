@@ -339,7 +339,10 @@ class ARG (object):
             else:
                 return None
         elif node.event == "recomb":
-            return node.parents[0 if pos < node.pos else 1]
+            if len(node.parents) > 0:
+                return node.parents[0 if pos < node.pos else 1]
+            else:
+                return None
         else:
             raise Exception("unknown event '%s'" % node.event)
 

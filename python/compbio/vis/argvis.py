@@ -217,7 +217,7 @@ def show_marginal_trees(arg, mut=None):
 
 
 def show_tree_track(tree_track, mut=None, show_labels=False,
-                    use_blocks=False):
+                    use_blocks=False, branch_click=None):
     """
     tree_track = [((start, end), tree), ...]
     """
@@ -227,12 +227,22 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                 [text_clip(leaf.name, layout[leaf][0], layout[leaf][1],
                           1, layout[leaf][1] + 1e4, 4, 20, "middle", "left")
                  for leaf in tree.leaves()])
+
+    def branch_hotspot(node, parent, x, y, y2):
+        def func():
+            branch_click(node, parent)
+        return hotspot("click", x-.5, y, x+.5, y2, func)
+
+    def print_branch(node, parent):
+        print "node", node.name
     
 
     tree_track = iter(tree_track)
     if mut:
         mut = util.PushIter(mut)
     block, tree = tree_track.next()
+    if branch_click is True:
+        branch_click = 
 
     win = summon.Window()
     x = 0
@@ -249,9 +259,6 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
     for block, tree in chain([(block, tree)], tree_track):
         pos = block[0]
         print pos
-
-        #if use_blocks:
-        #    treewidth = block[1] - block[0]
         
         layout = treelib.layout_tree(tree, xscale=1, yscale=1)
         treelib.layout_tree_vertical(layout, leaves=0)
@@ -266,6 +273,18 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
                     treewidth*.95, -max(l[1] for l in layout.values()),
                     4, 20, 
                     "center", "top")))
+
+
+        clicking = group()
+
+        # hotspots
+        for node in tree:
+            if node.parent:
+                x, y = layout[node]
+                x2, y2 = layout[node.parent]
+                clicking.append(branch_hotspot(node, node.parent, x, y, y2))
+        win.add_group(clicking)
+
         
         # draw mut
         if mut:

@@ -346,6 +346,6 @@ def sample_posterior(model, n, forward_probs=None, verbose=False):
             A.append(forward_probs[i][j] + C[j] + B)
         path[i] = j = stats.sample(map(exp, A))
         # !$B_{i,j} = C_{i,j} B_{i+1,l}$!
-        B *= C[j]
+        B += C[j]
     
     return path

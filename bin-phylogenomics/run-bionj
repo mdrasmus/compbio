@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# run mrbayes with standard command-line interface
+# run bionj with standard command-line interface
 
 import sys, os, shutil
 import optparse
 
 from rasmus import util, treelib
-from compbio import phylip, fasta, mrbayes
+from compbio import phylip, fasta, phylo
 from compbio import phylorun as phy
 
 
@@ -37,8 +37,6 @@ for fn in files:
     if len(align) <= 2:
         continue
 
-    if conf.usertreeext:
-        raise Exception("Can't specify usertree for bionj")
     
     # make temp files
     distfile = outdir + "/dist"
@@ -53,21 +51,29 @@ for fn in files:
     labels_junk, distmat = phylip.read_dist_matrix(distfile)
     write_dist_matrix(distmat, labels, distfile)
 
+    if not conf.opttree:
+        print "using usertree"
+        
+        usertree = treelib.read_tree(basename + conf.usertreeext)    
+        tree = phylo.neighborjoin(distmat, labels, usertree=usertree)
+        tree.write(treefile)
 
-    util.tic()
-    cmd = "echo -n '%s\n%s' | bionj > '%s/out'" %\
-          (distfile, treefile, outdir)
-    print cmd
+    else:
 
-    out = open(outdir + "/cmd", "w")
-    out.write(cmd)
-    out.close()
-    if os.system(cmd) != 0:
-        open(outdir + "/error", "w").close()
-        result = 1
-    out = open("%s/time" % outdir, "w")
-    out.write(str(util.toc()) + "\n")
-    out.close()
+        util.tic()
+        cmd = "echo -n '%s\n%s' | bionj > '%s/out'" %\
+              (distfile, treefile, outdir)
+        print cmd
+
+        out = open(outdir + "/cmd", "w")
+        out.write(cmd)
+        out.close()
+        if os.system(cmd) != 0:
+            open(outdir + "/error", "w").close()
+            result = 1
+        out = open("%s/time" % outdir, "w")
+        out.write(str(util.toc()) + "\n")
+        out.close()
         
 
 

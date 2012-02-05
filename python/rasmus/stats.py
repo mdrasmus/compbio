@@ -294,6 +294,25 @@ def logadd(lna, lnb):
         return lna
 
 
+def logsum(vals):
+    SUM_LOG_THRESHOLD = -15
+    maxval = vals[0]
+    maxi = 0
+
+    # find maxval
+    for i in range(1, len(vals)):
+        if vals[i] > maxval:
+            maxval = vals[i]
+            maxi = i
+
+    expsum = 1.0
+    for i in xrange(len(vals)):
+        if i != maxi and vals[i] - maxval > SUM_LOG_THRESHOLD:
+            expsum += exp(vals[i] - maxval)
+  
+    return maxval + log(expsum)
+
+
 def logsub(lna, lnb):
     """
     subtracting numbers in log-space

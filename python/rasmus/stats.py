@@ -7,6 +7,7 @@
 
 # python libs
 from math import *
+from itertools import izip
 import cmath
 import random
 import os
@@ -43,7 +44,7 @@ def mean(vals):
 def median(vals):
     """Computes the median of a list of numbers"""
     lenvals = len(vals)
-    sortvals = util.sort(vals)
+    sortvals = sorted(vals)
     
     if lenvals % 2 == 0:
         return (sortvals[lenvals / 2] + sortvals[lenvals / 2 - 1]) / 2.0
@@ -98,18 +99,14 @@ def covariance(lst1, lst2):
 def covmatrix(mat):
     """Covariance Matrix"""
     size = len(mat)
-    
-    return util.list2matrix(map(lambda (i,j): cov(mat[i], mat[j]), 
-                            util.range2(size, size)),
-                            size, size)
+    return [[cov(mat[i], mat[j]) for j in range(size)]
+            for i in range(size)]
 
 def corrmatrix(mat):
     """Correlation Matrix"""
     size = len(mat)
-    
-    return util.list2matrix(map(lambda (i,j): corr(mat[i], mat[j]), 
-                            util.range2(size, size)),
-                            size, size)
+    return [[corr(mat[i], mat[j]) for j in range(size)]
+            for i in range(size)]
 
 
 def corr(lst1, lst2):
@@ -218,7 +215,7 @@ def pearsonsRegression(observed, expected):
     """Pearson's coefficient of regression"""
     
     # error sum of squares
-    ess = sum((a - b)**2 for a, b in util.izip(observed, expected))
+    ess = sum((a - b)**2 for a, b in izip(observed, expected))
     
     # total sum of squares
     u = mean(observed)
@@ -234,11 +231,40 @@ def pearsonsRegressionLine(x, y, m, b):
     return pearsonsRegression(observed, expected)
 
 
+def rank(vals, x, norm=False, sort=True):
+    """
+    Returns the rank of x in list vals
+    rank(x) = i if vals[i-1] <= x < vals[i]
+
+    x    -- value to rank within values
+    vals -- list of values to compute the rank of
+    sort -- if True, vals will be sorted first
+    norm -- if True, return normalized ranks (i.e. percentiles)
+    """
+
+    if sort:
+        vals = sorted(vals)
+    n = len(vals)
+
+    for r, v in enumerate(vals):
+        if v > x:
+            break
+    else:
+        r = n
+
+    if norm:
+        r /= float(n + 1)
+
+    return r
+
 
 def percentile(vals, perc, rounding=-1, sort=True):
-    """Give the value at a percentile
-       
+    """Give the value at a percentile 'perc'
+
+       vals     -- list of values
+       perc     -- perctile
        rounding -- round down if -1 or round up for 1
+       sort     -- if True, sort vals first
     """
     
     if sort:
@@ -252,6 +278,10 @@ def percentile(vals, perc, rounding=-1, sort=True):
         return vals2[util.clamp(int(ceil(perc * n)), 0, n-1)]
     else:
         raise Exception("rounding must be 1 or -1")
+
+
+def dither(vals, radius):
+    return [x + random.uniform(-radius, radius) for x in vals]
 
 
 def logadd(lna, lnb):
@@ -514,49 +544,6 @@ def smooth2(x, y, xradius, minsize=0, sort=False):
     return x2, y2
 
 
-def smooth_old(x, radius):
-    """
-    return an averaging of vals using a radius
-    
-    Note: not implemented as fast as possible
-    runtime: O(len(vals) * radius)
-    """
-    
-    vlen = len(x)
-    
-    # simple case
-    if vlen == 0:
-        return []
-    
-    x2 = []
-    
-    tot = x[0]
-    
-    low = 0
-    high = 0
-    
-    for i in range(vlen):
-        xi = x[i]
-    
-        xradius2 = min(i, vlen - i - 1, xradius)
-    
-        # move window
-        while x[low] < xi - xradius2:
-            xtot -= x[low]
-            ytot -= y[low]
-            low += 1
-        while x[high] < xi + xradius2:
-            high += 1
-            xtot += x[high]
-            ytot += y[high]
-        
-        denom = float(high - low + 1)
-        x2.append(xtot / denom)
-        y2.append(ytot / denom)
-    
-    return x2, y2
-
-
 def factorial(x, k=1):
     """Simple implementation of factorial"""
     
@@ -663,15 +650,6 @@ def sample(weights):
             return i
     return len(weights) - 1
     
-    #probs = util.one_norm(weights)    
-    #cdf = [0]
-    #for i in range(1, len(probs)):
-    #    cdf.append(cdf[-1] + probs[i-1])
-    #pick = random.random()
-    #low,top = util.binsearch(cdf, pick)
-    #assert low != None
-    #return low
-    
 
 def rhyper(m, n, M, N, report=0):
     '''
@@ -727,6 +705,9 @@ def enrichItems(in_items, out_items, M=None, N=None, useq=True, extra=False):
     """Calculates enrichment for items within an in-set vs and out-set.
        Returns a sorted table.
     """
+    # DEPRECATED
+    # TODO: remove this function
+
     
     # count items
     counts = util.Dict(default=[0, 0])
@@ -948,7 +929,7 @@ def betaPdf(x, params):
     alpha, beta = params
     
     if 0 < x < 1 and alpha > 0 and beta > 0:
-        return e**(gammaln(alpha + beta) - (gammaln(alpha) + gammaln(beta)) + \
+        return exp(gammaln(alpha + beta) - (gammaln(alpha) + gammaln(beta)) + \
                    (alpha-1) * log(x) +  (beta-1) * log(1-x))
     else:
         return 0.0
@@ -1074,7 +1055,7 @@ def erf(x):
 
 def chiSquare(rows, expected=None, nparams=0):
     # ex: rows = [[1,2,3],[1,4,5]]
-    assert(util.equal(map(len,rows)))
+    assert util.equal(map(len, rows))
 
     if 0 in map(sum,rows): return 0,1.0
     cols = zip(* rows)
@@ -1184,63 +1165,6 @@ def chi_square_lookup(value, df):
     if i == -1: return 1
     else: return ps[i]
 
-
-def ttest(lst1, lst2):
-    sdevdist = sqrt(var(lst1)/len(lst1) + var(lst2)/len(lst2))
-    t = abs(mean(lst1) - mean(lst2)) / sdevdist
-    df = len(lst2) + len(lst2) - 2
-    
-"""
-t-table
-
- 	0.1  	0.05  	0.01  	0.001
-1 	6.31 	12.71 	63.66 	636.62
-2 	2.92 	4.30 	9.93 	31.60
-3 	2.35 	3.18 	5.84 	12.92
-4 	2.13 	2.78 	4.60 	8.61
-5 	2.02 	2.57 	4.03 	6.87
-6 	1.94 	2.45 	3.71 	5.96
-7 	1.89 	2.37 	3.50 	5.41
-8 	1.86 	2.31 	3.36 	5.04
-9 	1.83 	2.26 	3.25 	4.78
-10 	1.81 	2.23 	3.17 	4.59
-11 	1.80 	2.20 	3.11 	4.44
-12 	1.78 	2.18 	3.06 	4.32
-13 	1.77 	2.16 	3.01 	4.22
-14 	1.76 	2.14 	2.98 	4.14
-15 	1.75 	2.13 	2.95 	4.07
-16 	1.75 	2.12 	2.92 	4.02
-17 	1.74 	2.11 	2.90 	3.97
-18 	1.73 	2.10 	2.88 	3.92
-19 	1.73 	2.09 	2.86 	3.88
-20 	1.72 	2.09 	2.85 	3.85
-21 	1.72 	2.08 	2.83 	3.82
-22 	1.72 	2.07 	2.82 	3.79
-23 	1.71 	2.07 	2.82 	3.77
-24 	1.71 	2.06 	2.80 	3.75
-25 	1.71 	2.06 	2.79 	3.73
-26 	1.71 	2.06 	2.78 	3.71
-27 	1.70 	2.05 	2.77 	3.69
-28 	1.70 	2.05 	2.76 	3.67
-29 	1.70 	2.05 	2.76 	3.66
-30 	1.70 	2.04 	2.75 	3.65
-40 	1.68 	2.02 	2.70 	3.55
-60 	1.67 	2.00 	2.66 	3.46
-120 1.66 	1.98 	2.62 	3.37  
-"""    
-
-"""
-r	90%	95%	97.5%	99.5%
-1	3.07766	6.31371	12.7062	63.656
-2	1.88562	2.91999	4.30265	9.92482
-3	1.63774	2.35336	3.18243	5.84089
-4	1.53321	2.13185	2.77644	4.60393
-5	1.47588	2.01505	2.57058	4.03212
-10	1.37218	1.81246	2.22814	3.16922
-30	1.31042	1.69726	2.04227	2.74999
-100	1.29007	1.66023	1.98397	2.62589
-infty	1.28156	1.64487	1.95999	2.57584
-"""
 
 
 def spearman(vec1, vec2):
@@ -1454,6 +1378,27 @@ def _solveCubic_test(n=100):
         test(a, b, c)
 
 
+def bisect_root(f, x0, x1, err=1e-7):
+    """Find a root of a function func(x) using the bisection method"""
+    f0 = f(x0)
+    f1 = f(x1)
+    
+    while (x1 - x0) / 2.0 > err:
+        x2 = (x0 + x1) / 2.0
+        f2 = f(x2)
+        
+        if f0 * f2 > 0:
+            x0 = x2
+            f0 = f2
+        else:
+            x1 = x2
+            f1 = f2
+
+    return (x0 + x1) / 2.0
+
+
+
+
 
 #=============================================================================
 # testing
@@ -1495,3 +1440,49 @@ if __name__ == "__main__":
 
 
 
+#=============================================================================
+# OLD CODE
+
+'''
+def smooth_old(x, radius):
+    """
+    return an averaging of vals using a radius
+    
+    Note: not implemented as fast as possible
+    runtime: O(len(vals) * radius)
+    """
+    
+    vlen = len(x)
+    
+    # simple case
+    if vlen == 0:
+        return []
+    
+    x2 = []
+    
+    tot = x[0]
+    
+    low = 0
+    high = 0
+    
+    for i in range(vlen):
+        xi = x[i]
+    
+        xradius2 = min(i, vlen - i - 1, xradius)
+    
+        # move window
+        while x[low] < xi - xradius2:
+            xtot -= x[low]
+            ytot -= y[low]
+            low += 1
+        while x[high] < xi + xradius2:
+            high += 1
+            xtot += x[high]
+            ytot += y[high]
+        
+        denom = float(high - low + 1)
+        x2.append(xtot / denom)
+        y2.append(ytot / denom)
+    
+    return x2, y2
+'''

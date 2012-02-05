@@ -1,10 +1,10 @@
 
 
 import sys
-import unittest
 import StringIO
 
 from rasmus.common import *
+from rasmus.testing import *
 from compbio import arglib
 
 
@@ -39,7 +39,7 @@ class ArgTests (unittest.TestCase):
         times, events = arglib.sample_coal_recomb_times(k, n, r)
         lineages = list(arglib.lineages_over_time(k, events))
         rp.lines(times, lineages)
-        show_plot()
+        pause()
 
     def test_read_write(self):
         rho = 1.5e-8   # recomb/site/gen
@@ -1128,19 +1128,5 @@ if 0:
 
 
 #=============================================================================
-
-show_plots = False
-def show_plot():
-    if show_plots:
-        raw_input()
-
-
 if __name__ == "__main__":
-
-    if "--" in sys.argv:
-        args = sys.argv[sys.argv.index("--")+1:]
-        if "plot" in args:
-            show_plots = True
-        sys.argv = sys.argv[:sys.argv.index("--")]
-    
-    unittest.main()
+    test_main()

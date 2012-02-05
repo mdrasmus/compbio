@@ -6,7 +6,7 @@
   Methods need the following user-defined functions:
 
     get_num_states(pos)
-    prob_prior(state)
+    prob_prior(pos, state)
     prob_emission(pos, state)
     prob_transition(pos1, state1, pos2, state2)
 
@@ -18,12 +18,17 @@
 """
 
 import random
+from math import log, exp
 
 from rasmus import util, stats
 from stats import logadd
 
 
 class HMM (object):
+    """
+    Base class for defining an Hidden Markov Model (HMM)
+    """
+    
     def __init__(self):
         pass
 
@@ -45,18 +50,30 @@ class HMM (object):
 
 
     def get_num_states(self, pos):
+        """Returns the number of states at position 'pos'"""
         return 0
 
-    def prob_prior(self, state):
+    def prob_prior(self, pos, state):
+        """Returns the prior probability of a state"""
         return 0.0
 
     def prob_emission(self, pos, state):
+        """
+        Returns the emission probability at position 'pos' with state 'state'
+        """
         return 0.0
 
-    def prob_transition(self, pos1, pos2, state2):
+    def prob_transition(self, pos1, state1, pos2, state2):
+        """
+        Returns transition probability for transitioning between states
+        'state1' and 'state2' between position 'pos1' and position 'pos2'
+        """
         return 0.0
 
-    def emit(self, state):
+    def emit(self, pos, state):
+        """
+        Returns emission data given state 'state'
+        """
         return None
 
 
@@ -64,11 +81,11 @@ class HMM (object):
 def sample_hmm_first_state(model):
     state = 0
     nstates = model.get_num_states(0)
-    p = model.prob_prior(state)
+    p = model.prob_prior(0, state)
     pick = log(random.random())
     while pick > p and state < nstates:
         state += 1
-        p = logadd(p, model.prob_prior(state))
+        p = logadd(p, model.prob_prior(0, state))
     return state
 
 
@@ -104,19 +121,22 @@ def sample_hmm_data(model, states=None):
     if states is None:
         states = sample_hmm_states(model)
 
-    for state in states:
-        yield model.emit(state)
+    for i, state in enumerate(states):
+        yield model.emit(i, state)
 
 
 
 def viterbi(model, n, verbose=False):
+    """
+    Compute argmax_path P(path|data)
+    """
 
     probs = []
     ptrs = []
 
     # calc first position
     nstates = model.get_num_states(0)
-    probs.append([model.prob_prior(j) + model.prob_emission(0, j)
+    probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
     ptrs.append([-1] * nstates)
     
@@ -170,7 +190,7 @@ def forward_algorithm(model, n, verbose=False):
 
     # calc first position
     nstates = model.get_num_states(0)
-    probs.append([model.prob_prior(j) + model.prob_emission(0, j)
+    probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
     
     if n > 20:
@@ -179,11 +199,11 @@ def forward_algorithm(model, n, verbose=False):
         step = 1
     
     # loop through positions
+    nstates1 = nstates
     for i in xrange(1, n):
         if verbose and i % step == 0:
             print " forward iter=%d/%d, lnl=%f" % (i+1, n, max(probs[i-1]))
 
-        nstates1 = model.get_num_states(i-1)
         nstates2 = model.get_num_states(i)
         col1 = probs[i-1]
 
@@ -198,8 +218,45 @@ def forward_algorithm(model, n, verbose=False):
             col2.append(tot)
                 
         probs.append(col2)
+        nstates1 = nstates2
 
     return probs
+
+
+
+def iter_forward_algorithm(model, n, verbose=False):
+    
+    # calc first position
+    nstates = model.get_num_states(0)
+    col1 = [model.prob_prior(0, j) + model.prob_emission(0, j)
+            for j in xrange(nstates)]
+    
+    if n > 20:
+        step = (n // 20)
+    else:
+        step = 1
+    
+    # loop through positions
+    nstates1 = nstates
+    for i in xrange(1, n):
+        if verbose and i % step == 0:
+            print " forward iter=%d/%d, lnl=%f" % (i+1, n, max(col1))
+
+        nstates2 = model.get_num_states(i)
+
+        # find total transition and emission
+        col2 = []
+        for k in xrange(nstates2):
+            tot = -util.INF
+            emit = model.prob_emission(i, k)
+            for j in xrange(nstates1):
+                p = col1[j] + model.prob_transition(i-1, j, i, k) + emit
+                tot = logadd(tot, p)
+            col2.append(tot)
+
+        yield col2
+        col1 = col2
+        nstates1 = nstates2
 
 
 
@@ -211,7 +268,7 @@ def backward_algorithm(model, n, verbose=False):
     nstates = model.get_num_states(n-1)
     for i in xrange(n):
         probs.append(None)
-    probs[n-1] = [model.prob_prior(j) + model.prob_emission(n-1, j)
+    probs[n-1] = [model.prob_prior(n-1, j) + model.prob_emission(n-1, j)
                   for j in xrange(nstates)]
     
     if n > 20:
@@ -230,11 +287,11 @@ def backward_algorithm(model, n, verbose=False):
 
         # find total transition and emission
         col1 = []
+        emit = [model.prob_emission(i+1, k) for k in xrange(nstates2)]
         for j in xrange(nstates1):
             tot = -util.INF
             for k in xrange(nstates2):
-                p = (col2[k] + model.prob_emission(i+1, k) + 
-                     model.prob_transition(i, j, i+1, k))
+                p = col2[k] + emit[k] + model.prob_transition(i, j, i+1, k)
                 tot = logadd(tot, p)
             col1.append(tot)
                 
@@ -249,9 +306,11 @@ def get_posterior_probs(model, n, verbose=False):
     probs_backward = backward_algorithm(model, n, verbose=verbose)
 
     total_prob = -util.INF
-    for j in xrange(model.get_num_states(n-1)):
-        total_prob = logadd(total_prob, probs_forward[n-1][j] +
-                            model.prob_prior(j))
+    for j in xrange(model.get_num_states(0)):
+        total_prob = logadd(total_prob,
+                            model.prob_prior(0, j) +
+                            model.prob_emission(0, j) +
+                            probs_backward[0][j])
 
     probs_post = [
         [probs_forward[i][j] + probs_backward[i][j] - total_prob
@@ -261,65 +320,32 @@ def get_posterior_probs(model, n, verbose=False):
     return probs_post
 
 
-        
-if __name__ == "__main__":
-    from rasmus.common import *
+def sample_posterior(model, n, forward_probs=None, verbose=False):
 
-    def trans(pos1, state1, pos2, state2):
-        if state1 == state2:
-            return log(.9)
-        else:
-            return log(.1)
+    path = range(n)
 
-    def emit(state):
-        if state == 0:
-            if random.random() < .9:
-                return "H"
-            else:
-                return "T"
-        elif state == 1:
-            if random.random() < .1:
-                return "H"
-            else:
-                return "T"
+    # get forward probabilities
+    if forward_probs is None:
+        forward_probs = forward_algorithm(model, n, verbose=verbose)
+
+    # base case i=n-1
+    B = 0.0
+    i = n-1
+    A = [forward_probs[i][j] for j in range(model.get_num_states(i))]
+    path[i] = j = stats.sample(map(exp, A))
+  
+    # recurse
+    for i in xrange(n-2, -1, -1):
+        C = []
+        A = []
+        for j in range(model.get_num_states(i)):
+            # !$A_{j,i} = F_{i,j} C_{i,j} B_{i+1,l}$!
+            C.append(
+                model.prob_transition(i, j, i+1, path[i+1]) +
+                model.prob_emission(i+1, path[i+1]))
+            A.append(forward_probs[i][j] + C[j] + B)
+        path[i] = j = stats.sample(map(exp, A))
+        # !$B_{i,j} = C_{i,j} B_{i+1,l}$!
+        B *= C[j]
     
-    def prob_emission(state, data):
-        if state == 0:
-            if data == "H":
-                return log(.9)
-            else:
-                return log(.1)
-        elif state == 1:
-            if data == "H":
-                return log(.1)
-            else:
-                return log(.9)
-            
-
-    model = HMM()
-    model.set_callbacks(get_num_states=lambda pos: 2,
-                        prob_prior=lambda state: log(.5),
-                        prob_transition=trans,
-                        emit=emit)
-
-    ndata = 100
-
-    s = sample_hmm_states(model)
-    states = [s.next() for i in xrange(ndata)]
-    p = plot(states, style="lines")
-
-    s = sample_hmm_data(model, states)
-    data = [s.next() for i in xrange(len(states))]
-    print data
-
-    model.prob_emission = lambda pos, state: prob_emission(state, data[pos])
-    states2 = viterbi(model, len(data))
-
-    probs = get_posterior_probs(model, len(data))
-    states3 = [exp(probs[i][1]) for i in xrange(len(data))]
-
-    p.plot(util.vadds(states2, 1.5), style="lines", miny=-1, maxy=4)
-    p.plot(util.vadds(states3, 2.5), style="lines", miny=-1, maxy=4)
-
-    
-
+    return path

@@ -238,7 +238,7 @@ class Table (list):
         headers - if specified, only a subset of the headers will be copied
         """
         
-        if headers == None:
+        if headers is None:
             headers = self.headers
         
         tab = type(self)(headers=headers)
@@ -467,7 +467,7 @@ class Table (list):
         """Writes the table to the last used filename for the read() or write()
            function"""
         
-        if self.filename != None:
+        if self.filename is not None:
             self.write(self.filename)
         else:
             raise Exception("Table has no filename")
@@ -494,7 +494,7 @@ class Table (list):
         
         directive = self._determine_directive(line)
         
-        if directive == None:
+        if directive is None:
             return False
         
         rest = line[line.index(":")+1:]         
@@ -544,18 +544,18 @@ class Table (list):
             raise Exception("header '%s' is already in table" % header)
         
         # default column position is last column
-        if pos == None:
+        if pos is None:
             pos = len(self.headers)
         
         # default coltype is guessed from data
-        if coltype == None:
-            if data == None:
+        if coltype is None:
+            if data is None:
                 raise Exception("must specify data or coltype")
             else:
                 coltype = type(data[0])
         
         # default value is inferred from column type
-        if default == NULL:
+        if default is NULL:
             default = coltype()
         
         # update table info
@@ -563,7 +563,7 @@ class Table (list):
         self.types[header] = coltype
         
         # add data
-        if data != None:
+        if data is not None:
             for i in xrange(len(self)):
                 self[i][header] = data[i]
 
@@ -609,7 +609,7 @@ class Table (list):
         """
         
         # get labels
-        if rowheader != None and rowheader in self.headers:
+        if rowheader is not None and rowheader in self.headers:
             rlabels = self.cget(rowheader)
             clabels = copy.copy(self.headers)
             clabels.remove(rowheader)
@@ -721,7 +721,7 @@ class Table (list):
             keystr = key
             key = lambda x: x[keystr]
         
-        if key == None:
+        if key is None:
             raise Exception("must specify keyfunc")
         
         
@@ -768,10 +768,10 @@ class Table (list):
         """Returns a table with a subset of the rows and columns"""
         
         # determine rows and cols
-        if rows == None:
+        if rows is None:
             rows = range(len(self))
         
-        if cols == None:
+        if cols is None:
             cols = self.headers
             
         tab = self.new(cols)
@@ -808,9 +808,9 @@ class Table (list):
     def sort(self, cmp=None, key=None, reverse=False, col=None):
         """Sorts the table inplace"""
         
-        if col != None:
+        if col is not None:
             key = lambda row: row[col]
-        elif cmp == None and key == None:
+        elif cmp is None and key is None:
             # sort by first column
             key = lambda row: row[self.headers[0]]
         
@@ -893,7 +893,7 @@ iterTable = iter_table
 def histtab(items, headers=["item", "count", "percent"]):
     h = util.hist_dict(items)
     tab = Table(headers=headers)
-    tot = float(len(items))
+    tot = float(sum(h.itervalues()))
 
     if len(headers) == 2:    
         for key, val in h.items():
@@ -1007,7 +1007,7 @@ def sqlget(dbfile, query, maxrows=None, headers=None, headernum=False):
     if headers is None and not headernum:
         headers = [x[0] for x in cur.description]
     
-    if maxrows != None:
+    if maxrows is not None:
         lst = []
         try:
             for i in xrange(maxrows):
@@ -1177,13 +1177,13 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
     
     """
     
-    if clabels == None:
+    if clabels is None:
         clabels = range(len(mat[0]))
         nheaders = 0
     else:
         nheaders = 1
     
-    if rlabels == None:
+    if rlabels is None:
         tab = Table(headers=clabels)
     else:
         tab = Table(headers=[rowheader] + clabels)
@@ -1191,7 +1191,7 @@ def matrix2table(mat, rlabels=None, clabels=None, rowheader="rlabels"):
     
    
     for i, row in enumerate(mat):
-        if rlabels != None:
+        if rlabels is not None:
             row2 = {rowheader: rlabels[i]}
         else:
             row2 = {}
@@ -1342,7 +1342,7 @@ john	0	+
         
         class strand_type:
             def __init__(self, text=None):
-                if text == None:
+                if text is None:
                     self.val = True
                 else:
                     if text == "+":
@@ -1362,7 +1362,7 @@ john	0	+
         
 
         def strand_parser(text=None):
-            if text == None:
+            if text is None:
                 return True
             else:
                 if text == "+":
@@ -1409,7 +1409,7 @@ john	False	hello\n\\\nthere
     # python data structures/code
     if 1:
         def eval2(text=None):
-            if text == None:
+            if text is None:
                 return None
             else:
                 return eval(text)

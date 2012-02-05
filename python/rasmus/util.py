@@ -20,7 +20,7 @@ import os
 import re
 import sys
 from itertools import imap, izip
-
+from collections import defaultdict
 
 
 #
@@ -67,7 +67,7 @@ class Bundle (dict):
 
 
 class Dict (dict):
-    """My personal nested Dictionary (with default values)"""
+    """My personal nested Dictionary with default values"""
     
     
     def __init__(self, items=None, dim=1, default=None, insert=True):
@@ -75,14 +75,13 @@ class Dict (dict):
         items   -- items to initialize Dict (can be dict, list, iter)
         dim     -- number of dimensions of the dictionary
         default -- default value of a dictionary item
+        insert  -- if True, insert missing keys
         """
         
-        if isinstance(items, int):
-            # backwards compatiability
-            default = dim
-            dim = items            
-        elif items is not None:
+        if items is not None:
             dict.__init__(self, items)
+        else:
+            dict.__init__(self)
         
         self._dim = dim
         self._null = default
@@ -95,7 +94,7 @@ class Dict (dict):
     def __getitem__(self, i):
         if not i in self:
             if self._dim > 1:
-                ret = Dict(self._dim - 1, self._null)
+                ret = Dict(dim=self._dim - 1, default=self._null)
             else:
                 ret = copy.copy(self._null)
             if self._insert:
@@ -113,7 +112,7 @@ class Dict (dict):
             return dict.has_key(self, keys[0]) and \
                    self[keys[0]].has_keys(*keys[1:])
     
-    def write(self, out = sys.stdout):
+    def write(self, out=sys.stdout):
         def walk(node, path):
             if node.dim == 1:
                 for i in node:
@@ -143,6 +142,7 @@ class PushIter (object):
         return self
         
     def next(self):
+        """Returns the next item in the iteration stream"""
         if len(self._queue) > 0:
             return self._queue.pop()
         else:
@@ -153,6 +153,7 @@ class PushIter (object):
         self._queue.append(item)
 
     def peek(self, default=None):
+        """Return the next item in the iteration stream without poping it"""
         try:
             next = self.next()
         except StopIteration:
@@ -185,19 +186,8 @@ def remove(lst, *vals):
     return [i for i in lst if i not in delset]
 
 
-def sort(lst, compare=cmp, key=None, reverse=False):
-    """Returns a sorted copy of a list
-       
-       python2.4 now has sorted() which fulfills the same purpose
-       
-       lst     -- a list to sort
-       compare -- a function for comparing items (default: cmp)
-       key     -- function of one arg to map items
-       reverse -- when True reverse sorting
-    """
-    lst2 = list(lst)
-    lst2.sort(compare, key=key, reverse=reverse)
-    return lst2
+# aliases for sorted function (which was added in python2.4)
+sort = sorted
 
 
 def reverse(lst):
@@ -208,14 +198,29 @@ def reverse(lst):
     return lst2
 
 
+def replace(lst, old_item, new_item, replace_all=False):
+    """Replace an item in a list"""
+    if replace_all:
+        try:
+            i = -1
+            end = len(lst)
+            while i < end:
+                i = lst.index(old_item, i+1)
+                lst[i] = new_item
+        except:
+            pass
+    else:
+        i = lst.index(old_item)
+        lst[i] = new_item
+
+
 def cget(mat, *i):
     """Returns the column(s) '*i' of a 2D list 'mat'
         
        mat -- matrix or 2D list 
        *i  -- columns to extract from matrix
        
-       notes:
-       If one column is given, the column is returned as a list.
+       NOTE: If one column is given, the column is returned as a list.
        If multiple columns are given, a list of columns (also lists) is returned
     """
     
@@ -229,7 +234,7 @@ def cget(mat, *i):
 def mget(lst, ind):
     """Returns a list 'lst2' such that lst2[i] = lst[ind[i]]
        
-       Or in otherwords, get the subsequence 'lst'       
+       Or in otherwords, get the subsequence of 'lst'
     """
     return [lst[i] for i in ind]
 
@@ -244,6 +249,23 @@ def concat(* lists):
         lst.extend(l)
     return lst
 
+
+def flatten(lst, depth=INF):
+    """
+    Flattens nested lists/tuples into one list
+    
+    depth -- specifies how deep flattening should occur
+    """
+    
+    flat = []
+    
+    for elm in lst:
+        if hasattr(elm, "__iter__") and depth > 0:
+            flat.extend(flatten(elm, depth-1))
+        else:
+            flat.append(elm)
+    
+    return flat
 
 
 def subdict(dic, keys):
@@ -286,18 +308,13 @@ def list2lookup(lst):
     """
     Creates a dict where each key is lst[i] and value is i
     """
-    
-    lookup = {}
-    for i, elm in enumerate(lst):
-        lookup[elm] = i
-    return lookup
+    return dict((elm, i) for i, elm in enumerate(lst))
 
 
 def mapdict(dic, key=lambda x: x, val=lambda x: x):
     """
     Creates a new dict where keys and values are mapped
     """
-    
     dic2 = {}
     for k, v in dic.iteritems():
         dic2[key(k)] = val(v)
@@ -334,9 +351,9 @@ def groupby(func, lst, multi=False):
     """
     
     if not multi:
-        dct = {}
+        dct = defaultdict(lambda: [])
         for i in lst:
-            dct.setdefault(func(i), []).append(i)
+            dct[func(i)].append(i)
     else:
         dct = {}
         for i in lst:
@@ -416,24 +433,6 @@ def unique(lst):
             found.add(i)
     
     return lst2
-
-
-def flatten(lst, depth=INF):
-    """
-    Flattens nested lists/tuples into one list
-    
-    depth -- specifies how deep flattening should occur
-    """
-    
-    flat = []
-    
-    for elm in lst:
-        if hasattr(elm, "__iter__") and depth > 0:
-            flat.extend(flatten(elm, depth-1))
-        else:
-            flat.append(elm)
-    
-    return flat
 
 
 def mapapply(funcs, lst):
@@ -706,6 +705,11 @@ def binsearch(lst, val, cmp=cmp, order=1, key=None):
             lst[i] < val < lst[j]
         
        runs in O(log n)
+
+       lst   -- sorted lst to search
+       val   -- value to find
+       cmp   -- comparison function (default: cmp)
+       order -- sort order of lst (1=ascending (default), -1=descending)
     """
 
     #TODO: make a funtion based linear search
@@ -1039,34 +1043,34 @@ def write_list(filename, lst):
 
 
 def write_dict(filename, dct, delim="\t"):
-    """Write a dictionary to a file"""
+    """Write a dictionary to a file
+    
+       filename may also be a stream
+    """
     
     out = open_stream(filename, "w")
     for k, v in dct.iteritems():
         out.write("%s%s%s\n" % (str(k), delim, str(v)))
 
 
-# TODO: use this in open_stream()
-class IgnoreCloseFile (file):
+
+class IgnoreCloseFile (object):
     def __init__(self, stream):
-        self._stream = stream
+        self.__stream = stream
 
-    def read(self, *args, **kargs):
-        self._stream.read(*args, **kargs)
+    def __iter__(self):
+        return iter(self.__stream)
 
-    def readline(self, *args, **kargs):
-        self._stream.readline(*args, **kargs)
-
-    def write(self, *args, **kargs):
-        self._stream.write(*args, **kargs)
+    def __getattr__(self, name):
+        return getattr(self.__stream, name)
 
     def close(self):
         # ignore close call
         pass
-    
 
 
-def open_stream(filename, mode = "r"):
+
+def open_stream(filename, mode = "r", ignore_close=True):
     """Returns a file stream depending on the type of 'filename' and 'mode'
     
        The following types for 'filename' are handled:
@@ -1078,40 +1082,53 @@ def open_stream(filename, mode = "r"):
        other string   - opens file with name 'filename'
        
        mode is standard mode for file(): r,w,a,b
+
+       ignore_close -- if True and filename is a stream, then close() calls on
+                       the returned stream will be ignored.
     """
-    
+
+    is_stream = False
+
     # if filename has a file interface then return it back unchanged
-    if hasattr(filename, "read") or \
-       hasattr(filename, "write"):
-        return filename
+    if hasattr(filename, "read") or hasattr(filename, "write"):
+        stream = filename
+        is_stream = True
     
     # if mode is reading and filename is an iterator
-    if "r" in mode and hasattr(filename, "next"):
-        return filename
+    elif "r" in mode and hasattr(filename, "next"):
+        stream = filename
+        is_stream = True
     
     # if filename is a string then open it
     elif isinstance(filename, basestring):
         # open URLs
         if filename.startswith("http://"):
             import urllib2
-            return urllib2.urlopen(filename)
+            stream = urllib2.urlopen(filename)
         
         # open stdin and stdout
         elif filename == "-":
             if "w" in mode:
-                return sys.stdout
+                stream = sys.stdout
+                is_stream = True
             elif "r" in mode:
-                return sys.stdin
+                stream = sys.stdin
+                is_stream = True
             else:
                 raise Exception("stream '-' can only be opened with modes r/w")
         
         # open regular file
         else:
-            return open(filename, mode)
+            stream = open(filename, mode)
     
     # cannot handle other types for filename
     else:
         raise Exception("unknown filename type '%s'" % type(filename))
+
+    if is_stream and ignore_close:
+        stream = IgnoreCloseFile(stream)
+
+    return stream
 
 
 
@@ -1158,6 +1175,7 @@ def write_delim(filename, data, delim="\t"):
     for row in data:
         out.write(delim.join(str(x) for x in row))
         out.write("\n")
+    out.close()
 
 
 #=============================================================================
@@ -1199,19 +1217,18 @@ def printcols(data, width=None, spacing=1, format=default_format,
     if len(data) == 0:
         return
     
-    if isinstance(data[0], list) or \
-       isinstance(data[0], tuple):
+    if isinstance(data[0], (list, tuple)):
         # matrix printing has default width of unlimited
-        if width == None:
+        if width is None:
             width = 100000
         
         mat = data
     else:
         # list printing has default width 75
-        if width == None:
+        if width is None:
             width = 75
         
-        ncols = int(width / (max(map(lambda x: len(str(x)), data))+ spacing))
+        ncols = int(width / (max(map(lambda x: len(format(x)), data))+spacing))
         mat = list2matrix(data, ncols=ncols, bycols=True)
     
     
@@ -1333,7 +1350,7 @@ def print_dict(dic, key=lambda x: x, val=lambda x: x,
               spacing=4, out=sys.stdout,
               format=default_format, 
               justify=default_justify):
-    """Print s a dictionary in two columns"""
+    """Prints a dictionary in two columns"""
     
     if num == None:
         num = len(dic)
@@ -1351,9 +1368,20 @@ def print_dict(dic, key=lambda x: x, val=lambda x: x,
 
 
 def print_row(*args, **kargs):
+    """
+    Prints a delimited row of values
+
+    out     -- output stream (default: sys.stdout)
+    delim   -- delimiter (default: '\t')
+    newline -- newline character (default: '\n')
+    format  -- formatting function (default: str)
+    """
+    
     out = kargs.get("out", sys.stdout)
     delim = kargs.get("delim", "\t")
-    out.write(delim.join(map(str, args)) + "\n")
+    newline = kargs.get("newline", "\n")
+    format = kargs.get("format", str)
+    out.write(delim.join(map(format, args)) + newline)
 
 
 #=============================================================================
@@ -1444,7 +1472,8 @@ class IndentStream:
     
 #=============================================================================
 # file/directory functions
-#
+
+
 def list_files(path, ext=""):
     """Returns a list of files in 'path' ending with 'ext'"""
     
@@ -1569,7 +1598,7 @@ def sort_many(lst, *others, **args):
 def invperm(perm):
     """Returns the inverse of a permutation 'perm'"""
     inv = [0] * len(perm)
-    for i in range(len(perm)):
+    for i in xrange(len(perm)):
         inv[perm[i]] = i
     return inv
 
@@ -1622,7 +1651,7 @@ def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     ndivs, low, width = bucket_size(keys, ndivs, low, width)
     
     # init histogram
-    h = [[] for i in range(ndivs)]
+    h = [[] for i in xrange(ndivs)]
     x = []
     
     # bin items
@@ -1684,8 +1713,7 @@ def hist2(array1, array2,
     
 
 def histbins(bins):
-    """Adjust the bins from starts to centers, this will allow GNUPLOT to plot
-       histograms correctly"""
+    """Adjust the bins from starts to centers, this is useful for plotting"""
     
     bins2 = []
     

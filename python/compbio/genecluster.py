@@ -38,7 +38,7 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
     lookup2 = item2part(parts2)
     
     
-    best = util.Dict(1, (0, None))
+    best = util.Dict(dim=1, default=(0, None))
 
     util.tic("read hits")
     for blastfile, order in blastfiles:
@@ -401,7 +401,7 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
 
 
 def makeBlastFileLookup(blastfiles):
-    lookup = util.Dict(2)
+    lookup = util.Dict(dim=2)
     
     for f in blastfiles:
         m = util.match("(|.*/)(?P<genome1>[^/_]+)_(?P<genome2>[^/\.]+)\.[\/]*", f)

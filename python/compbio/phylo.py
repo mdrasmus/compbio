@@ -1,6 +1,6 @@
 #
 # Phylogeny functions
-# Matt Rasmussen 2006-2010
+# Matt Rasmussen 2006-2012
 # 
 
 
@@ -374,6 +374,7 @@ def write_recon_events(filename, recon, events=None, noevent=""):
     
     util.write_delim(filename, [(str(a.name), str(b.name), events[a])
                                 for a,b in recon.items()])
+
 
 def read_recon_events(filename, tree1, tree2):
     """Read a reconciliation and events data structure from file"""
@@ -830,11 +831,26 @@ def recon_events2brecon(recon, events):
     """
     Returns a branch reconciliation from 'recon' and 'events' data structures
     """
+    
     brecon = {}
     for node, snode in recon.iteritems():
-        brecon[node] = [(snode, events[node])]
+        branch = []
+        if node.parent:
+            sparent = recon[node.parent]
+            if sparent != snode:
+                if events[node.parent] == "dup":
+                    branch.append((sparent, "specloss"))
 
-    # TODO: make more general, so that all specloss events are present
+                losses = []
+                ptr = snode.parent
+                while ptr != sparent:
+                    losses.append((ptr, "specloss"))
+                    ptr = ptr.parent
+                
+                branch.extend(reversed(losses))
+
+        branch.append((snode, events[node]))
+        brecon[node] = branch
 
     return brecon
 
@@ -911,6 +927,45 @@ def subtree_brecon_by_leaves(tree, brecon, leaves):
     
     return doomed
 
+
+def add_implied_spec_nodes_brecon(tree, brecon):
+    """
+    adds speciation nodes to tree that are implied but are not present
+    because of gene losses
+    """
+
+    for node, events in brecon.items():
+        for sp, event in events:
+            if event == "specloss":
+                parent = node.parent
+                children = parent.children
+                node2 = tree.new_node()
+                
+                node2.parent = parent
+                children[children.index(node)] = node2
+
+                node.parent = node2
+                node2.children.append(node)
+
+                brecon[node2] = [[sp, "spec"]]
+
+            elif event == "transloss":
+
+                parent = node.parent
+                children = parent.children
+                node2 = tree.new_node()
+                
+                node2.parent = parent
+                children[children.index(node)] = node2
+
+                node.parent = node2
+                node2.children.append(node)
+
+                brecon[node2] = [[sp, "trans"]]
+
+
+        brecon[node] = events[-1:]
+                
 
 
 def write_brecon(out, brecon):
@@ -1699,7 +1754,7 @@ def neighborjoin(distmat, genes, usertree=None):
     
     tree = treelib.Tree()
     leaves = {}
-    dists = util.Dict(2, None)
+    dists = util.Dict(dim=2)
     restdists = {}
     
     
@@ -2084,7 +2139,7 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
 
     nleaves = len(trees[0].leaves())
     ntrees = len(trees)
-    split_counts = util.Dict(1, 0)
+    split_counts = util.Dict(default=0)
 
     # handle special cases
     if not rooted and nleaves == 3:

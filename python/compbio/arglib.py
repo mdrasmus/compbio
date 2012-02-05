@@ -47,7 +47,7 @@ class ArgNode (object):
     def __repr__(self):
         return "<node %s>" % self.name
 
-    def get_dist(self, parent_index):
+    def get_dist(self, parent_index=0):
         """Get branch length distance from node to parent_index'th parent"""
         if len(self.parents) == 0:
             return 0.0
@@ -240,7 +240,6 @@ class ARG (object):
             
             for child in node.children:
                 queue.append(child)
-        
 
 
     def postorder_marginal_tree(self, pos):
@@ -249,23 +248,56 @@ class ARG (object):
 
         NOTE: nodes are iterated in order of age
         """
-
+        
         # initialize heap
         heap = [(node.age, node) for node in self.leaves()]
         seen = set([None])
+        visited = set([])
+        visit_age = min(x[0] for x in heap) - 1
         
+        def unreachable(node):
+            # returns True if node is unreachable from leaves
+            if node in visited:
+                return False
+            if node.age < visit_age:
+                return True
+            for child in self.get_local_children(node, pos):
+                if not unreachable(child):
+                    return False
+            return True
+
+        def ready(node):
+            # returns True if node is ready to yield
+            # node is ready if all unvisited child are unreachable
+            for child in self.get_local_children(node, pos):
+                if child not in visited:
+                    if not unreachable(child):
+                        return False
+            return True
+        
+
         # add all ancestor of lineages
+        unready = []
         while len(heap) > 0:
-            age, node = heapq.heappop(heap)
+            # yield next ready node
+            del unready[:]
+            while True:
+                age, node = heapq.heappop(heap)
+                if ready(node):
+                    break
+                unready.append((age, node))
+            for x in unready:
+                heapq.heappush(heap, x)
             yield node
+            visited.add(node)
+            visit_age = node.age
             if len(heap) == 0:
                 # MRCA reached
                 return
-
+            
             # find correct marginal parent
             # add parent to lineages if it has not been seen before
             parent = self.get_local_parent(node, pos)
-            
             if parent not in seen:
                 heapq.heappush(heap, (parent.age, parent))
                 seen.add(parent)
@@ -273,7 +305,9 @@ class ARG (object):
 
     def preorder_marginal_tree(self, pos, node=None):
         """
-        Iterate postorder over the nodes in the marginal tree at position 'pos'
+        Iterate preorder over the nodes in the marginal tree at position 'pos'
+
+        NOTE: this might also include unreachable nodes
         """
 
         if node is None:
@@ -299,19 +333,41 @@ class ARG (object):
 
     def get_local_parent(self, node, pos):
         """Returns the local parent of 'node' for position 'pos'"""
-        if (node.event == "gene" or node.event == "coal"):
+        if node.event == "gene" or node.event == "coal":
             if len(node.parents) > 0:
                 return node.parents[0]
             else:
                 return None
         elif node.event == "recomb":
-            return node.parents[0 if pos < node.pos else 1]
+            if len(node.parents) > 0:
+                return node.parents[0 if pos < node.pos else 1]
+            else:
+                return None
         else:
             raise Exception("unknown event '%s'" % node.event)
 
 
+    def get_local_parents(self, node, start, end):
+        """Returns the parents of 'node' with ancestral sequence within (start, end)"""
+        if node.event == "recomb":
+            parents = []
+            if node.pos > start:
+                parents.append(node.parents[0])
+            if node.pos < end:
+                parents.append(node.parents[1])
+        else:
+            parents = node.parents
+        return parents
+
+
     def get_local_children(self, node, pos):
-        """Returns the local children of 'node' for position 'pos'"""
+        """
+        Returns the local children of 'node' for position 'pos'
+        
+        NOTE: the local children are not necessarily in the local tree
+        because the children may be unreachable from the leaves
+        """
+
         return [child for child in node.children
                 if self.get_local_parent(child, pos) == node]
         
@@ -663,7 +719,7 @@ class ARG (object):
         """
         Returns the marginal tree of the ARG containing position 'pos'
         """
-
+        
         # make new ARG to contain marginal tree
         tree = ARG()
         tree.nextname = self.nextname
@@ -690,7 +746,9 @@ class ARG (object):
         elif len(roots) > 1:
             # make cap node since marginal tree does not fully coallesce
             tree.root = tree.new_node(event="coal", 
+                                      name=self.new_name(),
                                       age=max(x.age for x in roots)+1)
+            tree.nextname = self.nextname
             for node in roots:
                 tree.root.children.append(node)
                 node.parents.append(tree.root)
@@ -1259,7 +1317,7 @@ def iter_marginal_trees(arg, start=None, end=None):
         yield tree
 
 
-def iter_tree_tracks(arg, start=None, end=None):
+def iter_tree_tracks(arg, start=None, end=None, convert=False):
     """
     Iterate over the marginal trees of an ARG
 
@@ -1294,6 +1352,8 @@ def iter_tree_tracks(arg, start=None, end=None):
             if node.event == "recomb" and start < node.pos < end:
                 end = node.pos
 
+        if convert:
+            tree = tree.get_tree()
         yield (start, end), tree
         start = end
 
@@ -1339,7 +1399,94 @@ def remove_single_lineages(arg):
 
                 queue.append(child)
 
+    # relabel events for leaves that were recombinations
+    for node in arg:
+        if node.is_leaf() and len(node.parents) == 1:
+            node.event = "gene"
+
     return arg
+
+
+
+def postorder_subarg(arg, start, end):
+    """Iterates postorder over the nodes of the 'arg' that are ancestral to (start,end)"""
+
+    # initialize heap
+    heap = [(node.age, node) for node in arg.leaves()]
+    seen = set([None])
+
+    # add all ancestor of lineages
+    while len(heap) > 0:
+        age, node = heapq.heappop(heap)
+        yield node
+        if len(heap) == 0:
+            # MRCA reached
+            return
+
+        # find parents within (start, end)
+        # add parent to lineages if it has not been seen before
+        for parent in arg.get_local_parents(node, start, end):
+            if parent not in seen:
+                heapq.heappush(heap, (parent.age, parent))
+                seen.add(parent)
+
+
+def subarg(arg, start, end):
+    """Returns a new ARG that only contains recombination within (start, end)"""
+
+    arg2 = ARG(start, end)
+
+    # add nodes
+    for node in postorder_subarg(arg, start, end):
+        arg2.root = arg2.new_node(node.name, event=node.event, age=node.age,
+                                  pos=node.pos)
+
+    # add edges
+    for node2 in arg2:
+        node = arg[node2.name]
+        for parent in arg.get_local_parents(node, start, end):
+            pname = parent.name
+            if pname in arg2:
+                parent2 = arg2[pname]
+                node2.parents.append(parent2)
+                parent2.children.append(node2)
+
+    return arg2
+
+
+def subarg_by_leaves(arg, leaves, keep_single=False):
+    """
+    Removes any leaf from the arg that is not in leaves set
+    """
+
+    stay = set(leaves)
+    remove = []
+
+    # find nodes to remove
+    for node in arg.postorder():
+        nchildren = sum(1 for child in node.children if child in stay)
+        if nchildren == 0 and node not in stay:
+            remove.append(node)
+        else:
+            stay.add(node)
+
+    # remove nodes
+    for node in remove:
+        arg.remove(node)
+    
+    if not keep_single:
+        remove_single_lineages(arg)
+
+    return arg
+
+
+def subarg_by_leaf_names(arg, leaf_names, keep_single=False):
+    """
+    Removes any leaf from the arg that is not in leaf name set
+    """
+
+    return subarg_by_leaves(arg, [arg[x] for x in leaf_names],
+                            keep_single=keep_single)
 
 
 #=============================================================================
@@ -1441,7 +1588,7 @@ def groupby_overlaps(regions, bygroup=True):
 
 
 #=============================================================================
-# mutations
+# mutations and splits
 
 
 def sample_arg_mutations(arg, mu):
@@ -1477,40 +1624,6 @@ def sample_arg_mutations(arg, mu):
     return mutations
 
 
-def sample_mutations(arg, u):
-    """
-    u -- mutation rate (mutations/locus/gen)
-
-    DEPRECATED: use sample_arg_mutations() instead
-    """
-
-    mutations = []
-
-    locsize = arg.end - arg.start
-
-    for node in arg:
-        for parent in node.parents:
-            for region in arg.get_ancestral(node, parent=parent):
-                # ensure node is not MRCA
-                for pregion in parent.data["ancestral"]:
-                    if pregion[0] <= region[0] < pregion[1]:
-                        break
-                else:
-                    continue
-                
-                frac = (region[1] - region[0]) / locsize
-                dist = parent.age - node.age
-                t = parent.age
-                while True:
-                    t -= random.expovariate(u * frac)
-                    if t < node.age:
-                        break
-                    pos = random.uniform(region[0], region[1])
-                    mutations.append((node, parent, pos, t))
-
-    return mutations
-
-
 def get_marginal_leaves(arg, node, pos):
     return (x for x in arg.preorder_marginal_tree(pos, node) if x.is_leaf())
 
@@ -1518,6 +1631,31 @@ def get_marginal_leaves(arg, node, pos):
 def get_mutation_split(arg, mutation):
     node, parent, pos, t = mutation
     return tuple(sorted(x.name for x in get_marginal_leaves(arg, node, pos)))
+
+
+def split_to_tree_branch(tree, split):
+    
+    node = treelib.lca([tree[name] for name in split])
+
+    if sorted(split) != sorted(node.leaf_names()):
+        inv = [x for x in tree.leaf_names() if x not in split]
+        node = treelib.lca([tree[name] for name in inv])
+        if sorted(inv) != sorted(node.leaf_names()):
+            # split does not conform to tree
+            return None
+
+    return node
+
+
+def split_to_arg_branch(arg, pos, split):
+
+    # TODO: make more efficient
+    tree = arg.get_tree(pos)
+    node = split_to_tree_branch(tree, split)
+    if node is not None:
+        return arg[node.name]
+    else:
+        None
 
 
 def iter_tree_splits(tree):
@@ -1621,6 +1759,9 @@ def iter_mutation_splits(arg, mutations):
 
 
 
+
+
+
 #=============================================================================
 # alignments
 
@@ -1665,8 +1806,6 @@ def make_alignment(arg, mutations, ancestral="A", derived="C"):
 def write_arg(filename, arg):
     out = util.open_stream(filename, "w")
 
-    # TODO: write arg.start, arg.end
-
     # write ARG key values
     out.write("start=%s\tend=%s\n" % (arg.start, arg.end))
 
@@ -1676,10 +1815,11 @@ def write_arg(filename, arg):
 
     # write nodes
     for node in arg:
-        out.write("\t".join(map(str, (
-                        node.name, node.event, node.age, node.pos,
-                        ",".join(str(x.name) for x in node.parents),
-                        ",".join(str(x.name) for x in node.children)))) + "\n")
+        util.print_row(
+            node.name, node.event, node.age, node.pos,
+            ",".join(str(x.name) for x in node.parents),
+            ",".join(str(x.name) for x in node.children),
+            out=out)
         
     if isinstance(filename, basestring):
         out.close()
@@ -1698,6 +1838,14 @@ def parse_node_name(text):
     else:
         return text
 
+def parse_key_value(field):
+    try:
+        i = field.index("=")
+        return field[:i], field[i+1:]
+    except:
+        raise Exception("improper key-value field '%s'" % text)
+    
+
 
 def read_arg(filename, arg=None):
     infile = util.DelimReader(filename)
@@ -1708,8 +1856,7 @@ def read_arg(filename, arg=None):
     # read ARG key values
     row = infile.next()
     for field in row:
-        i = field.index("=")
-        key, val = field[:i], field[i+1:]
+        key, val = parse_key_value(field)
         if key == "start":
             arg.start = int(val)
         elif key == "end":
@@ -1792,8 +1939,7 @@ def write_mutations(filename, arg, mutations):
 
     for mut in mutations:
         l = get_marginal_leaves(arg, mut[0], mut[2])
-        out.write("\t".join(map(
-                str, [mut[2], mut[3], ",".join(x.name for x in l)])) + "\n")
+        util.print_row(mut[2], mut[3], ",".join(x.name for x in l), out=out)
 
     if isinstance(filename, basestring):
         out.close()
@@ -1805,10 +1951,64 @@ def read_mutations(filename):
         yield int(row[0]), float(row[1]), chroms
 
 
+def write_ancestral(filename, arg):
+    out = util.open_stream(filename, "w")
+
+    for node in arg:
+        regions = util.flatten(node.data.get("ancestral", ()))
+        util.print_row(node.name, *regions, out=out)
+
+    if isinstance(filename, basestring):
+        out.close()
+
+
+def read_ancestral(filename, arg):
+    for row in util.DelimReader(filename):
+        node = arg[parse_node_name(row[0])]
+        node.data["ancestral"] = [(int(row[i]), int(row[i+1]))
+                                  for i in xrange(1, len(row), 2)]
+
+
 #=============================================================================
+# OLD CODE
+
+
+
+def sample_mutations(arg, u):
+    """
+    u -- mutation rate (mutations/locus/gen)
+
+    DEPRECATED: use sample_arg_mutations() instead
+    """
+
+    mutations = []
+
+    locsize = arg.end - arg.start
+
+    for node in arg:
+        for parent in node.parents:
+            for region in arg.get_ancestral(node, parent=parent):
+                # ensure node is not MRCA
+                for pregion in parent.data["ancestral"]:
+                    if pregion[0] <= region[0] < pregion[1]:
+                        break
+                else:
+                    continue
+                
+                frac = (region[1] - region[0]) / locsize
+                dist = parent.age - node.age
+                t = parent.age
+                while True:
+                    t -= random.expovariate(u * frac)
+                    if t < node.age:
+                        break
+                    pos = random.uniform(region[0], region[1])
+                    mutations.append((node, parent, pos, t))
+
+    return mutations
+
 
 '''
-OLD CODE
 
 def iter_marginal_trees2(arg, start=None, end=None, visible=False):
     """

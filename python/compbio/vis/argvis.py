@@ -275,7 +275,7 @@ def show_coal_track(tree_track):
     
     
     bgcolor = (1, 1, 1, .1)
-    cmap = util.rainbow_color_map(low=0.0, high=1.0)
+    cmap = util.rainbow_color_map(low=0.5, high=1.0)
 
     maxage = 0
     for (start, end), tree in tree_track:
@@ -287,8 +287,9 @@ def show_coal_track(tree_track):
         for node in tree:            
             if len(node.children) > 1:
                 age = times[node]
-                freq = len(node.leaves()) / float(nleaves)
-                l.extend([color(*cmap.get(freq)), start, age, end, age])
+                sizes = [len(x.leaves()) for x in node.children]
+                bias = max(sizes) / float(sum(sizes))
+                l.extend([color(*cmap.get(bias)), start, age, end, age])
                 if age > maxage2:
                     maxage2 = age
         win.add_group(group(lines(*l), color(*bgcolor),
@@ -307,6 +308,45 @@ def show_coal_track(tree_track):
 
     return win
 
+
+def show_coal_track2(tree_track):
+    
+    win = summon.Window()
+    
+    
+    bgcolor = (1, 1, 1, .1)
+    cmap = util.rainbow_color_map(low=0.0, high=1.0)
+
+    maxage = 0
+    for (start, end), tree in tree_track:
+        print start
+        l = []
+        times = treelib.get_tree_timestamps(tree)
+        nleaves = len(tree.leaves())
+        maxage2 = 0
+        for node in tree:            
+            if len(node.children) > 1:
+                age = times[node]
+                freq = len(node.leaves()) / float(nleaves)
+                bias = max(sizes) / float(sum(sizes))
+                l.extend([color(*cmap.get(freq)), start, age, end, age])
+                if age > maxage2:
+                    maxage2 = age
+        win.add_group(group(lines(*l), color(*bgcolor),
+                      box(start, 0, end, maxage2, fill=True)))
+        if maxage2 > maxage:
+            maxage = maxage2
+
+    def func():
+        x, y = win.get_mouse_pos()
+        print "pos=%s age=%f" % (util.int2pretty(int(x)), y)
+    win.add_group(hotspot("click", 0, 0, end, maxage,
+                          func))
+    
+    win.home("exact")
+
+
+    return win
 
 
 

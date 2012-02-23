@@ -962,7 +962,7 @@ def parse_newick(newick, readData=None, namefunc=lambda name: name):
     return tree
 parseNewick = parse_newick
 
-def iter_trees(treefile):
+def iter_trees(treefile, readData=None, namefunc=lambda name: name):
     """read multiple trees from a tree file"""
     
     ntrees = 0
@@ -970,7 +970,7 @@ def iter_trees(treefile):
     
     while True:
         try:
-            tree = read_tree(infile)
+            tree = read_tree(infile, readData, namefunc)
             ntrees += 1
             yield tree
         except Exception, e:

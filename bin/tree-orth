@@ -14,6 +14,8 @@ o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
 o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
 o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
 o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
+o.add_option("--fix-ils", dest="fix_ils",
+             default=False, action="store_true")
 
 conf, args = o.parse_args()
 
@@ -46,6 +48,9 @@ for filename in filenames:
 
     # get recon and events
     if conf.treeext and conf.reconext:
+        if conf.fix_ils:
+            raise Exception("Cannot use --fix-ils if --reconext is specified")
+        
         try:
             recon, events = phylo.read_recon_events(util.replace_ext(
                 filename, conf.treeext, conf.reconext), tree, stree)
@@ -56,6 +61,9 @@ for filename in filenames:
         # use MPR to build reconciliation and events
         recon = phylo.reconcile(tree, stree, gene2species)
         events = phylo.label_events(tree, recon)
+        if conf.fix_ils:
+            dupcons = phylo.dup_consistency(tree, recon, events)
+            events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
     
     orths = phylo.find_orthologs(tree, stree, recon, events)
 

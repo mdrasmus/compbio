@@ -109,20 +109,8 @@ for filename in files:
         phylo.ensure_binary_tree(tree)
         
         # find actual branch lengths
-        spidir.find_ml_branch_lengths_hky(tree,
-                                          aln,
-                                          bgfreq,
-                                          conf.kappa,
-                                          maxiter=conf.maxiter,
-                                          parsinit=True)
-
-    else:
-        if conf.binary:
-            ensure_binary(tree)
-    
-        for node in tree:
-            node.data["boot"] = node.dist / ntrees
-            node.dist = 0
+        spidir.find_ml_branch_lengths_hky(tree, aln, bgfreq, conf.kappa,
+                                          maxiter=conf.maxiter, parsinit=True)
     
     if conf.rooted:
         if tree.root.children[0].is_leaf() or \

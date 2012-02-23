@@ -539,6 +539,20 @@ def dup_consistency(tree, recon, events):
     return conf
 
 
+def fix_ils_errors(events, dupcons, newCopy=True):
+    """
+    Relabels "dup" nodes as "spec" if the duplication consistency
+    score for the node is 0, i.e. looks like ILS.
+    """
+    if newCopy:
+        events = events.copy()
+
+    for node, score in dupcons.iteritems():
+        if score == 0:
+            events[node] = "spec"
+    return events
+    
+
 #=============================================================================
 # tree rooting
 
@@ -1699,7 +1713,7 @@ class TreeSearchPrescreen (TreeSearch):
 # Phylogenetic reconstruction: Neighbor-Joining
 #
 
-def neighborjoin(distmat, genes, usertree=None, binary=False):
+def neighborjoin(distmat, genes, usertree=None):
     """Neighbor joining algorithm"""
     
     tree = treelib.Tree()
@@ -1787,22 +1801,13 @@ def neighborjoin(distmat, genes, usertree=None, binary=False):
         if len(leaves) > 2:
             restdists[gene3] = r / (len(leaves) - 2)
 
+    # join the last two genes into a tribranch
     gene1, gene2 = leaves.keys()
-    if binary:
-        # join the last two genes at the root and split the remaining dist evenly
-        parent = treelib.TreeNode(tree.new_name())
-        tree.add_child(parent, tree.nodes[gene1])
-        tree.add_child(parent, tree.nodes[gene2])
-        tree.nodes[gene1].dist = dists[gene1][gene2] / 2.0
-        tree.nodes[gene2].dist = dists[gene1][gene2] / 2.0
-        tree.root = parent
-    else:
-        # join the last two genes into a tribranch
-        if type(gene1) != int:
-            gene1, gene2 = gene2, gene1
-        tree.add_child(tree.nodes[gene1], tree.nodes[gene2])
-        tree.nodes[gene2].dist = dists[gene1][gene2]
-        tree.root = tree.nodes[gene1]
+    if type(gene1) != int:
+        gene1, gene2 = gene2, gene1
+    tree.add_child(tree.nodes[gene1], tree.nodes[gene2])
+    tree.nodes[gene2].dist = dists[gene1][gene2]
+    tree.root = tree.nodes[gene1]
 
     # root tree according to usertree    
     if usertree != None and treelib.is_rooted(usertree):
@@ -2081,6 +2086,31 @@ def robinson_foulds_error(tree1, tree2):
 
 #=============================================================================
 # consensus methods
+
+def consensus_majority_vote(trees, rooted=False):
+    """
+    Performs majority vote on a set of trees
+    
+    rooted -- if True, assumes trees are rooted
+    """
+
+    hashes = {}     # key = treehash, val = (tree, count)
+    for tree in trees:
+        if not rooted:
+            t = treelib.unroot(tree, newCopy=True)
+            treelib.reroot(t, t.nodes[sorted(t.leaf_names())[0]].parent.name,
+                           onBranch=False, newCopy=False)
+        else:
+            t = tree
+            
+        treehash = hash_tree(t)
+        if treehash in hashes:
+            hashes[treehash][1] = hashes[treehash][1] + 1
+        else:
+            hashes[treehash] = [tree, 0]
+
+    maxit = max(hashes.items(), key=lambda it:it[1][1])
+    return maxit[1][0]
 
 
 def consensus_majority_rule(trees, extended=True, rooted=False):

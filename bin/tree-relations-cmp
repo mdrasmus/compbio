@@ -10,7 +10,7 @@ from compbio import phylo
 
 o = optparse.OptionParser()
 o.add_option("--no-famid", dest="nofamid", action="store_true",
-             "if True, family is not specified")
+             help="if True, family is not specified")
 o.add_option("--subset-genes", dest="subset_genes", action="store_true")
 conf, args = o.parse_args()
 

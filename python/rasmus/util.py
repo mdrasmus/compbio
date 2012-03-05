@@ -201,14 +201,9 @@ def reverse(lst):
 def replace(lst, old_item, new_item, replace_all=False):
     """Replace an item in a list"""
     if replace_all:
-        try:
-            i = -1
-            end = len(lst)
-            while i < end:
-                i = lst.index(old_item, i+1)
+        for i in range(len(lst)):
+            if lst[i] == old_item:
                 lst[i] = new_item
-        except:
-            pass
     else:
         i = lst.index(old_item)
         lst[i] = new_item
@@ -496,7 +491,7 @@ def ilen(iterator):
 
 def make_matrix(nrows, ncols, val = 0):
 
-    return [[copy.copy(val) for i in xrange(ncols)]
+    return [[val for i in xrange(ncols)]
             for j in xrange(nrows)]
 
 
@@ -862,20 +857,20 @@ def safelog(x, base=math.e, default=-INF):
         
 def invcmp(a, b): return cmp(b, a)
 
-def clamp(x, low, high):
+def clamp(x, low=None, high=None):
     """Clamps a value 'x' between the values 'low' and 'high'
        If low == None, then there is no lower bound
        If high == None, then there is no upper bound
     """
     
-    if high != None and x > high:
+    if high is not None and x > high:
         return high
-    elif low != None and x < low:
+    elif low is not None and x < low:
         return low
     else:
         return x    
 
-def clampfunc(low, high):
+def clampfunc(low=None, high=None):
     return lambda x: clamp(x, low, high)
 
 

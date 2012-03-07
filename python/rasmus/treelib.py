@@ -235,6 +235,7 @@ class Tree:
         node.name = key
         self.add(node)
 
+
     def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in pre-order traversal"""
         
@@ -322,7 +323,10 @@ class Tree:
 
 
     def add_child(self, parent, child):
-        """Add a child node to an existing node 'parent' in the tree"""
+        """
+	Add a child node to an existing node 'parent' in the tree
+	"""
+	# TODO: check for consistency, i.e. child.parent = None
         assert parent != child
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
@@ -337,13 +341,13 @@ class Tree:
         """
         Removes a node from a tree.
         Notifies parent (if it exists) that node has been removed.
-        Notify children (if they exist) that node has been removed.
+        Updates node.parent to None.
         """
         
         if node.parent:
             node.parent.children.remove(node)
-        for child in node.children:
-            child.parent = None
+            node.parent = None
+        del node.data["tree"]
         del self.nodes[node.name]
 
     def remove_child(self, parent, child):
@@ -360,21 +364,20 @@ class Tree:
         """
         Removes subtree rooted at 'node' from tree.
         Notifies parent (if it exists) that node has been removed.
-        Notifies children (if they exist) that node has been removed.
+        Updates node.parent to None.
         """
         
         def walk(node):
             if node.name in self.nodes:
+                del node.data["tree"]
                 del self.nodes[node.name]
             for child in node.children:
                 walk(child)
         walk(node)
         
-        if node.parent:
+	if node.parent:
             node.parent.children.remove(node)
-        for child in node.children:
-            child.parent = None
-    removeTree = remove_tree   
+	    node.parent = None
     
     def rename(self, oldname, newname):
         """Rename a node in the tree"""
@@ -415,7 +418,6 @@ class Tree:
         """Remove node and replace it with the root of childTree"""
         self.remove_tree(node)
         self.add_tree(node.parent, childTree)
-    replaceTree = replace_tree
     
     
     def merge_names(self, tree2):
@@ -437,6 +439,8 @@ class Tree:
     
     def clear(self):
         """Clear all nodes from tree"""
+        for node in self:
+            del node.data["tree"]
         self.nodes = {}
         self.root = None
     
@@ -638,8 +642,8 @@ class Tree:
         
         # default data writer
         if writeData == None:
-            # write distance if any nodes have a distance
-            write_dist = any(node.dist != 0 for node in self)
+            # write distance if any nodes have a distance or bootstrap
+            write_dist = any(node.dist != 0 or "boot" in node.data for node in self)
             writeData = lambda node: self.write_data(node, writeDist=write_dist)
         
         if not oneline:
@@ -1116,16 +1120,6 @@ def count_descendants(node, sizes=None):
 countDescendants = count_descendants
 
 
-def descendants(node, lst=None):
-    """Return a list of all the descendants beneath a node"""
-    if lst == None:
-        lst = []
-    for child in node.children:
-        lst.append(child)
-        descendants(child, lst=lst)
-    return lst
-
-
 def subtree(tree, node):
     """Return a copy of a subtree of 'tree' rooted at 'node'"""
     
@@ -1258,6 +1252,7 @@ def remove_single_children(tree, simplify_root=True):
         node.parent.children[index] = newnode
         
         # remove old node
+        del node.data["tree"]
         del tree.nodes[node.name]
 
     # remove singleton from root
@@ -1736,6 +1731,7 @@ def unroot(tree, newCopy = True):
         nodes[0].parent = None
         
         # replace root
+        del tree.root.data["tree"]
         del tree.nodes[tree.root.name]
         tree.root = nodes[0]
     return tree

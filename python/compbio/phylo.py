@@ -746,7 +746,7 @@ def midroot_recon(tree, stree, recon, events, params, generate):
 
 def stree2gtree(stree, genes, gene2species):
     """Create a gene tree with the same topology as the species tree"""
-    
+   
     tree = stree.copy()
     
     for gene in genes:
@@ -2087,47 +2087,12 @@ def robinson_foulds_error(tree1, tree2):
 #=============================================================================
 # consensus methods
 
-def consensus_majority_vote(trees, rooted=False):
+def _consensus_special(trees, rooted=False):
     """
-    Performs majority vote on a set of trees
-    
-    rooted -- if True, assumes trees are rooted
+    Handle special cases for consensus tree
     """
-
-    hashes = {}     # key = treehash, val = (tree, count)
-    for tree in trees:
-        if not rooted:
-            t = treelib.unroot(tree, newCopy=True)
-            treelib.reroot(t, t.nodes[sorted(t.leaf_names())[0]].parent.name,
-                           onBranch=False, newCopy=False)
-        else:
-            t = tree
-            
-        treehash = hash_tree(t)
-        if treehash in hashes:
-            hashes[treehash][1] = hashes[treehash][1] + 1
-        else:
-            hashes[treehash] = [tree, 0]
-
-    maxit = max(hashes.items(), key=lambda it:it[1][1])
-    return maxit[1][0]
-
-
-def consensus_majority_rule(trees, extended=True, rooted=False):
-    """
-    Performs majority rule on a set of trees
-
-    extended -- if True, performs the extended majority rule
-    rooted   -- if True, assumes trees are rooted
-    """
-
-    # consensus tree
-    contree = treelib.Tree()
-
     nleaves = len(trees[0].leaves())
-    ntrees = len(trees)
-    split_counts = util.Dict(1, 0)
-
+    
     # handle special cases
     if not rooted and nleaves == 3:
         leaves = trees[0].leaf_names()
@@ -2144,9 +2109,129 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
         tree.add_child(root, treelib.TreeNode(leaves[0]))
         tree.add_child(root, treelib.TreeNode(leaves[1]))
         return tree
+
+    return None
+
+def add_bootstraps(tree, trees, rooted=False):
+    """
+    Add bootstrap support to tree
+    """
+    
+    # get bootstrap counts
+    split_counts = util.Dict(1, 0)
+    for gtree in trees:
+        for split in find_splits(gtree, rooted=rooted):
+            split_counts[split] += 1
+
+    counts = {}
+    for split, count in split_counts.iteritems():
+        counts[split[0]] = count
+        counts[split[1]] = count
+
+    # add bootstrap support to tree
+    def walk(node):
+        if not node.is_leaf():
+            for child in node.children:
+                walk(child)
+            node.data["boot"] = 1
+    for child in tree.root.children:
+        walk(child)
+
+    if rooted:
+        if tree.root.children[0].is_leaf() or \
+           tree.root.children[1].is_leaf():
+            tree.root.children[0].data["boot"] =  0
+            tree.root.children[1].data["boot"] =  0
+        else:
+            b = (tree.root.children[0].data["boot"] + \
+                 tree.root.children[1].data["boot"]) / 2.0
+            tree.root.children[0].data["boot"] =  b
+            tree.root.children[1].data["boot"] =  b
+
+    return tree
+
+def consensus_majority_vote(trees, rooted=False):
+    """
+    Performs majority vote on a set of trees
+    
+    rooted -- if True, assumes trees are rooted
+    """
+
+    # handle special cases
+    contree = _consensus_special(trees, rooted)
+    if contree is not None:
+        return contree
+
+    hashes = {}     # key = treehash, val = (tree, count)
+    ntrees = len(trees)
+    split_counts = util.Dict(1, 0)
+    
+    for tree in trees:
+        if not rooted:
+            t = treelib.unroot(tree, newCopy=True)
+            treelib.reroot(t, t.nodes[sorted(t.leaf_names())[0]].parent.name,
+                           onBranch=False, newCopy=False)
+        else:
+            t = tree
+
+        # number of votes
+        treehash = hash_tree(t)
+        if treehash in hashes:
+            hashes[treehash][1] = hashes[treehash][1] + 1
+        else:
+            hashes[treehash] = [tree, 0]
+
+        # count all splits
+        for split in find_splits(tree, rooted):
+            split_counts[split] += 1
+            
+    # find majority vote tree
+    maxit = max(hashes.items(), key=lambda it:it[1][1])
+    contree = maxit[1][0].copy()
+
+    # add bootstrap values to majority vote tree
+    counts = {}
+    for split, count in split_counts.iteritems():
+        counts[split[0]] = count
+        counts[split[1]] = count
+
+    # note: could also use node.leaf_names but inefficient
+    def walk(node):
+        if node.is_leaf():
+            s = set([node.name])
+        else:
+            s = set()
+            for child in node.children:
+                s.update(walk(child))
+            node.data["boot"] = counts[tuple(sorted(s))]/float(ntrees)
+        return s
+    for child in contree.root.children:
+        walk(child)
         
+    return contree
+
+
+def consensus_majority_rule(trees, extended=True, rooted=False):
+    """
+    Performs majority rule on a set of trees
+
+    extended -- if True, performs the extended majority rule
+    rooted   -- if True, assumes trees are rooted
+    """
+
+    nleaves = len(trees[0].leaves())
+    ntrees = len(trees)
+
+    # handle special cases
+    contree = _consensus_special(trees, rooted)
+    if contree is not None:
+        return contree
+
+    # consensus tree
+    contree = treelib.Tree()
 
     # count all splits
+    split_counts = util.Dict(1, 0)
     for tree in trees:
         for split in find_splits(tree, rooted):
             split_counts[split] += 1

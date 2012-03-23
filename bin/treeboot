@@ -45,7 +45,7 @@ for filename in files:
     out = util.open_stream(outfile, "w")
     
     for tree in trees:
-        tree = phylo.add_bootstrap(tree, boottrees, rooted=options.rooted)    
+        tree = phylo.add_bootstraps(tree, boottrees, rooted=options.rooted)    
         tree.write(out, oneline=oneline)
 
     out.close()

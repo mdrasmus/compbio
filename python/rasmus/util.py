@@ -20,7 +20,7 @@ import os
 import re
 import sys
 from itertools import imap, izip
-
+import tempfile as temporaryfile
 
 
 #

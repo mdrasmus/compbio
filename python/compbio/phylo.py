@@ -2118,8 +2118,10 @@ def add_bootstraps(tree, trees, rooted=False):
     """
     
     # get bootstrap counts
+    ntrees = 0
     split_counts = util.Dict(1, 0)
     for gtree in trees:
+        ntrees += 1
         for split in find_splits(gtree, rooted=rooted):
             split_counts[split] += 1
 
@@ -2130,10 +2132,14 @@ def add_bootstraps(tree, trees, rooted=False):
 
     # add bootstrap support to tree
     def walk(node):
-        if not node.is_leaf():
-            for child in node.children:
-                walk(child)
-            node.data["boot"] = 1
+        if node.is_leaf():
+	    s = set([node.name])
+	else:
+	    s = set()
+	    for child in node.children:
+	        s.update(walk(child))
+	    node.data["boot"] = counts.get(tuple(sorted(s)),0)/float(ntrees)
+        return s
     for child in tree.root.children:
         walk(child)
 

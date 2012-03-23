@@ -85,9 +85,11 @@ for fn in files:
                 del node.data['boot']
     tree.write(outdir + "/intree", oneline=True)
 
-    # make tt-compatible species tree
-    for node in stree:
-       node.dist = 0
+    # make tt-compatible species tree (no distance or internal node names)
+    for node in stree.nodes.values():
+        node.dist = 0
+        if not node.is_leaf():
+            stree.rename(node.name, stree.new_name())
     stree.write(outdir + "/stree", rootData=True, oneline=True)
     
     # require minimium size of tree

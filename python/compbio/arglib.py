@@ -1381,7 +1381,7 @@ def iter_tree_tracks(arg, start=None, end=None, convert=False):
 
         if convert:
             tree = tree.get_tree()
-        yield (start, end2), tree
+        yield (start, min(end2, end)), tree
         start = end2
 
     
@@ -1653,6 +1653,7 @@ def has_self_cycles(arg):
         if recomb_name not in arg:
             continue
         if is_self_cycle(arg, arg[recomb_name], order=order, eps=eps):
+            print recomb_name, arg[recomb_name].pos
             return True
 
     return False

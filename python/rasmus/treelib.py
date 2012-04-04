@@ -33,7 +33,7 @@ except ImportError:
 
 
 
-
+# TODO: I should generalize this
 # allow tree reading extra recursion levels
 sys.setrecursionlimit(4000)
 
@@ -81,7 +81,6 @@ class TreeNode:
     def is_leaf(self):
         """Returns True if the node is a leaf (no children)"""
         return len(self.children) == 0
-    isLeaf = is_leaf
     
     def recurse(self, func, *args):
         """Applies a function 'func' to the children of a node"""
@@ -104,15 +103,19 @@ class TreeNode:
     def leaf_names(self):
         """Returns the leaf names beneath the node in traversal order"""
         return [x.name for x in self.leaves()]
-    leafNames = leaf_names
     
     def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
         out.write(str(self.dist))
     writeData = write_data
 
+    def __repr__(self):
+        """Returns a representation of the node"""
 
-# class for managing branch data
+        return "<node %s>" % self.name
+
+
+
 class BranchData (object):
     """A class for managing branch specific data for a Tree
     
@@ -180,7 +183,23 @@ class Tree:
         return self.nodes.itervalues()
 
 
-    def preorder(self, node=None):
+    def __len__(self):
+        """Returns number of nodes in tree"""
+        return len(self.nodes)
+
+
+    def __getitem__(self, key):
+        """Returns node by name"""
+        return self.nodes[key]
+
+
+    def __setitem__(self, key, node):
+        """Adds a node to the tree"""
+        node.name = key
+        self.add(node)
+    
+
+    def preorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in pre-order traversal"""
         
         if node is None:
@@ -192,11 +211,12 @@ class Tree:
             node = queue.pop()
             yield node
 
-            for child in reversed(node.children):
-                queue.append(child)
+            if not is_leaf(node):
+                for child in reversed(node.children):
+                    queue.append(child)
 
                 
-    def postorder(self, node=None):
+    def postorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
         """Iterate through nodes in post-order traversal"""
         
         if node is None:
@@ -207,11 +227,41 @@ class Tree:
         while len(stack) > 0:
             node, i = stack[-1]
 
-            if i < len(node.children):
+            if i < len(node.children) and not is_leaf(node):
                 stack.append([node.children[i], 0])
                 stack[-2][1] += 1
             else:
                 yield node
+                stack.pop()
+
+
+    def inorder(self, node=None, is_leaf=lambda x: x.is_leaf()):
+        """Iterate through nodes with in-order traversal"""
+
+        if node is None:
+            node = self.root
+
+        stack = [[node, 0]]
+        
+        while len(stack) > 0:
+            node, i = stack[-1]
+
+            if node.is_leaf():
+                yield node
+                stack.pop()
+
+            elif i < len(node.children) and not is_leaf(node):
+                assert len(node.children) == 2
+
+                if i == 1:
+                    # left has been visited
+                    # yield current node then visit right
+                    yield node
+                
+                # recurse into children
+                stack.append([node.children[i], 0])
+                stack[-2][1] += 1
+            else:
                 stack.pop()
     
   
@@ -223,7 +273,7 @@ class Tree:
         if name == None:
             name = self.new_name()
         self.root = TreeNode(name)
-        self.add(self.root)
+        return self.add(self.root)
 
 
     def add(self, node):
@@ -231,6 +281,7 @@ class Tree:
            Does not add node to any specific location (use add_child instead).
         """
         self.nodes[node.name] = node
+        return node
 
 
     def add_child(self, parent, child):
@@ -240,6 +291,7 @@ class Tree:
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
+        return child
 
 
     def remove(self, node):
@@ -268,8 +320,6 @@ class Tree:
         
         if node.parent:
             node.parent.children.remove(node)
-    removeTree = remove_tree
-
     
     
     def rename(self, oldname, newname):
@@ -285,7 +335,6 @@ class Tree:
         name = self.nextname
         self.nextname += 1
         return name
-    newName = new_name
 
     
     def unique_name(self, name, names, sep="_"):
@@ -306,7 +355,6 @@ class Tree:
         # with existing names
         self.merge_names(childTree)        
         self.add_child(parent, childTree.root)
-    addTree = add_tree
     
     
     def replace_tree(self, node, childTree):
@@ -321,7 +369,6 @@ class Tree:
             parent.children[index] = childTree.root
             childTree.root.parent = parent
             del self.nodes[node.name]
-    replaceTree = replace_tree
     
     
     def merge_names(self, tree2):
@@ -334,7 +381,8 @@ class Tree:
                 self.nodes[name2] = tree2.nodes[name]
                 self.nodes[name2].name = name2
             else:
-                if type(name) == int:
+                # make sure I do not issue a name that matches this one
+                if isinstance(name, int):
                     if name >= self.nextname:
                         self.nextname = name + 1
                 self.nodes[name] = tree2.nodes[name]
@@ -356,7 +404,6 @@ class Tree:
     def leaf_names(self, node = None):
         """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
-    leafNames = leaf_names
     
     
     #===============================
@@ -365,7 +412,6 @@ class Tree:
     def has_data(self, dataname):
         """Does the tree contain 'dataname' in its extra data"""
         return dataname in self.default_data
-    hasData = has_data
 
     
     def copy(self):
@@ -460,6 +506,9 @@ class Tree:
     def read_data(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
 
+        # also parse nhx comments
+        data = read_nhx_data(self, node, data)
+        
         if ":" in data:
             boot, dist = data.split(":")
             node.dist = float(dist)
@@ -511,8 +560,7 @@ class Tree:
         self.write_newick_node(self.root, util.open_stream(out, "w"), 
                                writeData=writeData, oneline=oneline,
                                rootData=rootData)
-    writeNewick = write_newick
-   
+
     
     def write_newick_node(self, node, out = sys.stdout, 
                           depth=0, writeData=None, oneline=False,
@@ -521,7 +569,7 @@ class Tree:
         
         # default data writer
         if writeData == None:
-            writeData = self.writeData
+            writeData = self.write_data
         
         if not oneline:
             out.write(" " * depth)
@@ -600,6 +648,7 @@ class Tree:
 
         def walk(expr):
             children, name, data = expr
+            assert ":" not in name, "bad name '%s'" % name
             
             # parse name
             if name == "":
@@ -621,8 +670,9 @@ class Tree:
             return node
 
         self.root = walk(expr)
+        self.nodes[self.root.name] = self.root
 
-        # test for boot strap presence
+        # test for bootstrap presence
         for node in self.nodes.itervalues():
             if "boot" in node.data:
                 self.default_data["boot"] = 0
@@ -634,14 +684,14 @@ class Tree:
     def read_big_newick(self, filename):
         """Reads a big newick file with a custom parser"""
     
-        infile = file(filename)    
+        infile = util.open_stream(filename) #file(filename)    
         closure = {"opens": 0}
         names = set()
 
         def readchar():
             while True:
                 char = infile.read(1)
-                if char not in " \t\n": break
+                if not char or char not in " \t\n": break
             if char == "(": closure["opens"] += 1
             if char == ")": closure["opens"] -= 1
             return char
@@ -839,19 +889,63 @@ def parse_newick(newick):
     return tree
 parseNewick = parse_newick
 
+def iter_trees(treefile):
+    """read multiple trees from a tree file"""
+    
+    ntrees = 0
+    infile = util.open_stream(treefile)
+    
+    while True:
+        try:
+            tree = read_tree(infile)
+            ntrees += 1
+            yield tree
+        except Exception, e:
+            if ntrees < 1:
+                raise
+            break
+
+
+#=============================================================================
+# NHX format
+
+def parse_nhx_comment(comment):
+    """Parse a NHX comment"""
+    data = {}
+    for pair in comment.split(":"):
+        yield pair.split("=")
+
+
+def read_nhx_data(tree, node, data):
+    """Read data function for parsing the data field of an NHX file"""
+
+    if "[" in data:
+        i = data.find("[")
+        j = data.find("]")
+        comment = data[i+1:j]
+        data = data[:i]
+
+        if comment.startswith("&&NHX:"):
+            for k, v in parse_nhx_comment(comment[6:]):
+                node.data[k] = v
+        
+        return data
+    else:
+        return data
+
+
 #============================================================================
 # Misc. functions for manipulating trees
 #
 
-
 def assert_tree(tree):
     """Assert that the tree is internally consistent"""
     
-    visited = {}
+    visited = set()
     def walk(node):
         assert node.name in tree.nodes
         assert node.name not in visited
-        visited[node.name] = 1
+        visited.add(node.name)
         if node.parent:
             assert node in node.parent.children
         for child in node.children:
@@ -861,7 +955,6 @@ def assert_tree(tree):
     
     assert tree.root.parent == None
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
-assertTree = assert_tree
 
 
 
@@ -964,7 +1057,7 @@ def subtree(tree, node):
     tree2 = Tree(nextname = tree.new_name())
     
     # copy nodes and data
-    tree2.root = node.copy()    
+    tree2.root = node.copy()
     tree2.copy_data(tree)
     
     # add nodes
@@ -1063,7 +1156,7 @@ def graph2tree(mat, root, closedset=None):
     return tree
 
 
-def remove_single_children(tree):
+def remove_single_children(tree, simplify_root=True):
     """
     Remove all nodes from the tree that have exactly one child
     
@@ -1075,15 +1168,6 @@ def remove_single_children(tree):
     removed = [node
                for node in tree
                if len(node.children) == 1 and node.parent]
-            
-
-    """
-    def walk(node):
-        if len(node.children) == 1 and node.parent:
-            removed.append(node)
-        node.recurse(walk)
-    walk(tree.root)
-    """
     
     # actually remove children
     for node in removed:
@@ -1101,7 +1185,7 @@ def remove_single_children(tree):
         del tree.nodes[node.name]
 
     # remove singleton from root
-    if len(tree.root.children) == 1:
+    if simplify_root and len(tree.root.children) == 1:
         oldroot = tree.root
         tree.root = tree.root.children[0]
         oldroot.children = []
@@ -1110,7 +1194,7 @@ def remove_single_children(tree):
         tree.root.dist += oldroot.dist
     
     return removed
-removeSingleChildren = remove_single_children
+
 
 
 def remove_exposed_internal_nodes(tree, leaves=None):
@@ -1129,62 +1213,87 @@ def remove_exposed_internal_nodes(tree, leaves=None):
         # wether to keep it
         stay = set()
         for leaf in tree.leaves():
-            if isinstance(leaf.name, str):
+            if isinstance(leaf.name, basestring):
                 stay.add(leaf)
     
     # post order traverse tree
     def walk(node):
         # keep a list of children to visit, since they may remove themselves
-        children = copy.copy(node.children)
-        for child in children:
+        for child in list(node.children):
             walk(child)
 
         if node.is_leaf() and node not in stay:
             tree.remove(node)
     walk(tree.root)
-removeExposedInternalNodes = remove_exposed_internal_nodes
 
 
-def subtree_by_leaf_names(tree, leaf_names, newCopy=False):
+def subtree_by_leaves(tree, leaves=None, keep_single=False):
+    """
+    Remove any leaf not in leaves set
+    
+    leaves -- a list of leaves that should stay    
+    """
+    
+    stay = set(leaves)    
+    
+    # post order traverse tree
+    def walk(node):
+        # keep a list of children to visit, since they may remove themselves
+        for child in list(node.children):
+            walk(child)
+
+        if node.is_leaf() and node not in stay:
+            tree.remove(node)
+    walk(tree.root)
+
+    if not keep_single:
+        remove_single_children(tree)
+
+    return tree
+
+
+def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
     """Returns a subtree with only the leaves specified"""
     
     if newCopy:
         tree = tree.copy()
     
     remove_set = set(tree.leaf_names()) - set(leaf_names)
-    for sp in remove_set:
-    	tree.remove(tree.nodes[sp])
-    remove_exposed_internal_nodes(tree)
-    remove_single_children(tree)
-    
-    return tree
-subtreeByLeafNames = subtree_by_leaf_names
+    #for sp in remove_set:
+    #    tree.remove(tree.nodes[sp])
+    return subtree_by_leaves(tree, [tree.nodes[x] for x in leaf_names],
+                             keep_single=keep_single)
+    #if not keep_single:
+    #    remove_single_children(tree)
+    #return tree
 
 
-def reorder_tree(tree, tree2):
+
+def reorder_tree(tree, tree2, root=True):
     """Reorders the branches of tree to match tree2"""
 
-    # reroot tree to match tree2
-    root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+    if root:
+        # reroot tree to match tree2
+        root_branches = [set(n.leaf_names()) for n in tree2.root.children]
 
-    def walk(node):
-        if node.is_leaf():
-            leaves = set([node.name])
-        else:
-            leaves = set()
-            for child in node.children:
-                l = walk(child)
-                if l is None:
-                    return None
-                leaves = leaves.union(l)
+        def walk(node):
+            if node.is_leaf():
+                leaves = set([node.name])
+            else:
+                leaves = set()
+                for child in node.children:
+                    l = walk(child)
+                    if l is None:
+                        return None
+                    leaves = leaves.union(l)
 
-        if leaves in root_branches:
-            # root found, terminate search
-            reroot(tree, node.name, newCopy=False)
-            return None
-            
-        return leaves
-    walk(tree.root)
+            if leaves in root_branches:
+                # root found, terminate search
+                reroot(tree, node.name, newCopy=False)
+                return None
+
+            return leaves
+        walk(tree.root)
 
     
 
@@ -1204,7 +1313,7 @@ def reorder_tree(tree, tree2):
                 leaf_sets.append(walk(child))
 
             scores = [mean(util.mget(leaf_lookup, l)) for l in leaf_sets]
-            rank = util.sortrank(scores)
+            rank = util.sortindex(scores)
             node.children = util.mget(node.children, rank)
 
             # return union
@@ -1214,6 +1323,104 @@ def reorder_tree(tree, tree2):
             return ret
 
     walk(tree.root)
+
+
+def set_tree_topology(tree, tree2):
+    """
+    Changes the topology of tree to match tree2
+
+    trees must have nodes with the same names
+    """
+
+    nodes = tree.nodes
+    nodes2 = tree2.nodes
+    
+    for node in tree:
+        node2 = nodes2[node.name]
+
+        # set parent
+        if node2.parent:
+            node.parent = nodes[node2.parent.name]
+        else:
+            node.parent = None
+        
+        # set children
+        if node.is_leaf():
+            assert node2.is_leaf()
+        else:
+            # copy child structure
+            node.children[:] = [nodes[n.name] for n in node2.children]
+
+    tree.root = nodes[tree2.root.name]
+
+    #assert_tree(tree2)
+    #assert_tree(tree)
+
+
+#=============================================================================
+# timestamps
+
+
+def get_tree_timestamps(tree, root=None, leaves=None, times=None):
+    """
+    Use the branch lengths of a tree to set timestamps for each node
+    Assumes ultrametric tree.
+
+    Leaves have time 0
+    """
+
+    if root is None:
+        root = tree.root
+
+    esp = .001
+    if times is None:
+        times = {}
+
+    def walk(node):
+        if node.is_leaf() or (leaves and node in leaves):
+            t = times.get(node, 0.0)
+        else:
+            t2 = None
+            for child in node.children:
+                t = walk(child)
+
+                # ensure branch lengths are ultrametrix
+                if t2:                    
+                    assert abs(t - t2)/t < esp, (node.name, t, t2)
+                t2 = t
+
+        times[node] = t
+        return t + node.dist
+    walk(root)
+    
+    return times
+
+
+def check_timestamps(tree, times):    
+    for node in tree:
+        if node.parent:
+            if times[node.parent] - times[node] < 0.0 or \
+               abs(((times[node.parent] - times[node]) -
+                    node.dist)/node.dist) > .001:
+                draw_tree_names(tree, maxlen=7, minlen=7)
+                util.printcols([(a.name, b) for a, b in times.items()])
+                print
+                print node.name, node.dist, times[node.parent] - times[node]
+                raise Exception("negative time span")
+
+
+def set_dists_from_timestamps(tree, times):
+    """
+    Sets the branch lengths of a tree using a timestamp dict
+    """
+
+    for node in tree:
+        if node.parent:
+            node.dist = times[node.parent] - times[node]
+        else:
+            node.dist = 0.0
+
+
 
 
 #=============================================================================
@@ -1584,6 +1791,8 @@ def midpoint_root(tree):
     
     assert 0 # shouldn't get here
 
+#=============================================================================
+# conversion to other formats
 
 def make_ptree(tree):
     """Make parent tree array from tree"""
@@ -1945,7 +2154,7 @@ drawTreeLens = draw_tree_lens
 
 
 def draw_tree_boot_lens(tree, *args, **kargs):
-    if not tree.hasData("boot"):
+    if not tree.has_data("boot"):
         draw_tree_lens(tree, *args, **kargs)
         return
 
@@ -2020,6 +2229,30 @@ if __name__ == "__main__":
     reorder_tree(tree, tree2)
     draw_tree_names(tree, maxlen=5)
 
+    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
+    tree = read_tree(infile)
+    for node in tree.inorder():
+        print node.name
 
+
+    #========================================
+    # nhx testing
+
+    tree = read_tree(StringIO("""((A:1,B:2)X:3,D:4);"""))
+    tree.write()
+    for node in tree:
+        print "\t".join(map(str, [node.name, node.data]))
+
+ 
+    tree = read_tree(StringIO("""(((ADH2:0.1[&&NHX:S=human:E=1.1.1.1], ADH1:0.11[&&NHX:S=human:E=1.1.1.1]):0.05[&&NHX:S=Primates:E=1.1.1.1:D=Y:B=100], ADHY:0.1[&&NHX:S=nematode:E=1.1.1.1],ADHX:0.12[&&NHX:S=insect:E=1.1.1.1]):0.1[&&NHX:S=Metazoa:E=1.1.1.1:D=N], (ADH4:0.09[&&NHX:S=yeast:E=1.1.1.1],ADH3:0.13[&&NHX:S=yeast:E=1.1.1.1], ADH2:0.12[&&NHX:S=yeast:E=1.1.1.1],ADH1:0.11[&&NHX:S=yeast:E=1.1.1.1]):0.1 [&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N];"""))
+    tree.write()
+    for node in tree:
+        print "\t".join(map(str, [node.name, node.data]))
+
+
+    tree = read_tree(StringIO("""(CFTR_GASAC:0.028272[&&NHX:S=GASAC:O=ENSGACT00000011967.1:T=69293:G=ENSGACG00000009039],((((((((((((((((((CFTR_HUMAN:0.002013[&&NHX:S=HUMAN:O=ENST00000003084.5:T=9606:G=ENSG00000001626],CFTR_PANTR:0.001342[&&NHX:S=PANTR:O=ENSPTRT00000036339.2:T=9598:G=ENSPTRG00000019619]):0.001545,CFTR_PONPY:0.006514[&&NHX:S=PONPY:O=ENSPPYT00000020909.1:T=9600:G=ENSPPYG00000017940]):0.003539,CFTR_MACMU:0.008416[&&NHX:S=MACMU:O=ENSMMUT00000015762.2:T=9544:G=ENSMMUG00000011269]):0.022751,CFTR_TUPGB:0.110613[&&NHX:S=TUPGB:O=ENSTBET00000011046.1:T=37347:G=ENSTBEG00000010974]):0.006474,((CFTR_OTOGA:0.035577[&&NHX:S=OTOGA:O=ENSOGAT00000001759.1:T=30611:G=ENSOGAG00000001756],CFTR_MICMU:0.026588[&&NHX:S=MICMU:O=ENSMICT00000005779.1:T=30608:G=ENSMICG00000005761]):0.010514,CFTR_MYOLU:0.06919[&&NHX:S=MYOLU:O=ENSMLUT00000012267.1:T=59463:G=ENSMLUG00000012244]):0.00395):0.001879,(CFTR_ECHTE:0.065629[&&NHX:S=ECHTE:O=ENSETET00000000538.1:T=9371:G=ENSETEG00000000537],CFTR_LOXAF:0.050347[&&NHX:S=LOXAF:O=ENSLAFT00000005758.1:T=9785:G=ENSLAFG00000005753]):0.016592):0.002471,((CFTR_SORAR:0.056771[&&NHX:S=SORAR:O=ENSSART00000012124.1:T=42254:G=ENSSARG00000012121],CFTR_ERIEU:0.043527[&&NHX:S=ERIEU:O=ENSEEUT00000006570.1:T=9365:G=ENSEEUG00000006484]):0.015585,CFTR_DASNO:0.047157[&&NHX:S=DASNO:O=ENSDNOT00000016544.1:T=9361:G=ENSDNOG00000016541]):0.00431):0.005677,(CFTR_F2_HORSE:0.016035[&&NHX:S=HORSE:O=ENSECAT00000010738.1:T=9796:G=ENSECAG00000009139],((CFTR_CANFA:0.047251[&&NHX:S=CANFA:O=ENSCAFT00000005518.2:T=9615:G=ENSCAFG00000003429],Q9N1D7_FELCA:0.025264[&&NHX:S=FELCA:O=ENSFCAT00000014959.2:T=9685:G=ENSFCAG00000014955]):0.022297,CFTR_BOVIN:0.062409[&&NHX:S=BOVIN:O=ENSBTAT00000053450.1:T=9913:G=ENSBTAG00000006589]):0.00767):0.004191):0.006209,(CFTR_F2_CAVPO:0.136979[&&NHX:S=CAVPO:O=ENSCPOT00000012891.1:T=10141:G=ENSCPOG00000012767],CFTR_SPETR:0.026944[&&NHX:S=SPETR:O=ENSSTOT00000005733.1:T=43179:G=ENSSTOG00000005707]):0.009628):0.007329,(Q29399_RABIT:0.027324[&&NHX:S=RABIT:O=ENSOCUT00000010738.1:T=9986:G=ENSOCUG00000010733],CFTR_OCHPR:0.050953[&&NHX:S=OCHPR:O=ENSOPRT00000014760.1:T=9978:G=ENSOPRG00000014721]):0.017472):0.011797,(Cftr_MOUSE:0.035769[&&NHX:S=MOUSE:O=ENSMUST00000045706.4:T=10090:G=ENSMUSG00000041301],Cftr_RAT:0.049345[&&NHX:S=RAT:O=ENSRNOT00000010981.4:T=10116:G=ENSRNOG00000008284]):0.158692):0.033423,Q2QL94_MONDO:0.08197[&&NHX:S=MONDO:O=ENSMODT00000020031.2:T=13616:G=ENSMODG00000015771]):0.026265,CFTR_ORNAN:0.094961[&&NHX:S=ORNAN:O=ENSOANT00000013974.1:T=9258:G=ENSOANG00000008767]):0.03792,A0M8U4_CHICK:0.119618[&&NHX:S=CHICK:O=ENSGALT00000015182.3:T=9031:G=ENSGALG00000009324]):0.033083,CFTR_XENTR:0.130489[&&NHX:S=XENTR:O=ENSXETT00000047145.1:T=8364:G=ENSXETG00000021796]):0.352249,si_dkey-270i2_F3_BRARE:0.203525[&&NHX:S=BRARE:O=ENSDART00000100729.1:T=7955:G=ENSDARG00000041107]):0.063334,CFTR_ORYLA:0.123603[&&NHX:S=ORYLA:O=ENSORLT00000024332.1:T=8090:G=ENSORLG00000019555]):0.034773,CFTR_TETNG:0.049086[&&NHX:S=TETNG:O=ENSTNIT00000019381.1:T=99883:G=ENSTNIG00000016063]):0.028272)[&&NHX:Loglk=-24078.827174:RatioCons=0.000000;:LoglkSpec=0.000000];"""))
+    tree.write()
+    for node in tree:
+        print "\t".join(map(str, [node.name, node.data]))
 
 

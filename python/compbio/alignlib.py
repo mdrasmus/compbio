@@ -6,9 +6,11 @@
 
 # python libs
 import sys
-import copy
 
 # rasmus libs
+from rasmus import util
+
+# compbio libs
 from . import fasta, seqlib
 from seqlib import *
 
@@ -38,13 +40,9 @@ def new_align(aln=None):
 
 
 def mapalign(aln, keyfunc=lambda x: x, valfunc=lambda x: x):
-    """Maps the keys and values of an alignment
-       
-       very similar to rasmus.util.mapdict()
-    """
+    """Maps the keys and values of an alignment"""
     
     aln2 = new_align(aln)
-
     for key, val in aln.iteritems():
         aln2[keyfunc(key)] = valfunc(val)
     return aln2
@@ -57,31 +55,21 @@ def subalign(aln, cols):
 
 
 def remove_empty_columns(aln):
-    """Removes any column from an alignment 'aln' that contains only gaps
-    
-       A new alignment is returned
     """
-       
-    dels = {}
-    aln2 = new_align(aln)
+    Removes any column from an alignment 'aln' that contains only gaps
     
+    A new alignment is returned
+    """
+
+    ind = []
+    seqs = aln.values()
     for i in range(aln.alignlen()):
-        col = {}
-        for name in aln:
-            col[aln[name][i]] = 1
-        if len(col) == 1 and col.keys()[0] == '-':
-            dels[i] = 1
+        for seq in seqs:
+            if seq[i] != "-":
+                ind.append(i)
+                break
     
-    for name in aln:
-        val = ""
-        for i in range(len(aln[name])):
-            if not i in dels:
-                val += aln[name][i]
-        aln2[name] = val
-    aln2.orderNames(aln)
-    
-    return aln2
-removeEmptyColumns = remove_empty_columns
+    return subalign(aln, ind)
 
 
 def remove_gapped_columns(aln):
@@ -92,7 +80,17 @@ def remove_gapped_columns(aln):
     cols = zip(* aln.values())
     ind = util.find(lambda col: "-" not in col, cols)
     return subalign(aln, ind)
-removeGappedColumns = remove_gapped_columns
+
+
+def require_nseqs(aln, n):
+    """
+    Keep only columns with atleast 'n' non gapped sequences
+    """
+
+    seqs = aln.values()
+    ind = [i for i in range(aln.alignlen())
+           if sum(1 for seq in seqs if seq[i] != "-") >= n]
+    return subalign(aln, ind)
 
 
 def calc_conservation_string(aln):
@@ -123,16 +121,16 @@ def calc_conservation(aln):
     # find identity positions
     identity = ""
     for i in xrange(length):
-        chars = util.histDict(util.cget(seqs, i))
+        chars = util.hist_dict(util.cget(seqs, i))
         if "-" in chars: del chars["-"]
         
         if len(chars) == 0:
-            percids.append(0)
+            percids.append(0.0)
         else:
             pid = max(chars.values()) / float(len(aln))
             percids.append(pid)
     return percids
-calcConservation = calc_conservation
+
 
 
 def print_align(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(), 
@@ -168,7 +166,7 @@ def print_align(aln, seqwidth = 59, spacing=2, extra=fasta.FastaDict(),
         print >>out
 
 
-def revtranslate_align(aaseqs, dnaseqs, check=False):
+def revtranslate_align(aaseqs, dnaseqs, check=False, trim=False):
     """Reverse translates aminoacid alignment into DNA alignment
     
        Must supply original ungapped DNA.
@@ -178,9 +176,50 @@ def revtranslate_align(aaseqs, dnaseqs, check=False):
     
     for name, seq in aaseqs.iteritems():
         try:
-            align[name] = revtranslate(seq, dnaseqs[name], check=check)
+            dna = dnaseqs[name].upper()
+            dnalen = len(dna)
+            aalen = sum(int(a != "-") for a in seq)
+            
+            if len(dna) != aalen * 3:
+                if trim:
+                    # make dna a multiple of three
+                    dna = dna[:(len(dna) // 3) * 3]
+
+                    if len(dna) > aalen * 3:
+                        # trim dna
+                        dna = dna[:aalen*3]
+                    else:
+                        # trim peptide to match nucleotide
+                        j = 0
+                        for i in xrange(len(seq)):
+                            if seq[i] != '-':
+                                j += 1
+                                if j > len(dna) // 3:
+                                    seq = seq[:i] + "-" * (len(seq) - i)
+                                    break
+
+                    aalen2 = sum(int(a != "-") for a in seq)
+                    assert len(dna) == aalen2 * 3,  (
+                        len(dna), aalen2 * 3)
+
+                    util.logger("trim dna (%d) and pep (%d)" %
+                                (dnalen - len(dna), aalen - aalen2))
+
+                else:
+                    # is last residue X?
+                    for i in xrange(len(seq)-1, -1, -1):
+                        if seq[i] == "-":
+                            continue
+                        if seq[i] == "X":
+                            # repair
+                            seq =  seq[:i] + "-" * (len(seq)-i)
+                            dna = dna[:-3] #-(len(dna) % 3)]
+                        break
+
+            
+            align[name] = revtranslate(seq, dna, check=check)
         except TranslateError, e:
-            raise TranslateError("%s: %s" % (name, str(e)))
+            raise
     
     return align
 
@@ -198,7 +237,7 @@ def tsitTver(seq1, seq2):
     assert len(seq1) == len(seq2), "sequences are not same length"
     
     subs = map(substitutionType, seq1, seq2)
-    counts = util.histInt(subs)
+    counts = util.hist_int(subs)
     
     return counts[SUB_TSIT] / float(counts[SUB_TVER])
 
@@ -209,7 +248,7 @@ def calcTransitionMatrix(seq1, seq2):
     assert len(seq1) == len(seq2), "sequences are not same length"
     seq1, seq2 = seq1.upper(), seq2.upper()
     
-    c = util.histDict(map("".join, zip(seq1, seq2)))
+    c = util.hist_dict(map("".join, zip(seq1, seq2)))
     keys = filter(lambda x: "-" not in x, c.keys())
     total = float(sum(util.mget(c, keys)))
     c = util.mapdict(c, valfunc=lambda x: x/total)
@@ -365,7 +404,7 @@ def findFourFold(aln):
         
         # compute the histogram of the column.
         # ignore gaps '-' and non-translated 'X'
-        hist = util.histDict(col)
+        hist = util.hist_dict(col)
         if "-" in hist:
             del hist["-"]
         if "X" in hist:
@@ -416,7 +455,7 @@ def findAlignCodons(aln):
     """find all columns of aligned codons"""
     
     codonAln = mapalign(aln, valfunc=markCodonPos)
-    cols = map(util.histDict, zip(* codonAln.values()))
+    cols = map(util.hist_dict, zip(* codonAln.values()))
 
     ind = []
     codon = []
@@ -456,7 +495,7 @@ def findFourFold(aln):
     pepcons = []
     for i in xrange(pepAln.alignlen()):
         col = [seq[i] for seq in pepAln.itervalues()]
-        hist = util.histDict(col)
+        hist = util.hist_dict(col)
         if "-" in hist:
             del hist["-"]
         if "X" in hist:
@@ -476,7 +515,7 @@ def findFourFold(aln):
     return ind
 '''
 
-def calcFourFoldDistMatrix(aln):
+def calc_four_fold_dist_matrix(aln):
     names = aln.keys()
 
     mat = []
@@ -725,5 +764,7 @@ def global2align(global_coord, start, end, strand, alignLookup):
 def align2global(align_coord, start, end, strand, localLookup):
     local_coord = localLookup[align_coord]
     return local2global(local_coord, start, end, strand)
+
+
 
 

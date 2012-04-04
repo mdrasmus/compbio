@@ -66,7 +66,6 @@ elif outputformat == "srmat":
 
     nrows = max(row[0] for row in imat) + 1
     ncols = max(row[1] for row in imat) + 1
-    nnz = len(imat)
 
     assert nrows == ncols
 
@@ -77,8 +76,11 @@ elif outputformat == "srmat":
     imat = map(list, imat)
     for row in imat:
         row[1] = lookup[collabels[row[1]]]
-    
-    rmat = matrixlib.imat2rmat(nrows, ncols, nnz, imat)    
+
+    nnz = None
+    rmat = matrixlib.imat2rmat(nrows, ncols, nnz, imat)
+    nnz = sum(map(len, rmat))
+
     matrixlib.write_rmat(out, nrows, ncols, nnz, rmat, square=True)
     
 else:

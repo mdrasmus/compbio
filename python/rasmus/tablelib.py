@@ -79,7 +79,7 @@ DIR_DEFAULTS = 3
 #DIR_DELIM    = 3
 
 # a special unique null type (more 'null' than None)
-NULL = util.Bundle()
+NULL = object()
 
 
 class TableException (Exception):
@@ -1153,7 +1153,7 @@ iterTable = iter_table
 
 
 def histtab(items, headers=["item", "count", "percent"]):
-    h = util.histDict(items)
+    h = util.hist_dict(items)
     tab = Table(headers=headers)
     tot = float(len(items))
 

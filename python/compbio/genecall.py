@@ -1,4 +1,3 @@
-from rasmus import algorithms
 from rasmus import regionlib
 from rasmus import graph
 from rasmus import util

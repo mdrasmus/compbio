@@ -1,5 +1,5 @@
 
-import os
+import os, re
 
 try:
     from rasmus.ply import lex, yacc
@@ -16,6 +16,94 @@ tokens = (
 )
 
 
+
+t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
+t_DATA = r"[^,;\(\)]+"
+
+#t_DATA2 = r"^([^,;\(\)\[\]]+|[^,;\(\)\[\]]*\[[^\]]*\][^,;\(\)\[\]]*)$"
+#t_DATA =  r"([^,;\(\)]+|[^,;\(\)]*\[[^\]]*\])"
+#[^,;\(\)]*XXX\[[^\]]*\])"
+#[^,;\(\)]+)"
+
+def t_error(t):
+    raise TypeError("Unknown text '%s'" % (t.value,))
+
+
+#print re.match(t_DATA2, ";")
+#print re.match("^"+t_DATA+"$", ":1")
+#print re.match("^"+t_DATA+"$", ":1[hi]")
+#sys.exit()
+
+#=============================================================================
+
+def p_tree(p):
+    """
+    tree : subtree ';'
+    """
+    p[0] = p[1]
+
+
+def p_subtree(p):
+    """subtree : "(" branch_set ")" NAME DATA
+               | "(" branch_set ")" NAME
+               | "(" branch_set ")" DATA
+               | "(" branch_set ")"
+               | NAME DATA
+               | NAME
+               | DATA
+    """
+    if len(p) == 6:
+        p[0] = (p[2], "", p[4] + p[5])
+    elif len(p) == 5:
+        p[0] = (p[2], "", p[4])
+    elif len(p) == 4:
+        p[0] = (p[2], "", "")
+    elif len(p) == 3:
+        p[0] = ([], p[1], p[2])
+    elif len(p) == 2:
+        if ":" in p[1]:
+            p[0] = ([], "", p[1])
+        else:
+            p[0] = ([], p[1], "")
+
+
+def p_branch_set(p):
+    """branch_set : subtree "," branch_set
+                  | subtree
+    """
+
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[0] = [p[1]] + p[3]
+    
+
+def p_error(p):
+    if p:
+        raise Exception("Syntax error at '%s'" % p.value)
+    else:
+        raise Exception("Syntax error")
+
+
+#lex.lex()
+#yacc.yacc()
+
+outdir = os.path.dirname(__file__)
+lex.lex(debug=0, optimize=1, lextab="treelib_lex", outputdir=outdir)
+yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab", outputdir=outdir)
+
+if __name__ == "__main__":
+    print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")
+    print yacc.parse("((xax:1.0,bbx:2));")
+    print yacc.parse("((aa:1.0,bb:2)x:33,(cc:4,dd:5):6);")
+
+
+
+#=============================================================================
+# OLD parsing code
+
+
+
 """
    Tree --> Subtree ";" | Branch ";"
    Subtree --> Leaf | Internal
@@ -27,20 +115,12 @@ tokens = (
    Length --> empty | ":" number
 """
 
-
-t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
-
 '''
 def t_FLOAT(t):
     r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
     t.value = float(t.value)
     return t
 '''
-
-t_DATA = r"[^,;\(\)]+"
-
-def t_error(t):
-    raise TypeError("Unknown text '%s'" % (t.value,))
 
 '''
 def _tree(p):
@@ -95,69 +175,6 @@ def _branch(p):
         p[0] = p[1] + ("",)
 '''
 
-#=============================================================================
-
-def p_tree(p):
-    """
-    tree : subtree ';'
-    """
-    p[0] = p[1]
-
-
-def p_subtree(p):
-    """subtree : "(" branch_set ")" NAME DATA
-               | "(" branch_set ")" NAME
-               | "(" branch_set ")" DATA
-               | "(" branch_set ")"
-               | NAME DATA
-               | NAME
-    """
-    if len(p) == 6:
-        p[0] = (p[2], "", p[4] + p[5])
-    elif len(p) == 5:
-        p[0] = (p[2], "", p[4])
-    elif len(p) == 4:
-        p[0] = (p[2], "", "")
-    elif len(p) == 3:
-        p[0] = ([], p[1], p[2])
-    elif len(p) == 2:
-        p[0] = ([], p[1], "")
-
-
-def p_branch_set(p):
-    """branch_set : subtree "," branch_set
-                  | subtree
-    """
-
-    if len(p) == 2:
-        p[0] = [p[1]]
-    else:
-        p[0] = [p[1]] + p[3]
-    
-
-def p_error(p):
-    if p:
-        raise Exception("Syntax error at '%s'" % p.value)
-    else:
-        raise Exception("Syntax error")
-
-
-#lex.lex()
-#yacc.yacc()
-
-outdir = os.path.dirname(__file__)
-lex.lex(debug=0, optimize=1, lextab="treelib_lex", outputdir=outdir)
-yacc.yacc(debug=0, optimize=1, tabmodule="treelib_tab", outputdir=outdir)
-
-if __name__ == "__main__":
-    print yacc.parse("(sss:1.0,(abc:.2, hello there:.1):2.0,abcd:4.0);")
-    print yacc.parse("((xax:1.0,bbx:2));")
-    print yacc.parse("((aa:1.0,bb:2)x:33,(cc:4,dd:5):6);")
-
-
-
-#=============================================================================
-# OLD parsing code
 
 '''
         # literals

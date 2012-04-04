@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+
+import optparse
+import sys
+
+o = optparse.OptionParser()
+o.add_option("-c", "--chrom", type="int")
+o.add_option("-s", "--start", type="int")
+o.add_option("-e", "--end", type="int")
+o.add_option("-d", "--delim", default="\t")
+
+
+conf, args = o.parse_args()
+
+chrom = conf.chrom - 1
+start = conf.start - 1
+end = conf.end - 1
+
+regionid = 0
+last_chrom = ""
+last_end = -1
+
+for line in sys.stdin:
+    row = line.rstrip("\n").split(conf.delim)
+    s = int(row[start])
+    e = int(row[end])
+
+    if s > last_end or row[chrom] != last_chrom:
+        # start new region
+        regionid += 1
+        last_chrom = row[chrom]
+        last_end = -1
+    
+    last_end = max(last_end, e)
+
+    print str(regionid) + "\t" + "\t".join(row)
+

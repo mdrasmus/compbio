@@ -50,8 +50,8 @@ class TreeViewer (sumtree.SumTree):
         
         # construct events
         if self.recon:
-            self.events = phylo.labelEvents(self.tree, self.recon)
-            self.losses = phylo.findLoss(self.tree, self.stree, self.recon)
+            self.events = phylo.label_events(self.tree, self.recon)
+            self.losses = phylo.find_loss(self.tree, self.stree, self.recon)
         else:
             self.events = None
             self.losses = None
@@ -96,7 +96,7 @@ class TreeViewer (sumtree.SumTree):
                         prezoom=(self.xscale, 1.0)))
         
         # draw losses
-        losses_per_branch = util.histDict([node for node, schild in self.losses])
+        losses_per_branch = util.hist_dict([node for node, schild in self.losses])
         
         losses = [color(*self.loss_color)]
         for node, nlosses in losses_per_branch.iteritems():
@@ -166,7 +166,7 @@ class TreeViewer (sumtree.SumTree):
                 for i, (node, schild) in enumerate(losses[node]):
                     print "loss %d in species %s" % (i+1, str(schild.name))
                     
-                    for sleaf in schild.leafNames():
+                    for sleaf in schild.leaf_names():
                         print "  %s" % sleaf
             
         else:

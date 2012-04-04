@@ -9,7 +9,6 @@
 import os
 import sys
 
-from rasmus import algorithms
 from rasmus import graph
 from rasmus import util
 

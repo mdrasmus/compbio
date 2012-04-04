@@ -36,7 +36,7 @@ options = [
   ["t:", "usertree=", "usertree", "<user supplied tree>",
     {"single": True,
      "default": None,
-     "parser": treelib.readTree}],
+     "parser": treelib.read_tree}],
   ["", "opttree=", "opttree", "True|False",
     {"single": True,
      "default": True,
@@ -156,7 +156,7 @@ def getLabelFile(conf, basename):
 
 def getUserTree(conf, basename):
     if conf["usertreeext"] != None:
-        return treelib.readTree(getUserTreeFile(conf, basename))
+        return treelib.read_tree(getUserTreeFile(conf, basename))
     else:
         return conf["usertree"]
 
@@ -351,7 +351,7 @@ def run(conf, infile, test=False):
 
 def fasta2align(conf, prog, fastafile, basename):
     alignfile = getAlignFile(conf, basename)
-    seqs = fasta.readFasta(fastafile)
+    seqs = fasta.read_fasta(fastafile)
     
     # check family size
     if not checkFamilySize(conf, len(seqs), fastafile):
@@ -370,7 +370,7 @@ def fasta2align(conf, prog, fastafile, basename):
 def align2tree(conf, prog, alignfile, basename):
     treefile = getTreeFile(conf, basename)
     distfile = getDistFile(conf, basename)
-    aln = fasta.readFasta(alignfile)
+    aln = fasta.read_fasta(alignfile)
     usertree = getUserTree(conf, basename)
     
     # check family size
@@ -449,7 +449,7 @@ def align2tree(conf, prog, alignfile, basename):
     else:
         raise "unknown phylogeny program '%s'" % prog
     
-    tree.writeNewick(treefile)
+    tree.write_newick(treefile)
 
 
 
@@ -463,7 +463,7 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         return
     
     if labelfile != None:
-        labels = fasta.readFasta(labelfile).keys()
+        labels = fasta.read_fasta(labelfile).keys()
 
     
     timer = util.Timer()
@@ -478,14 +478,14 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         if usertree == None:
             raise "Must supply usertree with 'lse'"
         
-        lse = phylo.leastSquareError(usertree, mat, labels, weighting=False)
+        lse = phylo.least_square_error(usertree, mat, labels, weighting=False)
         tree = usertree
     
     elif prog == "wls":
         if usertree == None:
             raise "Must supply usertree with 'wls'"
         
-        wls = phylo.leastSquareError(usertree, mat, labels, weighting=True)
+        wls = phylo.least_square_error(usertree, mat, labels, weighting=True)
         tree = usertree
 
     elif prog == "nj":
@@ -495,14 +495,14 @@ def dist2tree(conf, prog, distfile, labelfile, basename):
         raise "unknown program '%s'" % prog
 
     
-    tree.writeNewick(treefile)
+    tree.write_newick(treefile)
 
     
 
 
 def align2dist(conf, prog, alignfile, basename):
     distfile = getDistFile(conf, basename)
-    aln = fasta.readFasta(alignfile)
+    aln = fasta.read_fasta(alignfile)
     
     # check family size
     if not checkFamilySize(conf, len(aln), alignfile):
@@ -520,7 +520,7 @@ def align2dist(conf, prog, alignfile, basename):
                         args=conf["args"])
     
     elif prog == "fourfold":
-        mat = alignlib.calcFourFoldDistMatrix(aln)
+        mat = alignlib.calc_four_fold_dist_matrix(aln)
         phylip.write_dist_matrix(mat, out=distfile)
     
     elif prog == "ds":
@@ -560,8 +560,8 @@ def align2dist(conf, prog, alignfile, basename):
 
 
 def tree2dist(conf, prog, treefile, labelfile, distfile, basename):
-    tree = treelib.readTree(treefile)
-    labels = fasta.readFasta(labelfile).keys()
+    tree = treelib.read_tree(treefile)
+    labels = fasta.read_fasta(labelfile).keys()
     
     if prog == "tree2dist":
         mat = phylo.tree2distmat(tree, labels)
@@ -571,7 +571,7 @@ def tree2dist(conf, prog, treefile, labelfile, distfile, basename):
 
 def dist2dist(conf, prog, distfile, backupext, basename):
     labels, distmat = phylip.read_dist_matrix(distfile)
-    #labels = fasta.readFasta(labelfile).keys()
+    #labels = fasta.read_fasta(labelfile).keys()
     
     # backup distance matrix
     shutil.copy(distfile, basename + backupext)
@@ -668,19 +668,19 @@ def reportStats(conf, statsfile, infiles):
         
         # get align stats
         if os.path.exists(alignfile):
-            seqs = fasta.readFasta(fastafile)
-            aln = fasta.readFasta(alignfile)
-            aln2 = alignlib.removeGappedColumns(aln)
+            seqs = fasta.read_fasta(fastafile)
+            aln = fasta.read_fasta(alignfile)
+            aln2 = alignlib.remove_gapped_columns(aln)
             nseqs = len(aln)
             alignlen = aln.alignlen()
             alignlen_ungapped = aln2.alignlen()
             median_genelen = stats.median(map(len, seqs.itervalues()))
-            cons = alignlib.calcConservation(aln)
+            cons = alignlib.calc_conservation(aln)
             percid = util.counteq(1.0, cons) / float(alignlen)
         
         # get tree stats
         if os.path.exists(treefile):
-            tree = treelib.readTree(treefile)
+            tree = treelib.read_tree(treefile)
             treelen = sum(x.dist for x in tree)
             if nseqs > 0:
                 assert nseqs == len(tree.leaves())

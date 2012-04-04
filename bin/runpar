@@ -6,7 +6,7 @@ import sys
 import os
 import optparse
 import math
-from glob import glob
+
 
 
 o = optparse.OptionParser()
@@ -24,23 +24,26 @@ o.add_option("-n", "--numgroup", dest="numgroup",
 o.add_option("-g", "--groupsize", dest="groupsize",
              type="int",
              help="size of each group")
+o.add_option("-w", "--wait", dest="wait", action="store_true",
+             help="wait for each command to finish")
 o.add_option("-t", "--tmpprefix", dest="tmpprefix",
              help="temp output prefix")
-o.add_option("-k", "--no-clean", dest="no_clean",
-             action="store_true",
-             help="do not clean tempdir prior to run")
 o.add_option("-s", "--submit", dest="submit",
-             default='bsub -o "$FILE.bout" -K ',
+             default='bsub -o "$FILE.bout" -E "touch \"$FILE.bout\""  -K ',
              help="submit command")
-o.add_option("-d", "--cleanup", dest="cleanup",
+
+o.add_option("", "--no-pre-clean", dest="no_pre_clean",
+             action="store_true",
+             help="Do not clean tempdir prior to run")
+o.add_option("", "--post-cleanup", dest="post_clean",
+             action="store_true",
+             help="Clean up tempdir after run")
+o.add_option("--clean-cmd", dest="clean_cmd",
              default='rm -f "$FILE" "$FILE.out" "$FILE.bout"',
              help="cleanup command after run")
-o.add_option("-D", "--no-cleanup", dest="no_cleanup",
-             action="store_true",
-             help="Do not clean up temp files after run")
+
 o.add_option("-v", "--verbose", dest="verbose",
              action="store_true", default=False)
-
 
 
 #=============================================================================
@@ -53,8 +56,6 @@ def doublequote(text):
     """Wrap argument in doublequotes with propper escaping"""
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$") + '"'
 
-#def quote(text):
-#    return text.replace("\\", "\\\\").replace('"', '\\"').replace(" ", "\\ ")
 
 def make_cmd(cmd, **args):
     cmd2 = ""
@@ -88,7 +89,7 @@ def main(argv):
         
 
     # clean all previous tempfiles, if requested
-    if not options.no_clean:
+    if not options.no_pre_clean:
         for fn in os.listdir(options.tmpprefix):
             fn2 = os.path.join(options.tmpprefix, fn)
             if options.verbose:
@@ -104,7 +105,11 @@ def main(argv):
             return 2
     else:
         cmd = sys.stdin.read()
+
     
+    if not options.wait:
+        options.submit = 'bsub -o "$FILE.bout" -E "touch \"$FILE.bout\""  '
+        
 
     # determine infiles
     infiles = []
@@ -146,10 +151,6 @@ def main(argv):
         out.close()
 
         # run command
-        #cmd2 = make_cmd(options.submit + 
-        #                doublequote('( ' + cmd + ' ) > "$FILE.out"'),
-        #                FILE=fn)
-        
         cmd2 = make_cmd(options.submit + doublequote(
             make_cmd('( ' + cmd + ' ) > "$FILE.out"', FILE=fn)),
                         FILE=fn)
@@ -158,7 +159,10 @@ def main(argv):
         if options.verbose:
             print >>sys.stderr, cmd2
 
-        pids.add(os.spawnlp(os.P_NOWAIT, "bash", "bash", "-c", cmd2))
+        if not options.wait:
+            os.spawnlp(os.P_WAIT, "bash", "bash", "-c", cmd2)
+        else:
+            pids.add(os.spawnlp(os.P_NOWAIT, "bash", "bash", "-c", cmd2))
 
     # wait for all jobs to finish
     while len(pids) > 0:
@@ -182,9 +186,9 @@ def main(argv):
     '''
 
     # clean up
-    if not options.no_cleanup:
+    if options.post_clean:
         for fn in infiles:
-            clean_cmd = make_cmd(options.cleanup, FILE=fn)
+            clean_cmd = make_cmd(options.clean_cmd, FILE=fn)
             if options.verbose:
                 print >>sys.stderr, clean_cmd
             os.system(clean_cmd)

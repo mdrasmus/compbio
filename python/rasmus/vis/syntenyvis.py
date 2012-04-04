@@ -1313,7 +1313,7 @@ def viswindows(refGenome, windowSize, windowStep, outdir):
         
         
         # find gene index of first gene in block
-        low, startIndex = algorithms.binsearch(refChrom.genes, start-1, 
+        low, startIndex = util.binsearch(refChrom.genes, start-1, 
                                         lambda a,b: cmp(a.start, b))            
         if startIndex == None:
             # quit if no gene is found

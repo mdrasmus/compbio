@@ -9,16 +9,15 @@
 import os, sys, re
 from math import *
 import StringIO
-from itertools import izip, imap
+from itertools import izip, imap, chain
+from collections import defaultdict
 
 
 # rasmus direct imports
 import rasmus
 from rasmus.util import *
-from rasmus.algorithms import *
 from rasmus.matrixlib import *
 from rasmus.stats import *
-from rasmus.progress import *
 from rasmus.regionlib import *
 
 
@@ -30,14 +29,11 @@ from rasmus.treelib import *
 
 # bio tools
 try:
-    from rasmus.bio.fasta import *
-    from rasmus.bio import muscle, phylip, mrbayes, blast, alignlib
-    from rasmus.bio import gff, phylo
+    from compbio.fasta import *
+    from compbio import muscle, phylip, mrbayes, blast, alignlib
+    from compbio import gff, phylo
 except ImportError:
     pass
-
-
-readTable = read_table
 
 
 def ipy():

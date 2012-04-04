@@ -18,8 +18,8 @@ num = int(param["num"][-1])
 
 for fn in rest:
     print "."
-    fa = fasta.readFasta(fn)
-    conserve = fasta.calcConservation(fa)
+    fa = fasta.read_fasta(fn)
+    conserve = fasta.calc_conservation(fa)
     
     matches = util.islands(conserve)
     

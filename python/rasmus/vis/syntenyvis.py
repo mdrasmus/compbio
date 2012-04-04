@@ -410,8 +410,7 @@ class SyntenyVisBase:
                     if frag.genome == frag2.genome and \
                        frag.chrom == frag2.chrom and \
                        frag.direction == frag2.direction and \
-                       ((frag.start <= frag2.start and frag.end >= frag2.start) or \
-                        (frag2.start <= frag.start and frag2.end >= frag.start)):
+                       (frag2.end >= frag.start and frag2.start <= frag.end):
                         frag_copy.remove((block,frag))
                         frag_copy.remove((block2,frag2))
                         frag_merge = Frag(genome=frag.genome,

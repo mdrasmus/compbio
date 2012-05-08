@@ -120,14 +120,22 @@ def corrmatrix(mat):
 
 
 def corr(lst1, lst2):
-    """Pearson's Correlation"""
+    """Pearson's Correlation Coefficient"""
     num = covariance(lst1, lst2)
     denom = float(sdev(lst1) * sdev(lst2))
     if denom != 0:
         return num / denom
     else:
-        return 1e1000
+        return util.INF
 
+def corr_spearman(lst1, lst2):
+    """
+    Spearman's Rank Correlation Coefficient
+    i.e. Pearson's Correlation Coefficient between ranked variables (in ascending order)
+    """
+    rank1 = util.sortranks(lst1, tied=True)
+    rank2 = util.sortranks(lst2, tied=True)
+    return corr(rank1, rank2)
 
 def corr_pvalue(r, n):
     """Returns the signficance of correlation > r with n samples"""
@@ -220,7 +228,10 @@ def fitLineError(xlist, ylist, slope, inter):
 
 
 def pearsonsRegression(observed, expected):
-    """Pearson's coefficient of regression"""
+    """
+    Pearson's coefficient of determination
+    e.g. r^2 of least squares linear regression
+    """
     
     # error sum of squares
     ess = sum((a - b)**2 for a, b in util.izip(observed, expected))

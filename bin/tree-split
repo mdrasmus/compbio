@@ -30,6 +30,7 @@ parser.add_option("-T", "--treeext", dest="treeext",
 parser.add_option("-Y", "--subtreeext", dest="subtreeext",
                   metavar="<subtree filename extension>",
                   default=".sub.tree")
+
 (options,args) = parser.parse_args()
 if options.all and (not options.reroot):
     parser.error("--all cannot be specified if --reroot is not specified")
@@ -115,18 +116,18 @@ for filename in args:
                 continue
 
             # split
-            split,subtrees = splitTree(treelib.reroot(tree,name),
+            split,subtrees = splitTree(treelib.reroot(tree, name),
                                        stree, gene2species)
             
             # check if ancestors with genes are the same
-            etree2 = phylo.count_dup_loss_trees(subtrees,stree,gene2species)
+            etree2 = phylo.count_dup_loss_trees(subtrees, stree, gene2species)
             sps2 = set([n.name for n in etree2 if n.data['genes'] > 0])
-            if not (sps2.issubset(sps) and sps2.issuperset(sps)):
+            if sps != sps2:
                 continue
 
             # count events
-            ct = sum([phylo.count_dup_loss(T,stree,
-                                           phylo.reconcile(T,stree,gene2species))
+            ct = sum([phylo.count_dup_loss(T, stree,
+                                           phylo.reconcile(T, stree, gene2species))
                       for T in subtrees])
             if ct < maxct:
                 opt = subtrees

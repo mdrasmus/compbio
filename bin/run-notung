@@ -15,11 +15,18 @@ path = os.path.dirname(__file__)
 jarfile = os.path.join(path, "Notung-2.6.jar")
 
 o = optparse.OptionParser()
-o.add_option("--threshold", metavar="<threshold>", default="90%")
-o.add_option("-S", "--smap", metavar="<gene2species map>")
-o.add_option("-s", "--stree", metavar="<species tree>")
+o.add_option("--threshold", dest="threshold",
+             metavar="<threshold>", default="90%")
+o.add_option("--edgeweights", dest="edgeweights",
+             metavar="<edgeweights>",
+             choices=["name", "length", "nhx"],
+             default="name")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>")
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>")
 phy.add_common_options(o, align=False)
-o.set_default("extra", "--costdup 1 --costloss 1")
+#o.set_default("extra", "--costdup 1 --costloss 1")
 o.remove_option("--seqtype")
 o.remove_option("--boot")
 o.remove_option("--no-opttree")
@@ -134,7 +141,7 @@ for fn in files:
             "--outputdir", os.path.abspath(outdir),
             "--log",
             "--speciestag", "postfix",
-            "--edgeweights", "name",
+            "--edgeweights", conf.edgeweights,
             "--threshold", conf.threshold,
             "-s", "stree",
             "-g", "intree"]

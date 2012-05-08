@@ -1581,10 +1581,24 @@ def sortindex(lst, cmp=cmp, key=None, reverse=False):
     return ind
 
 
-def sortranks(lst, cmp=cmp, key=None, reverse=False):
-    """Returns the ranks of items in lst"""
-    return invperm(sortindex(lst, cmp, key, reverse))
-    
+def sortranks(lst, cmp=cmp, key=None, reverse=False, tied=False):
+    """
+    Returns the ranks of items in lst
+    If tied is True, set rank equal to average of positions
+    """
+    rank = invperm(sortindex(lst, cmp, key, reverse))
+    if not tied:
+        return rank
+
+    s = set(lst)
+    for it in s:
+        ind = [i for i,j in enumerate(lst) if cmp(it,j)==0]
+        ranks = mget(rank, ind)
+        avgrank = float(sum(ranks))/len(ranks)
+        for j in ind:
+            rank[j] = avgrank
+    return rank
+
 
 def sort_many(lst, *others, **args):
     """Sort several lists based on the sorting of 'lst'"""

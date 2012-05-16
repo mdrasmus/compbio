@@ -407,6 +407,13 @@ class ARG (object):
             return 0.0
 
 
+    def set_root(self):
+
+        for node in self:
+            if not node.parents:
+                self.root = node
+                break
+
     #===============================
     # ancestral sequence methods
 
@@ -1083,140 +1090,160 @@ def sample_arg(k, n, rho, start=0.0, end=1.0, t=0, names=None,
         for reg in b.regions: assert reg[0] >= node.pos
         node.parents = [an, bn]
 
-    # TODO: set root(s)
+    # set root
+    arg.root = max(arg, key=lambda x: x.age)
 
     return arg
 
 
-# TODO: make a sample_trees_smc()
-# would be much faster
 
-def sample_arg_smc(k, n, rho, start=0.0, end=0.0, t=0):
+def sample_smc_sprs(k, n, rho, start=0.0, end=0.0, init_tree=None,
+                    names=None, make_names=True):
+    """
+    Sample ARG using Sequentially Markovian Coalescent (SMC)
 
-    arg = ARG(start, end)
-    pos = start # position simulated so far
+    k   -- chromosomes
+    n   -- effective population size (haploid)
+    rho -- recombination rate (recombinations / site / generation)
+    start -- staring chromosome coordinate
+    end   -- ending chromsome coordinate
+    t   -- initial time (default: 0)
+    names -- names to use for leaves (default: None)
+    make_names -- make names using strings (default: True)
+    """
 
-    # sample initial coal tree with no recomb
-    times, events = sample_coal_recomb_times(k, n, 0)
-    # at time[i] we go from (k - i) lineages to (k - i - 1) lineages
-    
-    lineages = set(arg.new_node() for i in xrange(k))
-    for t in times:
-        a, b = random.sample(lineages, 2)
-        parent = arg.new_node(age=t, children=[a,b], event="coal")
-        a.parents.append(parent)
-        b.parents.append(parent)
-        lineages.remove(a)
-        lineages.remove(b)
-        lineages.add(parent)
+    # yield initial tree first
+    if init_tree is None:
+        init_tree = sample_arg(k, n, rho=0.0, start=start, end=end,
+                               names=names, make_names=make_names)
+    yield init_tree
 
-    '''
-    # get nodes from last tree
-    nodes = list(arg.postorder_marginal_tree(pos+1))
-    oldest = nodes.pop()
-    nodes_set = set(nodes)
-    nodes_set.add(oldest)
-    parent_count = defaultdict(lambda:0)
-    parents = {}
-    for node in nodes_set:
-        parent = arg.get_local_parent(node, start+1)
-        parents[node] = parent
-        parent_count[parent] += 1
-    '''
-
+    # sample SPRs
+    pos = start
+    tree = init_tree.copy()
     while True:
-
-        # TODO: could make faster by modifying nodes, parents, and parents_count
-        # get nodes from last tree
-        nodes = list(arg.postorder_marginal_tree(pos+1))
-        oldest = nodes.pop()
-        
-        # sample next recomb
-        totlen = sum(arg.get_local_dist(x, pos+1) for x in nodes)
-        recomb_per_site = rho * totlen
-
-        # sample recomb pos
-        pos += random.expovariate(recomb_per_site)
+        # sample next recomb point
+        treelen = sum(x.get_dist() for x in tree)
+        pos += random.expovariate(treelen * rho)
         if pos > end:
-            # no more recombinations
             break
 
-        # sample recomb node
-        nodes_set = set(nodes)
-        nodes_set.add(oldest)
-        parent_count = defaultdict(lambda:0)
-        parents = {}
-        for node in nodes_set:
-            parent = arg.get_local_parent(node, pos+1)
-            parents[node] = parent
-            parent_count[parent] += 1
-        times = [parent.age for parent in parent_count
-                 if parent_count[parent] == 2]
-        times.sort()
-        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
-        child = nodes[stats.sample(lens)]
-
-        # make recomb node and insert into arg
-        old_parent = arg.get_local_parent(child, pos+1)
-        recomb_node = arg.new_node(age=child.age + random.random() *
-                                   arg.get_local_dist(child, pos+1),
-                                   children=[child],
-                                   parents=[old_parent],
-                                   pos=pos, event="recomb")
-        i = old_parent.children.index(child)
-        old_parent.children[i] = recomb_node
-        child.parents[child.parents.index(old_parent)] = recomb_node
-
-
-        # coalesce recomb_node back into previous marginal tree
-        for i in xrange(len(times)):
-            if recomb_node.age < times[i]:
-                break
-        for i in xrange(i, len(times) - 1):
-            k2 = k - i - 1
-            # k2 = 0 = k - i - 1
-            # i = k - 1
-            coal_time = times[i] + random.expovariate(k2 / float(n))
-            if coal_time < times[i+1]:
-                # coal event, choose sister
-                candidates = [(node, parents[node]) for node in nodes
-                              if node.age < coal_time < parents[node].age]
-                assert len(candidates) > 0, (coal_time, times)
-                sister, sister_parent = random.sample(candidates, 1)[0]
-                if sister == child:
-                    sister = recomb_node
-                    assert sister_parent == old_parent
+        # choose branch for recombination
+        p = random.uniform(0.0, treelen)
+        total = 0.0
+        nodes = (x for x in tree if x.parents) # root can't have a recomb
+        for node in nodes:
+            total += node.get_dist()
+            if total > p:
                 break
         else:
-            # no coal at all choose oldest sister
-            sister, sister_parent = oldest, parents[oldest]
-            assert sister_parent is None or sister_parent in sister.parents, \
-                   (sister_parent, sister.parents)
-            coal_time = times[-1] + random.expovariate(1.0 / n)
+            raise Exception("could not find recomb node")
+        recomb_node = node
 
+        # choose age for recombination
+        recomb_time = random.uniform(
+            recomb_node.age, recomb_node.parents[0].age)
 
-        # make coal node
-        coal_node = arg.new_node(age=coal_time, event="coal",
-                                 children=[sister, recomb_node])
-        recomb_node.parents.append(coal_node)
-        if sister_parent:
-            i = sister_parent.children.index(sister)
-            sister_parent.children[i] = coal_node
-            i = sister.parents.index(sister_parent)
-            sister.parents[i] = coal_node
-            coal_node.parents.append(sister_parent)
+        # choose coal node and time
+        all_nodes = [x for x in tree if not x.is_leaf()]
+        all_nodes.sort(key=lambda x: x.age)
+        lineages = set(x for x in tree.leaves() if x != recomb_node)
+
+        coal_time = 0.0
+        i = 0
+        #print
+        while i < len(all_nodes):
+            #print coal_time, recomb_node, lineages
+            #treelib.draw_tree_names(tree.get_tree(), scale=1e-3, minlen=5)
+            next_node = all_nodes[i]
+            
+            if next_node.age > recomb_time:
+                if coal_time < recomb_time:
+                    coal_time = recomb_time
+                next_time = coal_time + random.expovariate(
+                    len(lineages) / float(n))
+                
+                if next_time < next_node.age:
+                    coal_time = next_time
+                    
+                    # choose coal branch
+                    coal_node = random.sample(lineages, 1)[0]
+                    assert coal_node.age < coal_time < coal_node.parents[0].age
+                    break
+
+            # coal is older than next node
+            coal_time = next_node.age
+            i += 1
+
+            # adjust current lineages
+            for child in next_node.children:
+                if child in lineages:
+                    lineages.remove(child)
+                else:
+                    assert child == recomb_node, (next_node, child, recomb_node)
+            if next_node != recomb_node:
+                lineages.add(next_node)
         else:
-            sister.parents.append(coal_node)
+            # coal above tree
+            coal_node = all_nodes[-1]
+            coal_time = coal_node.age + random.expovariate(1.0 / float(n))
+        
+        # yield SPR
+        rleaves = list(tree.leaf_names(recomb_node))
+        cleaves = list(tree.leaf_names(coal_node))
+        yield pos, (rleaves, recomb_time), (cleaves, coal_time)
+
+
+        # apply SPR to local tree
+        broken = recomb_node.parents[0]
+        recoal = tree.new_node(age=coal_time,
+                               children=[recomb_node, coal_node])
+
+        # add recoal node to tree
+        recomb_node.parents[0] = recoal
+        broken.children.remove(recomb_node)
+        if coal_node.parents:
+            recoal.parents.append(coal_node.parents[0])
+            util.replace(coal_node.parents[0].children, coal_node, recoal)
+            coal_node.parents[0] = recoal
+        else:
+            coal_node.parents.append(recoal)
             
 
-    nodes = [(node.age, node) for node in arg]
-    nodes.sort()
-    arg.root = nodes[-1][1]
+        # remove broken node
+        broken_child = broken.children[0]
+        if broken.parents:
+            broken_child.parents[0] = broken.parents[0]
+            util.replace(broken.parents[0].children, broken, broken_child)
+        else:
+            broken_child.parents.remove(broken)
 
-    return arg
+        del tree.nodes[broken.name]
+        tree.set_root()
+        #assert_arg(tree)
+        
 
+
+def sample_arg_smc(k, n, rho, start=0.0, end=0.0, init_tree=None,
+                   names=None, make_names=True):
+    """
+    Returns an ARG sampled from the Sequentially Markovian Coalescent (SMC)
     
-
+    k   -- chromosomes
+    n   -- effective population size (haploid)
+    rho -- recombination rate (recombinations / site / generation)
+    start -- staring chromosome coordinate
+    end   -- ending chromsome coordinate
+    
+    names -- names to use for leaves (default: None)
+    make_names -- make names using strings (default: True)
+    """
+    
+    it = sample_smc_sprs(k, n, rho, start=start, end=end, init_tree=init_tree,
+                         names=names, make_names=make_names)
+    tree = it.next()
+    arg = make_arg_from_sprs(tree, it)
+    return arg
 
 
 #=============================================================================
@@ -1303,6 +1330,39 @@ def get_recomb_pos(arg, visible=False):
                 arg if node.event == "recomb"]
         rpos.sort()
         return rpos
+
+
+def find_next_recomb(arg, pos, tree=False):
+    """Returns the next recombination node in a local tree"""
+
+    recomb = None
+    nextpos = util.INF
+
+    if tree:
+        nodes = iter(arg)
+    else:
+        nodes = arg.postorder_marginal_tree(pos)
+
+    for node in nodes:
+        if node.event == "recomb" and node.pos > pos and node.pos < nextpos:
+            recomb = node
+            nextpos = node.pos
+
+    return recomb
+
+
+def iter_visible_recombs(arg, start=None, end=None):
+    """Iterates through visible recombinations in an ARG"""
+    
+    pos = start if start is not None else 0
+    while True:
+        recomb = find_next_recomb(arg, pos)
+        if recomb:
+            yield recomb
+            pos = recomb.pos
+        else:
+            break
+
 
 
 def iter_recomb_blocks(arg, start=None, end=None, visible=False):
@@ -1578,7 +1638,6 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
     arg = init_tree
 
     for rpos, (rleaves, rtime), (cleaves, ctime) in sprs:
-
         node1 = arg_lca(arg, rleaves, rpos, time=rtime)
         node2 = arg_lca(arg, cleaves, rpos, time=ctime)
 
@@ -1609,463 +1668,6 @@ def smcify_arg(arg):
     make_arg_from_sprs(arg2, sprs, ignore_self=True)
 
     return arg2
-
-
-def has_self_cycles(arg):
-    """
-    Return True if there are lineages that coalesce with themselves
-
-    Requires ancestral sequences set.
-    """
-
-    # Such a cycle does not contain 'local coalescent nodes' on the sides
-    # but it might have non-local coalescent and recombination nodes.
-    # The relative order of theses nodes from the left and right side
-    # does not matter
-    #
-    #      |
-    #     coal
-    #    /   \
-    #    |   |
-    #    \   /
-    #    recomb
-    #      |
-    
-    # get overall postorder
-    # assumes stable sort
-    nodes = list(arg.postorder())
-    nodes.sort(key=lambda x: x.age)
-    order = dict((x, i) for i, x in enumerate(nodes))    
-
-    # find cycles by their recombination nodes
-    recombs = [x.name for x in arg if x.event == "recomb"]
-
-    # find smallest separation
-    recomb_pos = [arg[x].pos for x in recombs]
-    recomb_pos.sort()
-    eps = .5
-    for i in xrange(1, len(recomb_pos)):
-        sep = recomb_pos[i] - recomb_pos[i-1]
-        if sep > 0 and sep/2.0 < eps:
-            eps = sep / 2.0
-    
-    for recomb_name in recombs:
-        if recomb_name not in arg:
-            continue
-        if is_self_cycle(arg, arg[recomb_name], order=order, eps=eps):
-            print recomb_name, arg[recomb_name].pos
-            return True
-
-    return False
-
-
-def iter_self_cycles(arg):
-    """
-    Return True if there are lineages that coalesce with themselves
-
-    Requires ancestral sequences set.
-    """
-
-    # Such a cycle does not contain 'local coalescent nodes' on the sides
-    # but it might have non-local coalescent and recombination nodes.
-    # The relative order of theses nodes from the left and right side
-    # does not matter
-    #
-    #      |
-    #     coal
-    #    /   \
-    #    |   |
-    #    \   /
-    #    recomb
-    #      |
-    
-    # get overall postorder
-    # assumes stable sort
-    nodes = list(arg.postorder())
-    nodes.sort(key=lambda x: x.age)
-    order = dict((x, i) for i, x in enumerate(nodes))    
-
-    # find cycles by their recombination nodes
-    recombs = [x.name for x in arg if x.event == "recomb"]
-
-    # find smallest separation
-    recomb_pos = [arg[x].pos for x in recombs]
-    recomb_pos.sort()
-    eps = .5
-    for i in xrange(1, len(recomb_pos)):
-        sep = recomb_pos[i] - recomb_pos[i-1]
-        if sep > 0 and sep/2.0 < eps:
-            eps = sep / 2.0
-    
-    for recomb_name in recombs:
-        if recomb_name not in arg:
-            continue
-        if is_self_cycle(arg, arg[recomb_name], order=order, eps=eps):
-            yield arg[recomb_name]
-
-
-
-
-def is_self_cycle(arg, recomb, order=None, eps=1e-4):
-
-    def is_local_coal(node, child, pos):
-        if node.event != "coal":
-            return False
-
-        i = node.children.index(child)
-        other_child = node.children[1 - i]
-
-        for start, end in other_child.data["ancestral"]:
-            if start < pos < end:
-                return True
-
-        return False
-
-    if order is None:
-        # get overall postorder
-        # assumes stable sort
-        nodes = list(arg.postorder())
-        nodes.sort(key=lambda x: x.age)
-        order = dict((x, i) for i, x in enumerate(nodes))    
-
-    # find cycle
-    # also check for local coal nodes along the way
-    rpos = recomb.pos
-    path1 = []
-    path2 = []
-    ptr1 = arg.get_local_parent(recomb, rpos-eps)
-    ptr2 = arg.get_local_parent(recomb, rpos+eps)
-    while ptr1 and ptr2:
-        order1 = order[ptr1]
-        order2 = order[ptr2]
-
-        if order1 < order2:
-            if is_local_coal(ptr1,path1[-1] if path1 else recomb,rpos-eps):
-                break
-            path1.append(ptr1)
-            ptr1 = arg.get_local_parent(ptr1, rpos-eps)
-
-        elif order1 > order2:
-            if is_local_coal(ptr2,path2[-1] if path2 else recomb,rpos+eps):
-                break
-            path2.append(ptr2)
-            ptr2 = arg.get_local_parent(ptr2, rpos+eps)
-
-        else:
-            # we have reached coal node
-            assert ptr1 == ptr2
-            coal = ptr1
-            return True
-
-    return False
-    
-
-def remove_self_cycles(arg):
-    """
-    Removes cycles that represent a lineage coalescing with itself
-
-    Requires ancestral sequences set.
-    """
-
-    # Such a cycle does not contain 'local coalescent nodes' on the sides
-    # but it might have non-local coalescent and recombination nodes.
-    # The relative order of theses nodes from the left and right side
-    # does not matter
-    #
-    #      |
-    #     coal
-    #    /   \
-    #    |   |
-    #    \   /
-    #    recomb
-    #      |
-
-    def is_local_coal(node, child, pos):
-        if node.event != "coal":
-            return False
-
-        i = node.children.index(child)
-        other_child = node.children[1 - i]
-
-        for start, end in other_child.data["ancestral"]:
-            if start < pos < end:
-                return True
-
-        return False
-
-    # get overall postorder
-    # assumes stable sort
-    nodes = list(arg.postorder())
-    nodes.sort(key=lambda x: x.age)
-    order = dict((x, i) for i, x in enumerate(nodes))    
-
-    # find cycles by their recombination nodes
-    recombs = [x.name for x in arg if x.event == "recomb"]
-
-    # find smallest separation
-    recomb_pos = [arg[x].pos for x in recombs]
-    recomb_pos.sort()
-    eps = .5
-    for i in xrange(1, len(recomb_pos)):
-        sep = recomb_pos[i] - recomb_pos[i-1]
-        if sep > 0 and sep/2.0 < eps:
-            eps = sep / 2.0
-            
-    
-    for recomb_name in recombs:
-        if recomb_name not in arg:
-            continue
-        recomb = arg[recomb_name]
-        rpos = recomb.pos
-        
-        # find cycle
-        # also check for local coal nodes along the way
-        is_cycle = False
-        path1 = []
-        path2 = []
-        ptr1 = arg.get_local_parent(recomb, rpos-eps)
-        ptr2 = arg.get_local_parent(recomb, rpos+eps)
-        while ptr1 and ptr2:
-            order1 = order[ptr1]
-            order2 = order[ptr2]
-            
-            if order1 < order2:
-                if is_local_coal(ptr1,path1[-1] if path1 else recomb,rpos-eps):
-                    break
-                path1.append(ptr1)
-                ptr1 = arg.get_local_parent(ptr1, rpos-eps)
-                
-            elif order1 > order2:
-                if is_local_coal(ptr2,path2[-1] if path2 else recomb,rpos+eps):
-                    break
-                path2.append(ptr2)
-                ptr2 = arg.get_local_parent(ptr2, rpos+eps)
-                
-            else:
-                # we have reached coal node
-                assert ptr1 == ptr2
-                coal = ptr1
-                is_cycle = True
-                break
-
-        if not is_cycle:
-            # this recombination node is not a cycle
-            # either because it contains a local coal node or never recoals
-            # which can happen in SMC ARGs
-            continue
-
-        if path1:
-            assert coal in path1[-1].parents
-        else:
-            assert coal in recomb.parents
-        if path2:
-            assert coal in path2[-1].parents
-        else:
-            assert coal in recomb.parents
-
-        if len(set(path1) & set(path2)) != 0:
-            print [(order[x], x) for x in path1]
-            print [(order[x], x) for x in path2]
-            assert False
-        
-        # remove coal node
-        top = coal.parents[0] if coal.parents else None
-        if top:
-            util.replace(top.children, coal, None)
-
-        # remove recomb node
-        bottom = recomb.children[0]
-        util.replace(bottom.parents, recomb, None)
-
-        # unlink nodes in left path
-        last = recomb
-        for node in path1:
-            util.replace(last.parents, node, None)
-            util.replace(node.children, last, None)
-            last = node
-        util.replace(last.parents, coal, None)
-
-        # unlink nodes in right path
-        last = recomb
-        #print "--"
-        for node in path2:
-            #print last.parents, node
-            util.replace(last.parents, node, None)
-            util.replace(node.children, last, None)
-            last = node
-        util.replace(last.parents, coal, None)
-        
-        
-        # merge paths
-        combine = path1 + path2
-        combine.sort(key=lambda x: (x.age, order[x]))
-        last = bottom
-        
-        for n in combine:
-            util.replace(last.parents, None, n)
-            util.replace(n.children, None, last)
-            last = n
-            
-        if top:
-            util.replace(last.parents, None, top)
-            util.replace(top.children, None, last)
-        else:
-            # no top node
-            if last.event == "coal" or last.event == "gene":
-                last.parents = []
-            elif last.event == "recomb":
-                # remove last recomb node since it is a single lineage
-                c = last.children[0]
-                p = last.parents[1 - last.parents.index(None)]
-                util.replace(c.parents, last, p)
-                util.replace(p.children, last, c)
-                del arg.nodes[last.name]
-            else:
-                raise Exception("unknown event '%s'" % last.event)
-
-        del arg.nodes[recomb.name]
-        del arg.nodes[coal.name]
-            
-
-
-
-
-def remove_self_cycles2(arg):
-    """
-    Removes cycles that represent a lineage coalescing with itself
-
-    Requires ancestral sequences set.
-    """
-
-    # Such a cycle does not contain 'local coalescent nodes' on the sides
-    # but it might have non-local coalescent and recombination nodes.
-    # The relative order of theses nodes from the left and right side
-    # does not matter
-    #
-    #      |
-    #     coal
-    #    /   \
-    #    |   |
-    #    \   /
-    #    recomb
-    #      |
-
-    # get overall postorder
-    # assumes stable sort
-    nodes = list(arg.postorder())
-    nodes.sort(key=lambda x: x.age)
-    order = dict((x, i) for i, x in enumerate(nodes))    
-
-    # find cycles by their recombination nodes
-    recombs = [x.name for x in arg if x.event == "recomb"]
-
-    # find smallest separation
-    recomb_pos = [arg[x].pos for x in recombs]
-    recomb_pos.sort()
-    eps = .5
-    for i in xrange(1, len(recomb_pos)):
-        sep = recomb_pos[i] - recomb_pos[i-1]
-        if sep > 0 and sep/2.0 < eps:
-            eps = sep / 2.0
-            
-    
-    for recomb_name in recombs:
-        if recomb_name not in arg:
-            continue
-        recomb = arg[recomb_name]
-        rpos = recomb.pos
-        
-        # find cycle
-        # also check for local coal nodes along the way
-        is_cycle = False
-        path1 = []
-        path2 = []
-        ptr1 = arg.get_local_parent(recomb, rpos-eps)
-        ptr2 = arg.get_local_parent(recomb, rpos+eps)
-        while ptr1 and ptr2:
-            order1 = order[ptr1]
-            order2 = order[ptr2]
-            
-            if order1 < order2:
-                if ptr1.event == "coal":
-                    break
-                path1.append(ptr1)
-                ptr1 = arg.get_local_parent(ptr1, rpos-eps)
-                
-            elif order1 > order2:
-                if ptr2.event == "coal":
-                    break
-                path2.append(ptr2)
-                ptr2 = arg.get_local_parent(ptr2, rpos+eps)
-                
-            else:
-                # we have reached coal node
-                assert ptr1 == ptr2
-                coal = ptr1
-                is_cycle = True
-                break
-
-        if not is_cycle:
-            # this recombination node is not a cycle
-            # either because it contains a local coal node or never recoals
-            # which can happen in SMC ARGs
-            continue
-        
-        # remove coal node
-        top = coal.parents[0] if coal.parents else None
-        if top:
-            util.replace(top.children, coal, None)
-
-        # remove recomb node
-        bottom = recomb.children[0]
-        util.replace(bottom.parents, recomb, None)
-
-        # unlink nodes in left path
-        last = recomb
-        for node in path1:
-            util.replace(last.parents, node, None)
-            util.replace(node.children, last, None)
-            last = node
-        util.replace(last.parents, coal, None)
-
-        # unlink nodes in right path
-        last = recomb
-        for node in path2:
-            util.replace(last.parents, node, None)
-            util.replace(node.children, last, None)
-            last = node
-        util.replace(last.parents, coal, None)
-        
-        
-        # merge paths
-        combine = path1 + path2
-        combine.sort(key=lambda x: (x.age, order[x]))
-        last = bottom
-        
-        for n in combine:
-            util.replace(last.parents, None, n)
-            util.replace(n.children, None, last)
-            last = n
-            
-        if top:
-            util.replace(last.parents, None, top)
-            util.replace(top.children, None, last)
-        else:
-            # no top node
-            if last.event == "coal":
-                last.parents = []
-            elif last.event == "recomb":
-                # remove last recomb node since it is a single lineage
-                c = last.children[0]
-                p = last.parents[1 - last.parents.index(None)]
-                util.replace(c.parents, last, p)
-                util.replace(p.children, last, c)
-                del arg.nodes[last.name]
-            else:
-                raise Exception("unknown event '%s'" % node.event)
-
-        del arg.nodes[recomb.name]
-        del arg.nodes[coal.name]
 
 
     
@@ -2135,6 +1737,15 @@ def arg_lca(arg, leaves, pos, time=None, local=None):
 
     return node
 
+
+
+def arglen(arg, start=None, end=None):
+    
+    treelen = 0.0
+    for (start, end), tree in iter_tree_tracks(arg, start=start, end=end):
+        treelen += sum(x.get_dist() for x in tree) * (end - start)
+
+    return treelen
 
 
 #=============================================================================
@@ -2657,6 +2268,470 @@ def sample_mutations(arg, u):
 
 
 '''
+
+# My cycle code very really removed all cycles it seems
+
+def has_self_cycles(arg):
+    """
+    Return True if there are lineages that coalesce with themselves
+
+    Requires ancestral sequences set.
+    """
+
+    # Such a cycle does not contain 'local coalescent nodes' on the sides
+    # but it might have non-local coalescent and recombination nodes.
+    # The relative order of theses nodes from the left and right side
+    # does not matter
+    #
+    #      |
+    #     coal
+    #    /   \
+    #    |   |
+    #    \   /
+    #    recomb
+    #      |
+    
+    # get overall postorder
+    # assumes stable sort
+    nodes = list(arg.postorder())
+    nodes.sort(key=lambda x: x.age)
+    order = dict((x, i) for i, x in enumerate(nodes))    
+
+    # find cycles by their recombination nodes
+    recombs = [x.name for x in arg if x.event == "recomb"]
+
+    # find smallest separation
+    recomb_pos = [arg[x].pos for x in recombs]
+    recomb_pos.sort()
+    eps = .5
+    for i in xrange(1, len(recomb_pos)):
+        sep = recomb_pos[i] - recomb_pos[i-1]
+        if sep > 0 and sep/2.0 < eps:
+            eps = sep / 2.0
+    
+    for recomb_name in recombs:
+        if recomb_name not in arg:
+            continue
+        if is_self_cycle(arg, arg[recomb_name], order=order, eps=eps):
+            print recomb_name, arg[recomb_name].pos
+            return True
+
+    return False
+
+
+def iter_self_cycles(arg):
+    """
+    Return True if there are lineages that coalesce with themselves
+
+    Requires ancestral sequences set.
+    """
+
+    # Such a cycle does not contain 'local coalescent nodes' on the sides
+    # but it might have non-local coalescent and recombination nodes.
+    # The relative order of theses nodes from the left and right side
+    # does not matter
+    #
+    #      |
+    #     coal
+    #    /   \
+    #    |   |
+    #    \   /
+    #    recomb
+    #      |
+    
+    # get overall postorder
+    # assumes stable sort
+    nodes = list(arg.postorder())
+    nodes.sort(key=lambda x: x.age)
+    order = dict((x, i) for i, x in enumerate(nodes))    
+
+    # find cycles by their recombination nodes
+    recombs = [x.name for x in arg if x.event == "recomb"]
+
+    # find smallest separation
+    recomb_pos = [arg[x].pos for x in recombs]
+    recomb_pos.sort()
+    eps = .5
+    for i in xrange(1, len(recomb_pos)):
+        sep = recomb_pos[i] - recomb_pos[i-1]
+        if sep > 0 and sep/2.0 < eps:
+            eps = sep / 2.0
+    
+    for recomb_name in recombs:
+        if recomb_name not in arg:
+            continue
+        if is_self_cycle(arg, arg[recomb_name], order=order, eps=eps):
+            yield arg[recomb_name]
+
+
+
+
+def is_self_cycle(arg, recomb, order=None, eps=1e-4):
+
+    def is_local_coal(node, child, pos):
+        if node.event != "coal":
+            return False
+
+        i = node.children.index(child)
+        other_child = node.children[1 - i]
+
+        for start, end in other_child.data["ancestral"]:
+            if start < pos < end:
+                return True
+
+        return False
+
+    if order is None:
+        # get overall postorder
+        # assumes stable sort
+        nodes = list(arg.postorder())
+        nodes.sort(key=lambda x: x.age)
+        order = dict((x, i) for i, x in enumerate(nodes))    
+
+    # find cycle
+    # also check for local coal nodes along the way
+    rpos = recomb.pos
+    path1 = []
+    path2 = []
+    ptr1 = arg.get_local_parent(recomb, rpos-eps)
+    ptr2 = arg.get_local_parent(recomb, rpos+eps)
+    while ptr1 and ptr2:
+        order1 = order[ptr1]
+        order2 = order[ptr2]
+
+        if order1 < order2:
+            if is_local_coal(ptr1,path1[-1] if path1 else recomb,rpos-eps):
+                break
+            path1.append(ptr1)
+            ptr1 = arg.get_local_parent(ptr1, rpos-eps)
+
+        elif order1 > order2:
+            if is_local_coal(ptr2,path2[-1] if path2 else recomb,rpos+eps):
+                break
+            path2.append(ptr2)
+            ptr2 = arg.get_local_parent(ptr2, rpos+eps)
+
+        else:
+            # we have reached coal node
+            assert ptr1 == ptr2
+            coal = ptr1
+            return True
+
+    return False
+    
+
+def remove_self_cycles(arg):
+    """
+    Removes cycles that represent a lineage coalescing with itself
+
+    Requires ancestral sequences set.
+    """
+
+    # Such a cycle does not contain 'local coalescent nodes' on the sides
+    # but it might have non-local coalescent and recombination nodes.
+    # The relative order of theses nodes from the left and right side
+    # does not matter
+    #
+    #      |
+    #     coal
+    #    /   \
+    #    |   |
+    #    \   /
+    #    recomb
+    #      |
+
+    def is_local_coal(node, child, pos):
+        if node.event != "coal":
+            return False
+
+        i = node.children.index(child)
+        other_child = node.children[1 - i]
+
+        for start, end in other_child.data["ancestral"]:
+            if start < pos < end:
+                return True
+
+        return False
+
+    # get overall postorder
+    # assumes stable sort
+    nodes = list(arg.postorder())
+    nodes.sort(key=lambda x: x.age)
+    order = dict((x, i) for i, x in enumerate(nodes))    
+
+    # find cycles by their recombination nodes
+    recombs = [x.name for x in arg if x.event == "recomb"]
+
+    # find smallest separation
+    recomb_pos = [arg[x].pos for x in recombs]
+    recomb_pos.sort()
+    eps = .5
+    for i in xrange(1, len(recomb_pos)):
+        sep = recomb_pos[i] - recomb_pos[i-1]
+        if sep > 0 and sep/2.0 < eps:
+            eps = sep / 2.0
+            
+    
+    for recomb_name in recombs:
+        if recomb_name not in arg:
+            continue
+        recomb = arg[recomb_name]
+        rpos = recomb.pos
+        
+        # find cycle
+        # also check for local coal nodes along the way
+        is_cycle = False
+        path1 = []
+        path2 = []
+        ptr1 = arg.get_local_parent(recomb, rpos-eps)
+        ptr2 = arg.get_local_parent(recomb, rpos+eps)
+        while ptr1 and ptr2:
+            order1 = order[ptr1]
+            order2 = order[ptr2]
+            
+            if order1 < order2:
+                if is_local_coal(ptr1,path1[-1] if path1 else recomb,rpos-eps):
+                    break
+                path1.append(ptr1)
+                ptr1 = arg.get_local_parent(ptr1, rpos-eps)
+                
+            elif order1 > order2:
+                if is_local_coal(ptr2,path2[-1] if path2 else recomb,rpos+eps):
+                    break
+                path2.append(ptr2)
+                ptr2 = arg.get_local_parent(ptr2, rpos+eps)
+                
+            else:
+                # we have reached coal node
+                assert ptr1 == ptr2
+                coal = ptr1
+                is_cycle = True
+                break
+
+        if not is_cycle:
+            # this recombination node is not a cycle
+            # either because it contains a local coal node or never recoals
+            # which can happen in SMC ARGs
+            continue
+
+        if path1:
+            assert coal in path1[-1].parents
+        else:
+            assert coal in recomb.parents
+        if path2:
+            assert coal in path2[-1].parents
+        else:
+            assert coal in recomb.parents
+
+        if len(set(path1) & set(path2)) != 0:
+            print [(order[x], x) for x in path1]
+            print [(order[x], x) for x in path2]
+            assert False
+        
+        # remove coal node
+        top = coal.parents[0] if coal.parents else None
+        if top:
+            util.replace(top.children, coal, None)
+
+        # remove recomb node
+        bottom = recomb.children[0]
+        util.replace(bottom.parents, recomb, None)
+
+        # unlink nodes in left path
+        last = recomb
+        for node in path1:
+            util.replace(last.parents, node, None)
+            util.replace(node.children, last, None)
+            last = node
+        util.replace(last.parents, coal, None)
+
+        # unlink nodes in right path
+        last = recomb
+        #print "--"
+        for node in path2:
+            #print last.parents, node
+            util.replace(last.parents, node, None)
+            util.replace(node.children, last, None)
+            last = node
+        util.replace(last.parents, coal, None)
+        
+        
+        # merge paths
+        combine = path1 + path2
+        combine.sort(key=lambda x: (x.age, order[x]))
+        last = bottom
+        
+        for n in combine:
+            util.replace(last.parents, None, n)
+            util.replace(n.children, None, last)
+            last = n
+            
+        if top:
+            util.replace(last.parents, None, top)
+            util.replace(top.children, None, last)
+        else:
+            # no top node
+            if last.event == "coal" or last.event == "gene":
+                last.parents = []
+            elif last.event == "recomb":
+                # remove last recomb node since it is a single lineage
+                c = last.children[0]
+                p = last.parents[1 - last.parents.index(None)]
+                util.replace(c.parents, last, p)
+                util.replace(p.children, last, c)
+                del arg.nodes[last.name]
+            else:
+                raise Exception("unknown event '%s'" % last.event)
+
+        del arg.nodes[recomb.name]
+        del arg.nodes[coal.name]
+            
+
+
+
+
+def remove_self_cycles2(arg):
+    """
+    Removes cycles that represent a lineage coalescing with itself
+
+    Requires ancestral sequences set.
+    """
+
+    # Such a cycle does not contain 'local coalescent nodes' on the sides
+    # but it might have non-local coalescent and recombination nodes.
+    # The relative order of theses nodes from the left and right side
+    # does not matter
+    #
+    #      |
+    #     coal
+    #    /   \
+    #    |   |
+    #    \   /
+    #    recomb
+    #      |
+
+    # get overall postorder
+    # assumes stable sort
+    nodes = list(arg.postorder())
+    nodes.sort(key=lambda x: x.age)
+    order = dict((x, i) for i, x in enumerate(nodes))    
+
+    # find cycles by their recombination nodes
+    recombs = [x.name for x in arg if x.event == "recomb"]
+
+    # find smallest separation
+    recomb_pos = [arg[x].pos for x in recombs]
+    recomb_pos.sort()
+    eps = .5
+    for i in xrange(1, len(recomb_pos)):
+        sep = recomb_pos[i] - recomb_pos[i-1]
+        if sep > 0 and sep/2.0 < eps:
+            eps = sep / 2.0
+            
+    
+    for recomb_name in recombs:
+        if recomb_name not in arg:
+            continue
+        recomb = arg[recomb_name]
+        rpos = recomb.pos
+        
+        # find cycle
+        # also check for local coal nodes along the way
+        is_cycle = False
+        path1 = []
+        path2 = []
+        ptr1 = arg.get_local_parent(recomb, rpos-eps)
+        ptr2 = arg.get_local_parent(recomb, rpos+eps)
+        while ptr1 and ptr2:
+            order1 = order[ptr1]
+            order2 = order[ptr2]
+            
+            if order1 < order2:
+                if ptr1.event == "coal":
+                    break
+                path1.append(ptr1)
+                ptr1 = arg.get_local_parent(ptr1, rpos-eps)
+                
+            elif order1 > order2:
+                if ptr2.event == "coal":
+                    break
+                path2.append(ptr2)
+                ptr2 = arg.get_local_parent(ptr2, rpos+eps)
+                
+            else:
+                # we have reached coal node
+                assert ptr1 == ptr2
+                coal = ptr1
+                is_cycle = True
+                break
+
+        if not is_cycle:
+            # this recombination node is not a cycle
+            # either because it contains a local coal node or never recoals
+            # which can happen in SMC ARGs
+            continue
+        
+        # remove coal node
+        top = coal.parents[0] if coal.parents else None
+        if top:
+            util.replace(top.children, coal, None)
+
+        # remove recomb node
+        bottom = recomb.children[0]
+        util.replace(bottom.parents, recomb, None)
+
+        # unlink nodes in left path
+        last = recomb
+        for node in path1:
+            util.replace(last.parents, node, None)
+            util.replace(node.children, last, None)
+            last = node
+        util.replace(last.parents, coal, None)
+
+        # unlink nodes in right path
+        last = recomb
+        for node in path2:
+            util.replace(last.parents, node, None)
+            util.replace(node.children, last, None)
+            last = node
+        util.replace(last.parents, coal, None)
+        
+        
+        # merge paths
+        combine = path1 + path2
+        combine.sort(key=lambda x: (x.age, order[x]))
+        last = bottom
+        
+        for n in combine:
+            util.replace(last.parents, None, n)
+            util.replace(n.children, None, last)
+            last = n
+            
+        if top:
+            util.replace(last.parents, None, top)
+            util.replace(top.children, None, last)
+        else:
+            # no top node
+            if last.event == "coal":
+                last.parents = []
+            elif last.event == "recomb":
+                # remove last recomb node since it is a single lineage
+                c = last.children[0]
+                p = last.parents[1 - last.parents.index(None)]
+                util.replace(c.parents, last, p)
+                util.replace(p.children, last, c)
+                del arg.nodes[last.name]
+            else:
+                raise Exception("unknown event '%s'" % node.event)
+
+        del arg.nodes[recomb.name]
+        del arg.nodes[coal.name]
+
+
+'''
+
+
+'''
 SLOW remove cycles
 
 def remove_self_cycles(arg, eps=.5):
@@ -2975,5 +3050,136 @@ def sample_arg_bgsel(k, ns, rho, start=0.0, end=0.0, t=0):
     arg.root = oldest
 
     return arg
+
+
+# TODO: make a sample_trees_smc()
+# would be much faster
+
+def sample_arg_smc(k, n, rho, start=0.0, end=0.0):    
+
+    arg = ARG(start, end)
+    pos = start # position simulated so far
+
+    # sample initial coal tree with no recomb
+    times, events = sample_coal_recomb_times(k, n, 0)
+    # at time[i] we go from (k - i) lineages to (k - i - 1) lineages
+    
+    lineages = set(arg.new_node() for i in xrange(k))
+    for t in times:
+        a, b = random.sample(lineages, 2)
+        parent = arg.new_node(age=t, children=[a,b], event="coal")
+        a.parents.append(parent)
+        b.parents.append(parent)
+        lineages.remove(a)
+        lineages.remove(b)
+        lineages.add(parent)
+
+    """
+    # get nodes from last tree
+    nodes = list(arg.postorder_marginal_tree(pos+1))
+    oldest = nodes.pop()
+    nodes_set = set(nodes)
+    nodes_set.add(oldest)
+    parent_count = defaultdict(lambda:0)
+    parents = {}
+    for node in nodes_set:
+        parent = arg.get_local_parent(node, start+1)
+        parents[node] = parent
+        parent_count[parent] += 1
+    """
+
+    while True:
+
+        # TODO: could make faster by modifying nodes, parents, and parents_count
+        # get nodes from last tree
+        nodes = list(arg.postorder_marginal_tree(pos+1))
+        oldest = nodes.pop()
+        
+        # sample next recomb
+        totlen = sum(arg.get_local_dist(x, pos+1) for x in nodes)
+        recomb_per_site = rho * totlen
+
+        # sample recomb pos
+        pos += random.expovariate(recomb_per_site)
+        if pos > end:
+            # no more recombinations
+            break
+
+        # sample recomb node
+        nodes_set = set(nodes)
+        nodes_set.add(oldest)
+        parent_count = defaultdict(lambda:0)
+        parents = {}
+        for node in nodes_set:
+            parent = arg.get_local_parent(node, pos+1)
+            parents[node] = parent
+            parent_count[parent] += 1
+        times = [parent.age for parent in parent_count
+                 if parent_count[parent] == 2]
+        times.sort()
+        lens = [arg.get_local_dist(x, pos+1) for x in nodes]
+        child = nodes[stats.sample(lens)]
+
+        # make recomb node and insert into arg
+        old_parent = arg.get_local_parent(child, pos+1)
+        recomb_node = arg.new_node(age=child.age + random.random() *
+                                   arg.get_local_dist(child, pos+1),
+                                   children=[child],
+                                   parents=[old_parent],
+                                   pos=pos, event="recomb")
+        i = old_parent.children.index(child)
+        old_parent.children[i] = recomb_node
+        child.parents[child.parents.index(old_parent)] = recomb_node
+
+
+        # coalesce recomb_node back into previous marginal tree
+        for i in xrange(len(times)):
+            if recomb_node.age < times[i]:
+                break
+        for i in xrange(i, len(times) - 1):
+            k2 = k - i - 1
+            # k2 = 0 = k - i - 1
+            # i = k - 1
+            coal_time = times[i] + random.expovariate(k2 / float(n))
+            if coal_time < times[i+1]:
+                # coal event, choose sister
+                candidates = [(node, parents[node]) for node in nodes
+                              if node.age < coal_time < parents[node].age]
+                assert len(candidates) > 0, (coal_time, times)
+                sister, sister_parent = random.sample(candidates, 1)[0]
+                if sister == child:
+                    sister = recomb_node
+                    assert sister_parent == old_parent
+                break
+        else:
+            # no coal at all choose oldest sister
+            sister, sister_parent = oldest, parents[oldest]
+            assert sister_parent is None or sister_parent in sister.parents, \
+                   (sister_parent, sister.parents)
+            coal_time = times[-1] + random.expovariate(1.0 / n)
+
+
+        # make coal node
+        coal_node = arg.new_node(age=coal_time, event="coal",
+                                 children=[sister, recomb_node])
+        recomb_node.parents.append(coal_node)
+        if sister_parent:
+            i = sister_parent.children.index(sister)
+            sister_parent.children[i] = coal_node
+            i = sister.parents.index(sister_parent)
+            sister.parents[i] = coal_node
+            coal_node.parents.append(sister_parent)
+        else:
+            sister.parents.append(coal_node)
+            
+
+    nodes = [(node.age, node) for node in arg]
+    nodes.sort()
+    arg.root = nodes[-1][1]
+
+    return arg
+
+
+
 '''
     

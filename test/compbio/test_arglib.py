@@ -13,7 +13,7 @@ from compbio import arglib
 
 
     
-class ArgTests (unittest.TestCase):
+class Arg (unittest.TestCase):
 
     def test_sample_coal_recomb(self):
         rho = 1.5e-8 # recomb/site/gen
@@ -42,6 +42,8 @@ class ArgTests (unittest.TestCase):
         pause()
 
     def test_read_write(self):
+        """Read and write an ARG"""
+        
         rho = 1.5e-8   # recomb/site/gen
         l = 10000      # length of locus
         k = 10         # number of lineages
@@ -54,6 +56,118 @@ class ArgTests (unittest.TestCase):
         stream.seek(0)
         arg2 = arglib.read_arg(stream)
 
+
+    def test_sample_arg_smc(self):
+        """Sample an ARG using the SMC process"""
+        
+        length = 100000    # length of locus
+        k = 2             # number of lineages
+        n = 1e4           # effective popsize
+        rho = 1.5e-8 * 20 # recomb/site/gen
+
+        arg = arglib.sample_arg_smc(k, n, rho, 0, length)
+        arg2 = arglib.smcify_arg(arglib.sample_arg(k, n, rho, 0, length))
+        arglib.assert_arg(arg)
+        
+        p = plot([x.age for x in arglib.iter_visible_recombs(arg)],
+                 main="smc")
+        p2 = plot([x.age for x in arglib.iter_visible_recombs(arg2)],
+                  main="coal_recomb")
+        
+        pause()
+
+
+    def test_sample_arg_smc_cmp(self):
+        """Sample an ARG using the SMC process and compare it"""
+        
+        length = 1000    # length of locus
+        k = 4             # number of lineages
+        n = 1e4           # effective popsize
+        rho = 1.5e-8 * 20 # recomb/site/gen
+
+        x = []
+        y = []
+        for i in range(100):
+            print i
+            arg = arglib.sample_arg_smc(k, n, rho, 0, length)
+            arg2 = arglib.smcify_arg(arglib.sample_arg(k, n, rho, 0, length))
+            x.append(ilen(arglib.iter_visible_recombs(arg)))
+            y.append(ilen(arglib.iter_visible_recombs(arg2)))
+
+        p = plot(x, y, main="recombs", xlab="smc", ylab="coal_recomb")
+        p.plot([0, max(x)], [0, max(x)], style="lines")
+        
+        pause()
+
+
+    def test_sample_arg_smc_cmp2(self):
+        """Sample an ARG using the SMC process and compare it"""
+        
+        length = 1000    # length of locus
+        k = 4             # number of lineages
+        n = 1e4           # effective popsize
+        rho = 1.5e-8 * 20 # recomb/site/gen
+
+        x = []
+        y = []
+        for i in range(100):
+            print i
+            arg = arglib.sample_arg_smc(k, n, rho, 0, length)
+            arg2 = arglib.smcify_arg(arglib.sample_arg(k, n, rho, 0, length))
+            x.append(max(x.age for x in arg))
+            y.append(max(x.age for x in arg2))
+
+        p = plot(x, y, main="maxage", xlab="smc", ylab="coal_recomb",
+                 xlog=10, ylog=10, xmin=1000, ymin=1000)
+        p.plot([100, max(x)], [100, max(x)], style="lines")
+        
+        pause()
+
+
+    def test_sample_arg_smc_cmp3(self):
+        """Sample an ARG using the SMC process and compare it"""
+        
+        length = 1000    # length of locus
+        k = 4             # number of lineages
+        n = 1e4           # effective popsize
+        rho = 1.5e-8 * 20 # recomb/site/gen
+
+        x = []
+        y = []
+        for i in range(100):
+            print i
+            arg = arglib.sample_arg_smc(k, n, rho, 0, length)
+            arg2 = arglib.sample_arg(k, n, rho, 0, length)
+            x.append(arglib.arglen(arg))
+            y.append(arglib.arglen(arg2))
+
+        p = plot(x, y, main="arglen", xlab="smc", ylab="coal_recomb")
+        p.plot([0, max(x)], [0, max(x)], style="lines")
+        
+        pause()
+        
+
+    def test_sample_arg_smc_cmp4(self):
+        """Sample an ARG using the SMC process and compare it"""
+        
+        length = 1000    # length of locus
+        k = 4             # number of lineages
+        n = 1e4           # effective popsize
+        rho = 1.5e-8 * 20 # recomb/site/gen
+
+        x = []
+        y = []
+        for i in range(100):
+            print i
+            arg = arglib.smcify_arg(arglib.sample_arg_smc(k, n, rho, 0, length))
+            arg2 = arglib.sample_arg(k, n, rho, 0, length)
+            x.append(mean(x.age for x in arg if x.event == "recomb"))
+            y.append(mean(x.age for x in arg2 if x.event == "recomb"))
+
+        p = plot(x, y, main="avg recomb age", xlab="smc", ylab="coal_recomb")
+        p.plot([0, max(x)], [0, max(x)], style="lines")
+        
+        pause()
         
     
 
@@ -114,7 +228,7 @@ if 0:
 
 
 # test read/write
-if 1:
+if 0:
     rho = 1.5e-8   # recomb/site/gen
     l = 10000      # length of locus
     k = 10         # number of lineages

@@ -279,12 +279,13 @@ def show_tree_track(tree_track, mut=None, show_labels=False,
         g.append(clicking)
 
         # hotspots
-        for node in tree:
-            if node.parent:
-                x, y = layout[node]
-                x2, y2 = layout[node.parent]
-                clicking.append(branch_hotspot(node, node.parent, x, y, y2))
-        win.add_group(clicking)
+        if branch_click:
+            for node in tree:
+                if node.parent:
+                    x, y = layout[node]
+                    x2, y2 = layout[node.parent]
+                    clicking.append(branch_hotspot(node, node.parent, x, y, y2))
+        #win.add_group(clicking)
 
         
         # draw mut
@@ -352,6 +353,46 @@ def show_coal_track(tree_track):
 
 
 def show_coal_track3(tree_track):
+    
+    win = summon.Window()
+    
+    
+    bgcolor = (1, 1, 1, .1)
+    cmap = util.rainbow_color_map(low=0.5, high=1.0)
+
+    maxage = 0
+    for (start, end), tree in tree_track:
+        print start
+        l = []
+        times = treelib.get_tree_timestamps(tree)
+        nleaves = len(tree.leaves())
+        maxage2 = 0
+        for node in tree:            
+            if len(node.children) > 1:
+                age = times[node]
+                sizes = [len(x.leaves()) for x in node.children]
+                bias = max(sizes) / float(sum(sizes))
+                l.extend([color(*cmap.get(bias)), start, age, end, age])
+                if age > maxage2:
+                    maxage2 = age
+        win.add_group(group(lines(*l), color(*bgcolor),
+                      box(start, 0, end, maxage2, fill=True)))
+        if maxage2 > maxage:
+            maxage = maxage2
+
+    def func():
+        x, y = win.get_mouse_pos()
+        print "pos=%s age=%f" % (util.int2pretty(int(x)), y)
+    win.add_group(hotspot("click", 0, 0, end, maxage,
+                          func))
+    
+    win.home("exact")
+
+
+    return win
+
+
+def show_coal_track2(tree_track):
     
     win = summon.Window()
     

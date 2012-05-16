@@ -485,6 +485,13 @@ def ilen(iterator):
     return sum(1 for i in iterator)
 
 
+def exc_default(func, val, exc=Exception):
+    """Specify a default value for when an exception occurs"""
+    try:
+        return func()
+    except exc:
+        return val
+
 
 #=============================================================================
 # simple matrix functions

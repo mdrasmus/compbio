@@ -1531,16 +1531,13 @@ def iter_arg_sprs(arg, start=None, end=None, use_leaves=False):
         # find recoal node
         ptr = node
         while len(ptr.children) != 2:
-            last = ptr
             ptr = ptr.parents[0]
         ctime = ptr.age
         if ptr.name in last_tree:
-            c = ptr.children
-            child = c[0] if c[1] == last else c[1]
-            child = last_tree[child.name]
-            while len(child.children) == 1:
-                child = child.children[0]
-            cnode = child.name
+            ptr = last_tree[ptr.name]
+            while len(ptr.children) == 1:
+                ptr = ptr.children[0]
+            cnode = ptr.name
         else:
             cnode = last_tree.root.name
 

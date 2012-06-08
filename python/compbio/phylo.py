@@ -2098,7 +2098,7 @@ def split_bit_string(split, leaves=None, char1="*", char2=".", nochar=" "):
     return "".join(chars)
    
 
-def robinson_foulds_error(tree1, tree2):
+def robinson_foulds_error(tree1, tree2, rooted=False):
     """
     Returns RF error
 
@@ -2107,8 +2107,8 @@ def robinson_foulds_error(tree1, tree2):
 
     Of course, trees can be the same size as well.
     """
-    splits1 = find_splits(tree1)
-    splits2 = find_splits(tree2)
+    splits1 = find_splits(tree1, rooted=rooted)
+    splits2 = find_splits(tree2, rooted=rooted)
 
     overlap = set(splits1) & set(splits2)
     

@@ -1220,7 +1220,6 @@ def sample_smc_sprs(k, n, rho, start=0.0, end=0.0, init_tree=None,
 
         del tree.nodes[broken.name]
         tree.set_root()
-        #assert_arg(tree)
         
 
 
@@ -1737,6 +1736,7 @@ def arg_lca(arg, leaves, pos, time=None, local=None):
 
 
 def arglen(arg, start=None, end=None):
+    """Calculate the total branch length of an ARG"""
     
     treelen = 0.0
     for (start, end), tree in iter_tree_tracks(arg, start=start, end=end):
@@ -1885,11 +1885,13 @@ def get_marginal_leaves(arg, node, pos):
 
 
 def get_mutation_split(arg, mutation):
+    """Get the leaves of an ARG that inherit a mutation"""
     node, parent, pos, t = mutation
     return tuple(sorted(x.name for x in get_marginal_leaves(arg, node, pos)))
 
 
 def split_to_tree_branch(tree, split):
+    """Place a split on a tree branch"""
     
     node = treelib.lca([tree[name] for name in split])
 
@@ -2053,6 +2055,31 @@ def make_alignment(arg, mutations, ancestral="A", derived="C"):
         aln[leaf] = "".join(x[i] for x in mat)
 
     return aln
+
+
+def iter_align_splits(aln, warn=False):
+    """Iterates through the splits in an alignment"""
+    names = aln.keys()
+
+    for j in xrange(aln.alignlen()):
+        col = [x[j] for x in aln.itervalues()]
+        chars = util.unique(col)
+        if len(chars) > 1:
+            # column has mutations
+            # check bi-allelic
+            if warn and len(chars) != 2:
+                print >>sys.stderr, "warning: not bi-allelic (site=%d)" % j
+
+            part1 = tuple(sorted(names[i] for i, c in enumerate(col) 
+                                 if c == chars[0]))
+            part2 = tuple(sorted(names[i] for i, c in enumerate(col) 
+                                 if c != chars[0]))
+            if len(part1) > len(part2):
+                part1, part2 = part2, part1
+            split = (part1, part2)
+
+            yield j, split
+
 
 
 #=============================================================================

@@ -33,8 +33,7 @@ from rasmus.tablelib import showtab, sqlget, sqlput, sqlexe
 try:
     from compbio.fasta import *
     from compbio.regionlib import *
-    from compbio import muscle, phylip, mrbayes, blast, alignlib
-    from compbio import gff, phylo
+    from compbio import fasta, alignlib, gff, phylo
 except ImportError:
     pass
 

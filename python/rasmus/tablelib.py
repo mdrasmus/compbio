@@ -364,8 +364,8 @@ class Table (list):
                 
         except Exception, e:
             # report error in parsing input file
-            #raise TableException(str(e), self.filename, lineno)
-            raise
+            raise TableException(str(e), self.filename, lineno)
+            #raise
         
         
         # clear temps
@@ -802,7 +802,23 @@ class Table (list):
             return ret[0]
         else:    
             return ret
-    
+
+
+    def get_row(self, *rows):
+        """Returns row(s) as list(s)"""
+
+        if len(rows) == 1:
+            # return one row
+            row = self[rows[0]]
+            return [row[j] for j in self.headers]
+
+        else:
+            # return multiple rows (or zero)
+            return [[self[i][j] for j in self.headers]
+                    for i in rows]
+                
+            
+        
     
     
     def sort(self, cmp=None, key=None, reverse=False, col=None):

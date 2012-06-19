@@ -1653,18 +1653,22 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
     
 
 
-def smcify_arg(arg):
+def smcify_arg(arg, start=None, end=None):
     """
     Rebuild an ARG so that is follows the SMC assumptions
     """
     
     arg2 = arg.get_marginal_tree(-.5)
     remove_single_lineages(arg2)
-    sprs = iter_arg_sprs(arg, use_leaves=True)
+    sprs = iter_arg_sprs(arg, start, end, use_leaves=True)
     make_arg_from_sprs(arg2, sprs, ignore_self=True)
 
+    if start is not None:
+        arg2.start = start
+    if end is not None:
+        arg2.end = end
+    
     return arg2
-
 
     
 

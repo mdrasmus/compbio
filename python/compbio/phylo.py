@@ -306,7 +306,7 @@ def find_species_roots(tree, stree, recon):
     return roots       
 
 
-def find_orthologs(gtree, stree, recon, events=None, counts=True):
+def find_orthologs(gtree, stree, recon, events=None, counts=True, species_branch=False):
     """Find all ortholog pairs within a gene tree"""
 
     if events is None:
@@ -329,18 +329,19 @@ def find_orthologs(gtree, stree, recon, events=None, counts=True):
                             else:
                                 g1, g2 = gene1, gene2
                                 a, b = i, j
-                            
-                            if not counts:
-                                orths.append((g1.name, g2.name))
-                            else:
-                                orths.append((g1.name, g2.name,
-                                              sp_counts[a][recon[g1]],
-                                              sp_counts[b][recon[g2]]))
+
+                            orth = [g1.name, g2.name]
+                            if counts:
+                                orth.extend([sp_counts[a][recon[g1]],
+                                             sp_counts[b][recon[g2]]])
+                            if species_branch:
+                                orth.append(recon[node])
+                            orths.append(tuple(orth))
     
     return orths
 
 
-def find_paralogs(gtree, stree, recon, events=None, counts=True, split=True):
+def find_paralogs(gtree, stree, recon, events=None, counts=True, species_branch=False, split=True):
     """Find all paralog pairs within a gene tree - same as find_orthologs but looks for event == "dup"."""
 
     if events is None:
@@ -368,12 +369,13 @@ def find_paralogs(gtree, stree, recon, events=None, counts=True, split=True):
                                 g1, g2 = gene1, gene2
                                 a, b = i, j
                             
-                            if not counts:
-                                paralogs.append((g1.name, g2.name))
-                            else:
-                                paralogs.append((g1.name, g2.name,
-                                                 sp_counts[a][recon[g1]],
-                                                 sp_counts[b][recon[g2]]))
+                            paralog = [g1.name, g2.name]
+                            if counts:
+                                paralog.extend([sp_counts[a][recon[g1]],
+                                                sp_counts[b][recon[g2]]])
+                            if species_branch:
+                                paralog.append(recon[node])
+                            paralogs.append(tuple(paralog))
     
     return paralogs
 

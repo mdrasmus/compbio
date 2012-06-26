@@ -14,9 +14,12 @@ o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
 o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
 o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
 o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
+
 o.add_option("--no-split", dest="split",
              default=True, action="store_false",
              help="if set, counts paralogs across pre-root duplications")
+o.add_option("--no-species-branch", dest="no_species_branch",
+             action="store_true")
 o.add_option("--fix-ils", dest="fix_ils",
              default=False, action="store_true")
 
@@ -68,19 +71,27 @@ for filename in filenames:
             dupcons = phylo.dup_consistency(tree, recon, events)
             events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
     
-    paralogs = phylo.find_paralogs(tree, stree, recon, events, split=conf.split)
+    paralogs = phylo.find_paralogs(tree, stree, recon, events,
+                                   species_branch=not conf.no_species_branch,
+                                   split=conf.split)
 
-    for gene1, gene2, spcnt1, spcnt2 in paralogs:
+    for paralog in paralogs:
+        if conf.no_species_branch:
+            gene1, gene2, spcnt1, spcnt2 = paralog
+        else:
+            gene1, gene2, spcnt1, spcnt2, node = paralog
+            
         sp1 = gene2species(gene1)
         sp2 = gene2species(gene2)
-
         if sp1 > sp2:
             sp1, sp2 = sp2, sp1
             gene1, gene2 = gene2, gene1
             spcnt1, spcnt2 = spcnt2, spcnt1
-        
-        print "%s\t%s\t%s\t%s\t%s\t%d\t%d" % (treename, sp1, sp2, gene1, gene2,
-                                              spcnt1, spcnt2)
+
+        toks = (treename, sp1, sp2, gene1, gene2, spcnt1, spcnt2)
+        if not conf.no_species_branch:
+            toks = toks + (node.name, )
+        print "\t".join(map(str, toks))
 
 
 

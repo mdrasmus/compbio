@@ -575,7 +575,7 @@ class Tree:
         self.write_newick(util.open_stream(out, "w"), writeData=writeData, 
                           oneline=oneline, rootData=rootData, namefunc=namefunc)
     
-    def read_data(self, node, data):
+    def read_data(self, node, data, namefunc=lambda name: name):
         """Default data reader: reads optional bootstrap and branch length"""
 
         # also parse nhx comments
@@ -595,13 +595,13 @@ class Tree:
                         # treat as node name
                         name = boot.strip()
                         if name and isinstance(node.name, int): #not node.is_leaf():
-                            node.name = name
+                            node.name = namefunc(name)
         else:
             data = data.strip()
 
             # treat as name
             if data:
-                node.name = data
+                node.name = namefunc(data)
     readData = read_data
     
     
@@ -734,7 +734,7 @@ class Tree:
                 node = TreeNode(namefunc(name))
 
             # parse data
-            readData(node, data)
+            readData(node, data, namefunc=namefunc)
 
             # ensure unique name
             node.name = self.unique_name(node.name, names)

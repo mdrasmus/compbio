@@ -57,6 +57,72 @@ class Arg (unittest.TestCase):
         arg2 = arglib.read_arg(stream)
 
 
+    def test_iter_sprs(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 6         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+
+        for a, b in izip(arglib.iter_arg_sprs(arg),
+                         arglib.iter_arg_sprs_simple(arg)):
+            print a, b
+            self.assertEqual(a, b)
+
+    
+    def test_iter_sprs_leaves(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000     # length of locus
+        k = 40         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+
+        for a, b in izip(arglib.iter_arg_sprs(arg, use_leaves=True),
+                         arglib.iter_arg_sprs_simple(arg, use_leaves=True)):
+            a[1][0].sort()
+            a[2][0].sort()
+            b[1][0].sort()
+            b[2][0].sort()
+            print a, b
+            self.assertEqual(a, b)
+
+
+    def test_iter_sprs_time(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 40         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+
+        util.tic("arglib.iter_arg_sprs")
+        x = list(arglib.iter_arg_sprs(arg))
+        util.toc()
+
+        util.tic("arglib.iter_arg_sprs_simple")
+        x = list(arglib.iter_arg_sprs_simple(arg))
+        util.toc()
+
+        util.tic("arglib.iter_arg_sprs use_leaves=True")
+        x = list(arglib.iter_arg_sprs(arg, use_leaves=True))
+        util.toc()
+
+        util.tic("arglib.iter_arg_sprs_simple use_leaves=True")
+        x = list(arglib.iter_arg_sprs_simple(arg, use_leaves=True))
+        util.toc()
+        
+
+    #----------------------------
+    # SMC sampling
+
     def test_sample_arg_smc(self):
         """Sample an ARG using the SMC process"""
         
@@ -168,7 +234,7 @@ class Arg (unittest.TestCase):
         p.plot([0, max(x)], [0, max(x)], style="lines")
         
         pause()
-        
+
     
 
 # lineages over time is deterministic with high k

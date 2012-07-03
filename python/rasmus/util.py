@@ -771,12 +771,12 @@ def argmax(lst, key=lambda x: x):
     key -- function to apply to each lst[i].
            argmax(lst, key=func) --> argmax(map(key, lst))
     """
-    
-    assert len(lst) > 0
+
+    it = iter(lst)
     top = 0
-    topval = key(lst[0])
-    for i in xrange(1, len(lst)):
-        val = key(lst[i])
+    topval = key(it.next())
+    for i, item in enumerate(it, 1):
+        val = key(item)
         if val > topval:
             top = i
             topval = val
@@ -784,6 +784,27 @@ def argmax(lst, key=lambda x: x):
 
 
 def argmin(lst, key=lambda x: x):
+    """
+    Find the index 'i' in 'lst' with minimum lst[i]
+    
+    lst -- list to search
+    key -- function to apply to each lst[i].
+           argmin(lst, key=func) --> argmin(map(key, lst))
+    """
+    
+    it = iter(lst)
+    low = 0
+    lowval = key(it.next())
+    for i, item in enumerate(it, 1):
+        val = key(item)
+        if val < lowval:
+            low = i
+            lowval = val
+    return low
+
+
+'''
+def argmin_old(lst, key=lambda x: x):
     """
     Find the index 'i' in 'lst' with minimum lst[i]
     
@@ -802,6 +823,26 @@ def argmin(lst, key=lambda x: x):
             lowval = val
     return low
 
+
+def argmax_old(lst, key=lambda x: x):
+    """
+    Find the index 'i' in 'lst' with maximum lst[i]
+    
+    lst -- list to search
+    key -- function to apply to each lst[i].
+           argmax(lst, key=func) --> argmax(map(key, lst))
+    """
+    
+    assert len(lst) > 0
+    top = 0
+    topval = key(lst[0])
+    for i in xrange(1, len(lst)):
+        val = key(lst[i])
+        if val > topval:
+            top = i
+            topval = val
+    return top
+'''
 
 
 #=============================================================================

@@ -1566,7 +1566,213 @@ def subarg_by_leaves(arg, leaves, keep_single=False):
     return arg
 
 
+def apply_spr(tree, rnode, rtime, cnode, ctime, rpos):
+    """
+    Apply an Subtree Pruning Regrafting  operation on a tree
+    """
+
+    def add_node(arg, node, time, pos, event):
+        node2 = arg.new_node(event=event, age=time, children=[node], pos=pos)
+        if event == "coal":
+            node2.pos = 0
+        parent = arg.get_local_parent(node, pos)
+        if parent:
+            node.parents[node.parents.index(parent)] = node2
+            parent.children[parent.children.index(node)] = node2
+            node2.parents.append(parent)
+        else:
+            node.parents.append(node2)
+            arg.root = node2
+        return node2
+
+    def remove_node(arg, node):
+        if node.parents:
+            parent = node.parents[0]
+            child = node.children[0]
+            child.parents[0] = parent
+            util.replace(parent.children, node, child)
+        else:
+            child = node.children[0]
+            child.parents.remove(node)
+            arg.root = child
+
+        del arg.nodes[node.name]
+    
+    coal = add_node(tree, cnode, ctime, rpos, "coal")    
+    broken_node = rnode.parents[0]
+    broken_node.children.remove(rnode)
+    remove_node(tree, broken_node)
+        
+    rnode.parents[0] = coal
+    coal.children.append(rnode)
+
+    return coal, broken_node
+
+
+
 def iter_arg_sprs(arg, start=None, end=None, use_leaves=False):
+    """
+    Iterate through the SPR moves of an ARG
+
+    Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
+    """
+
+    def get_local_children(node, local, pos):
+        children = [child for child in node.children
+                    if child in local and
+                    arg.get_local_parent(child, pos) == node]
+        if len(children) == 2 and children[0] == children[1]:
+            children = children[:1]
+        return children
+
+    def get_local_parent(node, pos):
+        if node.event == "recomb":
+            if pos < node.pos:
+                return node.parents[0]
+            else:
+                return node.parents[1]
+        elif node.parents:
+            return node.parents[0]
+        else:
+            return None
+
+    def walk_down(node, local, pos):
+        while True:
+            children = get_local_children(node, local, pos)
+            if len(children) == 1:
+                node = children[0]
+            else:
+                break
+        return node
+
+
+    if start is None:
+        start = arg.start
+    if end is None:
+        end = arg.end
+
+    # init local nodes
+    nodes = list(arg.postorder_marginal_tree(start))
+    local = set(nodes)
+    local_root = nodes[-1]
+    pos = start
+    
+    while pos < end:
+        # find next recombination node after 'pos'
+        recomb_pos = end
+        recomb = None
+        for node in local:
+            if pos < node.pos < recomb_pos:
+                recomb_pos = node.pos
+                recomb = node
+        if recomb is None:
+            # no more recombinations before position 'end'
+            break
+        rtime = recomb.age
+
+        # find recomb baring branch in local tree
+        # walk down until next coalescent node in local tree
+        mid = (recomb_pos + pos) / 2.0
+        ptr = recomb
+        rnode = walk_down(recomb, local, mid).name
+
+        
+        # find recoal node
+        # walk up right parent of recomb until we re-enter local tree or coal
+        # above
+        ptr = recomb
+        local_root_path = set()
+        local_root2 = local_root
+        coal_path = []
+        while True:
+            ptr = get_local_parent(ptr, recomb_pos)
+            coal_path.append(ptr)
+            if ptr in local:
+                break
+            while local_root2.age < ptr.age:
+                # check for coal above local root
+                local_root2 = get_local_parent(local_root2, recomb_pos)
+                if not local_root2:
+                    break
+                local_root_path.add(local_root2)
+            if local_root2 == ptr:
+                # recoal is above local root
+                break
+        ctime = ptr.age
+        recoal = ptr
+
+        # find recoal baring branch in local tree
+        # walk down until next coalescent node in local tree
+        if ptr in local:
+            cnode = walk_down(ptr, local, mid).name
+        else:
+            cnode = local_root.name        
+
+        
+        # find broken nodes
+        # walk up left parent of recomb until coalescent node or coal path
+        ptr = recomb
+        broken_path = []
+        while True:
+            assert ptr in local, ptr
+            ptr = get_local_parent(ptr, mid)
+            if ptr is None:
+                break
+            children = get_local_children(ptr, local, mid)
+            if len(children) != 1 or ptr in coal_path:
+                break
+            broken_path.append(ptr)
+
+        # find broken root path
+        # if broken path reaches local_root and we don't re-coal above
+        # local root, then broken path continues down the other side
+        # until coalescent node or coal path
+        if ptr == local_root and cnode != local_root.name:
+            broken_path.append(ptr)
+            children = get_local_children(ptr, local, mid)
+            ptr = (children[0]
+                   if children[1] in broken_path[-2:] + [recomb]
+                   else children[1])
+            while True:
+                children = get_local_children(ptr, local, mid)
+                if len(children) != 1 or ptr in coal_path:
+                    break
+                broken_path.append(ptr)
+                ptr = children[0]
+            local_root = ptr
+
+        
+        # update local nodes
+        if cnode == local_root.name:
+            # add root path
+            local.update(local_root_path)
+            local_root = local_root2
+
+        # remove broken nodes and nodes in coal path
+        for node in broken_path:
+            local.remove(node)
+        for node in coal_path:
+            local.add(node)
+
+        
+        # yield SPR
+        if use_leaves:
+            rleaves = list(x.name for x in
+                           arg.preorder_marginal_tree(mid, arg[rnode])
+                           if x.is_leaf())
+            cleaves = list(x.name for x in
+                           arg.preorder_marginal_tree(mid, arg[cnode])
+                           if x.is_leaf())
+            yield (recomb_pos, (rleaves, rtime), (cleaves, ctime))
+        else:
+            yield (recomb_pos, (rnode, rtime), (cnode, ctime))
+        
+        # advance the current position
+        pos = recomb_pos
+
+
+
+def iter_arg_sprs_simple(arg, start=None, end=None, use_leaves=False):
     """
     Iterate through the SPR moves of an ARG
 
@@ -1589,6 +1795,53 @@ def iter_arg_sprs(arg, start=None, end=None, use_leaves=False):
 
         # find recoal node
         ptr = node
+        ptr = ptr.parents[0]
+        while len(ptr.children) != 2 and ptr.name not in last_tree:
+            ptr = ptr.parents[0]
+        ctime = ptr.age
+        if ptr.name in last_tree:
+            ptr = last_tree[ptr.name]
+            while len(ptr.children) == 1:
+                ptr = ptr.children[0]
+            cnode = ptr.name
+        else:
+            cnode = last_tree.root.name
+
+        # yield SPR
+        if use_leaves:
+            rleaves = list(last_tree.leaf_names(last_tree[rnode]))
+            cleaves = list(tree.leaf_names(last_tree[cnode]))
+            yield (recomb_pos, (rleaves, rtime), (cleaves, ctime))
+        else:
+            yield (recomb_pos, (rnode, rtime), (cnode, ctime))
+        last_tree = tree
+
+
+def iter_arg_sprs_simple_old(arg, start=None, end=None, use_leaves=False):
+    """
+    Iterate through the SPR moves of an ARG
+
+    Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
+    """
+
+    trees = iter_tree_tracks(arg, start, end)
+    block, last_tree = trees.next()
+    
+    for block, tree in trees:
+
+        # find recombination node
+        recomb_pos = block[0]
+        node = (x for x in tree if x.pos == recomb_pos).next()
+        rtime = node.age
+        ptr = last_tree[node.name]
+        while len(ptr.children) == 1:
+            ptr = ptr.children[0]
+        rnode = ptr.name
+
+        # find recoal node
+        ptr = node
+
+        # BUG: only works for non-bubbles
         while len(ptr.children) != 2:
             ptr = ptr.parents[0]
         ctime = ptr.age
@@ -1608,10 +1861,103 @@ def iter_arg_sprs(arg, start=None, end=None, use_leaves=False):
         else:
             yield (recomb_pos, (rnode, rtime), (cnode, ctime))
         last_tree = tree
-        
+
 
 
 def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
+    """
+    Make an ARG from an initial tree 'init_tree' and a list of SPRs 'sprs'
+
+    NOTE: sprs should indicate branches by their leaf set (use_leaves=True)
+    """
+    
+    def add_node(arg, node, time, pos, event):
+        node2 = arg.new_node(event=event, age=time, children=[node], pos=pos)
+        if event == "coal":
+            node2.pos = 0
+        parent = arg.get_local_parent(node, pos)
+        if parent:
+            node.parents[node.parents.index(parent)] = node2
+            parent.children[parent.children.index(node)] = node2
+            node2.parents.append(parent)
+        else:
+            node.parents.append(node2)
+            arg.root = node2
+        return node2
+    
+    
+    def walk_up(arg, node, time, pos, local):
+        parent = arg.get_local_parent(node, pos)
+        
+        while parent and parent.age <= time:
+            if parent in local:
+                break            
+            node = parent
+            parent = arg.get_local_parent(node, pos)
+
+        # safety check
+        if parent and parent.age < time:
+            print (pos, leaves, parent.age, time)
+            tree = arg.get_marginal_tree(pos).get_tree()
+            tree.write()
+            treelib.draw_tree_names(tree, maxlen=8, minlen=8)
+            assert False
+
+        return node
+        
+
+    arg = init_tree
+    tree = None
+    mapping = {}
+    local = set()
+
+    for rpos, (rleaves, rtime), (cleaves, ctime) in sprs:
+        if tree is None:
+            # create first tree
+            tree = arg.get_marginal_tree(rpos)
+            remove_single_lineages(tree)
+            mapping = dict((node.name, arg[node.name]) for node in tree)
+            local = set(arg[node.name] for node in tree)
+        
+        # do lca on local tree
+        rnode_tree = arg_lca(tree, rleaves, rpos, time=rtime)
+        cnode_tree = arg_lca(tree, cleaves, rpos, time=ctime)
+
+        # do rest of lca on arg
+        rnode = walk_up(arg, mapping[rnode_tree.name], rtime, rpos, local)
+        cnode = walk_up(arg, mapping[cnode_tree.name], ctime, rpos, local)
+
+        # DEBUG
+        #rnode2 = arg_lca(arg, rleaves, rpos, time=rtime)
+        #cnode2 = arg_lca(arg, cleaves, rpos, time=ctime)
+        #assert (rnode == rnode2) and (cnode == cnode2)
+
+        # check whether self cycles are wanted
+        if ignore_self and rnode == cnode:
+            continue
+
+        # add edge to ARG
+        recomb = add_node(arg, rnode, rtime, rpos, "recomb")
+        if rnode == cnode:
+            cnode = recomb
+        coal = add_node(arg, cnode, ctime, rpos, "coal")
+        recomb.parents.append(coal)
+        coal.children.append(recomb)
+
+        # apply SPR to local tree
+        coal2, broken_node = apply_spr(tree, rnode_tree, rtime,
+                                       cnode_tree, ctime, rpos)
+
+        # update local node set and tree2arg mapping
+        local.remove(mapping[broken_node.name])
+        local.add(coal)
+        del mapping[broken_node.name]
+        mapping[coal2.name] = coal
+
+    return arg
+
+
+def make_arg_from_sprs_simple(init_tree, sprs, ignore_self=False):
     """
     Make an ARG from an initial tree 'init_tree' and a list of SPRs 'sprs'
 
@@ -1650,15 +1996,18 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
         coal.children.append(recomb)
 
     return arg
-    
+
 
 
 def smcify_arg(arg, start=None, end=None):
     """
     Rebuild an ARG so that is follows the SMC assumptions
     """
+
+    if start is None:
+        start = arg.start
     
-    arg2 = arg.get_marginal_tree(-.5)
+    arg2 = arg.get_marginal_tree(start-.5)
     remove_single_lineages(arg2)
     sprs = iter_arg_sprs(arg, start, end, use_leaves=True)
     make_arg_from_sprs(arg2, sprs, ignore_self=True)
@@ -3211,3 +3560,190 @@ def sample_arg_smc(k, n, rho, start=0.0, end=0.0):
 
 '''
     
+'''
+# TODO: make more efficient.  Do not use iter_tree_tracks
+def iter_arg_sprs(arg, start=None, end=None, use_leaves=False):
+    """
+    Iterate through the SPR moves of an ARG
+
+    Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
+    """
+
+    def get_local_children(node, local, pos):
+        children = [child for child in node.children
+                    if child in local and
+                    arg.get_local_parent(child, pos) == node]
+        if len(children) == 2 and children[0] == children[1]:
+            children = children[:1]
+        return children
+
+    def get_local_parent(node, pos):
+        if node.event == "recomb":
+            if pos < node.pos:
+                return node.parents[0]
+            else:
+                return node.parents[1]
+        elif node.parents:
+            return node.parents[0]
+        else:
+            return None
+
+
+    if start is None:
+        start = arg.start
+    if end is None:
+        end = arg.end
+
+    # init local nodes
+    nodes = list(arg.postorder_marginal_tree(start))
+    local = set(nodes)
+    local_root = nodes[-1]
+    pos = start
+    
+    while pos < end:
+        print pos
+        
+        # find recombination node
+        recomb_pos = end
+        recomb = None
+        for node in local:
+            if pos < node.pos < recomb_pos:
+                recomb_pos = node.pos
+                recomb = node
+        if recomb is None:
+            break
+        rtime = recomb.age
+
+
+        # find recomb baring branch in local tree
+        mid = (recomb_pos + pos) / 2.0
+        ptr = recomb
+        while True:
+            children = get_local_children(ptr, local, mid)
+            if len(children) == 1:
+                ptr = children[0]
+            else:
+                break
+        rnode = ptr.name
+
+        local2 = set(arg.postorder_marginal_tree(mid))
+        assert local == local2
+        
+        # find recoal node
+        ptr = recomb
+        local_root_path = set()
+        local_root2 = local_root
+        coal_path = []
+        while True:
+            ptr = get_local_parent(ptr, recomb_pos)
+            coal_path.append(ptr)
+            if ptr in local:
+                break
+            while local_root2.age < ptr.age:
+                # check for coal above local root
+                local_root2 = get_local_parent(local_root2, recomb_pos)
+                if not local_root2:
+                    break
+                local_root_path.add(local_root2)
+            if local_root2 == ptr:
+                # coal above root
+                break
+        ctime = ptr.age
+        recoal = ptr
+        print "local_root_path", local_root_path
+        print "local_root2", local_root2
+        
+        # find recoal baring branch in local tree
+        if ptr in local:
+            while True:
+                children = get_local_children(ptr, local, mid)
+                print "coal down", ptr.name, children
+                if len(children) == 1:
+                    ptr = children[0]
+                else:
+                    break
+            cnode = ptr.name
+        else:
+            cnode = local_root.name        
+        
+        # find broken nodes
+        ptr = recomb
+        broken_path = []
+        while True:
+            assert ptr in local, ptr
+            ptr = get_local_parent(ptr, mid)
+            if ptr is None:
+                break
+            children = get_local_children(ptr, local, mid)
+            if len(children) == 2 or ptr in coal_path:
+                print "stop", ptr.name, children
+                break
+            broken_path.append(ptr)
+            print "broken_path1", ptr.name
+        print "local_root", local_root.name
+
+        # find broken root path
+        if ptr == local_root and cnode != local_root.name:
+            broken_path.append(ptr)
+            children = get_local_children(ptr, local, mid)
+            ptr = (children[0]
+                   if children[1] in broken_path[-2:] + [recomb]
+                   else children[1])
+            print "broken_path start", ptr.name, children, broken_path[-2:] + [recomb]
+            while True:
+                children = get_local_children(ptr, local, mid)
+                print "broken_path", ptr.name, children
+                if len(children) != 1 or ptr in coal_path:
+                    print "stop2", ptr.name, children
+                    break
+                broken_path.append(ptr)
+                ptr = children[0]
+            local_root = ptr
+
+
+        tree = arg.get_marginal_tree(recomb_pos-1e-6)
+        treelib.draw_tree_names(tree.get_tree(), minlen=6, maxlen=6)
+
+        r = [(x.pos, x.name) for x in tree if pos < x.pos < end]
+        r.sort()
+
+        tree = arg.get_marginal_tree(recomb_pos+1e-6)
+        treelib.draw_tree_names(tree.get_tree(), minlen=6, maxlen=6)
+
+        print
+        print "next recombs", r[:5]
+        print "recomb", recomb.name, recomb_pos
+        print "recoal", recoal.name
+        print "broken", [x.name for x in broken_path]
+        print "coal", [x.name for x in coal_path]
+        
+        # update local nodes
+        if cnode == local_root.name:
+            # add root path
+            local.update(local_root_path)
+            local_root = local_root2
+        
+        for node in broken_path:
+            local.remove(node)
+        for node in coal_path:
+            local.add(node)
+
+
+        local2 = set(arg.postorder_marginal_tree(recomb_pos+1e-6))
+        s = local - local2
+        s2 = local2 - local
+        assert len(s) == 0, s
+        assert len(s2) == 0, s2
+        assert local == local2
+        
+        # yield SPR
+        if use_leaves:
+            assert False
+            #rleaves = list(last_tree.leaf_names(last_tree[rnode]))
+            #cleaves = list(tree.leaf_names(last_tree[cnode]))
+            #yield (recomb_pos, (rleaves, rtime), (cleaves, ctime))
+        else:
+            yield (recomb_pos, (rnode, rtime), (cnode, ctime))
+
+        pos = recomb_pos
+'''

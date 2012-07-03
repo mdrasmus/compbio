@@ -118,6 +118,25 @@ class Arg (unittest.TestCase):
         util.tic("arglib.iter_arg_sprs_simple use_leaves=True")
         x = list(arglib.iter_arg_sprs_simple(arg, use_leaves=True))
         util.toc()
+
+
+    def test_iter_sprs_dsmc(self):
+
+        import arghmm
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 40         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+        times = arghmm.get_time_points(ntimes=20, maxtime=160000)
+        
+        arg = arghmm.sample_arg_dsmc(k, n, rho, 0, l, times=times)
+
+        for a, b in izip(arglib.iter_arg_sprs(arg),
+                         arglib.iter_arg_sprs_simple(arg)):
+            print a, b
+            self.assertEqual(a, b)
         
 
     #----------------------------

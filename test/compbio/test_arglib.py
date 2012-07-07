@@ -137,7 +137,61 @@ class Arg (unittest.TestCase):
                          arglib.iter_arg_sprs_simple(arg)):
             print a, b
             self.assertEqual(a, b)
+
+
+    def test_iter_sprs_remove_thread(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 6         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+        remove_chroms = set("n%d" % (k-1))
+        keep = [x for x in arg.leaf_names() if x not in remove_chroms]
+        arg = arg.copy()
+        arglib.subarg_by_leaf_names(arg, keep)
         
+        for a, b in izip(arglib.iter_arg_sprs(arg),
+                         arglib.iter_arg_sprs_simple(arg)):
+            print a, b
+            self.assertEqual(a, b)
+
+
+    def test_smcify_arg(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 6         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+        arg = arglib.smcify_arg(arg)
+
+        for pos, (rnode, rtime), (cnode, ctime) in arglib.iter_arg_sprs(arg):
+            print (rnode, rtime), (cnode, rtime), rnode == cnode
+            assert rnode != cnode
+            
+
+
+    def test_smcify_arg_remove_thread(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 100000      # length of locus
+        k = 6         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+        remove_chroms = set("n%d" % (k-1))
+        keep = [x for x in arg.leaf_names() if x not in remove_chroms]
+        arg = arg.copy()
+        arglib.subarg_by_leaf_names(arg, keep)
+        arg = arglib.smcify_arg(arg)        
+
+
 
     #----------------------------
     # SMC sampling

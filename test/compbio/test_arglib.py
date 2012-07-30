@@ -56,6 +56,28 @@ class Arg (unittest.TestCase):
         stream.seek(0)
         arg2 = arglib.read_arg(stream)
 
+    def test_marginal_leaves(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 10000      # length of locus
+        k = 10         # number of lineages
+        n = 2*10000    # effective popsize
+        r = rho * l    # recomb/locus/gen
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+        
+        for (start, end), tree in arglib.iter_tree_tracks(arg):
+            arglib.remove_single_lineages(tree)
+            mid = (start + end) / 2.0
+            for node in tree:
+                a = set(tree.leaves(node))
+                b = set(arglib.get_marginal_leaves(arg, node, mid))
+                print mid, a, b
+                assert a == b
+
+
+    #----------------------------------
+    # SPRs
 
     def test_iter_sprs(self):
 

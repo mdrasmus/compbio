@@ -2182,7 +2182,8 @@ def iter_mutation_splits(arg, mutations):
 #=============================================================================
 # alignments
 
-def make_alignment(arg, mutations, ancestral="A", derived="C"):
+def make_alignment(arg, mutations, infinite_sites=True,
+                   ancestral="A", derived="C"):
     aln = fasta.FastaDict()
     alnlen = int(arg.end - arg.start)
     leaves = list(arg.leaf_names())
@@ -2202,6 +2203,11 @@ def make_alignment(arg, mutations, ancestral="A", derived="C"):
             mat.append(ancestral * nleaves)
         else:
             # mut
+            #mut_group = []
+            #while muti < len(mutations) and i == int(mutations[muti][2]):
+            #    mut_group.append(mutations[muti])
+            #    muti += 1
+            
             node, parent, mpos, t = mutations[muti]
             row = []
             split = set(x.name for x in get_marginal_leaves(arg, node, mpos))

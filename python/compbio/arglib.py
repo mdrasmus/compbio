@@ -1062,6 +1062,7 @@ def sample_arg_smc(k, n, rho, start=0.0, end=0.0, init_tree=None,
                          names=names, make_names=make_names)
     tree = it.next()
     arg = make_arg_from_sprs(tree, it)
+    
     return arg
 
 
@@ -1126,6 +1127,34 @@ def make_arg_from_times(k, times, events):
     if len(lineages) == 1:
         arg.root = lineages.pop()[0]    
 
+    return arg
+
+
+def make_arg_from_tree(tree, times=None):
+    """
+    Creates an ARG from a treelib.Tree 'tree'
+    """
+    arg = ARG()
+    if times is None:
+        times = treelib.get_tree_timestamps(tree)
+
+    # add nodes to ARG
+    for node in tree:
+        event = "gene" if node.is_leaf() else "coal"
+        anode = arg.new_node(node.name, event=event, age=times[node])
+
+    # connect up nodes
+    for node in tree:
+        anode = arg[node.name]
+        anode.children = [arg[child.name] for child in node.children]
+        anode.parents = ([arg[node.parent.name]] if node.parent else [])
+
+    # set arg info
+    arg.root = arg[tree.root.name]
+
+    arg.nextname = max(node.name for node in arg
+                       if isinstance(node.name, int)) + 1
+    
     return arg
 
 
@@ -1230,7 +1259,6 @@ def iter_tree_tracks(arg, start=None, end=None, convert=False):
     Yeilds ((start, end), tree) for each marginal tree where (start, end)
     defines the block of the marginal tree
     """
-
     if start is None:
         start = arg.start
     if end is None:
@@ -1663,8 +1691,6 @@ def iter_arg_sprs_simple(arg, start=None, end=None, use_leaves=False):
             yield (recomb_pos, (rnode, rtime), (cnode, ctime))
         last_tree = tree
 
-#iter_arg_sprs = iter_arg_sprs_simple
-
 
 def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
     """
@@ -1752,6 +1778,7 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
         if rnode_tree != cnode_tree:
             coal2, broken_node = apply_spr(tree, rnode_tree, rtime,
                                            cnode_tree, ctime, rpos)
+            #assert_arg(tree)
 
             # update local node set and tree2arg mapping
             local.remove(mapping[broken_node.name])
@@ -1801,8 +1828,6 @@ def make_arg_from_sprs_simple(init_tree, sprs, ignore_self=False):
         coal.children.append(recomb)
 
     return arg
-
-#make_arg_from_sprs = make_arg_from_sprs_simple
 
 
 def smcify_arg(arg, start=None, end=None):
@@ -2173,8 +2198,6 @@ def iter_mutation_splits(arg, mutations):
             arg, node, pos)))
         if len(split) != 1 and len(split) != nleaves:
             yield pos, split
-
-
 
 
 

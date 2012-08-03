@@ -524,7 +524,7 @@ class Tree:
         """Default data reader: reads optional bootstrap and branch length"""
 
         # also parse nhx comments
-        data = read_nhx_data(self, node, data)
+        data = read_nhx_data(node, data)
         
         if ":" in data:
             boot, dist = data.split(":")
@@ -592,7 +592,7 @@ class Tree:
 
         if len(node.children) == 0:
             # leaf
-            out.write(node.name)
+            out.write(str(node.name))
         else:
             # internal node
             if oneline:
@@ -948,27 +948,47 @@ def iter_trees(treefile):
 
 def parse_nhx_comment(comment):
     """Parse a NHX comment"""
-    data = {}
     for pair in comment.split(":"):
         yield pair.split("=")
 
+def format_nhx_comment(data):
+    """Format a NHX comment"""
+    return "[&&NHX:" + ":".join("%s=%s" % (k, v)
+                                for k, v in data.iteritems()) + "]"
+        
 
-def read_nhx_data(tree, node, data):
-    """Read data function for parsing the data field of an NHX file"""
-
-    if "[" in data:
-        i = data.find("[")
-        j = data.find("]")
-        comment = data[i+1:j]
-        data = data[:i]
+def parse_nhx_data(text):
+    """Parse the data field of an NHX file"""
+    data = {}
+    
+    if "[" in text:
+        i = text.find("[")
+        j = text.find("]")
+        comment = text[i+1:j]
+        text = text[:i]
 
         if comment.startswith("&&NHX:"):
             for k, v in parse_nhx_comment(comment[6:]):
-                node.data[k] = v
-        
-        return data
-    else:
-        return data
+                data[k] = v
+
+    return text, data
+
+
+def read_nhx_data(node, text):
+    """Read data function for parsing the data field of an NHX file"""
+
+    text, data = parse_nhx_data(text)
+    node.data.update(data)
+    return text
+
+
+def write_nhx_data(node):
+    """Write data function for writing th data field of an NHX file"""
+    
+    text = Tree().write_data(node)
+    if node.data:
+        text += format_nhx_comment(node.data)
+    return text
 
 
 #============================================================================
@@ -1542,13 +1562,13 @@ def midpoint_root(tree):
 
 
 #=============================================================================
-# timestamps
+# ages (previous known as timestamps)
 #
 # Methods for calculating the ages (timestamps) of nodes in the tree given
 # the branch lengths.
 #
 
-def get_tree_timestamps(tree, root=None, leaves=None, times=None):
+def get_tree_ages(tree, root=None, leaves=None, times=None):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
@@ -1581,9 +1601,10 @@ def get_tree_timestamps(tree, root=None, leaves=None, times=None):
     walk(root)
     
     return times
+get_tree_timestamps = get_tree_ages # backwards compatiability
 
 
-def set_dists_from_timestamps(tree, times):
+def set_dists_from_ages(tree, times):
     """
     Sets the branch lengths of a tree using a timestamp dict
     """
@@ -1593,9 +1614,10 @@ def set_dists_from_timestamps(tree, times):
             node.dist = times[node.parent] - times[node]
         else:
             node.dist = 0.0
+set_dists_from_timestamps = set_dists_from_ages # backwards compatiability
 
 
-def check_timestamps(tree, times):
+def check_ages(tree, times):
     """Asserts that timestamps are consistent with tree"""
     
     for node in tree:
@@ -1608,7 +1630,7 @@ def check_timestamps(tree, times):
                 print
                 print node.name, node.dist, times[node.parent] - times[node]
                 raise Exception("negative time span")
-
+check_timestamps = check_ages # backwards compatiability
 
 
 

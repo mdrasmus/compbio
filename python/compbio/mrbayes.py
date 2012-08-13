@@ -251,7 +251,7 @@ def readNexusConTree(infile):
             if count == 1:
                 line = line.replace("   tree con_all_compat =", "")
                 tree = treelib.Tree()
-                tree.readNewick(StringIO.StringIO(line))
+                tree.read_newick(StringIO.StringIO(line))
                 
                 return tree
     raise Exception("No tree found in output file")

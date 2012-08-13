@@ -547,7 +547,6 @@ class Tree:
             # treat as name
             if data:
                 node.name = data
-    readData = read_data
     
     
     def write_data(self, node):
@@ -642,7 +641,6 @@ class Tree:
 
         # try simpler parser
         return self.read_big_newick(filename)
-    readNewick = read_newick
 
 
     def _read_newick(self, filename, readData=None):
@@ -885,26 +883,6 @@ class Tree:
         self.write(stream, oneline=True, rootData=root_data)
         return stream.getvalue()
     
-    #
-    # should I make these external?
-    #
-    
-    
-    def find_depths(self, node = None):
-        """DEPRECATED"""
-        
-        if not node:
-            node = self.root
-        
-        depths = {}
-
-        def walk(node, d):
-            depths[node.name] = d
-            for child in node.children:
-                walk(child, d+1)
-        walk(node, 0)
-        return depths
-
 
 
 #============================================================================
@@ -996,7 +974,7 @@ def write_nhx_data(node):
 #
 
 def assert_tree(tree):
-    """Assert that the tree datastructure is internally consistent"""
+    """Assert that the tree data structure is internally consistent"""
     
     visited = set()
     def walk(node):

@@ -145,8 +145,10 @@ for fn in files:
             tree = treelib.read_tree(basename + conf.treeext)
 
             # copy over data
-            for name, val in data.items():
-                tree.nodes[name] = val
+            for name, val in data.iteritems():
+                for key, value in val.iteritems():
+                    if key not in tree.nodes[name].data:
+                        tree.nodes[name].data[key] = value
 
         tree.write(basename + conf.treeext)
 

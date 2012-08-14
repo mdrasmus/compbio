@@ -307,7 +307,7 @@ class Tree:
 
     def make_root(self, name = None):
         """Create a new root node"""
-        if name == None:
+        if name is None:
             name = self.new_name()
         self.root = TreeNode(name)
         return self.add(self.root)
@@ -447,7 +447,7 @@ class Tree:
     
     def leaves(self, node=None):
         """Return the leaves of the tree in order"""
-        if node == None:
+        if node is None:
             node = self.root                   
         return node.leaves()
     
@@ -605,7 +605,8 @@ class Tree:
     readData = read_data
     
     
-    def write_data(self, node, writeDist=False):
+    def write_data(self, node, writeDist=False,
+                   namefunc=lambda name: name):
         """Default data writer: writes optional bootstrap and branch length"""
         
         string = ""
@@ -619,7 +620,7 @@ class Tree:
         else:
             # see if internal node names exist
             if not node.is_leaf() and isinstance(node.name, str):
-                string += node.name
+                string += namefunc(node.name)
 
         if node.dist != 0 or writeDist:
             string += ":%f" % node.dist
@@ -641,10 +642,11 @@ class Tree:
         """Write the node in newick format to the out file stream"""
         
         # default data writer
-        if writeData == None:
+        if writeData is None:
             # write distance if any nodes have a distance or bootstrap
             write_dist = any(node.dist != 0 or "boot" in node.data for node in self)
-            writeData = lambda node: self.write_data(node, writeDist=write_dist)
+            writeData = lambda node: self.write_data(node, writeDist=write_dist,
+                                                     namefunc=namefunc)
         
         if not oneline:
             out.write(" " * depth)
@@ -710,7 +712,7 @@ class Tree:
         """read with PLY"""
         
         # default data reader
-        if readData == None:
+        if readData is None:
             readData = self.read_data
 
         # get parse tree
@@ -1033,7 +1035,7 @@ def assert_tree(tree):
         node.recurse(walk)
     walk(tree.root)
     
-    assert tree.root.parent == None, (tree.name, tree.root.name)
+    assert tree.root.parent is None, (tree.name, tree.root.name)
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
 
 
@@ -1105,7 +1107,7 @@ findDist = find_dist
 
 def count_descendants(node, sizes=None):
     """Returns a dict with number of leaves beneath each node"""
-    if sizes == None:
+    if sizes is None:
         sizes = {}
     
     if len(node.children) > 0:
@@ -1205,7 +1207,7 @@ def tree2graph(tree):
 def graph2tree(mat, root, closedset=None):
     """Convert a graph to a tree data structure"""
     
-    if closedset == None:
+    if closedset is None:
         closedset = {}
     tree = Tree()
 
@@ -2153,7 +2155,7 @@ except:
 def draw_tree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
              canvas=None, x=0, y=0, display=True, labelOffset=-1,
              minlen=1,maxlen=10000):
-    if canvas == None:
+    if canvas is None:
         canvas = textdraw.TextCanvas()
     
     xscale = scale

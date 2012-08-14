@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+#
+# view a sequence alignment (fasta format) on the terminal
+#
+
+import sys, optparse
+from rasmus import util
+from compbio import fasta, alignlib
+
+
+
+o = optparse.OptionParser()
+o.add_option("-w", "--width", dest="width", metavar="<width of alignment>",
+             default=59,
+             type="int",
+             help="width of sequence wrap")
+o.add_option("-c", "--check", dest="check", metavar="<overlap percent>",
+             type="float")
+o.add_option("-H", "--header", dest="header", action="store_true",
+             help="show header information")
+o.add_option("", "--codon", dest="codon", action="store_true",
+             default=False,
+             help="use codon alignment view")
+
+conf, alnfiles = o.parse_args()
+
+#=============================================================================
+
+def codon_align(aln):
+    aln2 = fasta.FastaDict()
+
+    assert aln.alignlen() % 3 == 0
+
+    for key, seq in aln.iteritems():
+        seq2 = []
+
+        for i in xrange(0, len(seq), 3):
+            seq2.append(seq[i:i+3])
+        
+        aln2[key] = " ".join(seq2)
+
+    return aln2
+        
+
+def print_align(conf, alnfile):       
+    aln = fasta.read_fasta(alnfile)
+
+    percid = alignlib.calc_conservation(aln)
+
+    if conf.header:
+        print "----------------------------------"
+        print "file:    %s" % alnfile
+        print "length:  %d" % len(aln.values()[0])
+        print "perc id: %f" % (util.countge(.99, percid) / float(len(percid)))
+        print 
+
+    if conf.codon:
+        aln = codon_align(aln)
+
+    alignlib.print_align(aln, seqwidth=conf.width)
+
+
+
+def check_align_overlap(aln, minperc):
+    """
+    Check the overlap percentage of each pair of sequences in alignment
+    """
+    mat = aln.values()
+    
+    for i in range(len(mat)):
+        for j in range(i+1, len(mat)):
+            overlaps = alignlib.get_seq_overlap(mat[i], mat[j])
+            perc = overlaps / float(aln.alignlen())
+            
+            if perc < minperc:
+                print "%s\t%s\t%f\toverlap %d (%2.0f%%) out of %d" % \
+                    (aln.keys()[i], aln.keys()[j], perc,
+                     overlaps, 100 * perc, aln.alignlen())
+
+
+#=============================================================================
+
+# main
+for alnfile in alnfiles:
+    if conf.check:
+        aln = fasta.read_fasta(alnfile)
+        check_align_overlap(aln, conf.check)
+    else:
+        print_align(conf, alnfile)
+    
+ 

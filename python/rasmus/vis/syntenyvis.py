@@ -3,15 +3,14 @@
 import copy
 
 # rasmus libs
-
-from rasmus import regionlib
 from rasmus import stats
 from rasmus import util
-import rasmus.regionlib
-from rasmus.regionlib import iter_chrom
 
 # rasmus bio libs
-from rasmus.bio import fasta
+from compbio import fasta
+from compbio import regionlib
+import compbio.regionlib
+from compbio.regionlib import iter_chrom
 
 
 # graphics libs
@@ -1191,8 +1190,8 @@ def find(name):
 printscreen = lambda *args, **kargs: svg.printScreen(vis.win, *args, **kargs)
 
 
-def readFasta(filename):
-    vis.seqs.update(fasta.readFasta(env.findFile(f)))
+def read_fasta(filename):
+    vis.seqs.update(fasta.read_fasta(env.findFile(f)))
 
 def readAllSeqs():
     util.tic("read sequences")
@@ -1221,7 +1220,7 @@ def visparts(parts, refGenome, outdir):
                       part)
         if len(refs) == 0:
             continue
-        counts = util.histDict([genes[ref].chrom for ref in refs])
+        counts = util.hist_dict([genes[ref].chrom for ref in refs])
         keys = counts.keys()
         keys.sort(lambda a,b: cmp(counts[b], counts[a]))
         refChrom = keys[0]

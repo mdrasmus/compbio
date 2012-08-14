@@ -1,7 +1,7 @@
-from rasmus import regionlib
 from rasmus import graph
 from rasmus import util
 
+from compbio import regionlib
 from . import alignlib
 
     

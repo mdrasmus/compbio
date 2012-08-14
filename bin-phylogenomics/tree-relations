@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+# Tue May 12 15:54:18 EDT 2009
+# output all relations represented in a tree
+
+import os, sys, optparse
+from itertools import chain
+from rasmus import treelib, util
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.add_option("-d", "--dir", dest="dir", action="store_true",
+             help="identify trees by their directory")
+o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE",
+             help="species tree in newick format")
+o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP",
+             help="gene to species map")
+o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT",
+             help="gene tree file extension")
+o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT",
+             help="reconciliation file extension")
+o.add_option("--no-species-branch", dest="no_species_branch",
+             action="store_true",
+             help="if given, suppress 'species id' for dup relations")
+
+conf, args = o.parse_args()
+
+#=============================================================================
+
+# read args
+stree = treelib.read_tree(conf.stree)
+gene2species = phylo.read_gene2species(conf.smap)
+
+
+def read_filenames(stream):
+    for line in stream:
+        yield line.rstrip()
+
+if len(args) == 0:
+    filenames = read_filenames(sys.stdin)
+else:
+    filenames = args
+
+
+
+def get_tree_relations(tree, recon, events):
+
+    # print gene 'events'
+    for leaf in tree.leaves():
+        yield ["gene", leaf.name]
+
+    # print duplication and speciation events
+    for node in tree:
+
+        # skip gene events (already printed)
+        if events[node] == "gene":
+            continue
+        
+        rel = sorted((sorted(child.leaf_names()) for child in node.children),
+                     key=relation_format)
+
+        if conf.no_species_branch:
+            if events[node] == "dup":
+                yield ["dup"] + rel
+            elif events[node] == "spec":
+                yield ["spec"] + rel
+        else:
+            if events[node] == "dup":
+                yield ["dup"] + rel + [recon[node].name]
+            elif events[node] == "spec":
+                yield ["spec"] + rel + [recon[node].name]
+
+
+    for gbranch, sbranch in phylo.find_loss(tree, stree, recon):
+        yield ["loss", sorted(gbranch.leaf_names()),
+               str(sbranch.name)]
+
+
+def relation_format(val):
+    if isinstance(val, (list, tuple)):
+        return ",".join(relation_format(v) for v in val)
+    else:
+        return str(val)           
+
+
+def write_relation(out, treename, rel):    
+    out.write(treename + "\t" + "\t".join(relation_format(val)
+                                          for val in rel) + "\n")
+
+
+# process tree files
+for filename in filenames:
+    tree = treelib.read_tree(filename)
+
+    if conf.dir:
+        treename = os.path.basename(os.path.dirname(filename))
+    else:
+        treename = filename
+
+    # check tree
+    assert(treelib.is_rooted(tree))
+
+    # get recon and events
+    if conf.treeext and conf.reconext:
+        try:
+            recon, events = phylo.read_recon_events(util.replace_ext(
+                filename, conf.treeext, conf.reconext), tree, stree)
+        except:
+            print >>sys.stderr, filename
+            raise
+    else:
+        # use MPR to build reconciliation and events
+        recon = phylo.reconcile(tree, stree, gene2species)
+        events = phylo.label_events(tree, recon)
+
+
+    for rel in get_tree_relations(tree, recon, events):
+        write_relation(sys.stdout, treename, rel)
+

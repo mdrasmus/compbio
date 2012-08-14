@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+
+# python libs
+import os
+import sys
+import optparse
+from itertools import chain
+
+# rasmus libs
+from rasmus import util
+
+# compbio libs
+from compbio import gff
+from compbio import regionlib
+from compbio.regionlib import Region
+
+
+from compbio import synteny
+import compbio.synteny.strict
+
+
+usage = "usage: %prog [options] SPECIES1 SPECIES2"
+o = optparse.OptionParser(usage=usage)
+
+o.add_option("-o", "--orth", dest="orth", metavar="ORTHOLOG_FILE",
+             action="append",
+             help="ortholog clustering file")
+o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
+             action="append",
+             help="genes are regions to compute synteny")
+o.add_option("-G", "--gff-format", dest="gff_format", metavar="(gff,gtf,gff3)",
+             default="gff3")
+o.add_option("-f", "--features", dest="features", metavar="FEATURES",
+             help="features to use from GFF files")
+
+
+
+#=============================================================================
+
+
+def read_regions(gff_file, species1, species2, regions1, regions2,
+                 features=set(), format=gff.GFF):
+    """Read a GFF file and segregate regions by species"""
+    
+    for region in gff.iter_gff(gff_file, format=format):
+        if len(features) > 0 and region.feature not in features:
+            continue
+        
+        if region.species == species1:
+            regions1.append(region)
+        elif region.species == species2:
+            regions2.append(region)    
+
+
+def main(argv):
+    
+    # parse options
+    conf, args = o.parse_args(argv)
+
+    # get species
+    if len(args) != 2:
+        print >>sys.stderr, "give two species"
+        sys.exit(1)
+    species1, species2 = args
+
+    # determine features
+    if conf.features is None:
+        features = []
+    else:
+        features = set(conf.features.split(","))
+
+        
+    format = {"gff": gff.GFF,
+              "gtf": gff.GTF,
+              "gff3": gff.GFF3}[conf.gff_format]
+
+    # read gff regions
+    regions1 = []
+    regions2 = []
+    for gff_file in conf.gff:
+        read_regions(gff_file, species1, species2, regions1, regions2,
+                     features=features, format=format)
+
+    if len(regions1) == 0 or len(regions2) == 0:
+        print >>sys.stderr, "no regions for one of the species"
+
+    all_regions = dict((x.data["ID"], x.species)
+                       for x in chain(regions1, regions2))
+
+    # read orthologs
+    orths = []
+    for f in conf.orth:
+        for row in util.DelimReader(f):
+            s1 = all_regions.get(row[0], None)
+            s2 = all_regions.get(row[1], None)            
+            if ((s1 == species1 and
+                 s2 == species2) or 
+                (s1 == species2 and 
+                 s2 == species1)):
+                orths.append((row[0], row[1]))
+                
+    blocks = synteny.strict.find_synteny(species1, species2,
+                                         regions1, regions2, orths)
+
+    synteny.write_synteny_blocks(sys.stdout, blocks)
+
+main(sys.argv[1:])

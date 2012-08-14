@@ -10,7 +10,8 @@ import rasmus
 from rasmus import util
 from rasmus.linked_list import LinkedList
 from rasmus.sets import UnionFind
-from rasmus.regionlib import Region
+
+from compbio.regionlib import Region
 
 from . import SyntenyBlock
 

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ "$1" == "-t" ]; then
+    THIN=$2
+    NAME="$3"
+else
+    THIN=1
+    NAME="$1"
+fi
+
+echo $THIN $NAME
+
+treecons --binary \
+    <(get-mb-trees $THIN < $NAME.output/infile.nex.run1.t && 
+      get-mb-trees $THIN < $NAME.output/infile.nex.run2.t ) > $NAME.tree
+
+

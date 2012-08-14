@@ -7,7 +7,7 @@
 # rasmus libs
 from rasmus import util
 from rasmus import treelib
-from rasmus.bio import phylo, genomeutil
+from compbio import phylo
 
 # summon libs
 from summon.core import *

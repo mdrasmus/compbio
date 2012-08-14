@@ -12,7 +12,10 @@ import sys
 from rasmus import graph
 from rasmus import util
 
-from rasmus.bio import blast
+from compbio import blast
+
+
+# TODO: update function name styles
 
 
 ##############################################
@@ -35,7 +38,7 @@ def confusionMatrix(parts1, parts2):
     """Returns a confusion matrix of two different partitions of the same 
        items"""
     
-    confuse = util.Dict(2, 0)
+    confuse = util.Dict(dim=2, default=0)
     
     lookup1 = item2part(parts1)
     lookup2 = item2part(parts2)
@@ -147,7 +150,7 @@ def partids2parts(partids, labels):
 
 def filterOne2ones(parts, gene2species):
     def isOne2one(part, gene2species):
-        counts = util.histDict(map(gene2species, part))
+        counts = util.hist_dict(map(gene2species, part))
         return (max(counts.values()) == 1)
 
     # get one2ones

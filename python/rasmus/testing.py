@@ -1,7 +1,29 @@
 
+import sys, os, shutil, unittest
+import optparse
 from itertools import izip
 from . import util
 from . import stats
+
+#=============================================================================
+# common utility functions for testing
+
+
+def clean_dir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+def makedirs(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+
+def make_clean_dir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
+
+
 
 
 def fequal(f1, f2, rel=.0001, eabs=1e-12):
@@ -48,3 +70,67 @@ def eq_sample_pdf(samples, pdf,
     
     assert p >= pval, p
 
+
+_do_pause = False
+def pause(text="press enter to continue: "):
+    """Pause until the user presses enter"""
+    if _do_pause:
+        raw_input(text)
+
+
+
+#=============================================================================
+# common unittest functions
+
+
+def list_tests(stack=0):
+    
+    # get environment
+    var = __import__("__main__").__dict__
+
+    for name, obj in var.iteritems():
+        if isinstance(obj, type) and issubclass(obj, unittest.TestCase):
+            for attr in dir(obj):
+                if attr.startswith("test"):
+                    print "%s.%s" % (name, attr),
+                    doc = getattr(obj, attr).__doc__
+                    if doc:
+                        print "--", doc.split("\n")[0]
+                    else:
+                        print
+
+
+def test_main():
+    global _do_pause
+
+    o = optparse.OptionParser()
+    o.add_option("-v", "--verbose", action="store_true",
+                 help="Verbose output")
+    o.add_option("-q", "--quiet", action="store_true",
+                 help="Minimal output")
+    o.add_option("-l", "--list_tests", action="store_true")
+    o.add_option("-p", "--pause", action="store_true")
+
+    conf, args = o.parse_args()
+
+
+    if conf.list_tests:
+        list_tests(1)
+        return
+
+    if conf.pause:
+        _do_pause = True
+
+
+    # process unittest arguments
+    argv = [sys.argv[0]]
+
+    if conf.verbose:
+        argv.append("-v")
+    if conf.quiet:
+        argv.append("-q")
+
+    argv.extend(args)
+
+    # run unittest
+    unittest.main(argv=argv)

@@ -70,7 +70,7 @@ def buildTree(seqs, verbose=True, removetmp=True, options=""):
     
     # parse output
     tree = treelib.Tree()
-    tree.readNewick(outfilename)
+    tree.read_newick(outfilename)
     
     # cleanup tempfiles
     if removetmp:

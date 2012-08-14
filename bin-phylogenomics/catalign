@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+import os, sys, optparse
+
+from rasmus import util
+from compbio import fasta, phylo, alignlib
+
+
+o = optparse.OptionParser()
+o.add_option("-u", "--ungap", dest="ungap", action="store_true")
+o.add_option("-c", "--noconserved", dest="noconserved", action="store_true")
+o.add_option("-S", "--smap", dest="smap", metavar="<gene2species mapping>")
+
+conf, alignfiles = o.parse_args()
+
+# read options
+if conf.smap:
+    gene2species = phylo.read_gene2species(conf.smap)
+else:
+    gene2species = lambda x: x
+
+
+if len(alignfiles) > 0:
+    alns = map(fasta.read_fasta, alignfiles)
+else:
+    alns = []
+    for line in sys.stdin:
+        alns.append(fasta.read_fasta(line.rstrip()))
+
+fullaln = fasta.FastaDict()
+
+# setup keys
+for gene in alns[0]:
+    fullaln[gene2species(gene)] = ""
+
+# concat sequence
+for aln in alns:
+    if conf.ungap:
+        aln = alignlib.remove_gapped_columns(aln)
+    
+    if conf.noconserved:
+        cons = alignlib.calc_conservation(aln)
+        ind = util.findneq(1.0, cons)
+        aln = alignlib.subalign(aln, ind)
+        
+    
+    #for gene, seq in aln.iteritems():
+    #    fullaln[gene2species(gene)] += seq
+    
+    species2gene = {}
+    for gene in aln.keys():
+        species2gene[gene2species(gene)] = gene
+    
+    for sp in fullaln:
+        if sp not in species2gene:
+            seq = "N" * aln.alignlen()
+        else:
+            seq = aln[species2gene[sp]]
+        
+        fullaln[sp] += seq
+        
+
+# write full alignment
+fullaln.write()

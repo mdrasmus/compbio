@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+
+"""
+
+    Build a consensus tree
+
+"""
+
+# python libs
+import sys, os
+import optparse
+
+# rasmus libs
+from rasmus import treelib
+from rasmus import util
+from rasmus import stats
+from compbio import phylip, fasta, phylo
+
+# spidir libs (optional)
+try:
+    import spidir
+except ImportError:
+    pass
+
+
+
+
+o = optparse.OptionParser()
+o.add_option("-o", "--output", dest="outfile", metavar="OUTPUT_FILE",
+             help="if specified, write output to file")
+o.add_option("-r", "--rooted", dest="rooted",
+             action="store_true",
+             help="treat trees as rooted")
+o.add_option("-a", "--align", dest="align", metavar="FASTA_ALIGNMENT")
+o.add_option("-n", "--numtrees", dest="numtrees", metavar="NUMBER",
+             type="int",
+             help="if given, require a certain number of trees to be present")
+o.add_option("-k", "--kappa", dest="kappa", metavar="RATIO",
+             type="float",
+             default=1.0,
+             help="transitition/transversion")
+o.add_option("-i", "--maxiter", dest="maxiter", metavar="NUMBER",
+             type="int",
+             default=20, help="max iterations for ML")
+o.add_option("--binary", dest="binary",
+             action="store_true",
+             help="ensure consensus tree is binary")
+
+conf, files = o.parse_args()
+
+                
+            
+def est_bgfreq(aln):
+    hist = {"A": 1, "C": 1, "G": 1, "T": 1}
+    for seq in aln:
+        for c in seq.upper():
+            hist[c] = hist.get(c, 0) + 1
+
+    bgfreq = [hist[i] for i in "ACGT"]
+    tot = float(sum(bgfreq))
+    bgfreq = [i/tot for i in bgfreq]
+    return bgfreq
+
+
+def read_trees(filename):
+    infile = open(filename)
+    trees = []
+    try:
+        while 1:
+            trees.append(treelib.read_tree(infile))
+    except:
+        pass
+    infile.close()
+
+    return trees
+
+
+def rename_trees_with_ids(trees):
+
+    names = trees[0].leaf_names()
+    for tree in trees:
+        phylip.rename_tree_with_ids(tree, names)
+    return names
+
+
+
+
+for filename in files:
+    args = "y"
+
+    if conf.rooted:
+        args = "r\n" + args
+
+    # read trees
+    trees = read_trees(filename)
+    ntrees = len(trees)
+
+    if conf.numtrees:
+        if ntrees < conf.numtrees:
+            print "SKIP: %d < %d trees" % (ntrees, conf.numtrees)
+            continue
+    
+    tree = phylo.consensus_majority_rule(trees, rooted=conf.rooted)
+
+    if conf.binary:
+        phylo.ensure_binary_tree(tree)
+
+    
+    if conf.align:
+        aln = fasta.read_fasta(conf.align)
+        bgfreq = est_bgfreq(aln)
+        phylo.ensure_binary_tree(tree)
+        
+        # find actual branch lengths
+        spidir.find_ml_branch_lengths_hky(tree, aln, bgfreq, conf.kappa,
+                                          maxiter=conf.maxiter, parsinit=True)
+    
+    if conf.rooted:
+        if tree.root.children[0].is_leaf() or \
+           tree.root.children[1].is_leaf():
+            tree.root.children[0].data["boot"] =  0
+            tree.root.children[1].data["boot"] =  0
+        else:
+            b = (tree.root.children[0].data["boot"] + \
+                 tree.root.children[1].data["boot"]) / 2.0
+            tree.root.children[0].data["boot"] =  b
+            tree.root.children[1].data["boot"] =  b
+    
+    if conf.outfile:
+        tree.write(conf.outfile)
+    else:
+        tree.write()
+
+

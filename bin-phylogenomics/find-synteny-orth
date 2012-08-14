@@ -1,0 +1,271 @@
+#!/usr/bin/env python
+# Wed May 13 15:59:37 EDT 2009
+# count how many syntenic hits are within a sliding window
+
+
+# python libs
+import os
+import sys
+import optparse
+from itertools import chain
+
+# rasmus libs
+from rasmus import util
+from rasmus.sets import UnionFind
+
+# compbio libs
+from compbio import gff
+from compbio import regionlib
+from compbio.regionlib import Region, groupby_overlaps
+
+from compbio.synteny import fuzzy
+from compbio.synteny import write_synteny_blocks, block_bbh_hits
+
+
+# hits input format:
+# 0. species 1
+# 1. chrom 1
+# 2. gene 1
+# 3. start 1
+# 4. end 1
+# 5. strand 1
+# 6. species 2
+# 7. chrom 2
+# 8. gene 2
+# 9. start 2
+# 10. end 2
+# 11. strand 2
+# 12. blast bitscore (default)
+# extra columns
+
+
+usage = "usage: %prog [options] HIT_FILES ..."
+o = optparse.OptionParser(usage=usage)
+
+o.add_option("--count", dest="count",
+             action="store_true",
+             help="count number of neighboring syntenic hits for each hit")
+o.add_option("--cluster", dest="cluster",
+             action="store_true",
+             help="cluster neighboring syntenic hits into blocks")
+o.add_option("--orth", dest="orth",
+             action="store_true",
+             help="find orthologous syntenic hits")
+
+
+o.add_option("-s", "--score", dest="score", metavar="COL",
+             default=13, type="int")
+o.add_option("-w", "--window", dest="window", metavar="WINDOW_SIZE",
+             type="int",
+             help="window size in bp")
+o.add_option("--cluster-method", dest="cluster_method",
+             metavar="(all|samedir)",
+             default="all",
+             help="Method to use for clustering")
+
+
+o.add_option("--out-hits", dest="outhits", metavar="FILENAME",
+             help="output file for hits labeled by synteny block")
+o.add_option("--out-blocks", dest="outblocks", metavar="FILENAME",
+             help="output file for synteny blocks")
+
+             
+
+
+#=============================================================================
+# input/output
+
+
+def read_hits(stream, scorecol=12):
+    for hit in util.DelimReader(stream, delim="\t"):
+        yield (Region(hit[0], hit[1], "",
+                      int(hit[3]), int(hit[4]), int(hit[5]),
+                      {"ID": hit[2]}),
+               Region(hit[6], hit[7], "",
+                      int(hit[9]), int(hit[10]), int(hit[11]),
+                      {"ID": hit[8]}),
+               float(hit[scorecol]))
+
+
+def write_synteny_hits(synid, hits, out=sys.stdout):
+    """Write blocks and their ids to a stream"""
+    for hit in hits:
+        a, b, score = hit
+        out.write("\t".join(map(str, [a.species, a.seqname, a.data["ID"],
+                                      a.start, a.end, a.strand,
+                                      b.species, b.seqname, b.data["ID"],
+                                      b.start, b.end, b.strand,
+                                      synid, score])) + "\n")
+    
+
+#=============================================================================
+# actions
+
+def count_synteny(hits, window1, window2=None):
+    """Count the number of neighboring syntenic hits for each hit"""
+    
+    for hit, syntenic in fuzzy.find_syntenic_neighbors(
+            hits,
+            window1, window2):
+            
+            a, b, score = hit
+            print "\t".join(map(str, [a.species, a.seqname, a.data["ID"],
+                                      a.start, a.end, a.strand,
+                                      b.species, b.seqname, b.data["ID"],
+                                      b.start, b.end, b.strand,
+                                      score,
+                                      len(syntenic)]))
+
+
+def cluster_synteny(hits, window1, window2, hitsfile, blocksfile,
+                    method="all"):
+    """Find orthologous synteny blocks"""
+
+    samedir = (method == "samedir")
+    clusters = fuzzy.cluster_hits(hits, window1, window2, samedir=samedir)
+
+    # make synteny blocks
+    blocks = []
+    for i, cluster in enumerate(clusters):
+        block = fuzzy.hits2synteny_block(cluster)
+        block.name = "syn%d" % i
+        blocks.append(block)
+
+    # write hits labeled with synid
+    out = util.open_stream(hitsfile, "w")
+    for block in blocks:
+        write_synteny_hits(block.name, block.data["hits"], out=out)
+    out.close()
+
+    # write blocks labeled with synid
+    out = util.open_stream(blocksfile, "w")
+    write_synteny_blocks(out, blocks)
+    out.close()
+    
+    return blocks
+
+
+        
+
+def find_block_overlaps(blocks):
+    """Returns a list of lists of overlaping blocks"""
+
+    # make region -> synteny lookups
+    lookup1 = dict((block.region1, block) for block in blocks)
+    lookup2 = dict((block.region2, block) for block in blocks)
+
+    overlaps = []
+
+    # find overlaps in side 1
+    blocks.sort(key=lambda x: (x.region1.species,
+                               x.region1.seqname, x.region1.start))
+    for group in groupby_overlaps(b.region1 for b in blocks):
+        overlaps.append([lookup1[r] for r in group])
+
+    # find overlaps in side 2
+    blocks.sort(key=lambda x: (x.region2.species,
+                               x.region2.seqname, x.region2.start))
+    for group in groupby_overlaps(b.region2 for b in blocks):
+        overlaps.append([lookup2[r] for r in group])
+
+    return overlaps
+    
+    
+
+def get_synteny_orths(blocks, minsize=3):
+
+    # get bbh hits and block scores
+    for block in blocks:
+        block.data["bbh"] = block_bbh_hits(block)
+        block.data["score"] = sum(hit[2] for hit in block.data["bbh"])
+
+    # filter blocks by size
+    blocks = [block for block in blocks
+              if len(block.data["bbh"]) >= minsize]
+    
+    # find overlaping blocks
+    overlaps = find_block_overlaps(blocks)
+
+    # find best block in each overlap
+    blocks = set(max(overlap, key=lambda x: x.data["score"])
+                 for overlap in overlaps)
+
+    # remove genes with multiple hits within a single block
+    for block in blocks:
+        gene_counts = util.Dict(default=0)
+        for hit in block.data["hits"]:
+            gene_counts[hit[0].data["ID"]] += 1
+            gene_counts[hit[1].data["ID"]] += 1
+
+        block.data["hits"] = [hit for hit in block.data["hits"]
+                              if gene_counts[hit[0].data["ID"]] <= 1 and
+                                 gene_counts[hit[1].data["ID"]] <= 1]            
+    
+    return blocks
+
+
+def find_synteny_orths(blocks, hitsfile, blocksfile, minsize=3):
+
+    blocks = get_synteny_orths(blocks, minsize=minsize)
+
+    # write hits labeled with synid
+    out = util.open_stream(hitsfile, "w")
+    for block in blocks:
+        write_synteny_hits(block.name, block.data["hits"], out=out)
+    out.close()
+
+    # write blocks labeled with synid
+    out = util.open_stream(blocksfile, "w")
+    write_synteny_blocks(out, blocks, extra=lambda x: (x.data["score"],))
+    out.close()
+
+
+# TODO: only works with one input file at a time.
+
+def main(argv):
+    
+    # parse options
+    conf, args = o.parse_args(argv)
+
+    conf.score -= 1
+
+    if conf.window is None:
+        print >>sys.stderr, "need window size"
+        return 1
+
+    if len(args) > 0:
+        files = args
+    else:
+        files = [sys.stdin]
+
+    
+    if conf.count:
+        for f in files:
+            hits = read_hits(f, conf.score)
+            count_synteny(hits, conf.window)
+            
+    elif conf.cluster:
+        for f in files:
+            hits = read_hits(f, conf.score)
+            cluster_synteny(hits, conf.window, conf.window,
+                            conf.outhits, conf.outblocks,
+                            conf.cluster_method)
+        
+    elif conf.orth:
+        for f in files:
+            hits = read_hits(f, conf.score)
+            blocks = cluster_synteny(hits, conf.window, conf.window,
+                                     conf.outhits, conf.outblocks,
+                                     conf.cluster_method)
+            find_synteny_orths(blocks, conf.outhits, conf.outblocks)
+            
+    else:
+        raise Exception("Choose an action to perform")
+
+    return 0
+            
+
+
+sys.exit(main(sys.argv[1:]))
+
+

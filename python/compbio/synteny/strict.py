@@ -2,8 +2,10 @@
 
 
 
-from rasmus import regionlib
+
 from rasmus import util
+
+from compbio import regionlib
 
 from . import SyntenyBlock, make_orth
 

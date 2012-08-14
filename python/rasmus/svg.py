@@ -119,13 +119,16 @@ class Svg:
         self.out.write('</radialGradient></defs>')
         
         
-    def writeAttrOptions(self, color=None):
+    def writeAttrOptions(self, color=None, **options):
         if color:
             if len(color) > 3:
                 self.out.write("stroke-opacity='%f' stroke='%s' " % 
                 (color[3], color2string(color)))
             else:
                 self.out.write("stroke='%s' " % (color2string(color)))
+
+        for key, val in options.iteritems():
+            self.out.write("%s='%s' " % (key, val))
     
     
     def line(self, x1, y1, x2, y2, color=None, **options):
@@ -139,7 +142,6 @@ class Svg:
         
         self.out.write(" />\n")
             
-    
     
     def polygon(self, verts, strokeColor=black, fillColor=black):
         self.out.write(

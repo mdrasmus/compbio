@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+# partitions Fasta files into several gene-family Fasta files
+
+# python imports
+import optparse
+import os
+import sys
+import shutil
+from itertools import izip
+
+# rasmus imports
+from rasmus import util
+from compbio import fasta
+
+#=============================================================================
+# options
+o = optparse.OptionParser()
+o.add_option("-p", "--part", dest="part", metavar="<part file>")
+o.add_option("", "--famid", dest="famid", action="store_true", default=False,
+             help="first entry in line is family name")
+    
+o.add_option("-o", "--outdir", dest="outdir", metavar="<output directory>")
+o.add_option("-F", "--outext=", dest="fastaext",
+             metavar="<output fasta extension>",
+             default= ".fasta")
+o.add_option("--no-clear", dest="no_clear", action="store_true",
+             help="do not clear old files beforehand")
+
+
+# parse options
+conf, fa_files = o.parse_args()
+
+
+#=============================================================================
+# create a fasta for each family
+if not os.path.exists(conf.outdir):
+    os.makedirs(conf.outdir)
+
+
+# read partition
+parts = util.read_delim(conf.part)
+
+# get famids
+if conf.famid:
+    # use first column as famid
+    famids = util.cget(parts, 0)
+    parts = [row[1:] for row in parts]
+else:
+    # issue new famids based on line number
+    famids = map(str, range(len(parts)))
+    
+
+# clear fasta files
+if not conf.no_clear:
+    util.tic("clearing old sequence files")
+    for famid in famids:
+
+        # make family directory
+        famdir = os.path.join(conf.outdir, famid)
+        if not os.path.exists(famdir):
+            os.mkdir(famdir)
+
+        seqfile = os.path.join(famdir, famid + conf.fastaext)
+        if os.path.exists(seqfile):
+            os.remove(seqfile)
+    util.toc()
+
+#=============================================================================
+# read sequences
+util.tic("read sequences")
+for f in fa_files:
+    util.tic("reading '%s'" % f)
+
+    if f.endswith(".gz"):
+        f = os.popen("zcat '%s'" % f)
+    
+    seqs = fasta.read_fasta(f, useIndex=False)
+   
+    for famid, part in izip(famids, parts):
+        seqfile = os.path.join(conf.outdir, famid, famid + conf.fastaext)
+        seqs2 = seqs.get(part)
+
+        if len(seqs2) > 0:
+            out = open(seqfile, "a")
+            seqs2.write(out)
+            out.close()
+
+    
+    util.toc()
+util.toc()
+
+
+

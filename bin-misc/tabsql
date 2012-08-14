@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+
+import optparse
+import re
+import sqlite3 as sqlite
+import sys
+import gzip
+from itertools import chain
+
+
+o = optparse.OptionParser()
+o.add_option("-i", "--input", action="append", default=[])
+o.add_option("-s", "--sep", default="\t")
+o.add_option("-d", "--db")
+o.add_option("-t", "--table", action="append", default=[])
+o.add_option("-f", "--fields", action="append", default=[])
+o.add_option("-z", "--zero", action="store_true")
+o.add_option("-x", "--index", action="append", default=[])
+o.add_option("-H", "--headers")
+
+#=============================================================================
+
+ftype_names = {
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool
+    }
+
+
+def open_tabfile(filename):
+    
+    # open tab file
+    if tabfile == "-":
+        infile = sys.stdin
+    elif tabfile.endswith(".gz"):
+        infile = gzip.open(tabfile)
+    else:
+        infile = open(tabfile)
+
+    for line in infile:
+        yield line.rstrip("\n").split(conf.sep)
+
+
+#=============================================================================
+
+conf, args = o.parse_args()
+
+# open db connect
+if conf.db and conf.db != "-":
+    con = sqlite.connect(conf.db)
+else:
+    con = sqlite.connect(":memory:")
+
+
+# insert tables
+for i, tabfile in enumerate(conf.input):
+    infile = open_tabfile(tabfile)
+    pre_rows = []
+    
+    # get table name
+    if i < len(conf.table):
+        table = conf.table[i]
+    else:
+        # use default table name
+        table = chr(ord("a") + i)
+
+    # get fields
+    if i < len(conf.fields):
+        fields = []
+        ftypes = []
+        for item in conf.fields[i].split(","):
+            if ":" in item:
+                field, ftype = item.split(":")
+            else:
+                field, ftype = item, "str"
+
+            fields.append(field)
+            ftypes.append(ftype_names[ftype])
+    else:
+        # use default column names
+        # try to read first row
+        row = infile.next()
+        pre_rows = [row]
+        fields = ["f" + str(j+1) for j in range(len(row))]
+        ftypes = [str for j in row]
+
+
+    # create table
+    if conf.zero:
+        con.execute("DROP TABLE IF EXISTS %s;" % table)
+    con.execute("CREATE TABLE IF NOT EXISTS %s (%s);" %
+                (table, ",".join(fields)))
+
+    # insert rows
+    insertsql = ("INSERT INTO %s VALUES (%s)" %
+                 (table, ",".join("?" for f in fields)))
+    for row in chain(pre_rows, infile):
+        row = [ftype(v) for ftype, v in zip(ftypes, row)]
+        con.execute(insertsql, row)
+
+    infile.close()
+
+# create indices
+for indexstr in conf.index:
+    table, field = indexstr.split(".")
+    con.execute("CREATE INDEX %s ON %s (%s);" % (
+        indexstr.replace(".", "__"), table, field))
+    
+
+con.commit()
+
+
+if conf.headers:
+    headers = conf.headers.split(",")
+    print "\t".join(headers)
+
+# eval sql
+for arg in args:
+    for row in con.execute(arg):
+        print "\t".join(map(str, row))
+
+    con.commit()
+

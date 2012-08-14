@@ -16,10 +16,10 @@ from itertools import izip
 from rasmus import sets
 from rasmus import graph
 from rasmus import util
-from rasmus import regionlib
 from rasmus import tablelib
-from rasmus.cluster import *
+from compbio.cluster import *
 
+from . import regionlib
 from . import blast
 
 
@@ -38,7 +38,7 @@ def mergeBuh(conf, genes, parts1, parts2, blastfiles):
     lookup2 = item2part(parts2)
     
     
-    best = util.Dict(1, (0, None))
+    best = util.Dict(dim=1, default=(0, None))
 
     util.tic("read hits")
     for blastfile, order in blastfiles:
@@ -383,9 +383,9 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
                                       blastfiles)
             
             if "output" in conf and len(node.parts) > 0:
-                util.writeDelim(conf["output"] + 
-                                str(node.name) + 
-                                ".part", node.parts)
+                util.write_delim(conf["output"] + 
+                                 str(node.name) + 
+                                 ".part", node.parts)
             
             util.logger("number of parts: ", len(node.parts))
             if len(node.parts) > 0:
@@ -401,7 +401,7 @@ def mergeTree(conf, genes, stree, gene2species, blastFileLookup):
 
 
 def makeBlastFileLookup(blastfiles):
-    lookup = util.Dict(2)
+    lookup = util.Dict(dim=2)
     
     for f in blastfiles:
         m = util.match("(|.*/)(?P<genome1>[^/_]+)_(?P<genome2>[^/\.]+)\.[\/]*", f)
@@ -441,7 +441,7 @@ def famtab2parts(famtab):
 class FamilyDb (object):
     def __init__(self, filename=None, datadir=None, olddatadir=None):
         if filename != None:
-            self.famtab = tablelib.readTable(filename)
+            self.famtab = tablelib.read_table(filename)
         else:
             self.famtab = tablelib.Table(headers=["famid", "genes"])
         

@@ -1,14 +1,14 @@
 """
     
-    Visualizations for Distance Matrices of molecular sequences
+    Visualizations for alignments of molecular sequences
 
 """
 
 # rasmus libs
 from rasmus import util
-from rasmus.bio import muscle
 from rasmus.vis import genomebrowser as gb
 
+from compbio import muscle
 
 # summon libs
 from summon.core import *

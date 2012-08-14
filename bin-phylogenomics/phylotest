@@ -1,0 +1,324 @@
+#!/usr/bin/env python
+
+from __future__ import division
+
+import sys, os, shutil, optparse
+from rasmus import util, treelib, stats, tablelib
+from compbio import phylo
+
+
+
+def topology_equal(tree1, tree2, unroot=True):
+    if unroot:
+        treelib.reroot(tree1, sorted(tree1.leaf_names())[0], newCopy=False)
+        treelib.reroot(tree2, sorted(tree2.leaf_names())[0], newCopy=False)
+
+    hash1 = phylo.hash_tree(tree1)
+    hash2 = phylo.hash_tree(tree2)
+    return hash1 == hash2
+    
+
+def create_basedir(path):
+    a, b = os.path.split(path)
+    
+    if a == "":
+        return ".."
+    else:
+        return os.path.join("..", create_basedir(a))
+    
+
+def prepare_test(argv):        
+    """prepare input files"""
+
+    if len(argv) < 5:
+        raise Exception("arguments must be: prepare [-c] <datadir> <evaldir> <file extension> [eval file extension]")
+    
+    if argv[2] == "-c":
+        docopy = True    
+        datadir, evaldir, ext = argv[3:6]
+
+        if len(argv) > 6:
+            evalext = argv[6]
+        else:
+            evalext = ext        
+    else:
+        docopy = False
+        datadir, evaldir, ext = argv[2:5]
+
+        if len(argv) > 5:
+            evalext = argv[5]
+        else:
+            evalext = ext
+
+    
+    
+    if not os.path.exists(evaldir):
+        os.makedirs(evaldir)
+    
+    basedir = create_basedir(evaldir)
+    
+    
+    names = os.listdir(datadir)
+    for name in names:
+        dirname = os.path.join(evaldir, name)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+            
+        newfile = os.path.join(evaldir, name, name+evalext)
+        
+        if os.path.exists(newfile):
+            continue
+                
+        if docopy:
+            shutil.copy(os.path.join(datadir, name, name+ext),
+                        newfile)
+        else:            
+            os.symlink(os.path.join(basedir, "..", datadir, name, name+ext),
+                       newfile)
+
+
+def get_dups(tree, events):
+    return set(tuple(sorted([tuple(sorted(child.leaf_names()))
+                                   for child in node.children]))
+               for node, kind in events.iteritems()
+               if kind == "dup")
+
+def get_speciations(tree, events):
+    return set(tuple(sorted([tuple(sorted(child.leaf_names()))
+                                   for child in node.children]))
+               for node, kind in events.iteritems()
+               if kind == "spec")
+
+
+def get_losses(tree, stree, recon):
+    return set((tuple(sorted(loss[0].leaf_names())),
+                loss[1].name)
+               for loss in phylo.find_loss(tree, stree, recon))
+         
+
+def get_orths(tree, events):
+    specs = [sorted([sorted(child.leaf_names())
+                     for child in node.children])
+             for node in events
+             if events[node] == "spec"]
+    
+    return set(tuple(sorted((a, b)))
+               for s in specs
+               for a in s[0]
+               for b in s[1])
+
+
+def report_test(argv):
+    """Write report for phylo test"""
+
+    o = optparse.OptionParser()
+    o.add_option("-S", "--smap", metavar="GENE_TO_SPECIES", dest="smap")
+    o.add_option("-s", "--stree", metavar="SPECIES_TREE", dest="stree")
+    o.add_option("--suffix", metavar="STRING", dest="suffix",
+                 default="")
+    o.add_option("--rooted", dest="rooted", action="store_true",
+                 default=False)
+    
+    # parse options
+    conf, args = o.parse_args(argv[2:])
+    
+    if len(args) != 4:
+        raise Exception(
+          "arguments must be: report [-S <gene2species>] [-s <species tree>]\n"
+          "<datadir> <data tree ext> <inputdir> <input tree ext>")
+
+    datadir, dataext, evaldir, evalext = args
+    resultext = conf.suffix + ".result"
+    allresultext = conf.suffix + ".result.tab"
+    summaryext = conf.suffix + ".summary"
+
+    if conf.stree and conf.smap:
+        stree = treelib.read_tree(conf.stree)
+        gene2species = phylo.read_gene2species(conf.smap)
+    else:
+        stree = None
+        gene2species = None
+
+
+    names = os.listdir(evaldir)
+
+    tab = tablelib.Table(headers=["tree",
+                                  "ngenes",
+                                  "nbranches",
+                                  "top_correct",
+                                  "branch_correct",
+                                  "branch_percent",
+                                  "dup_actual",
+                                  "dup_pred",
+                                  "dup_sn",
+                                  "dup_ppv",
+                                  "loss_actual",
+                                  "loss_pred",
+                                  "loss_sn",
+                                  "loss_ppv",
+                                  "orth_actual",
+                                  "orth_pred",
+                                  "orth_sn",
+                                  "orth_ppv"],
+
+                         types={"tree":str,
+                                "ngenes":int,
+                                "nbranches":int,
+                                "top_correct":int,
+                                "branch_correct":int,
+                                "branch_percent":float,
+                                "dup_actual":int,
+                                "dup_pred":int,
+                                "dup_sn":float,
+                                "dup_ppv":float,
+                                "loss_actual":int,
+                                "loss_pred":int,
+                                "loss_sn":float,
+                                "loss_ppv":float,
+                                "orth_actual":int,
+                                "orth_pred":int,
+                                "orth_sn":float,
+                                "orth_ppv":float
+                                }
+                         )
+
+
+    
+    
+    top_correct = 0
+    ntrees = 0
+    total_branches = 0
+    total_branches_correct = 0
+
+    out2 = open(evaldir+allresultext, "w")
+    tab.write_header(out2)
+    
+    for name in names:
+        print "checking", name
+
+        datatreefile = os.path.join(datadir, name, name+dataext)        
+        evaltreefile = os.path.join(evaldir, name, name+evalext)
+        resultfile = os.path.join(evaldir, name, name+resultext)
+        
+        if os.path.exists(evaltreefile):
+            datatree = treelib.read_tree(datatreefile)
+            evaltree = treelib.read_tree(evaltreefile)
+
+            # get recon stats
+            if stree:
+                data_recon = phylo.reconcile(datatree, stree, gene2species)
+                eval_recon = phylo.reconcile(evaltree, stree, gene2species)
+                data_events = phylo.label_events(datatree, data_recon)
+                eval_events = phylo.label_events(evaltree, eval_recon)
+                
+                data_dups = get_dups(datatree, data_events)
+                eval_dups = get_dups(evaltree, eval_events)
+
+                data_losses = get_losses(datatree, stree, data_recon)
+                eval_losses = get_losses(evaltree, stree, eval_recon)
+
+                data_orths = get_orths(datatree, data_events)
+                eval_orths = get_orths(evaltree, eval_events)                
+            else:
+                data_dups = set()
+                eval_dups = set()
+                data_losses = set()
+                eval_losses = set()
+                data_orths = set()
+                eval_orths = set()
+
+
+            # compute true positives
+            dups_tp = len(data_dups & eval_dups)
+            losses_tp = len(data_losses & eval_losses)
+            orths_tp = len(data_orths & eval_orths)
+
+
+            # get general stats
+            ngenes = len(evaltree.leaves())
+            nbranches = len(evaltree.nodes) - ngenes - 1
+            correct = int(topology_equal(datatree, evaltree,
+                                         unroot=not conf.rooted))
+            
+            if len(datatree.leaves()) <= 3:
+                branches = 0
+                branches_correct = 0
+            else:
+                rf = phylo.robinson_foulds_error(datatree, evaltree)
+                branches_correct = int((1.0 - rf) * nbranches)            
+
+            # compute totals
+            top_correct += correct
+            ntrees += 1
+            total_branches += nbranches
+            total_branches_correct += branches_correct
+            
+            tab.write_row(out2,
+                {"tree": name,
+                 "ngenes": ngenes,
+                 "nbranches": nbranches,
+                 "top_correct": correct,
+                 "branch_correct": branches_correct,
+                 "branch_percent": util.safediv(branches_correct,
+                                                nbranches, 1.0),
+                 "dup_actual": len(data_dups),
+                 "dup_pred": len(eval_dups),
+                 "dup_sn": util.safediv(dups_tp, len(data_dups), 1.0),
+                 "dup_ppv": util.safediv(dups_tp, len(eval_dups), 1.0),
+
+                 "loss_actual": len(data_losses),
+                 "loss_pred": len(eval_losses),
+                 "loss_sn": util.safediv(losses_tp, len(data_losses), 1.0),
+                 "loss_ppv": util.safediv(losses_tp, len(eval_losses), 1.0),
+                 
+                 "orth_actual": len(data_orths),
+                 "orth_pred": len(eval_orths),
+                 "orth_sn": util.safediv(orths_tp, len(data_orths), 1.0),
+                 "orth_ppv": util.safediv(orths_tp, len(eval_orths), 1.0),
+
+                 })
+
+            # write tree summary (may not be necessary)
+            #out = open(resultfile, "w")
+            #print >>out, "correct topology:", correct
+            #print >>out, "correct branches:", util.safediv(branches_correct /
+            #                                   total_branches)
+            #out.close()
+            
+        else:
+            print "  no tree exists"
+
+
+    out2.close()
+    
+    # write summary
+    out = open(evaldir+summaryext, "w")
+    print >>out, "percent correct: %.2f" % (100 * top_correct / ntrees)
+    print >>out, "number correct:", top_correct
+    print >>out, "number wrong:", ntrees - top_correct
+    print >>out, "number total:", ntrees
+    print >>out, "branch percent:", (total_branches_correct /
+                                     total_branches)
+    out.close()
+
+    
+
+
+def main(argv):
+
+    if len(argv) < 2:
+        raise Exception("must include action command")
+
+    action = argv[1]
+
+
+    if action == "prepare":
+        prepare_test(argv)
+    elif action == "report":
+        report_test(argv)
+    else:
+        raise Exception("unknown action '%s'" % action)
+
+    return 0
+
+sys.exit(main(sys.argv))

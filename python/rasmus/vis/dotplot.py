@@ -19,9 +19,9 @@ from summon import shapes, colors
 
 # rasmus libs
 from rasmus import util
-from rasmus import regionlib
-from rasmus.bio.synteny import SyntenyBlock
-#from rasmus.bio.synteny import read_synteny_blocks as readSyntenyBlocks
+from compbio import regionlib
+from compbio.synteny import SyntenyBlock
+#from compbio.synteny import read_synteny_blocks as readSyntenyBlocks
 
 
 def make_chroms(genes):
@@ -78,76 +78,73 @@ class Plot (object):
 
     
     def draw_plot(self, dotplot):
-        if self.style in ("line", "box"):
-            vis = []
-
-            # draw hits
-            for hit in self.hits:
-                set1 = []
-                set2 = []
-
-                # split genes into sets (possibily overlapping)
-                for region in hit:
-                    if region in dotplot.layout1:
-                        set1.append(region)
-                    if region in dotplot.layout2:
-                        set2.append(region)
-                
-                
-                # draw all pairs of hits
-                for region1 in set1:
-                    chrom1 = dotplot.chrom1lookup[(region1.species, 
-                                                region1.seqname)]
-                    
-                    for region2 in set2:
-                        if not self.selfhits and \
-                           region1.data["ID"] == region2.data["ID"]:
-                            continue
-                    
-                        chrom2 = dotplot.chrom2lookup[(region2.species, 
-                                                       region2.seqname)]
-
-                        s1 = dotplot.layout1[region1]
-                        e1 = dotplot.layout1[region1] + region1.length()
-                        s2 = dotplot.layout2[region2]
-                        e2 = dotplot.layout2[region2] + region2.length()
-                                      
-                        if self.style == "line":
-                            if region1.strand == region2.strand:
-                                vis.extend([s1, s2, e1, e2])
-                            else:
-                                vis.extend([s1, e2, e1, s2])
-                        elif self.style == "box":
-                            vis.append(shapes.box(s1, s2, e1, e2, fill=False))
-
-                            if self.fill_color:
-                                vis.append(color(*self.fill_color))
-                                vis.append(shapes.box(s1, s2, e1, e2,
-                                                      fill=True))
-                                vis.append(color(*self.color))
-                            
-                        else:
-                            raise Exception("unknown plot style '%s'" % self.style)
-            
-            if self.style == "line":
-                return group(color(*self.color), lines(*vis))
-            elif self.style == "box":
-                return group(color(*self.color), *vis)
-        else:
+        
+        if self.style not in ("line", "box") and not callable(self.style):
             return group()
 
+        vis = group()
+        line_pts = []
 
-        #s1 = max(dotplot.chrom1layout[chrom1], 
-        #         dotplot.layout1[region1])
-        #e1 = min(dotplot.chrom1layout[chrom1] + chrom1.length(),
-        #         dotplot.layout1[region1] + region1.length())
-        #s2 = max(dotplot.chrom2layout[chrom2], 
-        #         dotplot.layout2[region2])
-        #e2 = min(dotplot.chrom2layout[chrom2] + chrom2.length(),
-        #         dotplot.layout2[region2] + region2.length())
-          
+        # draw hits
+        for hit in self.hits:
+            set1 = []
+            set2 = []
+
+            # split genes into sets (possibily overlapping)
+            for region in hit:
+                if region in dotplot.layout1:
+                    set1.append(region)
+                if region in dotplot.layout2:
+                    set2.append(region)
 
 
+            # draw all pairs of hits
+            for region1 in set1:
+                chrom1 = dotplot.chrom1lookup[(region1.species, 
+                                            region1.seqname)]
+
+                for region2 in set2:
+                    if not self.selfhits and \
+                       region1.data["ID"] == region2.data["ID"]:
+                        continue
+
+                    chrom2 = dotplot.chrom2lookup[(region2.species, 
+                                                   region2.seqname)]
+
+                    s1 = dotplot.layout1[region1]
+                    e1 = dotplot.layout1[region1] + region1.length()
+                    s2 = dotplot.layout2[region2]
+                    e2 = dotplot.layout2[region2] + region2.length()
+
+                    # styles
+                    if self.style == "line":
+                        if region1.strand == region2.strand:
+                            line_pts.extend([s1, s2, e1, e2])
+                        else:
+                            line_pts.extend([s1, e2, e1, s2])
+
+                    elif self.style == "box":
+                        vis.append(shapes.box(s1, s2, e1, e2, fill=False))
+
+                        if self.fill_color:
+                            vis.append(color(*self.fill_color))
+                            vis.append(shapes.box(s1, s2, e1, e2,
+                                                  fill=True))
+                            vis.append(color(*self.color))
+
+                    elif callable(self.style):
+                        vis.append(self.style(
+                                region1, s1, s2, region2, e1, e2))
+
+                    else:
+                        raise Exception("unknown plot style '%s'" % self.style)
+
+        if self.style == "line":
+            return group(color(*self.color), lines(*line_pts))
+        elif self.style == "box":
+            return group(color(*self.color), vis)
+        elif callable(self.style):
+            return vis
 
 
     def draw_trace(self, dotplot):

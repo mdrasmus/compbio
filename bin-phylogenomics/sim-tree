@@ -1,0 +1,285 @@
+#!/usr/bin/env python
+#
+# Simulate a gene trees 
+#
+
+
+#=============================================================================
+# python libs
+import sys, time, os, random, math, copy, optparse
+from os.path import realpath, abspath, dirname, join
+
+# rasmus libs
+from rasmus import treelib
+from rasmus import util
+from rasmus import stats
+
+# compbio libs
+from compbio import fasta
+from compbio import phylo
+
+
+#=============================================================================
+# options
+
+o = optparse.OptionParser()
+o.set_defaults()
+
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree newick file>")
+o.add_option("-l", "--genelen", dest="genelen",
+             metavar="<gene length in base pairs>",
+             default=1000,
+             type="int")
+o.add_option("-k", "--kappa", dest="kappa",
+             metavar="<transition/transversion ratio>",
+             default=1.0,
+             type="float")
+o.add_option("-b", "--bgfreq", dest="bgfreq", metavar="<A>,<C>,<G>,<T>")
+o.add_option("-m", "--minsize", dest="minsize",
+             metavar="<min # of genes per tree>",
+             type="int",
+             default=4)
+o.add_option("-M", "--maxsize", dest="maxsize",
+             metavar="<max # of genes per tree>",
+             type="int",
+             default=util.INF)
+
+o.add_option("--subrate", metavar="<substituion rate>",
+             default=1.0, type="float")
+
+o.add_option("-D", "--duprate", dest="duprate", metavar="<duplication rate>",
+             default=0.0,
+             type="float")
+o.add_option("-L", "--lossrate", dest="lossrate", metavar="<loss rate>",
+             default=0.0,
+             type="float")
+o.add_option("--transrate", dest="transrate", metavar="<transfer rate>",
+             default=0.0,
+             type="float")
+o.add_option("--recombrate", dest="recombrate", metavar="<recombination rate>",
+             default=0.0,
+             type="float")
+
+o.add_option("-n", "--ntrees", dest="ntrees",
+             metavar="<number of trees to produce>",
+             default=1,
+             type="int")
+o.add_option("--start", dest="start", metavar="<starting number>",
+             default=0,
+             type="int")
+
+
+o.add_option("-O", "--outtree", dest="outtree", metavar="<output directory>",
+             default="./")
+
+o.add_option("-T", "--outtreeext", dest="outtreeext",
+             metavar="<output tree extension>",
+             default=".tree")
+o.add_option("-R", "--outreconext", dest="outreconext",
+             metavar="<output recon extension>",
+             default=".recon")
+o.add_option("-B", "--outbreconext", dest="outbreconext",
+             metavar="<output brecon extension>",
+             default=".brecon")
+o.add_option("-E", "--outeventsext", dest="outeventsext",
+             metavar="<output events extension>",
+             default=".events")
+o.add_option("-A", "--outalignext", dest="outalignext",
+             metavar="<output align extension>",
+             default=".align")
+o.add_option("-F", "--outseqext", dest="outseqext",
+             metavar="<output sequence FASTA extension>",
+             default=".fasta")
+o.add_option("-I", "--outinfoext", dest="outinfoext",
+             metavar="<output information extenstion>",
+             default=".info.txt")
+o.add_option("--nodir", dest="nodir",
+             action="store_true",
+             help="do not create sub-directories")
+o.add_option("", "--resume", dest="resume",
+             action="store_true")
+
+
+conf, args = o.parse_args()
+if len(sys.argv) == 1:
+    o.print_help()
+    sys.exit(1)
+
+
+#=============================================================================
+
+def parse_bg_freq(txt):
+    return map(float, txt.split(","))
+
+
+def gene2species(gene):
+    return gene.split("_")[0]
+
+
+def read_params(filename):
+    """Read SPIDIR model parameters to a file"""
+    
+    infile = file(filename)
+    params = {}
+    
+    for line in infile:
+        tokens = line.split("\t")
+        key = tokens[0]
+        values = tokens[1:]
+        if key[0].isdigit():
+            key = int(key)
+        params[key] = map(float, values)
+
+    infile.close()
+    return params
+
+
+def sim_tree(stree, subrate, duprate, lossrate, transrate, recombrate,
+             minsize=4, maxsize=util.INF,
+             infofile=sys.stdout):
+    """simulate one tree"""
+
+    while True:
+        # create gene tree using birth death model
+        tree, brecon = phylo.sample_dltr_gene_tree(
+            stree, duprate, lossrate, transrate, recombrate)
+        pretree = tree.copy()
+
+        # trim brecon structure to only remaining nodes
+        keep = [x for x in tree.leaves() if isinstance(x.name, str)]
+        doomed = phylo.subtree_brecon_by_leaves(tree, brecon, keep)
+
+        # try again if there is total extinction
+        if not (minsize <= len(tree.leaves()) <= maxsize):
+            infofile.write("tree wrong size. size: %d\n" % len(tree.nodes))
+            if len(tree.nodes) == 0:
+                infofile.write("extinction\n")
+        else:
+            break
+
+    # apply substitution rates
+    for node in tree:
+        if node == tree.root:
+            continue
+        node.dist *= subrate
+    
+    # write info file
+    #infofile.write("gene rate: %f\n" % generate)
+    infofile.write("doomed: %d\n" % doomed)
+
+    recon, events = phylo.brecon2recon_events(brecon)
+    recon2 = phylo.reconcile(tree, stree, gene2species)
+    infofile.write("parsimonious reconciliation: %s\n" % str(recon2 == recon))
+    
+    # rename doomed leaves
+    for node in pretree.leaves():
+        if isinstance(node.name, int):
+            pretree.rename(node.name, "doom_%d" % node.name)
+    
+    return pretree, tree, brecon
+
+
+def sim_branch_len(time, gene_rate, sp_rate):
+    """simulate one branch length"""
+    
+    alpha, beta = sp_rate
+    return gene_rate * time * random.gammavariate(alpha, 1/beta)
+
+
+def rename_nodes_preorder(tree):
+    """Rename internals by preorder traversal"""
+
+    # rename all nodes to something else
+    for node in list(tree):
+        if not node.is_leaf():
+            tree.rename(node.name, "__rename__" + str(node.name))
+
+    # rename to preorder
+    def walk(node, name=1):
+        if not node.is_leaf():
+            tree.rename(node.name, name)
+            name += 1
+            for child in node.children:
+                name = walk(child, name)
+        return name
+    walk(tree.root)
+
+
+       
+
+#=============================================================================
+# main function
+
+def main(conf):
+    # read configuration    
+    stree = treelib.read_tree(conf.stree)
+    
+
+    if conf.bgfreq:
+        conf.bgfreq = parse_bg_freq(conf.bgfreq)
+    else:
+        conf.bgfreq = [.25, .25, .25, .25]
+
+    # don't let duprate exactly equal lossrate
+    if conf.duprate == conf.lossrate:
+        conf.lossrate *= .98
+
+
+    def seq_matrix_func(t):
+        return phylo.make_hky_matrix(t, bgfreq=conf.bgfreq, kappa=conf.kappa)
+
+    
+    # simulate
+    util.tic("simulating %d trees" % conf.ntrees)
+    for i in range(conf.start, conf.ntrees):
+        # setup output directory
+        if conf.nodir:
+            dirname = conf.outtree
+        else:
+            dirname = os.path.join(conf.outtree, str(i))
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            elif conf.resume:
+                # skip families that already exist
+                continue
+
+        util.logger("simulating", i)
+        
+        # open information file
+        infofilename = os.path.join(dirname, str(i) + conf.outinfoext)
+        infofile = open(infofilename, "w")                    
+        
+        # create tree and write it
+        pretree, tree, brecon = sim_tree(
+            stree,
+            conf.subrate,
+            conf.duprate, conf.lossrate, conf.transrate, conf.recombrate,
+            infofile=infofile,
+            minsize=conf.minsize,
+            maxsize=conf.maxsize)
+        rename_nodes_preorder(tree)
+        recon, events = phylo.brecon2recon_events(brecon)
+        
+        outfile = os.path.join(dirname, str(i))
+        
+        pretree.write(outfile + ".times" + conf.outtreeext)
+        tree.write(outfile + conf.outtreeext)
+        phylo.write_recon_events(outfile + conf.outreconext, recon, events)
+        phylo.write_brecon(open(outfile + conf.outbreconext, "w"), brecon)
+        phylo.write_bevents(open(outfile + conf.outeventsext, "w"),
+                            phylo.find_bevents(brecon))
+        
+        align = phylo.sim_seq_tree(tree, conf.genelen,
+                                   matrix_func=seq_matrix_func,
+                                   bgfreq=conf.bgfreq)
+        
+        # write sequence output
+        align.write(outfile + conf.outseqext)
+        align.write(outfile + conf.outalignext)
+
+        infofile.close()
+    util.toc()
+
+main(conf)
+

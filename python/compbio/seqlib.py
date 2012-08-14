@@ -378,7 +378,7 @@ def revcomp(seq):
 
 
 def gcContent(seq):
-    hist = util.histDict(seq)
+    hist = util.hist_dict(seq)
     total = hist["A"] + hist["C"] + hist["T"] + hist["G"]
     
     return (hist["C"] + hist["G"]) / float(total)

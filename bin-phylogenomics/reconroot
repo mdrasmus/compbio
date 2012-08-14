@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+import os, sys, optparse
+
+from rasmus import treelib, util
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.set_usage("%prog [options] <trees>...")
+o.add_option("-s", "--stree", metavar="SPECIES_TREE",
+             dest="stree")
+o.add_option("-S", "--smap", metavar="GENE_TO_SPECIES_MAP",
+             dest="smap")
+o.add_option("-c", "--cost", metavar="dup|loss|duploss",
+             dest="cost", default="duploss")
+o.add_option("-m", "--midpoint", dest="midpoint", action="store_true")
+
+
+conf, args = o.parse_args()
+
+#=============================================================================
+if conf.midpoint:
+    # midpoint rooting
+    for treefile in args:
+        print "rerooting %s" % treefile
+        tree = treelib.read_tree(treefile)
+        treelib.midpoint_root(tree)
+        tree.write(treefile)
+    sys.exit(0)
+
+# recon rooting
+if conf.stree is None or conf.smap is None:
+    o.print_usage()
+    sys.exit(1)
+
+# parse options
+stree = treelib.read_tree(conf.stree)
+gene2species = phylo.read_gene2species(conf.smap)
+
+for treefile in args:
+    print "rerooting %s..." % treefile
+    trees = list(treelib.iter_trees(treefile))
+
+    out = open(treefile + ".reconroot", "w")
+    for tree in trees:
+        if (treelib.is_rooted(tree) and
+            (tree.root.children[0].is_leaf() or
+             tree.root.children[1].is_leaf())):
+            tree.root.children[0].data["boot"] = 0.0
+            tree.root.children[1].data["boot"] = 0.0
+
+
+        phylo.recon_root(tree, stree, gene2species, 
+                         rootby=conf.cost, newCopy=False)
+
+        if len(trees) > 1:
+            tree.write(out, oneline=True)
+            out.write("\n")
+        else:
+            tree.write(out)
+        
+    
+    out.flush()
+    os.fsync(out.fileno())
+    out.close()
+
+    os.rename(treefile + ".reconroot", treefile)
+
+

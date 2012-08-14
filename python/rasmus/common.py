@@ -9,29 +9,31 @@
 import os, sys, re
 from math import *
 import StringIO
-from itertools import izip, imap, chain
+from itertools import izip, imap, chain, islice, takewhile, dropwhile
 from collections import defaultdict
 
 
 # rasmus direct imports
 import rasmus
 from rasmus.util import *
+from rasmus.plotting import *
+from rasmus.gnuplot import *
+from rasmus.rplotting import *
 from rasmus.matrixlib import *
 from rasmus.stats import *
-from rasmus.regionlib import *
-
+from rasmus.treelib import *
 
 # rasmus modules
 from rasmus import util, svg, tablelib, treelib
 from rasmus.tablelib import Table, read_table, iter_table, histtab
-from rasmus.tablelib import showtab, sqltab, sqlget, sqlput, sqlexe
-from rasmus.treelib import *
+from rasmus.tablelib import showtab, sqlget, sqlput, sqlexe
 
-# bio tools
+
+# compbio tools
 try:
     from compbio.fasta import *
-    from compbio import muscle, phylip, mrbayes, blast, alignlib
-    from compbio import gff, phylo
+    from compbio.regionlib import *
+    from compbio import fasta, alignlib, gff, phylo
 except ImportError:
     pass
 
@@ -65,8 +67,6 @@ def strStream(text):
 pc = util.printcols
 pa = alignlib.print_align
 pd = util.print_dict
-
-
 
 def pl(lines, out=sys.stdout):
     for line in lines:

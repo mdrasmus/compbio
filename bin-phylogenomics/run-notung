@@ -1,0 +1,182 @@
+#!/usr/bin/env python
+# run Notung with standard command-line interface
+
+import sys, os, shutil, time
+import optparse
+import subprocess
+
+from rasmus import util, treelib
+from compbio import phylo, fasta
+from compbio import phylorun as phy
+
+from rasmus.common import *
+
+path = os.path.dirname(__file__)
+jarfile = os.path.join(path, "Notung-2.6.jar")
+
+o = optparse.OptionParser()
+o.add_option("--threshold", dest="threshold",
+             metavar="<threshold>", default="90%")
+o.add_option("--edgeweights", dest="edgeweights",
+             metavar="<edgeweights>",
+             choices=["name", "length", "nhx"],
+             default="name")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>")
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>")
+phy.add_common_options(o, align=False)
+#o.set_default("extra", "--costdup 1 --costloss 1")
+o.remove_option("--seqtype")
+o.remove_option("--boot")
+o.remove_option("--no-opttree")
+conf, files = phy.parse_common_options(o)
+
+#=============================================================================
+# parsing notung fileformat
+
+def iter_nhx_comments(text):
+    for m in re.finditer(r"\[[^\]]*\]", text):
+        yield m.group(0)[1:-1]
+
+def is_nhx_comment(comment):
+    return comment.startswith("&&NHX:")
+
+def parse_nhx_comment(comment):
+    app, data = comment.split(":", 1)
+    pairs = data.split(":")
+    return dict(pair.split("=") for pair in pairs)
+
+def remove_nhx_comments(text):
+    return re.sub(r"\[[^\]]*\]", "", text)
+
+def is_notung_stree(comment):
+    return comment.startswith("&&NOTUNG-SPECIES-TREE")
+
+def parse_notung_stree(comment):
+    return treelib.parse_newick(comment[len("&&NOTUNG-SPECIES-TREE"):])
+
+def read_notung(filename):
+    stree = None
+    node_info = []
+
+    text = open_stream(filename).read()
+
+    for comment in iter_nhx_comments(text):
+        if is_nhx_comment(comment):
+            node_info.append(parse_nhx_comment(comment))
+        elif is_notung_stree(comment):
+            stree = parse_notung_stree(comment)
+
+    text2 = remove_nhx_comments(text)
+    tree = treelib.parse_newick(text2)
+
+    info = {}
+    for node, data in zip(tree.postorder(), node_info):
+        info[node.name] = data
+
+    return tree, info, stree
+
+def parse_recon(tree, stree, info, nstree):
+
+    # figure out how nodes were named by notung
+    smap = phylo.reconcile(nstree, stree)
+
+    recon = {}
+    events = {}
+    for node in tree:
+        recon[node] = smap[nstree.nodes[info[node.name]["S"]]]
+        if node.is_leaf():
+            events[node] = "gene"
+        elif info[node.name]["D"] == "Y":
+            events[node] = "dup"
+        else:
+            events[node] = "spec"
+
+    return recon, events
+
+
+#=============================================================================
+
+def run(args, outdir):
+    """Run a program in a subprocess within a new directory"""
+    curdir = os.getcwd()
+    os.chdir(outdir)
+    ret = subprocess.call(args)
+    os.chdir(curdir)
+    return ret 
+
+#=============================================================================
+
+gene2species = phylo.read_gene2species(conf.smap)
+stree = treelib.read_tree(conf.stree)
+
+result = 0
+for fn in files:
+    basename = phy.get_basename(fn, conf)
+
+    outdir = basename + conf.outputext
+    phy.make_output_dir(outdir)
+
+    # rename genes with species suffix
+    tree = treelib.read_tree(basename + conf.usertreeext)
+    for node in tree.leaves():
+        sp = gene2species(node.name)
+        assert "_" not in sp
+        tree.rename(node.name, node.name + "_" + sp)
+    tree.write(outdir + "/intree")
+
+    # make notung-compatible species tree
+    for node in list(stree):
+        if not node.is_leaf():
+            stree.rename(node.name, "n" + str(node.name))
+    stree.write(outdir + "/stree", rootData=True)
+    
+    # require minimium size of tree
+    if len(tree.leaves()) <= 2:
+        continue
+    
+    # basic arguments
+    args = ["java", "-jar", jarfile, "--rearrange", "--nolosses",
+            "--outputdir", os.path.abspath(outdir),
+            "--log",
+            "--speciestag", "postfix",
+            "--edgeweights", conf.edgeweights,
+            "--threshold", conf.threshold,
+            "-s", "stree",
+            "-g", "intree"]
+    
+    if conf.extra:
+        args.extend(conf.extra)
+
+    # record command
+    cmd = " ".join(args)
+    print cmd
+    out = open(outdir + "/cmd", "w")
+    out.write(cmd)
+    out.close()
+
+    # run program
+    if run(args, outdir) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+    else:
+        outfile = outdir + "/intree.rearrange.0"
+        tree, info, nstree = read_notung(outfile)
+        
+        # rename genes without species suffix
+        for node in tree.leaves():
+            oldname = node.name
+            newname = node.name[:node.name.rfind("_")]
+            tree.rename(oldname, newname)
+            info[newname] = info[oldname]
+            del info[oldname]
+        tree.write(basename + conf.treeext, rootData=True)
+            
+        # write recon data
+        outrecon = util.replace_ext(basename + conf.treeext, ".tree", ".recon")
+        stree = treelib.read_tree(conf.stree)
+        recon, events = parse_recon(tree, stree, info, nstree)
+        phylo.write_recon_events(outrecon, recon, events, noevent="")
+
+sys.exit(result)

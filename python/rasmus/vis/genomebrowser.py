@@ -11,8 +11,10 @@ from summon.multiscale import Multiscale
 from summon import VisObject
 
 from rasmus.vis import visual
-from rasmus import util, stats, regionlib
-from rasmus.regionlib import Region
+from rasmus import util, stats
+
+from compbio import regionlib
+from compbio.regionlib import Region
 from compbio import gff, fasta, alignlib, seqlib
 
 

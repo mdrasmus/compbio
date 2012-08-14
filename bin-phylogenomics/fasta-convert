@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import sys
+import optparse
+
+from rasmus import util
+
+from compbio import phylip, fasta, mrbayes
+
+
+o = optparse.OptionParser()
+o.add_option("-f", "--fasta", metavar="<fasta>")
+o.add_option("-l", "--label", metavar="<output labels>")
+o.add_option("-p", "--phylip", metavar="<output phylip>")
+o.add_option("-n", "--nexus", metavar="<output nexus>")
+o.add_option("--nostrip", action="store_true", default=False)
+o.add_option("-t", "--seqtype", metavar="dna|pep", default="dna")
+
+conf, args = o.parse_args()
+
+
+if conf.phylip:
+    seqs = fasta.read_fasta(conf.fasta)
+    labels = phylip.write_phylip_align(
+        file(conf.phylip, "w"), seqs,
+        strip_names=not conf.nostrip)
+    
+    if conf.label:
+        util.write_list(conf.label, labels)
+
+
+if conf.nexus:
+    seqs = fasta.read_fasta(conf.fasta)
+    mrbayes.write_nexus(file(conf.nexus, "w"),
+                        seqs.keys(), seqs.values(),
+                        format=conf.seqtype)
+
+

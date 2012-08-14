@@ -6,8 +6,9 @@
 
 # rasmus libs
 from rasmus import util
-from rasmus.bio import muscle
 from rasmus.vis import genomebrowser
+
+from compbio import muscle
 
 # summon libs
 from summon.core import *

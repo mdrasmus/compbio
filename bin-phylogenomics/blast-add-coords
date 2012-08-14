@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+# Wed May 13 15:59:37 EDT 2009
+# add coordinates to blast hits
+
+"""
+
+output format:
+1. species1
+2. chromosome1
+3. geneid1
+4. start1
+5. end1
+6. strand1 (1,-1)
+7. species2
+8. chromosome2
+9. geneid2
+10. start2
+11. end2
+12. strand2 (1,-1)
+13-... columns of input file 
+
+"""
+
+# python libs
+import os
+import sys
+import optparse
+
+# rasmus libs
+from rasmus import util
+from compbio import gff
+from compbio import regionlib
+from compbio.regionlib import Region
+
+
+usage = "usage: %prog [options] BLASTFILES ..."
+o = optparse.OptionParser(usage=usage)
+
+o.add_option("-g", "--gff", dest="gff", metavar="GFF_FILE",
+             action="append",
+             help="genes are regions to compute synteny")
+o.add_option("-f", "--features", dest="features",
+             metavar="FEATURE1,FEATURE2,...",
+             help="features to use from GFF files")
+o.add_option("-q", "--query", dest="query", metavar="COL",
+             default=1, type="int")
+o.add_option("-s", "--subject", dest="subject", metavar="COL",
+             default=2, type="int")
+
+
+#=============================================================================
+
+
+def main(argv):
+    
+    # parse options
+    conf, args = o.parse_args(argv)
+
+    conf.query -= 1
+    conf.subject -= 1
+    
+    # determine features
+    if conf.features is None:
+        features = []
+    else:
+        features = set(conf.features.split(","))
+
+    # read gff regions
+    regions = {}
+    for fn in conf.gff:
+        for region in gff.iter_gff(fn):
+            if len(features) > 0 and region.feature not in features:
+                continue
+            regions[region.data["ID"]] = region
+
+    if len(args) > 0:
+        files = args
+    else:
+        files = [sys.stdin]
+
+    for f in files:
+        for hit in util.read_delim(f):
+            q = regions.get(hit[conf.query], None)
+            s = regions.get(hit[conf.subject], None)
+
+            if q is not None and s is not None:
+                print "\t".join([q.species, q.seqname, q.data["ID"],
+                                 str(q.start), str(q.end), str(q.strand),
+                                 s.species, s.seqname, s.data["ID"],
+                                 str(s.start), str(s.end), str(s.strand)] +
+                                hit)
+
+
+    
+main(sys.argv[1:])
+
+

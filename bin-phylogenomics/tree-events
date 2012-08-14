@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+import os, sys, optparse
+from rasmus import util, treelib, tablelib
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>",
+             help="species tree (newick format)")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>",
+             help="mapping of gene names to species names")
+o.add_option("--by-fam", dest="by_fam", action="store_true")
+o.add_option("--use-famid", dest="use_famid", action="store_true")
+o.add_option("--files", action="store_true")
+
+
+def count_all_events(conf, args):
+
+    stree = treelib.read_tree(conf.stree)
+    gene2species = phylo.read_gene2species(conf.smap)
+
+    if conf.files:
+        trees = (treelib.read_tree(line.rstrip()) for line in sys.stdin)
+    else:
+        trees = treelib.iter_trees(sys.stdin)
+    etree = phylo.count_dup_loss_trees(trees, stree, gene2species)
+
+    ptable = treelib.tree2parent_table(etree,
+                                       ["genes", "dup", "loss", "appear"])
+    # sort by post order
+    lookup = util.list2lookup(x.name for x in stree.postorder())
+    ptable.sort(key=lambda x: lookup[x[0]])
+
+    ptable = [[str(row[0]), str(row[1]), float(row[2])] + row[3:]
+              for row in ptable]
+    
+    tab = tablelib.Table(ptable,
+                         headers=["nodeid", "parentid", "dist", "genes",
+                                  "dup", "loss", "appear"])
+    tab.write()
+    return 0
+
+
+def count_by_fam(conf, args):
+
+    stree = treelib.read_tree(conf.stree)
+    gene2species = phylo.read_gene2species(conf.smap)
+    lookup = util.list2lookup(x.name for x in stree.postorder())
+
+    if conf.files:        
+        trees_files = ((treelib.read_tree(line.rstrip()), line.rstrip())
+                       for line in sys.stdin)
+    else:
+        trees_files = ((tree, str(i))
+                       for i, tree in enumerate(treelib.iter_trees(sys.stdin)))
+
+    # write header
+    print "\t".join(["famid", "nodeid", "parentid", "dist",
+                     "genes", "dup", "loss", "appear"])
+
+    for tree, fn in trees_files:
+        if conf.files and conf.use_famid:
+            famid = os.path.basename(os.path.dirname(fn))
+        else:
+            famid = fn
+        
+        etree = phylo.count_dup_loss_trees([tree], stree, gene2species)
+        ptable = treelib.tree2parent_table(
+            etree, ["genes", "dup", "loss", "appear"])
+
+        # sort by post order
+        ptable.sort(key=lambda x: lookup[x[0]])
+
+        # write table
+        for row in ptable: 
+            print "\t".join(map(str, [famid] + row))
+    
+    return 0
+
+
+
+def main(conf, args):
+
+    if conf.stree is None or conf.smap is None:
+        print >>sys.stderr, "missing arguments -s -S"
+        return 1
+
+    if not conf.by_fam:
+        count_all_events(conf, args)
+
+    else:
+        count_by_fam(conf, args)
+        
+
+conf, args = o.parse_args()
+sys.exit(main(conf, args))

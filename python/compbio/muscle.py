@@ -17,7 +17,7 @@ def muscle(seqs, verbose = True, removetmp = True, options = ""):
 
     # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
-    fasta.writeFasta(infilename, seqs)
+    fasta.write_fasta(infilename, seqs)
     
     if not verbose:
         options += " -quiet "
@@ -29,7 +29,7 @@ def muscle(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     # parse output
-    aln = fasta.readFasta(outfilename)
+    aln = fasta.read_fasta(outfilename)
     
     # cleanup tempfiles
     if removetmp:
@@ -49,7 +49,7 @@ def buildAlignTree(seqs, verbose = True, removetmp = True, options = ""):
 
     # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
-    fasta.writeFasta(infilename, seqs)
+    fasta.write_fasta(infilename, seqs)
     
     # run muscle
     outfilename = util.tempfile(".", "muscle-out", ".aln")
@@ -59,9 +59,9 @@ def buildAlignTree(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     # parse output
-    aln = fasta.readFasta(outfilename)
+    aln = fasta.read_fasta(outfilename)
     tree = treelib.Tree()
-    tree.readNewick(outfilename2)
+    tree.read_newick(outfilename2)
     
     # cleanup tempfiles
     if removetmp:
@@ -77,7 +77,7 @@ def buildAlignBigTree(seqs, verbose = True, removetmp = True, options = ""):
 
     # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
-    fasta.writeFasta(infilename, seqs)
+    fasta.write_fasta(infilename, seqs)
     
     # run muscle
     outfilename = util.tempfile(".", "muscle-out", ".aln")
@@ -87,9 +87,9 @@ def buildAlignBigTree(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     # parse output
-    aln = fasta.readFasta(outfilename)
+    aln = fasta.read_fasta(outfilename)
     tree = treelib.Tree()
-    tree.readNewick(outfilename2)
+    tree.read_newick(outfilename2)
     
     # cleanup tempfiles
     if removetmp:
@@ -103,7 +103,7 @@ def buildTree(seqs, verbose = True, removetmp = True, options = ""):
 
     # make input file for muscle
     infilename = util.tempfile(".", "muscle-in", ".fa")
-    fasta.writeFasta(infilename, seqs)
+    fasta.write_fasta(infilename, seqs)
     
     # run muscle
     outfilename = util.tempfile(".", "muscle-out", ".tree")
@@ -116,7 +116,7 @@ def buildTree(seqs, verbose = True, removetmp = True, options = ""):
     os.system(cmd)
     
     tree = treelib.Tree()
-    tree.readNewick(outfilename)
+    tree.read_newick(outfilename)
     
     if removetmp:
         os.remove(infilename)

@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+# Same as tree-orth except looks for paralogous pairs.
+
+import os, sys, optparse
+from itertools import chain
+from rasmus import treelib, util, tablelib
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.add_option("-d", "--dir", dest="dir", action="store_true",
+             help="identify trees by their directory")
+o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
+o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
+o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
+o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
+
+o.add_option("--no-split", dest="split",
+             default=True, action="store_false",
+             help="if set, counts paralogs across pre-root duplications")
+o.add_option("--no-species-branch", dest="no_species_branch",
+             action="store_true")
+o.add_option("--fix-ils", dest="fix_ils",
+             default=False, action="store_true")
+
+conf, args = o.parse_args()
+
+#=============================================================================
+
+# read args
+stree = treelib.read_tree(conf.stree)
+gene2species = phylo.read_gene2species(conf.smap)
+
+
+def read_filenames(stream):
+    for line in stream:
+        yield line.rstrip()
+
+if len(args) == 0:
+    filenames = read_filenames(sys.stdin)
+else:
+    filenames = args
+
+
+for filename in filenames:
+    tree = treelib.read_tree(filename)
+    if conf.dir:
+        treename = os.path.basename(os.path.dirname(filename))
+    else:
+        treename = filename
+
+    # check tree
+    assert(treelib.is_rooted(tree))
+
+    # get recon and events
+    if conf.treeext and conf.reconext:
+        if conf.fix_ils:
+            raise Exception("Cannot use --fix-ils if --reconext is specified")
+        
+        try:
+            recon, events = phylo.read_recon_events(util.replace_ext(
+                filename, conf.treeext, conf.reconext), tree, stree)
+        except:
+            print >>sys.stderr, filename
+            raise
+    else:
+        # use MPR to build reconciliation and events
+        recon = phylo.reconcile(tree, stree, gene2species)
+        events = phylo.label_events(tree, recon)
+        if conf.fix_ils:
+            dupcons = phylo.dup_consistency(tree, recon, events)
+            events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
+    
+    paralogs = phylo.find_paralogs(tree, stree, recon, events,
+                                   species_branch=not conf.no_species_branch,
+                                   split=conf.split)
+
+    for paralog in paralogs:
+        if conf.no_species_branch:
+            gene1, gene2, spcnt1, spcnt2 = paralog
+        else:
+            gene1, gene2, spcnt1, spcnt2, node = paralog
+            
+        sp1 = gene2species(gene1)
+        sp2 = gene2species(gene2)
+        if sp1 > sp2:
+            sp1, sp2 = sp2, sp1
+            gene1, gene2 = gene2, gene1
+            spcnt1, spcnt2 = spcnt2, spcnt1
+
+        toks = (treename, sp1, sp2, gene1, gene2, spcnt1, spcnt2)
+        if not conf.no_species_branch:
+            toks = toks + (node.name, )
+        print "\t".join(map(str, toks))
+
+
+
+
+        
+    

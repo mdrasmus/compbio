@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+# convert a mrbayes trees file into a simple trees file
+
+import sys
+from rasmus import treelib
+from compbio.mrbayes import read_nexus_trees
+
+if len(sys.argv) > 1:
+    thin = int(sys.argv[1])
+else:
+    thin = 1
+
+
+def filethiner(stream, step):
+
+    for line in stream:
+        if not line.startswith("   tree rep"):
+            yield line
+        else:
+            rep = int(line.split("=")[0].replace("   tree rep.", ""))
+            if rep % step == 0:
+                yield line
+
+for tree in read_nexus_trees(filethiner(sys.stdin, thin)):
+    print tree.get_one_line_newick()
+

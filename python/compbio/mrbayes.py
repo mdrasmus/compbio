@@ -16,7 +16,7 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     
     
     if nexfilename == "":
-        cwd = phylip.createTempDir()
+        cwd = phylip.create_temp_dir()
     else:
         cwd = None
     
@@ -66,9 +66,9 @@ def mrbayes(aln, nexfilename = "", seqtype="pep", options=None,
     # clean up
     if cwd != None:
         if saveOutput != "":
-            phylip.saveTempDir(cwd, saveOutput)
+            phylip.save_temp_dir(cwd, saveOutput)
         else:
-            phylip.cleanupTempDir(cwd)
+            phylip.cleanup_temp_dir(cwd)
     
     util.toc()
     
@@ -251,7 +251,7 @@ def readNexusConTree(infile):
             if count == 1:
                 line = line.replace("   tree con_all_compat =", "")
                 tree = treelib.Tree()
-                tree.readNewick(StringIO.StringIO(line))
+                tree.read_newick(StringIO.StringIO(line))
                 
                 return tree
     raise Exception("No tree found in output file")

@@ -44,7 +44,7 @@ def validate_seqs(seqs):
     
     sizes = map(len, seqs.values())
     assert util.equal(* sizes), "sequences are not same length"
-validateSeq = validate_seqs
+
 
 def check_temp_files(force=False):
     """Ensure PHYLIP tempfiles do not already exist in current directory"""
@@ -55,7 +55,6 @@ def check_temp_files(force=False):
          os.path.isfile("outfile") or \
          os.path.isfile("outtree"):
         raise Exception("Can't run phylip, 'infile'/'outfile'/'outtree' is in current dir!")
-checkTempFiles = check_temp_files
 
 
 def exec_phylip(cmd, args, verbose=False):
@@ -73,18 +72,8 @@ def exec_phylip(cmd, args, verbose=False):
     else:
         assert os.system("""cat <<EOF | %s >/dev/null 2>&1
 %s""" % (cmd, args)) == 0
-execPhylip = exec_phylip
 
 
-def cleanup(files=["infile", "outfile", "outtree"]):
-    """Remove PHYLIP tempfiles from current directory
-    
-       THIS FUNCTION IS COMMONLY NOT USED.  SEE createTempDir()/cleanup_temp_dir()
-    """
-    
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
 
 
 def create_temp_dir(prefix="tmpphylip_"):
@@ -94,7 +83,6 @@ def create_temp_dir(prefix="tmpphylip_"):
     os.mkdir(directory)
     os.chdir(directory)
     return directory
-createTempDir = create_temp_dir
 
 
 def cleanup_temp_dir(directory):
@@ -104,7 +92,6 @@ def cleanup_temp_dir(directory):
     assert "/" not in directory
     assert os.path.isdir(directory)
     util.deldir(directory)
-cleanupTempDir = cleanup_temp_dir
 
 
 def save_temp_dir(directory, newname):
@@ -118,7 +105,8 @@ def save_temp_dir(directory, newname):
         util.deldir(newname)
     
     os.rename(directory, newname)
-saveTempDir = save_temp_dir
+
+
 
 #=============================================================================
 # common input/output
@@ -188,7 +176,6 @@ def write_phylip_align(out, seqs, strip_names=True):
                 print >>out, "%s  %s" % (name, seqs[name])
 
     return seqs.keys()
-writePhylipAlign = write_phylip_align
 
 
 def read_logl(filename):
@@ -227,7 +214,6 @@ def read_out_tree(filename, labels, iters=1):
             trees.append(tree)
         infile.close()        
         return trees
-readOutTree = read_out_tree
 
 
 def write_in_tree(filename, tree, labels):
@@ -236,7 +222,6 @@ def write_in_tree(filename, tree, labels):
     for node in tree2.nodes.values():
         node.dist = 0
     tree2.write(filename)
-writeInTree = write_in_tree
 
 
 def write_boot_trees(filename, trees, counts=None):
@@ -354,7 +339,6 @@ ______10    0.68634  0.49679  0.58559  0.49340  0.47421  0.49588  0.51126
     """
     
     return names, mat
-readDistMatrix = read_dist_matrix
 
 
 def write_dist_matrix(mat, labels=None, out=sys.stdout):
@@ -371,8 +355,6 @@ def write_dist_matrix(mat, labels=None, out=sys.stdout):
         for val in mat[i]:
             out.write("%10f " % val)
         out.write("\n")
-writeDistMatrix = write_dist_matrix
-
 
 
 
@@ -428,7 +410,7 @@ def align2tree(prog, seqs, verbose=True, force = False, args=None,
     
     # create user tree if given
     if usertree != None:
-        writeInTree("intree", usertree, labels)
+        write_in_tree("intree", usertree, labels)
         args = "u\n" + args # add user tree option
     
     
@@ -535,7 +517,7 @@ def dnapars(seqs, verbose=True, force = False, args="y",
 
 
 
-def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
+def proml_treelk(aln, tree, verbose=True, force = False, args="u\ny"):
     validate_seqs(aln)
     cwd = create_temp_dir()
 
@@ -543,7 +525,7 @@ def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
 
     # create input
     labels = write_phylip_align(file("infile", "w"), aln)
-    writeInTree("intree", tree, labels)
+    write_in_tree("intree", tree, labels)
     
     # run phylip
     exec_phylip("proml", args, verbose)
@@ -560,7 +542,7 @@ def promlTreelk(aln, tree, verbose=True, force = False, args="u\ny"):
     return logl, tree
 
 
-def drawTree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
+def draw_tree(tree, plotfile, verbose=False, args=None, saveOutput = ""):
     cwd = create_temp_dir()
     
     fontfile = os.popen("which font4", "r").read().rstrip()
@@ -647,7 +629,7 @@ def dnadist(seqs, output=None, verbose=True, force = False, args=None):
         return labels, mat
 
 
-def correctDistMatrix(distmat, maxdist=40, fardist=None):
+def correct_dist_matrix(distmat, maxdist=40, fardist=None):
     """remove -1 and extremely large distances (>maxdist), replace them with 
        fatdist (defaults to maximum distance in matrix)"""
 

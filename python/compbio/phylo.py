@@ -1071,26 +1071,27 @@ def add_implied_spec_nodes_brecon(tree, brecon):
                 
 
 
-def write_brecon(out, brecon):
+def write_brecon(filename, brecon):
     """
     Writes a branch reconciliation to file
     """
 
+    out = util.open_stream(filename, "w")
     for node, branch_path in brecon.iteritems():
         out.write(str(node.name))
         for snode, event in branch_path:
             out.write("\t" + str(snode.name) + "\t" + event)
         out.write("\n")
+    out.close()
 
-
-def read_brecon(infile, tree, stree):
+def read_brecon(filename, tree, stree):
     """
     Reads branch reconciliation from file
     """
 
     brecon = {}
 
-    for line in infile:
+    for line in util.open_stream(filename):
         tokens = line.rstrip().split("\t")
 
         # parse node

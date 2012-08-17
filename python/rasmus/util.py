@@ -77,8 +77,12 @@ class Dict (dict):
         default -- default value of a dictionary item
         insert  -- if True, insert missing keys
         """
-        
-        if items is not None:
+
+        if isinstance(items, int):
+            # backwards compatiability
+            default = dim
+            dim = items
+        elif items is not None:
             dict.__init__(self, items)
         else:
             dict.__init__(self)

@@ -1211,6 +1211,10 @@ def read_delim(filename, delim="\t", types=None):
     return list(DelimReader(filename, delim, types))
 
 
+def iter_delim(filename, delim="\t", types=None):
+    """Iterate through a tab delimited file"""
+    return DelimReader(filename, delim, types)
+
 def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
     

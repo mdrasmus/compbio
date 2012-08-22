@@ -936,11 +936,15 @@ def sample_smc_sprs(k, n, rho, start=0.0, end=0.0, init_tree=None,
     if init_tree is None:
         init_tree = sample_arg(k, n, rho=0.0, start=start, end=end,
                                names=names, make_names=make_names)
+        tree = init_tree.copy()
+    else:
+        init_tree.end = end
+        tree = init_tree.get_marginal_tree(start)
+        remove_single_lineages(tree)        
     yield init_tree
 
     # sample SPRs
     pos = start
-    tree = init_tree.copy()
     while True:
         # sample next recomb point
         treelen = sum(x.get_dist() for x in tree)

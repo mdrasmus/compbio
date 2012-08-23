@@ -2176,10 +2176,14 @@ def find_splits(tree, rooted=False):
         # in order to work with rooted, be consistent about which descendents
         # to keep
         a, b = tree.root.children
-        if descendants[a] < descendants[b]:
-            del descendants[b]
-        else:
+        if len(descendants[a]) < len(descendants[b]):
             del descendants[a]
+        elif len(descendants[b]) < len(descendants[a]):
+            del descendants[b]
+        elif min(descendants[a]) < min(descendants[b]):
+            del descendants[a]
+        else:
+            del descendants[b]
 
     # build splits list
     splits = []
@@ -2187,8 +2191,10 @@ def find_splits(tree, rooted=False):
         if 1 < len(leaves) and (rooted or len(leaves) < nall_leaves - 1):
             set1 = tuple(sorted(leaves))
             set2 = tuple(sorted(all_leaves - leaves))
-            if not rooted and len(set1) > len(set2):
-                set1, set2 = set2, set1
+            if not rooted:
+                if len(set1) > len(set2) or \
+                   (len(set1) == len(set2) and min(set1) > min(set2)):
+                    set1, set2 = set2, set1
                 
             splits.append((set1, set2))
     

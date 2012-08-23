@@ -2060,9 +2060,7 @@ def find_splits(tree, rooted=False):
         if 1 < len(leaves) and (rooted or len(leaves) < nall_leaves - 1):
             set1 = tuple(sorted(leaves))
             set2 = tuple(sorted(all_leaves - leaves))
-            if not rooted:
-                if len(set1) > len(set2) or \
-                   (len(set1) == len(set2) and min(set2) < min(set1)):
+            if not rooted and min(set2) < min(set1):
                 set1, set2 = set2, set1
                 
             splits.append((set1, set2))

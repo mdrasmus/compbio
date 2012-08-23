@@ -69,6 +69,36 @@ class Search (TestCase):
 
 #=============================================================================
 
+class Splits (TestCase):
+
+    def test(self):
+
+        tree = parse_newick("((a,b),((c,d),(e,f)))")
+        print phylo.find_splits(tree)
+
+        tree1 = parse_newick("((a,b),c)")
+        tree2 = parse_newick("(c,(a,b))")
+        assert (phylo.find_splits(tree1, rooted=True) ==
+                phylo.find_splits(tree2, rooted=True))
+
+        tree1 = parse_newick("((a,b),(c,d))")
+        tree2 = parse_newick("(((c,d),a),b)")
+        assert (phylo.find_splits(tree1) ==
+                phylo.find_splits(tree2))
+        
+        assert phylo.robinson_foulds_error(tree1, tree2) == 0.0
+
+        tree1 = parse_newick("(((a,b),(c,d)),(e,f))")
+        tree2 = parse_newick("(((a,c),(b,d)),(e,f))")
+        print phylo.find_splits(tree1)
+        print phylo.find_splits(tree2)
+        print phylo.robinson_foulds_error(tree1, tree2)
+        fequal(phylo.robinson_foulds_error(tree1, tree2), 2/3.)
+        
+        
+
+#=============================================================================
+
 
 if __name__ == "__main__":
     test_main()

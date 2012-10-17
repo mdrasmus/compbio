@@ -1182,17 +1182,20 @@ def open_stream(filename, mode = "r", ignore_close=True):
 class DelimReader:
     """Reads delimited files"""
 
-    def __init__(self, filename, delim="\t", types=None):
+    def __init__(self, filename, delim="\t", types=None, parse=False):
         """Constructor for DelimReader
             
            arguments:
-           filename  - filename or stream to read from
-           delim     - delimiting character
+           filename  -- filename or stream to read from
+           delim     -- delimiting character
+           types     -- types of columns
+           pars      -- if True, fields are automatically parsed
         """
         
         self.infile = open_stream(filename)
         self.delim = delim
         self.types = types
+        self.parse = parse
         
     def __iter__(self):
         return self
@@ -1201,19 +1204,21 @@ class DelimReader:
         line = self.infile.next()
         row = line.rstrip("\n").split(self.delim)
         if self.types:
-            row = [func(x) for func, x in izip(self.types, row)]
-        return row
+            return [func(x) for func, x in izip(self.types, row)]
+        elif self.parse:
+            return [autoparse(x) for x in row]
+        else:
+            return row
 
 
-def read_delim(filename, delim="\t", types=None):
+def read_delim(filename, delim="\t", types=None, parse=False):
     """Read an entire delimited file into memory as a 2D list"""
-    
-    return list(DelimReader(filename, delim, types))
+    return list(DelimReader(filename, delim, types, parse))
 
 
-def iter_delim(filename, delim="\t", types=None):
+def iter_delim(filename, delim="\t", types=None, parse=False):
     """Iterate through a tab delimited file"""
-    return DelimReader(filename, delim, types)
+    return DelimReader(filename, delim, types, parse)
 
 def write_delim(filename, data, delim="\t"):
     """Write a 2D list into a file using a delimiter"""
@@ -1223,6 +1228,42 @@ def write_delim(filename, data, delim="\t"):
         out.write(delim.join(str(x) for x in row))
         out.write("\n")
     out.close()
+
+
+def guess_type(text):
+    """Guesses the type of a value encoded in a string"""
+
+    # int
+    if text.isdigit():
+        return int
+
+    # float
+    try:
+        float(text)
+        return float
+    except ValueError:
+        pass
+
+    # string
+    return str
+
+
+def autoparse(text):
+    """Guesses the type of a value encoded in a string and parses"""
+
+    # int
+    if text.isdigit():
+        return int(text)
+
+    # float
+    try:
+        return float(text)
+    except ValueError:
+        pass
+
+    # string
+    return text
+    
 
 
 #=============================================================================

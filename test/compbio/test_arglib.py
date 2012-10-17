@@ -241,17 +241,18 @@ class Arg (unittest.TestCase):
     def test_sample_arg_smc_cmp(self):
         """Sample an ARG using the SMC process and compare it"""
         
-        length = 1000    # length of locus
-        k = 4             # number of lineages
-        n = 1e4           # effective popsize
-        rho = 1.5e-8 * 20 # recomb/site/gen
+        k = 10             # number of lineages
+        n = 1e4            # effective popsize
+        rho = 1.5e-8 * 20  # recomb/site/gen
+        length = int(500e3 / 20) # length of locus
 
         x = []
         y = []
-        for i in range(100):
+        for i in range(1, 100):
             print i
-            arg = arglib.sample_arg_smc(k, n, rho, 0, length)
-            arg2 = arglib.smcify_arg(arglib.sample_arg(k, n, rho, 0, length))
+            arg = arglib.sample_arg_smc(k, n, i/100. * rho, 0, length)
+            arg2 = arglib.smcify_arg(
+                arglib.sample_arg(k, n, i/100. * rho, 0, length))
             x.append(ilen(arglib.iter_visible_recombs(arg)))
             y.append(ilen(arglib.iter_visible_recombs(arg2)))
 

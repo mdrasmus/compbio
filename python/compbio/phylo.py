@@ -2167,6 +2167,7 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
     for tree in trees:
         for split in find_splits(tree, rooted):
             split_counts[split] += 1
+    contree.nextname = max(tree.nextname for tree in trees)
 
     #util.print_dict(split_counts)
     

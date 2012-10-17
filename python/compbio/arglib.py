@@ -454,11 +454,18 @@ class ARG (object):
         NOTE: recombination positions must be set first (set_recomb_pos)
         """
 
+        def root_path(ptr, pos):
+            "walk up the root path from a node"
+            while ptr.parents:
+                ptr = self.get_local_parent(ptr, pos)
+                yield ptr
+
         for node in self:
             node.data["ancestral"] = []
 
         for block, tree in iter_tree_tracks(self):
-            for node in tree:
+            pos = (block[0] + block[1]) / 2.0
+            for node in chain(tree, root_path(self.nodes[tree.root.name], pos)):
                 if node.name in self.nodes:
                     ancestral = self[node.name].data["ancestral"]
                     if len(ancestral) > 0 and ancestral[-1][1] == block[0]:
@@ -2035,6 +2042,32 @@ def groupby_overlaps(regions, bygroup=True):
 # mutations and splits
 
 
+
+def sample_arg_mutations(arg, mu, minlen=0):
+    """
+    mu -- mutation rate (mutations/site/gen)
+    """
+
+    mutations = []
+
+    for (start, end), tree in iter_tree_tracks(arg):
+        remove_single_lineages(tree)
+        for node in tree:
+            if not node.parents:
+                continue
+            blen = max(node.get_dist(), minlen)
+            rate = blen * mu
+            i = start
+            while i < end:
+                i += random.expovariate(rate)
+                if i < end:
+                    t = random.uniform(node.age, node.age + blen)
+                    mutations.append((node, node.parents[0], i, t))
+    return mutations
+
+
+
+'''
 def sample_arg_mutations(arg, mu):
     """
     mu -- mutation rate (mutations/site/gen)
@@ -2066,6 +2099,8 @@ def sample_arg_mutations(arg, mu):
                     mutations.append((node, parent, pos, t))
 
     return mutations
+'''
+
 
 
 def get_marginal_leaves(arg, node, pos):

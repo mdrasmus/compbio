@@ -375,10 +375,22 @@ class ARG (object):
             else:
                 return None
         elif node.event == "recomb":
+            if len(node.parents) == 0:
+                return None
+            elif len(node.parents) == 1:
+                if pos < node.pos:
+                    return node.parents[0]
+                else:
+                    return None
+            elif len(node.parents) > 1:
+                return node.parents[0 if pos < node.pos else 1]
+
+            '''
             if len(node.parents) > 0:
                 return node.parents[0 if pos < node.pos else 1]
             else:
                 return None
+            '''
         else:
             raise Exception("unknown event '%s'" % node.event)
 
@@ -1703,7 +1715,9 @@ def iter_arg_sprs_simple(arg, start=None, end=None, use_leaves=False):
         last_tree = tree
 
 
-def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
+# TODO: more testing of ignore_self=False is needed
+def make_arg_from_sprs(init_tree, sprs, ignore_self=False,
+                       modify_self=False):
     """
     Make an ARG from an initial tree 'init_tree' and a list of SPRs 'sprs'
 
@@ -1715,6 +1729,9 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
         if event == "coal":
             node2.pos = 0
         parent = arg.get_local_parent(node, pos)
+        #if parent is None and node.event == "recomb":
+        #    parent = node.parents[0]
+        
         if parent:
             node.parents[node.parents.index(parent)] = node2
             parent.children[parent.children.index(node)] = node2
@@ -1722,7 +1739,6 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
         else:
             node.parents.append(node2)
             arg.root = node2
-
         
         return node2
     
@@ -1762,11 +1778,17 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
 
         # check whether self cycles are wanted
         if ignore_self and rleaves == cleaves:
-            continue
-        
-        # do lca on local tree
-        rnode_tree = arg_lca(tree, rleaves, rpos, time=rtime)
-        cnode_tree = arg_lca(tree, cleaves, rpos, time=ctime)
+            if modify_self:
+                rnode_tree = arg_lca(tree, rleaves, rpos, time=rtime)
+                cnode_tree = arg_lca(tree, cleaves, rpos, time=ctime)
+                cnode_tree = cnode_tree.parents[0]
+                ctime = cnode_tree.age
+            else:
+                continue
+        else:
+            # do lca on local tree
+            rnode_tree = arg_lca(tree, rleaves, rpos, time=rtime)
+            cnode_tree = arg_lca(tree, cleaves, rpos, time=ctime)
 
         # do rest of lca on arg
         rnode = walk_up(arg, mapping[rnode_tree.name], rtime, rpos, local)
@@ -1796,6 +1818,7 @@ def make_arg_from_sprs(init_tree, sprs, ignore_self=False):
             del mapping[broken_node.name]
             mapping[coal2.name] = coal
             local.add(coal)
+            
 
     return arg
 
@@ -1841,18 +1864,19 @@ def make_arg_from_sprs_simple(init_tree, sprs, ignore_self=False):
     return arg
 
 
-def smcify_arg(arg, start=None, end=None):
+def smcify_arg(arg, start=None, end=None, ignore_self=True):
     """
     Rebuild an ARG so that is follows the SMC assumptions
     """
-
+    
     if start is None:
         start = arg.start
-    
+
     arg2 = arg.get_marginal_tree(start-.5)
     remove_single_lineages(arg2)
     sprs = iter_arg_sprs(arg, start, end, use_leaves=True)
-    make_arg_from_sprs(arg2, sprs, ignore_self=True)
+    make_arg_from_sprs(arg2, sprs, ignore_self=True,
+                       modify_self=not ignore_self)
 
     if start is not None:
         arg2.start = start

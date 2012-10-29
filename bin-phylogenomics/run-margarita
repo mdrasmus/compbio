@@ -7,6 +7,16 @@ from rasmus.common import *
 from compbio import arglib
 import arghmm
 import tempfile
+import optparse
+
+o = optparse.OptionParser()
+o.add_option("-n", "--nargs", metavar="NUMBER_OF_ARGS", type="int",
+             default=1)
+o.add_option("-o", "--output", default="marg")
+
+
+conf, args = o.parse_args()
+
 
 #=============================================================================
 
@@ -45,27 +55,15 @@ def write_marg_input(out, sites):
     out.close()
 
 
-
-def read_marg(infile, length, name_format, sites=None):
-
-    # read header
-    assert infile.next().startswith("Margarita")
-    assert infile.next().startswith("%ARGINFERENCE")
-    assert infile.next() == "SEQS SNPS MUTS COAS RECS GECS TRCS SECS HEURP\n"
-
-    tokens = infile.next().split()
-    nseqs = int(tokens[0])
-    nmuts = int(tokens[1])
-
-    assert infile.next().startswith("%ARG")
-    infile.next()
-    assert infile.next().startswith("ARG")
+def read_marg_arg(infile, nseqs, length, name_format, sites=None, nmuts=None):
     arg = arglib.ARG(start=0, end=length)
 
     # setup mutation positions
-    mutpos = range(nmuts+1)
     if sites:
         mutpos = sites.positions
+    else:
+        assert mutpos is not None
+        mutpos = range(nmuts+1)
     
 
     # make leaves
@@ -76,6 +74,9 @@ def read_marg(infile, length, name_format, sites=None):
             name=name_format(i), age=0, event="gene")
 
     for line in infile:
+        if line.startswith("ARG"):
+            break
+        
         tokens = line.rstrip().split(" ")
         age = int(tokens[0])
         kind = tokens[1]
@@ -117,7 +118,6 @@ def read_marg(infile, length, name_format, sites=None):
             lineages[parentid1] = node
             lineages[parentid2] = node
             del lineages[childid]
-            
         else:
             raise Exception("unknown line '%s'" % line)
 
@@ -131,19 +131,57 @@ def read_marg(infile, length, name_format, sites=None):
 
     return arg
 
+
+def read_marg(infile, length, name_format, sites=None):
+
+    # read header
+    assert infile.next().startswith("Margarita")
+    assert infile.next().startswith("%ARGINFERENCE")
+    assert infile.next() == "SEQS SNPS MUTS COAS RECS GECS TRCS SECS HEURP\n"
+
+    tokens = infile.next().split()
+    nseqs = int(tokens[0])
+    nmuts = int(tokens[1])
+
+    nargs = 0
+    line = ""
+    while not line.startswith("%ARG"):
+        line = infile.next()
+        nargs += 1
+    infile.next()
+
+    assert infile.next().startswith("ARG")
+    for i in range(nargs):
+        arg = read_marg_arg(infile, nseqs, length, name_format,
+                            sites=sites, nmuts=nmuts)
+        yield arg
+
+
 #=============================================================================
 
-sitesfile = sys.argv[1]
+sitesfile = args[0]
 
 sites = arghmm.read_sites(sitesfile)
 marg_input = mktemp()
 write_marg_input(marg_input, sites)
 
-marg_out = os.popen("margarita %s 1 1 -args -nomapping" % marg_input)
+# usage: infile numargs numpermutations
+marg_out = os.popen("margarita %s %d 1 -args -nomapping" %
+                    (marg_input, conf.nargs))
 
-arg = read_marg(marg_out, sites.length(), lambda i: sites.names[i], sites=sites)
-arglib.write_arg(sys.stdout, arg)
+#print marg_out.read()
 
+args = list(read_marg(marg_out, sites.length(), lambda i: sites.names[i],
+                      sites=sites))
+
+if len(args) == 1:
+    arglib.write_arg(sys.stdout, arg)
+else:
+    for i, arg in enumerate(args):
+        arglib.write_arg("%s.%d.arg" % (conf.output, i), arg)
+    
+
+os.remove(marg_input)
 
 '''
 time margarita tmp/ratios4-16.margin 1 1 -args -nomapping \

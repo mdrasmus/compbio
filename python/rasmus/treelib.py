@@ -927,7 +927,8 @@ def iter_trees(treefile):
 def parse_nhx_comment(comment):
     """Parse a NHX comment"""
     for pair in comment.split(":"):
-        yield pair.split("=")
+        if "=" in pair:
+            yield pair.split("=")
 
 def format_nhx_comment(data):
     """Format a NHX comment"""

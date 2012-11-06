@@ -26,4 +26,8 @@ install bin-misc
 install bin-phylogenomics
 #install bin-compbio-misc
 
-
+# hard code for Notung jar files
+cd bin
+ln -s ../bin-phylogenomics/Notung-2.6.jar .
+ln -s ../bin-phylogenomics/Notung-2.7-Beta.jar .
+cd ..

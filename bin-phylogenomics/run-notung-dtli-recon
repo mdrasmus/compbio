@@ -1,0 +1,263 @@
+#!/usr/bin/env python
+# run Notung-2.7 with standard command-line interface
+
+import sys, os, shutil, time
+import optparse
+import subprocess
+
+from rasmus import util, treelib
+from compbio import phylo, fasta
+from compbio import phylorun as phy
+
+from yjw.bio import phyloDTL
+
+from rasmus.common import *
+
+path = os.path.dirname(__file__)
+jarfile = os.path.join(path, "Notung-2.7-Beta.jar")
+
+# by default, Notung 2.7 uses D=1.5, C=0, L=1, T=3
+
+o = optparse.OptionParser()
+o.add_option("--infertransfers", dest="infertransfers",
+             default=False, action="store_true",
+             help="set to include transfers in event inference and optimization")
+o.add_option("--ignorelosses", dest="ignorelosses",
+             default=False, action="store_true",
+             help="set to ignore losses in event score during event inference")
+o.add_option("--prune", dest="prune",
+             default=False, action="store_true",
+             help="set to prune species unrepresented in the gene tree")
+o.add_option("--maxtrees", dest="maxtrees",
+             default=1, type="int", metavar="<maxtrees>",
+             help="max number of optimal trees during reconciliation without transfers")
+o.add_option("--multsols", dest="multsols",
+             default=1, type="int", metavar="<multsols>",
+             help="max number of optimal trees during reconciliation with transfers")
+o.add_option("--all", dest="all",
+             default=False, action="store_true",
+	     help="set to keep all solutions in the main directory, else only keep the first")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>")
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>")
+phy.add_common_options(o, align=False)
+o.add_option("-R", "--reconext", dest="reconext",
+             metavar="<reconciliation extension>",
+             default=".recon")
+o.remove_option("--seqtype")
+o.remove_option("--boot")
+o.remove_option("--no-opttree")
+conf, files = phy.parse_common_options(o)
+
+if conf.maxtrees < 1:
+    parser.error("--maxtrees must be >= 1")
+if conf.multsols < 1:
+    parser.error("--multsols must be >= 1")    
+
+#=============================================================================
+# parsing notung fileformat
+
+def iter_nhx_comments(text):
+    for m in re.finditer(r"\[[^\]]*\]", text):
+        yield m.group(0)[1:-1]
+
+def is_nhx_comment(comment):
+    return comment.startswith("&&NHX:")
+
+def parse_nhx_comment(comment):
+    app, data = comment.split(":", 1)
+    pairs = data.split(":")
+    return dict(pair.split("=") for pair in pairs)
+
+def remove_nhx_comments(text):
+    return re.sub(r"\[[^\]]*\]", "", text)
+
+def is_notung_stree(comment):
+    return comment.startswith("&&NOTUNG-SPECIES-TREE")
+
+def parse_notung_stree(comment):
+    return treelib.parse_newick(comment[len("&&NOTUNG-SPECIES-TREE"):])
+
+def read_notung(filename):
+    stree = None
+    node_info = []
+
+    text = open_stream(filename).read()
+
+    for comment in iter_nhx_comments(text):
+        if is_nhx_comment(comment):
+            node_info.append(parse_nhx_comment(comment))
+        elif is_notung_stree(comment):
+            stree = parse_notung_stree(comment)
+
+    text2 = remove_nhx_comments(text)
+    tree = treelib.parse_newick(text2)
+
+    info = {}
+    for node, data in zip(tree.postorder(), node_info):
+        info[node.name] = data
+
+    return tree, info, stree
+
+def parse_recon(tree, stree, info, nstree):
+    # notung tags
+    # S=<reconciled species node>
+    # D=[Y|N]   duplication node?
+    # H=[Y|N]   transfer node?
+    # cD=[Y|N]  ils node?
+    # B=<branch length or bootstrap support>
+
+    # figure out how nodes were named by notung
+    smap = phylo.reconcile(nstree, stree)
+
+    recon = {}
+    events = {}
+    trans = {}
+    
+    # do species tree reconciliation first
+    for node in tree:
+        recon[node] = smap[nstree.nodes[info[node.name]["S"]]]
+
+    # now find events, including transfer edges
+    # use if rather than elif since NOTUNG annotates child of transfer edge,
+    # meaning nodes can be labeled with multiple events if one of the events is a transfer
+    for node in tree:
+        if node.is_leaf():
+            assert node not in events
+            events[node] = "gene"
+        if info[node.name].get("D", "N") == "Y":
+            assert node not in events
+            events[node] = "dup"
+        if info[node.name].get("H", "N")[0] == "Y":
+            assert node.parent not in events
+            
+            trans_str = info[node.name]["H"]            
+            flag, donor_sp, recipient_sp = trans_str.split("@")
+            donor_snode = smap[nstree.nodes[donor_sp]]
+            recipient_snode = smap[nstree.nodes[recipient_sp]]
+            assert recon[node.parent] == donor_snode and \
+                   recon[node] == recipient_snode, \
+                   (recon[node.parent], donor_snode,
+                    recon[node], recipient_snode)
+                                
+            events[node.parent] = "trans"
+            trans[node.parent] = node
+        if info[node.name].get("cD", "N") == "Y":
+            events[node] = "coal"
+
+    # finally add in speciation events
+    for node in tree:
+        if node not in events:
+            events[node] = "spec"
+
+    return recon, events, trans
+
+
+#=============================================================================
+
+def run(args, outdir):
+    """Run a program in a subprocess within a new directory"""
+    curdir = os.getcwd()
+    os.chdir(outdir)
+    ret = subprocess.call(args)
+    os.chdir(curdir)
+    return ret 
+
+#=============================================================================
+
+gene2species = phylo.read_gene2species(conf.smap)
+stree = treelib.read_tree(conf.stree)
+
+result = 0
+for fn in files:
+    basename = phy.get_basename(fn, conf)
+
+    outdir = basename + conf.outputext
+    phy.make_output_dir(outdir)
+
+    # rename genes with species suffix
+    tree = treelib.read_tree(basename + conf.usertreeext)
+    for node in tree.leaves():
+        sp = gene2species(node.name)
+        assert "_" not in sp
+        tree.rename(node.name, node.name + "_" + sp)
+    tree.write(outdir + "/intree")
+
+    # make notung-compatible species tree
+    for node in list(stree):
+        if not node.is_leaf():
+            stree.rename(node.name, "n" + str(node.name))
+    stree.write(outdir + "/stree", rootData=True)
+    
+    # require minimium size of tree
+    if len(tree.leaves()) <= 2:
+        continue
+    
+    # basic arguments
+    # note: if we care about losses, we should NOT use the --nolosses flag
+    #       to allow NOTUNG to keep track of gene tree branches on which losses occur
+    #       - these cannot be inferred using our libraries if using non-binary species trees
+    args = ["java", "-jar", jarfile, "--reconcile", "--nolosses",
+            "--log",
+            "--speciestag", "postfix",
+            "--maxtrees", str(conf.maxtrees),
+            "--multsols", str(conf.multsols),
+            "--events",
+            "-s", "stree",
+            "-g", "intree"]
+
+    if conf.infertransfers:
+        args.extend(["--infertransfers", "true"])
+    if conf.ignorelosses:
+        args.append("--ignorelosses")
+    if conf.prune:
+        args.append("--prune")
+    if conf.extra:
+        args.extend(conf.extra)
+
+    # record command
+    cmd = " ".join(args)
+    print cmd
+    out = open(outdir + "/cmd", "w")
+    out.write(cmd)
+    out.close()
+
+    # run program
+    if run(args, outdir) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+	stree = treelib.read_tree(conf.stree)
+    else:
+        if conf.all:
+            maxi = max(conf.maxtrees, conf.multsols)
+	else:
+	    maxi = 1
+
+        for i in xrange(maxi):
+            outfile = outdir + "/intree.reconciled.%d.ntg" % i
+            if not os.path.exists(outfile):
+                # no solution if i=0 (likely no temporally feasible soln with transfers)
+                break
+            tree, info, nstree = read_notung(outfile)
+	    base = basename
+	    if conf.all:
+	        base += "." + str(i)
+
+            # this part is STILL necessary to keep track of how NOTUNG labels internal nodes
+            # rename genes without species suffix
+            for node in tree.leaves():
+                oldname = node.name
+                newname = node.name[:node.name.rfind("_")]
+                tree.rename(oldname, newname)
+                info[newname] = info[oldname]
+                del info[oldname]
+            tree.write(base + conf.treeext, rootData=True)
+                
+            # write recon data
+            outrecon = base + conf.reconext
+            stree = treelib.read_tree(conf.stree)
+            recon, events, trans = parse_recon(tree, stree, info, nstree)
+            phyloDTL.write_recon_events(outrecon, recon, events, trans)
+
+sys.exit(result)

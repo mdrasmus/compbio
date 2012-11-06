@@ -1455,11 +1455,9 @@ def set_tree_topology(tree, tree2):
 # Rerooting functions
 #
 
-
 def is_rooted(tree):
     """Returns True if tree is rooted"""
     return len(tree.root.children) <= 2
-
 
 
 def unroot(tree, newCopy=True):
@@ -1482,12 +1480,13 @@ def unroot(tree, newCopy=True):
         nodes[0].parent = None
         
         # replace root
+        del tree.root.data["tree"]
         del tree.nodes[tree.root.name]
         tree.root = nodes[0]
     return tree
 
 
-def reroot(tree, newroot, onBranch=True, newCopy=True):
+def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
     """
     Change the rooting of a tree
     """
@@ -1495,15 +1494,17 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     # TODO: remove newCopy (or assert newCopy=False)
     if newCopy:
         tree = tree.copy()
-    
-
+   
     # handle trivial case
     if (not onBranch and tree.root.name == newroot) or \
        (onBranch and newroot in [x.name for x in tree.root.children] and \
         len(tree.root.children) == 2):
         return tree
-
     assert not onBranch or newroot != tree.root.name, "No branch specified"
+    
+    if keepName:
+        assert onBranch # can only keep name if root is in middle of branch
+        oldroot = tree.root.name
 
     unroot(tree, newCopy=False)
 
@@ -1513,7 +1514,10 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
     
     if onBranch:
         # add new root in middle of branch
-        newNode = TreeNode(tree.new_name())
+        if keepName:
+            newNode = TreeNode(oldroot)
+        else:
+            newNode = TreeNode(tree.new_name())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
         rootdata1, rootdata2 = tree.split_branch_data(node1)
@@ -1620,6 +1624,7 @@ def midpoint_root(tree):
     
     
     assert 0 # shouldn't get here
+
 
 
 #=============================================================================
@@ -1901,147 +1906,6 @@ def read_parent_table(filename):
     return ptable
 
     
-
-#=============================================================================
-# Rerooting functions
-#
-
-
-def is_rooted(tree):
-    return len(tree.root.children) <= 2
-
-
-def unroot(tree, newCopy = True):
-    """Return an unrooted copy of tree"""
-    
-    if newCopy:
-        tree = tree.copy()
-    
-    if len(tree.root.children) == 2:
-        nodes = tree.root.children
-        dist = nodes[0].dist + nodes[1].dist
-        data = tree.merge_branch_data(nodes[0].data, nodes[1].data)
-        if len(nodes[0].children) < 2:
-            nodes.reverse()
-        tree.add_child(nodes[0], nodes[1])
-        nodes[1].dist = dist
-        tree.set_branch_data(nodes[1], data)
-        nodes[0].dist = 0
-        tree.set_branch_data(nodes[0], {})
-        nodes[0].parent = None
-        
-        # replace root
-        del tree.root.data["tree"]
-        del tree.nodes[tree.root.name]
-        tree.root = nodes[0]
-    return tree
-
-
-def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
-    """
-    Change the rooting of a tree
-    """
-    
-    # TODO: remove newCopy (or assert newCopy=False)
-    if newCopy:
-        tree = tree.copy()
-    
-
-    # handle trivial case
-    if tree.root.name == newroot or \
-       (newroot in [x.name for x in tree.root.children] and \
-        len(tree.root.children) == 2):
-        return tree        
-    
-    if keepName:
-        # TODO: can only keep name if root is in middle of branch
-        oldroot = tree.root.name
-    unroot(tree, newCopy=False)
-    
-    if onBranch:
-        # add new root in middle of branch
-        if keepName:
-            newNode = TreeNode(oldroot)
-        else:
-            newNode = TreeNode(tree.new_name())
-        node1 = tree.nodes[newroot]
-        rootdist = node1.dist
-        rootdata1, rootdata2 = tree.split_branch_data(node1)
-        node1.dist = rootdist / 2.0
-        tree.set_branch_data(node1, rootdata1)
-        newNode.dist = rootdist / 2.0
-        tree.set_branch_data(newNode, rootdata2)
-        
-        node2 = node1.parent
-        node2.children.remove(node1)
-        tree.add_child(newNode, node1)
-        tree.add_child(node2, newNode)
-        
-        ptr = node2
-        ptr2 = newNode
-        newRoot = newNode
-    else:
-        # root directly on node
-        ptr2 = tree.nodes[newroot]
-        ptr = ptr2.parent
-        newRoot = ptr2
-    
-    newRoot.parent = None
-    
-    # reverse parent child relationship of all nodes on path node1 to root
-    oldroot = tree.root    
-    nextDist = ptr2.dist
-    nextData = tree.get_branch_data(ptr2)
-    ptr2.dist = 0
-    while True:
-        nextPtr = ptr.parent
-        ptr.children.remove(ptr2)
-        tree.add_child(ptr2, ptr)
-        
-        tmp = ptr.dist
-        tmpData = tree.get_branch_data(ptr)
-        ptr.dist = nextDist
-        tree.set_branch_data(ptr, nextData)
-        nextDist = tmp
-        nextData = tmpData
-        
-        ptr2 = ptr
-        ptr = nextPtr
-        
-        if nextPtr is None:
-            break
-    tree.root = newRoot
-    
-    return tree
-
-
-def midpoint_root(tree):
-
-    # get maximum distance from leaves to each node
-    depths = {}
-    for node in tree.postorder():
-        if node.is_leaf():
-            depths[node] = (0.0, node)
-        else:
-            depths[node] = max((c.dist + depths[c][0], depths[c][1])
-                               for c in node.children)
-
-    # find maximum path
-    dists = []
-    for node in tree:
-        if node.is_leaf():
-            continue
-        assert len(node.children) != 1
-        tmp = sorted([(c.dist + depths[c][0], depths[c][1], c)
-                      for c in node.children])
-        dists.append((tmp[-1][0] + tmp[-2][0], node,
-                      tmp[-1][2], tmp[-1][1],
-                      tmp[-2][2], tmp[-2][1]))
-    
-    maxdist, top, child1, leaf1, child2, leaf2 = max(dists)
-    middist = maxdist / 2.0
-
-
 
 #=============================================================================
 # conversion to other formats

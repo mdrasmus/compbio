@@ -10,7 +10,6 @@ from rasmus import util, treelib
 from compbio import phylip, fasta
 from compbio import phylorun as phy
 
-
 o = optparse.OptionParser()
 o.add_option("-m", "--model", dest="model", metavar="MODEL")
 phy.add_common_options(o)
@@ -129,9 +128,22 @@ for fn in files:
         result = 1
     else:
 
-        if conf.boot or conf.fastboot:
+        if conf.boot:
+	    # perform consensus
+            if subprocess.call(
+                ["treecons",
+                 "-o", outdir + "/RAxML_result.out",
+                 "--binary",
+                 "-a", basename + conf.alignext,
+                 outdir+"/RAxML_bootstrap.out"]) != 0:
+                result = 1
+                continue
+            tree = treelib.read_tree(outdir + "/RAxML_result.out")
+
+	elif conf.fastboot:
 	    # note: consensus topologies from treecons and RAxML may NOT match
             tree = treelib.read_tree(outdir + "/RAxML_bipartitions.out")
+
         else:
             tree = treelib.read_tree(outdir + "/RAxML_result.out")
         

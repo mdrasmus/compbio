@@ -160,6 +160,7 @@ for fn in files:
     if run(args, outdir) != 0:
         open(outdir + "/error", "w").close()
         result = 1
+	stree = treelib.read_tree(conf.stree)
     else:
         outfile = outdir + "/intree.rearrange.0"
         tree, info, nstree = read_notung(outfile)

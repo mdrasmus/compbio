@@ -238,17 +238,30 @@ def find_loss_under_node(node, recon):
     for i in internal:
         for child in i.children:
             if child not in snodes:
-                loss.append([node,child])
+                loss.append([node, child])
     return loss
 
 
 def find_loss(gtree, stree, recon, node=None):
-    """Returns a list of gene losses in a gene tree"""
+    """Returns a list of gene losses in a gene tree
+       TODO: generalize to non-MPR recon
+    """
     loss = []
 
     def walk(node):
         loss.extend(find_loss_node(node, recon))
-        node.recurse(walk)
+
+        # add losses (for non-MPR)
+        #snode = recon[node]
+        #child_snodes = set()
+        #for child in node.children:
+        #    child_snodes.update([recon[child]] + recon[child].descendants())
+        #
+        #for child_snode in snode.children:
+        #    if child_snode not in child_snodes:
+        #        loss.append([node, child_snode])
+
+	node.recurse(walk)
     if node:
         walk(node)
     else:
@@ -258,7 +271,9 @@ def find_loss(gtree, stree, recon, node=None):
 
 
 def count_dup(gtree, events, node=None):
-    """Returns the number of duplications in a gene tree"""
+    """Returns the number of duplications in a gene tree
+       TODO: generalize to non-MPR events
+    """
     var = {"dups": 0}
     
     def walk(node):
@@ -468,12 +483,15 @@ def init_dup_loss_tree(stree):
     walk(stree.root)
 
 
-def count_dup_loss_tree(tree, stree, gene2species, recon=None):
-    """count dup loss"""
+def count_dup_loss_tree(tree, stree, gene2species, recon=None, events=None):
+    """count dup loss
+       TODO: generalize to non-MPR recon/events
+    """
 
     if recon is None:
         recon = reconcile(tree, stree, gene2species)
-    events = label_events(tree, recon)
+    if events is None:
+        events = label_events(tree, recon)
     losses = find_loss(tree, stree, recon)
     
     dup = 0
@@ -511,7 +529,7 @@ def count_ancestral_genes(stree):
                               - child.data['appear']
                               - child.data['dup'] 
                               + child.data['loss'])
-            assert util.equal(* counts), str(counts)
+            assert util.equal(* counts), (node.name, str(counts))
             node.data['genes'] = counts[0]
     walk(stree.root)
 

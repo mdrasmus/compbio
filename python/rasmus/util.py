@@ -1234,8 +1234,11 @@ def guess_type(text):
     """Guesses the type of a value encoded in a string"""
 
     # int
-    if text.isdigit():
+    try:
+        int(text)
         return int
+    except:
+        pass
 
     # float
     try:
@@ -1252,8 +1255,10 @@ def autoparse(text):
     """Guesses the type of a value encoded in a string and parses"""
 
     # int
-    if text.isdigit():
+    try:
         return int(text)
+    except:
+        pass
 
     # float
     try:

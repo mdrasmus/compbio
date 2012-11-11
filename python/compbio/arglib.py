@@ -1181,7 +1181,7 @@ def make_arg_from_tree(tree, times=None):
     return arg
 
 
-def get_recomb_pos(arg, visible=False):
+def get_recombs(arg, start=None, end=None, visible=False):
     """
     Returns a sorted list of an ARG's recombination positions
 
@@ -1190,17 +1190,42 @@ def get_recomb_pos(arg, visible=False):
     """
     
     if visible:
-        rpos = [node.pos for node in
-                arg if node.event == "recomb" and 
-                len(node.data["ancestral"]) > 0]
-        rpos.sort()
-        return rpos
-
+        return list(iter_visible_recombs(arg, start, end))
     else:
         rpos = [node.pos for node in
                 arg if node.event == "recomb"]
         rpos.sort()
         return rpos
+get_recomb_pos = get_recombs
+
+def iter_recombs(arg, start=None, end=None, visible=False):
+    """
+    Iterates through an ARG's recombination positions
+
+    visible -- if True only iterate recombination break points that are 
+               visible to extant sequences
+    """
+
+    if visible:
+        return iter_visible_recombs(arg, start, end)
+    else:
+        rpos = [node.pos for node in arg
+                if node.event == "recomb" and start <= node.pos <= end]
+        rpos.sort()
+        return iter(rpos)
+
+
+def iter_visible_recombs(arg, start=None, end=None):
+    """Iterates through visible recombinations in an ARG"""
+    
+    pos = start if start is not None else 0
+    while True:
+        recomb = find_next_recomb(arg, pos)
+        if recomb:
+            yield recomb
+            pos = recomb.pos
+        else:
+            break
 
 
 def find_next_recomb(arg, pos, tree=False):
@@ -1222,20 +1247,6 @@ def find_next_recomb(arg, pos, tree=False):
     return recomb
 
 
-def iter_visible_recombs(arg, start=None, end=None):
-    """Iterates through visible recombinations in an ARG"""
-    
-    pos = start if start is not None else 0
-    while True:
-        recomb = find_next_recomb(arg, pos)
-        if recomb:
-            yield recomb
-            pos = recomb.pos
-        else:
-            break
-
-
-
 def iter_recomb_blocks(arg, start=None, end=None, visible=False):
     """
     Iterates over the recombination blocks of an ARG
@@ -1247,6 +1258,7 @@ def iter_recomb_blocks(arg, start=None, end=None, visible=False):
                visible to extant sequences
     """
 
+    # determine region to iterate over
     if start is None:
         start = arg.start
     if end is None:
@@ -1254,7 +1266,7 @@ def iter_recomb_blocks(arg, start=None, end=None, visible=False):
 
     a = start
     b = start
-    for pos in get_recomb_pos(arg, visible=visible):
+    for pos in iter_recombs(arg, start, end, visible=visible):
         if pos < start:
             continue
         if pos > end:
@@ -1271,37 +1283,33 @@ def iter_marginal_trees(arg, start=None, end=None):
     """
     Iterate over the marginal trees of an ARG
     """
-    for block, tree in iter_tree_tracks(arg, start, end):
+    for block, tree in iter_local_trees(arg, start, end):
         yield tree
 
 
-def iter_tree_tracks(arg, start=None, end=None, convert=False):
+def iter_local_trees(arg, start=None, end=None, convert=False):
     """
-    Iterate over the marginal trees of an ARG
+    Iterate over the local trees of an ARG
 
     Yeilds ((start, end), tree) for each marginal tree where (start, end)
     defines the block of the marginal tree
     """
+    # determine region to iterate over
     if start is None:
         start = arg.start
     if end is None:
         end = arg.end
 
     i = 0
-    rpos = get_recomb_pos(arg)
+    rpos = get_recombs(arg, start, end)
     rpos.append(end)
-    if len(rpos) > 0:
-        r = rpos[i]
-    else:
-        r = end
 
     while start < end:
         # find next rpos
-        while i < len(rpos)-1 and r <= start:
+        while i < len(rpos)-1 and rpos[i] <= start:
             i += 1
-            r = rpos[i]
 
-        tree = arg.get_marginal_tree((start+r) / 2.0)
+        tree = arg.get_marginal_tree((start+rpos[i]) / 2.0)
         
         # find block end
         end2 = arg.end
@@ -1313,6 +1321,8 @@ def iter_tree_tracks(arg, start=None, end=None, convert=False):
             tree = tree.get_tree()
         yield (start, min(end2, end)), tree
         start = end2
+
+iter_tree_tracks = iter_local_trees
 
     
 def descendants(node, nodes=None):
@@ -2065,8 +2075,6 @@ def groupby_overlaps(regions, bygroup=True):
 #=============================================================================
 # mutations and splits
 
-
-
 def sample_arg_mutations(arg, mu, minlen=0):
     """
     mu -- mutation rate (mutations/site/gen)
@@ -2088,43 +2096,6 @@ def sample_arg_mutations(arg, mu, minlen=0):
                     t = random.uniform(node.age, node.age + blen)
                     mutations.append((node, node.parents[0], i, t))
     return mutations
-
-
-
-'''
-def sample_arg_mutations(arg, mu):
-    """
-    mu -- mutation rate (mutations/site/gen)
-    """
-
-    mutations = []
-
-    locsize = arg.end - arg.start
-    u = mu * locsize
-
-    for node in arg:
-        for parent in node.parents:
-            for region in arg.get_ancestral(node, parent=parent):
-                # ensure node is not MRCA
-                for pregion in parent.data["ancestral"]:
-                    if pregion[0] <= region[0] < pregion[1]:
-                        break
-                else:
-                    continue
-                
-                frac = (region[1] - region[0]) / locsize
-                dist = parent.age - node.age
-                t = parent.age
-                while True:
-                    t -= random.expovariate(u * frac)
-                    if t < node.age:
-                        break
-                    pos = random.uniform(region[0], region[1])
-                    mutations.append((node, parent, pos, t))
-
-    return mutations
-'''
-
 
 
 def get_marginal_leaves(arg, node, pos):
@@ -2338,6 +2309,10 @@ def iter_align_splits(aln, warn=False):
 
 
 def write_arg(filename, arg):
+    """
+    Write ARG to file
+    """
+    
     out = util.open_stream(filename, "w")
 
     # write ARG key values
@@ -2382,6 +2357,9 @@ def parse_key_value(field):
 
 
 def read_arg(filename, arg=None):
+    """
+    Read ARG from file
+    """
     infile = util.DelimReader(filename)
 
     if arg is None:
@@ -3177,538 +3155,3 @@ def remove_self_cycles(arg, eps=.5):
 
 '''
 
-
-'''
-
-def iter_marginal_trees2(arg, start=None, end=None, visible=False):
-    """
-    Iterate over the marginal trees of an ARG
-    """
-    
-    for a,b in iter_recomb_blocks(arg, start, end, visible=visible):
-        yield arg.get_marginal_tree((a+b) / 2.0)
-
-
-
-def iter_tree_tracks2(arg, start=None, end=None, visible=False):
-    for a, b in iter_recomb_blocks(arg, start, end, visible=visible):
-        tree = arg.get_marginal_tree((a+b) / 2.0)
-        remove_single_lineages(tree)
-        yield (a, b), tree.get_tree()
-
-
-'''
-
-'''
-
-    def set_ancestral3(self):
-        """
-        Set all ancestral regions for the nodes of the ARG
-
-        NOTE: recombination positions must be set first (set_recomb_pos)
-        """
-
-        # NOTE: block_counts is used to determine when the MRCA of a block
-        # is found.
-        
-        # get all non-recomb blocks (identified by starting pos)
-        nleaves = len(list(self.leaves()))
-        block_counts = [[self.start, self.end, nleaves]]
-
-        
-        
-        for node in self.postorder():
-            print "node", node.age
-
-            if node.is_leaf():
-                # initialize leaves with entire extant sequence
-                node.data["ancestral"] = [(self.start, self.end)]
-
-            elif node.event == "coal":
-                # union of ancestral of children
-                # get all child regions
-                assert len(node.children) == 2, node
-                
-                # walk through regions for both children and determine
-                # whether they coal
-                regions = list(block_counts)
-                regions3 = []
-                if node.children[0] == node.children[1]:
-                    # special case
-                    regions.extend((start, end, "coal") for (start, end) in 
-                                    node.children[0].data["ancestral"])
-                else:
-                    regions.extend(
-                        (start, end, "coal") for (start, end) 
-                        in chain(self.get_ancestral(
-                                node.children[0], parent=node),
-                                 self.get_ancestral(
-                                node.children[1], parent=node)))
-
-                regions.sort()
-
-                print "block_counts", block_counts
-                print "regions", regions
-
-                block_counts = []
-                for start, end, regs in iter_intersections(regions):
-
-                    ncoals = util.ilen(reg for reg in regs
-                                       if reg[2] == "coal")
-                    count = sum(reg[2] for reg in regs if reg[2] != "coal")
-                    
-                    print ncoals, count, regs
-
-                    if ncoals == 2:
-                        # region coal
-                        block_counts.append((start, end, count - 1))
-                        regions3.append((start, end))
-                    
-                    elif ncoals == 1:
-                        # pass single block upwards
-                        block_counts.append((start, end, count))
-                        if count > 1:
-                            regions3.append((start, end))
-
-                    elif ncoals == 0:
-                        block_counts.append((start, end, count))
-
-                    else:
-                        print (self.get_ancestral(
-                                node.children[0], parent=node), 
-                               self.get_ancestral(
-                                node.children[1], parent=node))
-                        print (node.children[0].data["ancestral"],
-                               node.children[1].data["ancestral"])
-
-                        raise Exception("unknown error")
-                        
-                
-                node.data["ancestral"] = regions3
-                if max([0] + util.hist_dict(regions3).values()) > 1:
-                    print regions3
-                    raise Exception("unknown error2")
-
-
-            elif node.event == "recomb":
-                # inherit all ancestral
-                assert len(node.children) == 1, (node, len(node.children))
-                regions3 = []
-                regions = [(start, end, "node") for start, end in 
-                           self.get_ancestral(node.children[0], parent=node)]
-                regions.extend(block_counts)
-                regions.sort()
-
-                for start, end, regs in iter_intersections(regions):
-                    nnodes = util.ilen(reg for reg in regions
-                                       if reg[2] == "node")
-                    count = sum(reg[2] for reg in regions
-                                       if reg[2] != "node")
-                    if nnodes > 0 and count > 1:
-                        regions3.append((start, end))
-                node.data["ancestral"] = regions3
-
-                if max([0] + util.hist_dict(regions3).values()) > 1:
-                    print regions3
-                    raise Exception("unknown error2")
-
-            else:
-                raise Exception("unknown event '%s'" % node.event)
-
-
-        print block_counts
-    
-    def set_ancestral2(self):
-        """
-        Set all ancestral regions for the nodes of the ARG
-
-        NOTE: recombination positions must be set first (set_recomb_pos)
-        """
-
-        # NOTE: block_counts is used to determine when the MRCA of a block
-        # is found.
-        
-        # get all non-recomb blocks (identified by starting pos)
-        nleaves = len(list(self.leaves()))
-        all_blocks = list(iter_recomb_blocks(self))
-        block_counts = dict((block, nleaves) for block in all_blocks)
-        
-        for node in self.postorder():
-            if node.is_leaf():
-                # initialize leaves with entire extant sequence
-                node.data["ancestral"] = list(all_blocks)
-            elif node.event == "coal":
-                # union of ancestral of children
-                # get all child regions
-                assert len(node.children) == 2, node
-                
-                # walk through regions for both children and determine
-                # whether they coal
-                if node.children[0] == node.children[1]:
-                    # special case
-                    regions1 = node.children[0].data["ancestral"]
-                    regions2 = []
-                else:
-                    regions1 = self.get_ancestral(
-                        node.children[0], parent=node)
-                    regions2 = self.get_ancestral(
-                        node.children[1], parent=node)
-                regions3 = []
-
-                i = j = 0
-                while True:
-                    reg1 = regions1[i] if i < len(regions1) else None
-                    reg2 = regions2[j] if j < len(regions2) else None
-                    if reg1 is None and reg2 is None:
-                        # stop when all regions have been considered
-                        break
-
-                    if reg1 == reg2:
-                        # region coal
-                        block_counts[reg1] -= 1
-                        regions3.append(reg1)
-                        i += 1
-                        j += 1
-                    elif reg2 is None or (reg1 and reg1[0] < reg2[0]):
-                        if block_counts[reg1] > 1:
-                            regions3.append(reg1)
-                        i += 1
-                    else:
-                        assert reg2, reg2
-                        if block_counts[reg2] > 1:
-                            regions3.append(reg2)
-                        j += 1
-
-                node.data["ancestral"] = regions3
-
-            elif node.event == "recomb":
-                # inherit all ancestral
-                assert len(node.children) == 1, (node, len(node.children))
-                node.data["ancestral"] = [
-                    reg for reg in self.get_ancestral(
-                    node.children[0], parent=node)
-                    if block_counts[reg] > 1]
-
-            else:
-                raise Exception("unknown event '%s'" % node.event)
-'''
-
-
-'''
-
-    def postorder_marginal_tree2(self, pos, nodes=None):
-        """
-        Iterate postorder over the nodes in the marginal tree at position 'pos'
-
-        If nodes is given, postorder can be determined more quickly
-
-        NOTE: nodes are iterated in order of age
-        """
-        
-        # initialize heap
-        heap = [(node.age, node) for node in self.leaves()]
-        seen = set([None])
-        visited = set([])
-        visit_age = min(x[0] for x in heap) - 1
-
-        def unreachable(node):
-            # returns True if node is unreachable from leaves
-            if node in visited or node.is_leaf():
-                return False
-            if node.age < visit_age:
-                return True
-            for child in self.get_local_children(node, pos):
-                if not unreachable(child):
-                    return False
-            return True
-
-        def ready(node):
-            # returns True if node is ready to yield
-            # node is ready if all unvisited child are unreachable
-            for child in self.get_local_children(node, pos):
-                if child not in visited:
-                    if not unreachable(child):
-                        return False
-            return True
-        
-
-        # add all ancestor of lineages
-        unready = []
-        while len(heap) > 0:
-            # yield next ready node
-            del unready[:]
-            while True:
-                age, node = heapq.heappop(heap)
-                if ready(node):
-                    break
-                unready.append((age, node))
-            for x in unready:
-                heapq.heappush(heap, x)
-            yield node
-            visited.add(node)
-            visit_age = node.age
-            if len(heap) == 0:
-                # MRCA reached
-                return
-            
-            # find correct marginal parent
-            # add parent to lineages if it has not been seen before
-            parent = self.get_local_parent(node, pos)
-            if parent not in seen:
-                heapq.heappush(heap, (parent.age, parent))
-                seen.add(parent)
-'''
-
-
-'''
-
-def iter_arg_sprs2(arg, start=None, end=None, use_leaves=False):
-    """
-    Iterate through the SPR moves of an ARG
-
-    Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
-    """
-
-    def get_local_children(node, local, pos):
-        children = [child for child in node.children
-                    if child in local and
-                    arg.get_local_parent(child, pos) == node]
-        if len(children) == 2 and children[0] == children[1]:
-            children = children[:1]
-        return children
-
-    def get_local_parent(node, pos):
-        if node.event == "recomb":
-            if pos < node.pos:
-                return node.parents[0]
-            else:
-                return node.parents[1]
-        elif node.parents:
-            return node.parents[0]
-        else:
-            return None
-
-
-    if start is None:
-        start = arg.start
-    if end is None:
-        end = arg.end
-
-    # init local nodes
-    nodes = list(arg.postorder_marginal_tree(start))
-    local = set(nodes)
-    local_root = nodes[-1]
-    pos = start
-    
-    while pos < end:
-        print pos
-        
-        # find recombination node
-        recomb_pos = end
-        recomb = None
-        for node in local:
-            if pos < node.pos < recomb_pos:
-                recomb_pos = node.pos
-                recomb = node
-        if recomb is None:
-            break
-        rtime = recomb.age
-
-
-        # find recomb baring branch in local tree
-        mid = (recomb_pos + pos) / 2.0
-        ptr = recomb
-        while True:
-            children = get_local_children(ptr, local, mid)
-            if len(children) == 1:
-                ptr = children[0]
-            else:
-                break
-        rnode = ptr.name
-
-        local2 = set(arg.postorder_marginal_tree(mid))
-        assert local == local2
-        
-        # find recoal node
-        ptr = recomb
-        local_root_path = []
-        local_root2 = local_root
-        coal_path = []
-        while True:
-            ptr = get_local_parent(ptr, recomb_pos)
-            coal_path.append(ptr)
-            if ptr in local:
-                # coal within local tree again
-                break
-            
-            assert ptr
-
-            # check for coal above local root
-            if local_root2:
-                print ">>", (local_root2.name, local_root2.age), \
-                            (ptr.name, ptr.age)
-            while (local_root2 and ptr != local_root2 and
-                   local_root2.age <= ptr.age):
-                print ">", (local_root2.name, local_root2.age), \
-                      (ptr.name, ptr.age)
-                
-                local_root2 = get_local_parent(local_root2, recomb_pos)
-                if not local_root2:
-                    break
-                local_root_path.append(local_root2)
-            # NOTE: searching whole local_root_path is necessary for
-            # discretized node ages
-            if ptr in local_root_path: # local_root2 == ptr:
-                # coal above root
-                local_root2 = ptr
-                i = local_root_path.index(ptr)
-                local_root_path = local_root_path[:i+1]
-                break
-        ctime = ptr.age
-        recoal = ptr
-        print "local_root_path", local_root_path
-        print "local_root2", local_root2
-        
-        # find recoal baring branch in local tree
-        if ptr in local:
-            while True:
-                children = get_local_children(ptr, local, mid)
-                print "coal down", ptr.name, children
-                if len(children) == 1:
-                    ptr = children[0]
-                else:
-                    break
-            cnode = ptr.name
-        else:
-            cnode = local_root.name        
-        
-        # find broken nodes
-        ptr = recomb
-        broken_path = []
-        while True:
-            assert ptr in local, ptr
-            ptr = get_local_parent(ptr, mid)
-            if ptr is None:
-                break
-            children = get_local_children(ptr, local, mid)
-            if len(children) == 2 or ptr in coal_path:
-                print "stop", ptr.name, children
-                break
-            broken_path.append(ptr)
-            print "broken_path1", ptr.name
-        print "local_root", local_root.name
-
-        # find broken root path
-        if ptr == local_root and cnode != local_root.name:
-            broken_path.append(ptr)
-            children = get_local_children(ptr, local, mid)
-            ptr = (children[0]
-                   if children[1] in broken_path[-2:] + [recomb]
-                   else children[1])
-            print "broken_path start", ptr.name, children, broken_path[-2:] + [recomb]
-            while True:
-                children = get_local_children(ptr, local, mid)
-                print "broken_path", ptr.name, children
-                if len(children) != 1 or ptr in coal_path:
-                    print "stop2", ptr.name, children
-                    break
-                broken_path.append(ptr)
-                ptr = children[0]
-            local_root = ptr
-
-
-        tree = arg.get_marginal_tree(recomb_pos-1e-6)
-        treelib.draw_tree_names(tree.get_tree(), minlen=6, maxlen=6)
-
-        r = [(x.pos, x.name) for x in tree if pos < x.pos < end]
-        r.sort()
-
-        tree = arg.get_marginal_tree(recomb_pos+1e-6)
-        treelib.draw_tree_names(tree.get_tree(), minlen=6, maxlen=6)
-
-        print
-        print "next recombs", r[:5]
-        print "recomb", recomb.name, recomb_pos
-        print "recoal", recoal.name
-        print "broken", [x.name for x in broken_path]
-        print "coal", [x.name for x in coal_path]
-        
-        # update local nodes
-        if cnode == local_root.name:
-            # add root path
-            local.update(local_root_path)
-            local_root = local_root2
-        
-        for node in broken_path:
-            local.remove(node)
-        local.update(coal_path)
-
-
-        local2 = set(arg.postorder_marginal_tree(recomb_pos+1e-6))
-        s = local - local2
-        s2 = local2 - local
-        assert len(s) == 0, s
-        assert len(s2) == 0, s2
-        assert local == local2
-        
-        # yield SPR
-        if use_leaves:
-            assert False
-            #rleaves = list(last_tree.leaf_names(last_tree[rnode]))
-            #cleaves = list(tree.leaf_names(last_tree[cnode]))
-            #yield (recomb_pos, (rleaves, rtime), (cleaves, ctime))
-        else:
-            yield (recomb_pos, (rnode, rtime), (cnode, ctime))
-
-        pos = recomb_pos
-
-
-'''
-
-'''
-
-def iter_arg_sprs_simple_old(arg, start=None, end=None, use_leaves=False):
-    """
-    Iterate through the SPR moves of an ARG
-
-    Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
-    """
-
-    trees = iter_tree_tracks(arg, start, end)
-    block, last_tree = trees.next()
-    
-    for block, tree in trees:
-
-        # find recombination node
-        recomb_pos = block[0]
-        node = (x for x in tree if x.pos == recomb_pos).next()
-        rtime = node.age
-        ptr = last_tree[node.name]
-        while len(ptr.children) == 1:
-            ptr = ptr.children[0]
-        rnode = ptr.name
-
-        # find recoal node
-        ptr = node
-
-        # BUG: only works for non-bubbles
-        while len(ptr.children) != 2:
-            ptr = ptr.parents[0]
-        ctime = ptr.age
-        if ptr.name in last_tree:
-            ptr = last_tree[ptr.name]
-            while len(ptr.children) == 1:
-                ptr = ptr.children[0]
-            cnode = ptr.name
-        else:
-            cnode = last_tree.root.name
-
-        # yield SPR
-        if use_leaves:
-            rleaves = list(last_tree.leaf_names(last_tree[rnode]))
-            cleaves = list(tree.leaf_names(last_tree[cnode]))
-            yield (recomb_pos, (rleaves, rtime), (cleaves, ctime))
-        else:
-            yield (recomb_pos, (rnode, rtime), (cnode, ctime))
-        last_tree = tree
-'''

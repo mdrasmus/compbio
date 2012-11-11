@@ -56,6 +56,25 @@ class Arg (unittest.TestCase):
         stream.seek(0)
         arg2 = arglib.read_arg(stream)
 
+
+    def test_local_trees(self):
+
+        rho = 1.5e-8   # recomb/site/gen
+        l = 10000      # length of locus
+        k = 10         # number of lineages
+        n = 2*1e4      # effective popsize
+
+        arg = arglib.sample_arg(k, n, rho, 0, l)
+
+        print arglib.get_recomb_pos(arg)
+        blocks1 = cget(arglib.iter_local_trees(arg, 200, 1200), 0)
+        blocks2 = list(arglib.iter_recomb_blocks(arg, 200, 1200))
+
+        print blocks1
+        print blocks2
+        assert blocks1 == blocks2
+
+
     def test_marginal_leaves(self):
 
         rho = 1.5e-8   # recomb/site/gen
@@ -66,7 +85,7 @@ class Arg (unittest.TestCase):
 
         arg = arglib.sample_arg(k, n, rho, 0, l)
         
-        for (start, end), tree in arglib.iter_tree_tracks(arg):
+        for (start, end), tree in arglib.iter_local_trees(arg):
             arglib.remove_single_lineages(tree)
             mid = (start + end) / 2.0
             for node in tree:

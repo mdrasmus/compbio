@@ -995,8 +995,9 @@ def parse_newick(infile, read_data=None, tree=None):
         read_data = tree.read_data
 
     # create root
-    node = tree.new_node()
+    node = TreeNode("")
     tree.root = node
+    nodes = [node]
 
     # process token stream
     tokens = tokenize_newick(infile)
@@ -1013,7 +1014,9 @@ def parse_newick(infile, read_data=None, tree=None):
                 if data:
                     read_data(node, "".join(data))
                     data = []
-                child = tree.new_node()
+                #child = tree.new_node()
+                child = TreeNode("")
+                nodes.append(child)
                 child.parent = node
                 node.children.append(child)
                 ancestors.append(node)
@@ -1024,7 +1027,9 @@ def parse_newick(infile, read_data=None, tree=None):
                     read_data(node, "".join(data))
                     data = []
                 parent = ancestors[-1]
-                child = tree.new_node()
+                #child = tree.new_node()
+                child = TreeNode("")
+                nodes.append(child)
 
                 child.parent = parent
                 parent.children.append(child)
@@ -1047,8 +1052,8 @@ def parse_newick(infile, read_data=None, tree=None):
 
             else:
                 if prev_token in '(,':
-                    tree.nextname -= 1
-                    del tree.nodes[node.name]
+                    #tree.nextname -= 1
+                    #del tree.nodes[node.name]
                     node.name = token
                     tree.nodes[node.name] = node
                     
@@ -1063,10 +1068,18 @@ def parse_newick(infile, read_data=None, tree=None):
             raise Exception("Empty tree")
 
     except Exception, e:
-        raise Exception("Malformed newick: " + str(e))
+        raise #Exception("Malformed newick: " + repr(e))
+
+    # setup node names
+    names = set()
+    for node in nodes:
+        if node.name == "":
+            node.name = tree.new_name()
+        node.name = tree.unique_name(node.name, names)
+        tree.nodes[node.name] = node
 
     # test for bootstrap presence
-    for node in tree.nodes.itervalues():
+    for node in nodes:
         if "boot" in node.data:
             tree.default_data["boot"] = 0
             break
@@ -2417,9 +2430,11 @@ if __name__ == "__main__":
     infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
     tree = read_tree(infile)
     print tree.nodes['b'].parent.data
+    print tree.nodes
+    print tree.root
 
     infile = StringIO("(a:0.5,(b:2,(d:5,c:4)y:9)x:0.5);")
-    tree2 = read_tree(infile)
+    tree2 = read_tree(infile)    
 
     draw_tree_names(tree, maxlen=5)
     reorder_tree(tree, tree2)

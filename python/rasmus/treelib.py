@@ -48,19 +48,26 @@ sys.setrecursionlimit(4000)
 #
 
 
-class TreeNode:
+class TreeNode (object):
     """A class for nodes in a rooted Tree
     
     Contains fields for branch length 'dist' and custom data 'data'
     """
 
-    def __init__(self, name):
+    def __init__(self, name, parent=None, children=None, dist=0, data=None):
         self.name = name
-        self.children = []
-        self.parent = None
-        self.dist = 0
-        self.data = {}
-    
+        self.children = children if children is not None else []
+        self.parent = parent
+        self.dist = dist
+        self.data = data if data is not None else {}
+
+    #def __init__(self, name):
+    #    self.name = name
+    #    self.children = []
+    #    self.parent = None
+    #    self.dist = 0
+    #    self.data = {}
+
     
     def __iter__(self):
         """Iterate through child nodes"""
@@ -163,14 +170,14 @@ class BranchData (object):
     
     
 
-class Tree:
+class Tree (object):
     """
     Basic rooted tree
     
     Well suited for phylogenetic trees
     """
 
-    def __init__(self, nextname = 1, branch_data=BranchData()):
+    def __init__(self, nextname=1, branch_data=BranchData()):
         self.nodes = {}
         self.root = None
         self.nextname = nextname
@@ -630,9 +637,11 @@ class Tree:
         
         You can specify a specialized node data reader with 'readData'
         """
-    
-        # use simple parsing if PLY is not available
 
+        return read_tree(filename, read_data=readData, tree=self)
+
+        '''
+        # use simple parsing if PLY is not available
         try:
             if treelib_parser is not None:
                 return self._read_newick(filename, readData)
@@ -641,6 +650,7 @@ class Tree:
 
         # try simpler parser
         return self.read_big_newick(filename)
+        '''
 
 
     def _read_newick(self, filename, readData=None):
@@ -889,6 +899,7 @@ class Tree:
 # Convenient Input/Output functions
 #
 
+'''
 def read_tree(filename):
     """Read a tree from a newick file"""
     tree = Tree()
@@ -902,23 +913,173 @@ def parse_newick(newick):
     stream = StringIO.StringIO(newick)
     tree.read_newick(stream)
     return tree
-
+'''
 
 def iter_trees(treefile):
     """read multiple trees from a tree file"""
     
-    ntrees = 0
     infile = util.open_stream(treefile)
-    
-    while True:
-        try:
-            tree = read_tree(infile)
-            ntrees += 1
-            yield tree
-        except Exception, e:
-            if ntrees < 1:
-                raise
+
+    yield read_tree(infile)
+    try:
+        while True:
+            yield read_tree(infile)
+    except Exception, e:
+        pass
+
+
+def tokenize_newick(infile):
+    """Iterates through the tokens in a stream in newick format"""
+
+    def iter_stream(infile):
+        while True:
+            yield infile.read(1)
+
+    if not isinstance(infile, basestring):
+        infile = iter_stream(infile)
+    else:
+        c = iter(infile)
+
+    running = True
+    word = []
+    for c in infile:
+        if c == "":
+            # EOF encountered
             break
+
+        elif c in " \t\n":
+            # skip white space
+            if word:
+                yield "".join(word)
+                word[:] = []
+        
+        elif c in ";(),:[]":
+            # special tokens
+            if word:
+                yield "".join(word)
+                word[:] = []
+
+            if c == "[":
+                # parse comment
+                word.append(c)
+                for c in infile:
+                    word.append(c)
+                    if c == "]":
+                        break
+                yield "".join(word)
+                word[:] = []
+            else:
+                yield c
+        else:
+            # word token
+            word.append(c)
+            
+    if word:
+        yield "".join(word)
+        word[:] = []
+
+
+def parse_newick(infile, read_data=None, tree=None):
+    """
+    Parse a newick string or stream
+    """
+    
+    # node stack
+    ancestors = []
+
+    # create tree
+    if tree is None:
+        tree = Tree()
+    if read_data is None:
+        read_data = tree.read_data
+
+    # create root
+    node = tree.new_node()
+    tree.root = node
+
+    # process token stream
+    tokens = tokenize_newick(infile)
+    token = None
+    data = []
+    empty = True
+    try:
+        while True:
+            prev_token = token
+            token = tokens.next()
+            empty = False
+
+            if token == '(': # new branchset
+                if data:
+                    read_data(node, "".join(data))
+                    data = []
+                child = tree.new_node()
+                child.parent = node
+                node.children.append(child)
+                ancestors.append(node)
+                node = child
+
+            elif token == ',': # another branch
+                if data:
+                    read_data(node, "".join(data))
+                    data = []
+                parent = ancestors[-1]
+                child = tree.new_node()
+
+                child.parent = parent
+                parent.children.append(child)
+                node = child
+
+            elif token == ')': # optional name next
+                if data:
+                    read_data(node, "".join(data))
+                    data = []
+                node = ancestors.pop()
+
+            elif token == ':': # optional length next
+                data.append(token)
+
+            elif token == ';': # end of tree
+                if data:
+                    read_data(node, "".join(data))
+                    data = []
+                break
+
+            else:
+                if prev_token in '(,':
+                    tree.nextname -= 1
+                    del tree.nodes[node.name]
+                    node.name = token
+                    tree.nodes[node.name] = node
+                    
+                elif prev_token in '):':
+                    data.append(token)
+
+                else:
+                    data.append(token)
+                    
+    except StopIteration:
+        if empty:
+            raise Exception("Empty tree")
+
+    except Exception, e:
+        raise Exception("Malformed newick: " + str(e))
+
+    # test for bootstrap presence
+    for node in tree.nodes.itervalues():
+        if "boot" in node.data:
+            tree.default_data["boot"] = 0
+            break
+    tree.set_default_data()
+
+    
+    return tree
+
+
+def read_tree(infile, read_data=None, tree=None):
+    """Read a tree from a file stream"""
+    infile = util.open_stream(infile)
+    return parse_newick(infile, read_data=read_data, tree=None)
+
 
 
 #=============================================================================

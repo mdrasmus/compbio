@@ -1014,7 +1014,6 @@ def parse_newick(infile, read_data=None, tree=None):
                 if data:
                     read_data(node, "".join(data))
                     data = []
-                #child = tree.new_node()
                 child = TreeNode("")
                 nodes.append(child)
                 child.parent = node
@@ -1027,7 +1026,6 @@ def parse_newick(infile, read_data=None, tree=None):
                     read_data(node, "".join(data))
                     data = []
                 parent = ancestors[-1]
-                #child = tree.new_node()
                 child = TreeNode("")
                 nodes.append(child)
 
@@ -1052,8 +1050,6 @@ def parse_newick(infile, read_data=None, tree=None):
 
             else:
                 if prev_token in '(,':
-                    #tree.nextname -= 1
-                    #del tree.nodes[node.name]
                     node.name = token
                     tree.nodes[node.name] = node
                     
@@ -1068,7 +1064,7 @@ def parse_newick(infile, read_data=None, tree=None):
             raise Exception("Empty tree")
 
     except Exception, e:
-        raise #Exception("Malformed newick: " + repr(e))
+        raise Exception("Malformed newick: " + repr(e))
 
     # setup node names
     names = set()

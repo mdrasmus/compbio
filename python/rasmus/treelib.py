@@ -887,10 +887,11 @@ class Tree (object):
         util.write_list(treeFile, ptree)
     
     
-    def get_one_line_newick(self, root_data=False):
+    def get_one_line_newick(self, root_data=False, writeData=None):
         """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
-        self.write(stream, oneline=True, rootData=root_data)
+        self.write(stream, oneline=True,
+                   writeData=writeData, rootData=root_data)
         return stream.getvalue()
     
 

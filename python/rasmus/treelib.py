@@ -36,13 +36,6 @@ except ImportError:
         treelib_parser = None
 
 
-
-# TODO: I should generalize this
-# allow tree reading extra recursion levels
-sys.setrecursionlimit(4000)
-
-
-
 #============================================================================
 # Tree data structures
 #
@@ -54,19 +47,12 @@ class TreeNode (object):
     Contains fields for branch length 'dist' and custom data 'data'
     """
 
-    def __init__(self, name, parent=None, children=None, dist=0, data=None):
+    def __init__(self, name=None):
         self.name = name
-        self.children = children if children is not None else []
-        self.parent = parent
-        self.dist = dist
-        self.data = data if data is not None else {}
-
-    #def __init__(self, name):
-    #    self.name = name
-    #    self.children = []
-    #    self.parent = None
-    #    self.dist = 0
-    #    self.data = {}
+        self.children = []
+        self.parent = None
+        self.dist = 0
+        self.data = {}
 
     
     def __iter__(self):
@@ -184,6 +170,30 @@ class Tree (object):
         self.default_data = {}
         self.data = {}
         self.branch_data = branch_data
+
+
+    def copy(self):
+        """Returns a copy of the tree"""
+        tree = Tree(nextname = self.nextname)
+        
+        # copy structure
+        if self.root != None:
+            # copy all nodes
+            tree.root = self.root.copy()
+            
+            # set all names
+            def walk(node):
+                tree.nodes[node.name] = node
+                for child in node.children:
+                    walk(child)
+            walk(tree.root)
+        
+        # copy extra data
+        tree.copy_data(self)
+        tree.copy_node_data(self)
+        
+        return tree
+
 
     #=========================================
     # iterators
@@ -436,29 +446,6 @@ class Tree (object):
     def has_data(self, dataname):
         """Does the tree contain 'dataname' in its extra data"""
         return dataname in self.default_data
-
-    
-    def copy(self):
-        """Returns a copy of the tree"""
-        tree = Tree(nextname = self.nextname)
-        
-        # copy structure
-        if self.root != None:
-            # copy all nodes
-            tree.root = self.root.copy()
-            
-            # set all names
-            def walk(node):
-                tree.nodes[node.name] = node
-                for child in node.children:
-                    walk(child)
-            walk(tree.root)
-        
-        # copy extra data
-        tree.copy_data(self)
-        tree.copy_node_data(self)
-        
-        return tree
     
     
     def copy_data(self, tree):
@@ -492,8 +479,6 @@ class Tree (object):
                 for key in keys:
                     if key in node.data:
                         del node.data[key]
-
-
     
     
     #======================================================================
@@ -521,10 +506,10 @@ class Tree (object):
     # input and output
     #
     
-    def write(self, out = sys.stdout, writeData=None, oneline=False,
+    def write(self, out=sys.stdout, writeData=None, oneline=False,
               rootData=False):
         """Write the tree in newick notation"""
-        self.write_newick(util.open_stream(out, "w"), writeData=writeData, 
+        self.write_newick(out, writeData=writeData, 
                           oneline=oneline, rootData=rootData)
     
     def read_data(self, node, data):
@@ -546,7 +531,7 @@ class Tree (object):
                     except ValueError:
                         # treat as node name
                         name = boot.strip()
-                        if name and isinstance(node.name, int): #not node.is_leaf():
+                        if name and node.name is None:
                             node.name = name
         else:
             data = data.strip()
@@ -576,7 +561,7 @@ class Tree (object):
         return string
     
     
-    def write_newick(self, out = sys.stdout, writeData=None, oneline=False,
+    def write_newick(self, out=sys.stdout, writeData=None, oneline=False,
                     rootData=False):
         """Write the tree in newick notation"""
         self.write_newick_node(self.root, util.open_stream(out, "w"), 
@@ -651,241 +636,7 @@ class Tree (object):
         # try simpler parser
         return self.read_big_newick(filename)
         '''
-
-
-    def _read_newick(self, filename, readData=None):
-        """read with PLY"""
         
-        # default data reader
-        if readData is None:
-            readData = self.read_data
-
-        # get parse tree
-        text = util.read_until(util.open_stream(filename), ";")[0] + ";"
-        expr = treelib_parser.yacc.parse(text)
-
-
-        # walk the parse tree and build the tree
-        self.clear()
-
-        names = set()
-
-        def walk(expr):
-            children, name, data = expr
-            assert ":" not in name, "bad name '%s'" % name
-            
-            # parse name
-            if name == "":
-                node = TreeNode(self.new_name())
-            else:
-                node = TreeNode(name)
-
-            # parse data
-            readData(node, data)
-
-            # ensure unique name
-            node.name = self.unique_name(node.name, names)
-
-            # recurse
-            for child in children:
-                ret = walk(child)
-                if ret:
-                    self.add_child(node, ret)
-            return node
-
-        self.root = walk(expr)
-        self.nodes[self.root.name] = self.root
-
-        # test for bootstrap presence
-        for node in self.nodes.itervalues():
-            if "boot" in node.data:
-                self.default_data["boot"] = 0
-                break
-        self.set_default_data()
-
-    
-    
-    def read_big_newick(self, filename):
-        """Reads a big newick file with a custom parser"""
-    
-        infile = util.open_stream(filename) #file(filename)    
-        opens = [0]
-        names = set()
-
-        def readchar():
-            while True:
-                char = infile.read(1)
-                if not char or char not in " \t\n": break
-            if char == "(": opens[0] += 1
-            if char == ")": opens[0] -= 1
-            return char
-        
-        def read_until(chars):
-            token = ""
-            while True:
-                #char = readchar()
-                while True:
-                    char = infile.read(1)
-                    if not char or char not in " \t\n": break
-                if char == "(": opens[0] += 1
-                if char == ")": opens[0] -= 1
-
-                if char in chars or char == "":
-                    return token, char
-                token += char
-        
-        def read_dist():
-            word = ""
-            while True:
-                #char = readchar()
-                while True:
-                    char = infile.read(1)
-                    if not char or char not in " \t\n": break
-                if char == "(": opens[0] += 1
-                if char == ")": opens[0] -= 1
-                
-                if not char in "-0123456789.e":
-                    return float(word)
-                else:
-                    word += char
-
-        def read_name():
-            token = ""
-            while True:
-                #char = readchar()
-                while True:
-                    char = infile.read(1)
-                    if not char or char not in " \t\n": break
-                if char == "(": opens[0] += 1
-                if char == ")": opens[0] -= 1
-                
-                if char in ":)," or char == "":
-                    return token, char
-                token += char
-
-        def read_item():
-            char1 = readchar()
-
-            if char1 == "(":
-                node = TreeNode(self.new_name())
-                depth = opens[0]
-                while opens[0] == depth:
-                    self.add_child(node, read_item())
-
-                token, char = read_until("):,")
-                if char == ":":
-                    node.dist = read_dist()
-                return node
-            else:                   
-                #word, char = read_until(":),")
-                word, char = read_name()
-                word = char1 + word.rstrip()
-
-                name = self.unique_name(word, names)
-
-                node = TreeNode(name)
-                if char == ":":
-                    node.dist = read_dist()
-                return node
-        
-
-        def read_root():
-            word, char = read_until("(")
-            
-            assert char == "("
-            
-            node = TreeNode(self.new_name())
-            depth = opens[0]
-            while opens[0] == depth:
-                self.add_child(node, read_item())
-            return node
-
-        self.root = read_root()
-        self.add(self.root)
-    
-
-    def read_parent_tree(self, treeFile, labelFile=None, labels=None):
-        """Reads a parent array from a file"""
-
-        lines = util.open_stream(treeFile).readlines()
-    
-        if labelFile:
-            labels = util.read_strings(labelFile)
-            
-        elif labels is None:
-            nitems = (len(lines) + 1)/ 2
-            labels = map(str, range(nitems))
-        
-        self.make_root()
-
-        for i, line in enumerate(lines):
-            parentid = int(line.split(" ")[0])
-            
-            # determine current child
-            if i < len(labels):
-                child = TreeNode(labels[i])
-            else:
-                if i in self.nodes:
-                    child = self.nodes[i]
-                else:
-                    child = TreeNode(i)
-            
-            if parentid == -1:
-                # keep track of all roots
-                self.add_child(self.root, child)
-            else:                
-                if not parentid in self.nodes:
-                    parent = TreeNode(parentid)
-                    self.add(parent)
-                else:
-                    parent = self.nodes[parentid]
-
-                try:
-                    self.add_child(parent, child)
-                except:
-                    print i, parentid
-
-        # remove unused internal nodes
-        labelset = set(labels)
-        for child in list(self.root.children):
-            if child.is_leaf() and child.name not in labelset:
-                self.remove(child)
-        
-        # remove redunant root
-        if len(self.root.children) == 1:
-            self.root = self.root.children[0]
-            self.remove(self.root.parent)
-            self.root.parent = None
-    
-    
-    def write_parent_tree(self, treeFile, labels=None):
-        """Writes tree to the parent array format"""
-        ids = {}
-
-        if labels is None:
-            labels = self.leaf_names()
-        
-        # assign ids to leaves
-        for leafname in labels:
-            ids[self.nodes[leafname]] = len(ids)
-        
-        # assign ids to internal nodes
-        def walk(node):
-            node.recurse(walk)
-            if not node.is_leaf():
-                ids[node] = len(ids)
-        walk(self.root)
-        
-        # build ptree array
-        ptree = [0] * len(ids)
-        for node, idname in ids.iteritems():
-            if node.parent != None:
-                ptree[idname] = ids[node.parent]
-            else:
-                ptree[idname] = -1
-        
-        util.write_list(treeFile, ptree)
-    
     
     def get_one_line_newick(self, root_data=False, writeData=None):
         """Get a presentation of the tree in a oneline string newick format"""
@@ -893,28 +644,23 @@ class Tree (object):
         self.write(stream, oneline=True,
                    writeData=writeData, rootData=root_data)
         return stream.getvalue()
-    
+
 
 
 #============================================================================
-# Convenient Input/Output functions
-#
+# Input/Output functions
 
-'''
-def read_tree(filename):
-    """Read a tree from a newick file"""
-    tree = Tree()
-    tree.read_newick(filename)
-    return tree
+def read_tree(infile, read_data=None, tree=None):
+    """Read a tree from a file stream"""
+    infile = util.open_stream(infile)
+    return parse_newick(infile, read_data=read_data, tree=None)
 
 
-def parse_newick(newick):
-    """Read a tree from newick notation stored in a string"""
-    tree = Tree()
-    stream = StringIO.StringIO(newick)
-    tree.read_newick(stream)
-    return tree
-'''
+def read_newick(infile, read_data=None, tree=None):
+    """Read a tree from a file stream"""
+    infile = util.open_stream(infile)
+    return parse_newick(infile, read_data=read_data, tree=None)
+
 
 def iter_trees(treefile):
     """read multiple trees from a tree file"""
@@ -939,8 +685,8 @@ def tokenize_newick(infile):
     if not isinstance(infile, basestring):
         infile = iter_stream(infile)
     else:
-        c = iter(infile)
-
+        infile = iter(infile)
+    
     running = True
     word = []
     for c in infile:
@@ -995,7 +741,7 @@ def parse_newick(infile, read_data=None, tree=None):
         read_data = tree.read_data
 
     # create root
-    node = TreeNode("")
+    node = TreeNode()
     tree.root = node
     nodes = [node]
 
@@ -1014,7 +760,7 @@ def parse_newick(infile, read_data=None, tree=None):
                 if data:
                     read_data(node, "".join(data))
                     data = []
-                child = TreeNode("")
+                child = TreeNode()
                 nodes.append(child)
                 child.parent = node
                 node.children.append(child)
@@ -1026,7 +772,7 @@ def parse_newick(infile, read_data=None, tree=None):
                     read_data(node, "".join(data))
                     data = []
                 parent = ancestors[-1]
-                child = TreeNode("")
+                child = TreeNode()
                 nodes.append(child)
 
                 child.parent = parent
@@ -1051,7 +797,6 @@ def parse_newick(infile, read_data=None, tree=None):
             else:
                 if prev_token in '(,':
                     node.name = token
-                    tree.nodes[node.name] = node
                     
                 elif prev_token in '):':
                     data.append(token)
@@ -1064,12 +809,12 @@ def parse_newick(infile, read_data=None, tree=None):
             raise Exception("Empty tree")
 
     except Exception, e:
-        raise Exception("Malformed newick: " + repr(e))
+        raise # Exception("Malformed newick: " + repr(e))
 
     # setup node names
     names = set()
     for node in nodes:
-        if node.name == "":
+        if node.name is None:
             node.name = tree.new_name()
         node.name = tree.unique_name(node.name, names)
         tree.nodes[node.name] = node
@@ -1085,11 +830,277 @@ def parse_newick(infile, read_data=None, tree=None):
     return tree
 
 
-def read_tree(infile, read_data=None, tree=None):
-    """Read a tree from a file stream"""
-    infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=None)
+'''
+def read_tree(filename):
+    """Read a tree from a newick file"""
+    tree = Tree()
+    tree.read_newick(filename)
+    return tree
 
+
+def parse_newick(newick):
+    """Read a tree from newick notation stored in a string"""
+    tree = Tree()
+    stream = StringIO.StringIO(newick)
+    tree.read_newick(stream)
+    return tree
+'''
+
+
+#=============================================================================
+# alternate reading functions
+
+def read_newick_ply(filename, readData=None, tree=None):
+    """read with PLY"""
+
+    if tree is None:
+        tree = Tree()
+    else:
+        tree.clear()
+
+    # default data reader
+    if readData is None:
+        readData = tree.read_data
+
+    # get parse tree
+    text = util.read_until(util.open_stream(filename), ";")[0] + ";"
+    expr = treelib_parser.yacc.parse(text)
+    
+    # walk the parse tree and build the tree
+    names = set()
+
+    def walk(expr):
+        children, name, data = expr
+        assert ":" not in name, "bad name '%s'" % name
+
+        # parse name
+        if name == "":
+            name = None
+        node = TreeNode(name)
+
+        # parse data
+        readData(node, data)
+
+        if node.name is None:
+            node.name = tree.new_name()
+            
+        # ensure unique name
+        node.name = tree.unique_name(node.name, names)
+
+        # recurse
+        for child in children:
+            ret = walk(child)
+            if ret:
+                tree.add_child(node, ret)
+        return node
+    tree.root = walk(expr)
+    tree.nodes[tree.root.name] = tree.root
+
+    # test for bootstrap presence
+    for node in tree.nodes.itervalues():
+        if "boot" in node.data:
+            tree.default_data["boot"] = 0
+            break
+    tree.set_default_data()
+
+    return tree
+
+    
+def read_newick_recursive(filename, tree=None):
+    """
+    Reads a big newick file with a custom parser
+
+    DEPRECATED
+    """
+    
+    infile = util.open_stream(filename) #file(filename)    
+    opens = [0]
+    names = set()
+
+    if tree is None:
+        tree = Tree()
+
+    def readchar():
+        while True:
+            char = infile.read(1)
+            if not char or char not in " \t\n": break
+        if char == "(": opens[0] += 1
+        if char == ")": opens[0] -= 1
+        return char
+
+    def read_until(chars):
+        token = ""
+        while True:
+            #char = readchar()
+            while True:
+                char = infile.read(1)
+                if not char or char not in " \t\n": break
+            if char == "(": opens[0] += 1
+            if char == ")": opens[0] -= 1
+
+            if char in chars or char == "":
+                return token, char
+            token += char
+
+    def read_dist():
+        word = ""
+        while True:
+            #char = readchar()
+            while True:
+                char = infile.read(1)
+                if not char or char not in " \t\n": break
+            if char == "(": opens[0] += 1
+            if char == ")": opens[0] -= 1
+
+            if not char in "-0123456789.e":
+                return float(word)
+            else:
+                word += char
+
+    def read_name():
+        token = ""
+        while True:
+            #char = readchar()
+            while True:
+                char = infile.read(1)
+                if not char or char not in " \t\n": break
+            if char == "(": opens[0] += 1
+            if char == ")": opens[0] -= 1
+
+            if char in ":)," or char == "":
+                return token, char
+            token += char
+
+    def read_item():
+        char1 = readchar()
+
+        if char1 == "(":
+            node = TreeNode(tree.new_name())
+            depth = opens[0]
+            while opens[0] == depth:
+                tree.add_child(node, read_item())
+
+            token, char = read_until("):,")
+            if char == ":":
+                node.dist = read_dist()
+            return node
+        else:                   
+            #word, char = read_until(":),")
+            word, char = read_name()
+            word = char1 + word.rstrip()
+
+            name = tree.unique_name(word, names)
+
+            node = TreeNode(name)
+            if char == ":":
+                node.dist = read_dist()
+            return node
+
+
+    def read_root():
+        word, char = read_until("(")
+
+        assert char == "("
+
+        node = TreeNode(tree.new_name())
+        depth = opens[0]
+        while opens[0] == depth:
+            tree.add_child(node, read_item())
+        return node
+
+    tree.root = read_root()
+    tree.add(tree.root)
+
+    return tree
+
+
+def read_parent_tree(treefile, labelfile=None, labels=None, tree=None):
+    """Reads a parent array from a file"""
+
+    if tree is None:
+        tree = Tree()
+
+    lines = util.open_stream(treefile).readlines()
+
+    if labelfile:
+        labels = util.read_strings(labelfile)
+
+    elif labels is None:
+        nitems = (len(lines) + 1)/ 2
+        labels = map(str, range(nitems))
+
+    tree.make_root()
+
+    for i, line in enumerate(lines):
+        parentid = int(line.split(" ")[0])
+
+        # determine current child
+        if i < len(labels):
+            child = TreeNode(labels[i])
+        else:
+            if i in tree.nodes:
+                child = tree.nodes[i]
+            else:
+                child = TreeNode(i)
+
+        if parentid == -1:
+            # keep track of all roots
+            tree.add_child(tree.root, child)
+        else:                
+            if not parentid in tree.nodes:
+                parent = TreeNode(parentid)
+                tree.add(parent)
+            else:
+                parent = tree.nodes[parentid]
+
+            try:
+                tree.add_child(parent, child)
+            except:
+                print i, parentid
+
+    # remove unused internal nodes
+    labelset = set(labels)
+    for child in list(tree.root.children):
+        if child.is_leaf() and child.name not in labelset:
+            tree.remove(child)
+
+    # remove redunant root
+    if len(tree.root.children) == 1:
+        tree.root = tree.root.children[0]
+        tree.remove(tree.root.parent)
+        tree.root.parent = None
+
+    return tree
+
+
+def write_parent_tree(treefile, tree, labels=None):
+    """Writes tree to the parent array format"""
+    
+    ids = {}
+
+    if labels is None:
+        labels = tree.leaf_names()
+
+    # assign ids to leaves
+    for leafname in labels:
+        ids[tree.nodes[leafname]] = len(ids)
+
+    # assign ids to internal nodes
+    def walk(node):
+        node.recurse(walk)
+        if not node.is_leaf():
+            ids[node] = len(ids)
+    walk(tree.root)
+
+    # build ptree array
+    ptree = [0] * len(ids)
+    for node, idname in ids.iteritems():
+        if node.parent != None:
+            ptree[idname] = ids[node.parent]
+        else:
+            ptree[idname] = -1
+
+    util.write_list(treefile, ptree)
 
 
 #=============================================================================
@@ -1109,9 +1120,10 @@ def format_nhx_comment(data):
 
 def parse_nhx_data(text):
     """Parse the data field of an NHX file"""
-    data = {}
+    data = None
     
     if "[" in text:
+        data = {}
         i = text.find("[")
         j = text.find("]")
         comment = text[i+1:j]
@@ -1128,7 +1140,8 @@ def read_nhx_data(node, text):
     """Read data function for parsing the data field of an NHX file"""
 
     text, data = parse_nhx_data(text)
-    node.data.update(data)
+    if data:
+        node.data.update(data)
     return text
 
 
@@ -1143,7 +1156,6 @@ def write_nhx_data(node):
 
 #============================================================================
 # Misc. functions for manipulating trees
-#
 
 def assert_tree(tree):
     """Assert that the tree data structure is internally consistent"""
@@ -2268,10 +2280,9 @@ def read_tree_color_map(filename):
 
     return tree_color_map(leafmap)
 
+
 #=========================================================================
 # Draw Tree ASCII art 
-#
-
 
 def draw_tree(tree, labels={}, scale=40, spacing=2, out=sys.stdout,
              canvas=None, x=0, y=0, display=True, labelOffset=-1,
@@ -2397,70 +2408,3 @@ def draw_tree_name_lens(tree, *args, **kargs):
 
 
 
-
-#=============================================================================
-# testing
-
-if __name__ == "__main__":
-    from StringIO import StringIO
-    
-    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
-    tree = read_tree(infile)
-    tree.write(rootData=True)
-
-
-    # reorder test1
-    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
-    tree = read_tree(infile)
-    print tree.nodes['b'].parent.data
-
-    infile = StringIO("((d:1,c:2)x:3,(b:4,a:5)y:6)r;")
-    tree2 = read_tree(infile)
-
-    draw_tree_names(tree, maxlen=5)
-    reorder_tree(tree, tree2)
-    draw_tree_names(tree, maxlen=5)
-
-
-    # reorder test2
-    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
-    tree = read_tree(infile)
-    print tree.nodes['b'].parent.data
-    print tree.nodes
-    print tree.root
-
-    infile = StringIO("(a:0.5,(b:2,(d:5,c:4)y:9)x:0.5);")
-    tree2 = read_tree(infile)    
-
-    draw_tree_names(tree, maxlen=5)
-    reorder_tree(tree, tree2)
-    draw_tree_names(tree, maxlen=5)
-
-    infile = StringIO("((a:1,b:2)x:3,(c:4,d:5)y:6)rra;")
-    tree = read_tree(infile)
-    for node in tree.inorder():
-        print node.name
-
-
-    #========================================
-    # nhx testing
-
-    tree = read_tree(StringIO("""((A:1,B:2)X:3,D:4);"""))
-    tree.write()
-    for node in tree:
-        print "\t".join(map(str, [node.name, node.data]))
-
- 
-    tree = read_tree(StringIO("""(((ADH2:0.1[&&NHX:S=human:E=1.1.1.1], ADH1:0.11[&&NHX:S=human:E=1.1.1.1]):0.05[&&NHX:S=Primates:E=1.1.1.1:D=Y:B=100], ADHY:0.1[&&NHX:S=nematode:E=1.1.1.1],ADHX:0.12[&&NHX:S=insect:E=1.1.1.1]):0.1[&&NHX:S=Metazoa:E=1.1.1.1:D=N], (ADH4:0.09[&&NHX:S=yeast:E=1.1.1.1],ADH3:0.13[&&NHX:S=yeast:E=1.1.1.1], ADH2:0.12[&&NHX:S=yeast:E=1.1.1.1],ADH1:0.11[&&NHX:S=yeast:E=1.1.1.1]):0.1 [&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N];"""))
-    tree.write()
-    for node in tree:
-        print "\t".join(map(str, [node.name, node.data]))
-
-
-    tree = read_tree(StringIO("""(CFTR_GASAC:0.028272[&&NHX:S=GASAC:O=ENSGACT00000011967.1:T=69293:G=ENSGACG00000009039],((((((((((((((((((CFTR_HUMAN:0.002013[&&NHX:S=HUMAN:O=ENST00000003084.5:T=9606:G=ENSG00000001626],CFTR_PANTR:0.001342[&&NHX:S=PANTR:O=ENSPTRT00000036339.2:T=9598:G=ENSPTRG00000019619]):0.001545,CFTR_PONPY:0.006514[&&NHX:S=PONPY:O=ENSPPYT00000020909.1:T=9600:G=ENSPPYG00000017940]):0.003539,CFTR_MACMU:0.008416[&&NHX:S=MACMU:O=ENSMMUT00000015762.2:T=9544:G=ENSMMUG00000011269]):0.022751,CFTR_TUPGB:0.110613[&&NHX:S=TUPGB:O=ENSTBET00000011046.1:T=37347:G=ENSTBEG00000010974]):0.006474,((CFTR_OTOGA:0.035577[&&NHX:S=OTOGA:O=ENSOGAT00000001759.1:T=30611:G=ENSOGAG00000001756],CFTR_MICMU:0.026588[&&NHX:S=MICMU:O=ENSMICT00000005779.1:T=30608:G=ENSMICG00000005761]):0.010514,CFTR_MYOLU:0.06919[&&NHX:S=MYOLU:O=ENSMLUT00000012267.1:T=59463:G=ENSMLUG00000012244]):0.00395):0.001879,(CFTR_ECHTE:0.065629[&&NHX:S=ECHTE:O=ENSETET00000000538.1:T=9371:G=ENSETEG00000000537],CFTR_LOXAF:0.050347[&&NHX:S=LOXAF:O=ENSLAFT00000005758.1:T=9785:G=ENSLAFG00000005753]):0.016592):0.002471,((CFTR_SORAR:0.056771[&&NHX:S=SORAR:O=ENSSART00000012124.1:T=42254:G=ENSSARG00000012121],CFTR_ERIEU:0.043527[&&NHX:S=ERIEU:O=ENSEEUT00000006570.1:T=9365:G=ENSEEUG00000006484]):0.015585,CFTR_DASNO:0.047157[&&NHX:S=DASNO:O=ENSDNOT00000016544.1:T=9361:G=ENSDNOG00000016541]):0.00431):0.005677,(CFTR_F2_HORSE:0.016035[&&NHX:S=HORSE:O=ENSECAT00000010738.1:T=9796:G=ENSECAG00000009139],((CFTR_CANFA:0.047251[&&NHX:S=CANFA:O=ENSCAFT00000005518.2:T=9615:G=ENSCAFG00000003429],Q9N1D7_FELCA:0.025264[&&NHX:S=FELCA:O=ENSFCAT00000014959.2:T=9685:G=ENSFCAG00000014955]):0.022297,CFTR_BOVIN:0.062409[&&NHX:S=BOVIN:O=ENSBTAT00000053450.1:T=9913:G=ENSBTAG00000006589]):0.00767):0.004191):0.006209,(CFTR_F2_CAVPO:0.136979[&&NHX:S=CAVPO:O=ENSCPOT00000012891.1:T=10141:G=ENSCPOG00000012767],CFTR_SPETR:0.026944[&&NHX:S=SPETR:O=ENSSTOT00000005733.1:T=43179:G=ENSSTOG00000005707]):0.009628):0.007329,(Q29399_RABIT:0.027324[&&NHX:S=RABIT:O=ENSOCUT00000010738.1:T=9986:G=ENSOCUG00000010733],CFTR_OCHPR:0.050953[&&NHX:S=OCHPR:O=ENSOPRT00000014760.1:T=9978:G=ENSOPRG00000014721]):0.017472):0.011797,(Cftr_MOUSE:0.035769[&&NHX:S=MOUSE:O=ENSMUST00000045706.4:T=10090:G=ENSMUSG00000041301],Cftr_RAT:0.049345[&&NHX:S=RAT:O=ENSRNOT00000010981.4:T=10116:G=ENSRNOG00000008284]):0.158692):0.033423,Q2QL94_MONDO:0.08197[&&NHX:S=MONDO:O=ENSMODT00000020031.2:T=13616:G=ENSMODG00000015771]):0.026265,CFTR_ORNAN:0.094961[&&NHX:S=ORNAN:O=ENSOANT00000013974.1:T=9258:G=ENSOANG00000008767]):0.03792,A0M8U4_CHICK:0.119618[&&NHX:S=CHICK:O=ENSGALT00000015182.3:T=9031:G=ENSGALG00000009324]):0.033083,CFTR_XENTR:0.130489[&&NHX:S=XENTR:O=ENSXETT00000047145.1:T=8364:G=ENSXETG00000021796]):0.352249,si_dkey-270i2_F3_BRARE:0.203525[&&NHX:S=BRARE:O=ENSDART00000100729.1:T=7955:G=ENSDARG00000041107]):0.063334,CFTR_ORYLA:0.123603[&&NHX:S=ORYLA:O=ENSORLT00000024332.1:T=8090:G=ENSORLG00000019555]):0.034773,CFTR_TETNG:0.049086[&&NHX:S=TETNG:O=ENSTNIT00000019381.1:T=99883:G=ENSTNIG00000016063]):0.028272)[&&NHX:Loglk=-24078.827174:RatioCons=0.000000;:LoglkSpec=0.000000];"""))
-    tree.write()
-    for node in tree:
-        print "\t".join(map(str, [node.name, node.data]))
-
-
-    

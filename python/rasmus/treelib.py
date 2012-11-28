@@ -653,13 +653,13 @@ class Tree (object):
 def read_tree(infile, read_data=None, tree=None):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=None)
+    return parse_newick(infile, read_data=read_data, tree=tree)
 
 
 def read_newick(infile, read_data=None, tree=None):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=None)
+    return parse_newick(infile, read_data=read_data, tree=tree)
 
 
 def iter_trees(treefile):

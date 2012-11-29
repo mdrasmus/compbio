@@ -7,6 +7,7 @@
 # python imports
 from itertools import chain, izip
 import random
+from math import *
 
 # rasmus imports
 from rasmus import util, treelib, stats, sets
@@ -26,6 +27,11 @@ from summon.core import *
 #=============================================================================
 # visualization
 
+
+def minlog(x, default=10):
+    return log(max(x, default))
+
+           
 
 def layout_arg_leaves(arg):
     """Layout the leaves of an ARG"""
@@ -81,6 +87,17 @@ def layout_arg(arg, leaves=None, yfunc=lambda x: x):
     return layout
 
 
+def map_layout(layout, xfunc=lambda x: x, yfunc=lambda x: x):
+
+    for node, (x, y) in layout.items():
+        layout[node] = [xfunc(x), yfunc(y)]
+
+    return layout
+    
+        
+    
+
+
 def get_branch_layout(layout, node, parent, side=0, recomb_width=.4):
     """Layout the branches of an ARG"""
 
@@ -98,10 +115,14 @@ def get_branch_layout(layout, node, parent, side=0, recomb_width=.4):
 
 
 
-def show_arg(arg, layout=None, leaves=None, mut=None, recomb_width=.4):
+def show_arg(arg, layout=None, leaves=None, mut=None, recomb_width=.4,
+             win=None):
     """Visualize an ARG"""
 
-    win = summon.Window()
+    if win is None:
+        win = summon.Window()
+    else:
+        win.clear_groups()
     
     # ensure layout
     if layout is None:
@@ -120,7 +141,7 @@ def show_arg(arg, layout=None, leaves=None, mut=None, recomb_width=.4):
         g = group()
         for node, parent, pos, t in mut:
             x1, y1, x2, y2 = get_branch_layout(layout, node, parent)
-            g.append(draw_mark(x1, t, col=(0,0,1)), color(1,1,1))
+            g.append(group(draw_mark(x1, t, col=(0,0,1)), color(1,1,1)))
         win.add_group(g)
     return win
    
@@ -352,6 +373,194 @@ def show_coal_track(tree_track):
 
 
 
+def show_smc(smc, mut=None, show_labels=False, branch_click=None,
+             use_names=False):
+    """
+    """
+
+    def draw_labels(tree, layout):
+        return group(*
+                [text_clip(names[leaf.name],
+                           layout[leaf][0] - .4, layout[leaf][1],
+                           layout[leaf][0] + .4, layout[leaf][1] - 1e4,
+                           4, 20, "top", "center")
+                 for leaf in tree.leaves()])
+
+    def branch_hotspot(node, parent, x, y, y2):
+        def func():
+            branch_click(node, parent)
+        return hotspot("click", x-.5, y, x+.5, y2, func)
+
+    def print_branch(node, parent):
+        print "node", node.name
+
+    def trans_camera(win, x, y):
+        v = win.get_visible()
+        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
+
+    def on_scroll_window(win):
+        region = win.get_visible()
+        print region
+
+    def on_resize_window(win):
+        region = win.get_visible()
+        print region
+        
+
+
+    branch_color = (1, 1, 1)
+    spr_color = (1, 0, 0, .5)
+    recomb_color = (1, 0, 0)
+
+
+    # create window
+    win = summon.Window()
+    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
+    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
+    win.add_view_change_listener(lambda : on_scroll_window(win))
+    #win.remove_resize_listener(lambda : on_resize_window(win))
+    
+    treex = 0
+    step = 2
+    
+    names = []
+    seq_range = [0, 0]
+    treewidth = 10
+    tree = None
+    layout = None
+    
+    for item in smc:
+        if item["tag"] == "NAMES":
+            names = item["names"]
+            if not use_names:
+                names = map(str, range(len(names)))
+            
+            treewidth = len(names)
+            
+        elif item["tag"] == "RANGE":
+            seq_range = [item["start"], item["end"]]
+            
+        elif item["tag"] == "TREE":
+            tree = item["tree"]
+            
+            layout = treelib.layout_tree(tree, xscale=1, yscale=1)
+            treelib.layout_tree_vertical(layout, leaves=0)
+            #map_layout(layout, yfunc=minlog)
+
+            region_text = text_clip("%d-%d" % (item["start"], item["end"]),
+                        treewidth*.05, 0, 
+                        treewidth*.95, -max(l[1] for l in layout.values()),
+                        4, 20, 
+                        "center", "top")
+            
+            g = win.add_group(
+                translate(treex, 0, color(1,1,1),
+                          sumtree.draw_tree(tree, layout, 
+                                            vertical=True),
+                          (draw_labels(tree, layout)
+                           if show_labels else group()),
+                          zoom_clamp(translate(0, -20, region_text),
+                                     axis=(treewidth, 0),
+                                     miny=1.0, maxy=1.0)
+                          ))
+            
+            clicking = group()
+            g.append(clicking)
+
+        elif item["tag"] == "SPR":
+
+            rx, ry = layout[tree[item["recomb_node"]]]
+            ry = item["recomb_time"]
+            cx, cy = layout[tree[item["coal_node"]]]
+            cy = item["coal_time"]
+
+            g.append(
+                group(
+                lines(color(*spr_color), rx, ry, cx, cy),
+                mark_tree(tree, layout,
+                          item["recomb_node"], time=item["recomb_time"],
+                          col=recomb_color)))
+            
+            treex += treewidth + step
+            
+    
+    '''
+    tree_track = iter(tree_track)
+    if mut:
+        mut = util.PushIter(mut)
+    block, tree = tree_track.next()
+    if branch_click is True:
+        branch_click = print_branch
+
+    win = summon.Window()
+    treex = 0
+    step = 2
+    treewidth = len(list(tree.leaves())) + step
+
+    def trans_camera(win, x, y):
+        v = win.get_visible()
+        win.set_visible(v[0]+x, v[1]+y, v[2]+x, v[3]+y, "exact")
+
+    win.set_binding(input_key("]"), lambda : trans_camera(win, treewidth, 0))
+    win.set_binding(input_key("["), lambda : trans_camera(win, -treewidth, 0))
+
+    for block, tree in chain([(block, tree)], tree_track):
+        pos = block[0]
+        print pos
+        
+        layout = treelib.layout_tree(tree, xscale=1, yscale=1)
+        treelib.layout_tree_vertical(layout, leaves=0)
+        g = win.add_group(
+            translate(treex, 0, color(1,1,1),
+                      sumtree.draw_tree(tree, layout, 
+                                        vertical=True),
+                      (draw_labels(tree, layout) if show_labels else group()),
+                      text_clip(
+                    "%d-%d" % (block[0], block[1]),
+                    treewidth*.05, 0, 
+                    treewidth*.95, -max(l[1] for l in layout.values()),
+                    4, 20, 
+                    "center", "top")))
+
+
+        clicking = group()
+        g.append(clicking)
+
+        # hotspots
+        if branch_click:
+            for node in tree:
+                if node.parent:
+                    x, y = layout[node]
+                    x2, y2 = layout[node.parent]
+                    clicking.append(branch_hotspot(node, node.parent, x, y, y2))
+        #win.add_group(clicking)
+
+        
+        # draw mut
+        if mut:
+            for mpos, age, chroms in mut:
+                if block[0] < mpos < block[1]:
+                    node = arglib.split_to_tree_branch(tree, chroms)
+                    parent = node.parent
+                    if node and parent:
+                        t = random.uniform(layout[node][1], layout[parent][1])
+                        nx, ny = layout[node]
+                        win.add_group(draw_mark(treex + nx, t, col=(0,0,1)))
+                elif mpos > block[1]:
+                    mut.push((mpos, age, chroms))
+                    break
+                    
+                
+        treex += treewidth
+    '''
+
+    win.home("exact")
+    
+
+    return win
+
+
+
 def show_coal_track3(tree_track):
     
     win = summon.Window()
@@ -527,16 +736,14 @@ def draw_mark(x, y, col=(1,0,0), size=.5, func=None):
 
 
 
-'''
 def mark_tree(tree, layout, name, y=None, time=None,
-              col=(1, 0, 0), ymap=lambda y: y):
+              col=(1, 0, 0), yfunc=lambda y: y, size=.5):
     nx, ny = layout[tree[name]]
     if y is not None:
         y += ny
     else:
         y = time
-    return draw_mark(nx, ymap(y), col=col)
-'''    
+    return draw_mark(nx, yfunc(y), col=col, size=size)
 
 
 def draw_branch_mark(arg, layout, node=None, parent=None, pos=None, 

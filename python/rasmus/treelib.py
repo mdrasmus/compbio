@@ -22,7 +22,7 @@ except ImportError:
     import util
 try:
     from rasmus import textdraw
-except:
+except ImportError:
     pass
 
 
@@ -506,12 +506,6 @@ class Tree (object):
     # input and output
     #
     
-    def write(self, out=sys.stdout, writeData=None, oneline=False,
-              rootData=False):
-        """Write the tree in newick notation"""
-        self.write_newick(out, writeData=writeData, 
-                          oneline=oneline, rootData=rootData)
-    
     def read_data(self, node, data):
         """Default data reader: reads optional bootstrap and branch length"""
 
@@ -561,61 +555,6 @@ class Tree (object):
         return string
     
     
-    def write_newick(self, out=sys.stdout, writeData=None, oneline=False,
-                    rootData=False):
-        """Write the tree in newick notation"""
-        self.write_newick_node(self.root, util.open_stream(out, "w"), 
-                               writeData=writeData, oneline=oneline,
-                               rootData=rootData)
-
-    
-    def write_newick_node(self, node, out = sys.stdout, 
-                          depth=0, writeData=None, oneline=False,
-                          rootData=False):
-        """Write the node in newick format to the out file stream"""
-        
-        # default data writer
-        if writeData is None:
-            writeData = self.write_data
-        
-        if not oneline:
-            out.write(" " * depth)
-
-        if len(node.children) == 0:
-            # leaf
-            out.write(str(node.name))
-        else:
-            # internal node
-            if oneline:
-                out.write("(")
-            else:
-                out.write("(\n")
-            for child in node.children[:-1]:
-                self.write_newick_node(child, out, depth+1, 
-                                     writeData=writeData, oneline=oneline)
-                if oneline:
-                    out.write(",")
-                else:
-                    out.write(",\n")
-            self.write_newick_node(node.children[-1], out, depth+1,
-                                   writeData=writeData, oneline=oneline)
-            if oneline:
-                out.write(")")
-            else:            
-                out.write("\n" + (" " * depth) + ")")
-
-        # don't print data for root node
-        if depth == 0:
-            if rootData:
-                out.write(writeData(node))
-            if oneline:
-                out.write(";")
-            else:
-                out.write(";\n")
-        else:
-            out.write(writeData(node))
-    
-    
     def read_newick(self, filename, readData=None):
         """
         Reads newick tree format from a file stream
@@ -625,18 +564,21 @@ class Tree (object):
 
         return read_tree(filename, read_data=readData, tree=self)
 
-        '''
-        # use simple parsing if PLY is not available
-        try:
-            if treelib_parser is not None:
-                return self._read_newick(filename, readData)
-        except RuntimeError:
-            pass
 
-        # try simpler parser
-        return self.read_big_newick(filename)
-        '''
-        
+    def write(self, out=sys.stdout, writeData=None, oneline=False,
+              rootData=False):
+        """Write the tree in newick notation"""
+        self.write_newick(out, writeData=writeData, 
+                          oneline=oneline, rootData=rootData)
+    
+    
+    def write_newick(self, out=sys.stdout, writeData=None, oneline=False,
+                    rootData=False):
+        """Write the tree in newick notation"""
+        write_newick(self, util.open_stream(out, "w"), 
+                     writeData=writeData, oneline=oneline,
+                     rootData=rootData)
+            
     
     def get_one_line_newick(self, root_data=False, writeData=None):
         """Get a presentation of the tree in a oneline string newick format"""
@@ -828,6 +770,61 @@ def parse_newick(infile, read_data=None, tree=None):
 
     
     return tree
+
+
+def write_newick(tree, out=sys.stdout, writeData=None, oneline=False,
+                 rootData=False):
+    """Write the tree in newick notation"""
+    write_newick_node(tree, tree.root, util.open_stream(out, "w"), 
+                      writeData=writeData, oneline=oneline,
+                      rootData=rootData)
+
+    
+def write_newick_node(tree, node, out=sys.stdout, 
+                      depth=0, writeData=None, oneline=False,
+                      rootData=False):
+    """Write the node in newick format to the out file stream"""
+
+    # default data writer
+    if writeData is None:
+        writeData = tree.write_data
+
+    if not oneline:
+        out.write(" " * depth)
+
+    if len(node.children) == 0:
+        # leaf
+        out.write(str(node.name))
+    else:
+        # internal node
+        if oneline:
+            out.write("(")
+        else:
+            out.write("(\n")
+        for child in node.children[:-1]:
+            write_newick_node(tree, child, out, depth+1, 
+                              writeData=writeData, oneline=oneline)
+            if oneline:
+                out.write(",")
+            else:
+                out.write(",\n")
+        write_newick_node(tree, node.children[-1], out, depth+1,
+                          writeData=writeData, oneline=oneline)
+        if oneline:
+            out.write(")")
+        else:            
+            out.write("\n" + (" " * depth) + ")")
+
+    # don't print data for root node
+    if depth == 0:
+        if rootData:
+            out.write(writeData(node))
+        if oneline:
+            out.write(";")
+        else:
+            out.write(";\n")
+    else:
+        out.write(writeData(node))
 
 
 '''

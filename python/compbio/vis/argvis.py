@@ -789,3 +789,240 @@ def draw_branch(arg, layout, node=None, parent=None, chroms=None,
         return group()
 
 
+
+
+#=============================================================================
+# haplotype visualization
+
+
+def inorder_tree(tree):
+    queue = [("queue", tree.root)]
+    
+    while queue:
+        cmd, node = queue.pop()
+
+        if cmd == "visit":
+            yield node
+        elif cmd == "queue":
+            if node.is_leaf():
+                yield node
+            else:
+                queue.extend(
+                    [("queue", node.children[1]),
+                     ("visit", node),
+                     ("queue", node.children[0])])
+        
+
+def layout_tree_leaves_even(tree):
+    layout = {}
+    y = 0
+
+    for node in inorder_tree(tree):
+        if node.is_leaf():
+            layout[node.name] = y
+        else:
+            y += 1
+        
+    return layout
+
+
+def layout_tree_leaves(tree):
+    layout = {}
+    y = 0
+
+    for node in inorder_tree(tree):
+        if node.is_leaf():
+            layout[node.name] = y
+        else:
+            #y += 1            
+            y += (node.age / 1e3) + 1
+            #y += exp(node.age / 5e2) + 1
+            #y += log(node.age + 1) ** 3
+
+    vals = layout.values()
+    mid = (max(vals) + min(vals)) / 2.0
+    for k, v in layout.items():
+        layout[k] = (v - mid)
+        
+    return layout
+
+
+def layout_chroms(arg, start=None, end=None):
+
+    if start is None:
+        start = arg.start
+    if end is None:
+        end = arg.end
+
+    tree = arg.get_marginal_tree(start)
+    arglib.remove_single_lineages(tree)
+    last_pos = start
+    blocks = []
+    leaf_layout = []
+
+    layout_func = layout_tree_leaves
+    #layout_func = layout_tree_leaves_even
+    
+    for spr in arglib.iter_arg_sprs(arg, start=start, end=end, use_leaves=True):
+        print "layout", spr[0]
+        blocks.append([last_pos, spr[0]])
+        leaf_layout.append(layout_func(tree))
+        inorder = dict((n, i) for i, n in enumerate(inorder_tree(tree)))
+
+        # determine SPR nodes
+        rnode = arglib.arg_lca(tree, spr[1][0], spr[0])
+        cnode = arglib.arg_lca(tree, spr[2][0], spr[0])
+
+        # determine best side for adding new sister
+        left = (inorder[rnode] < inorder[cnode])
+
+        # apply spr
+        arglib.apply_spr(tree, rnode, spr[1][1], cnode, spr[2][1], spr[0])
+
+        # adjust sister
+        rindex = rnode.parents[0].children.index(rnode)
+        if left and rindex != 0:
+            rnode.parents[0].children.reverse()
+        
+        last_pos = spr[0]
+
+    blocks.append([last_pos, end])
+    leaf_layout.append(layout_func(tree))
+
+    return blocks, leaf_layout
+
+
+def layout_tree_block(tree, names):
+    layout = {}
+
+    def walk(node):
+        if node.is_leaf():
+            x = names.index(node.name)
+            layout[node.name] = (x, x-.25, x+.25, node.age)
+            return x-.25, x+.25
+        else:
+            assert len(node.children) == 2
+            low1, high1 = walk(node.children[0])
+            low2, high2 = walk(node.children[1])
+            x = (min(high1, high2) + max(low1, low2)) / 2.0
+            low = min(low1, low2)
+            high = max(high1, high2)
+            layout[node.name] = (x, low, high, node.age)
+            return low, high
+    walk(tree.root)
+    return layout
+
+
+def mouse_click(win):
+    print win.get_mouse_pos("world")
+
+def chrom_click(win, chrom, block):
+    def func():
+        if win:
+            print chrom, block, win.get_mouse_pos("world")[0]
+    return func
+
+
+def draw_arg_threads(arg, blocks, layout, sites=None,
+                     chrom_colors=None, chrom_color=[1,1,1],
+                     snp_colors={"compat": [1, 0, 0],
+                                 "noncompat": [0, 1, 0]},
+                     spr_alpha=1,
+                     spr_trim=10,
+                     compat=False,
+                     draw_group=None,
+                     win=None):
+
+    leaf_names = list(arg.leaf_names())
+
+    # TEST:
+    rnodes = dict((r.pos, r) for r in arg if r.event == "recomb")
+
+    if draw_group is None:
+        draw_group = group()
+
+    # set chromosome color
+    if chrom_colors is None:
+        chrom_colors = {}
+        for name in leaf_names:
+            chrom_colors[name] = chrom_color
+
+    spr_colors = {}
+    for name in leaf_names:
+        spr_colors[name] = list(chrom_colors[name])
+        if len(spr_colors[name]) < 4:
+            spr_colors[name].append(1.0)
+        spr_colors[name][3] *= spr_alpha
+
+
+    trims = []
+    
+    for k, (x1, x2) in enumerate(blocks):
+        # calc trims
+        length = x2 - x1
+        minlen =  0
+        spr_trim2 = min(spr_trim, (length - minlen) / 2.0)
+        trims.append((x1 + spr_trim2, x2 - spr_trim2))
+        trim = trims[-1]
+        
+        # horizontal lines
+        l = []
+        for name in leaf_names:
+            c = chrom_colors[name]
+            y = layout[k][name]
+            l.extend([color(*c), trim[0], y, trim[1], y])
+        draw_group.append(lines(*l))
+
+        # SPRs
+        if k > 0:
+            l = []
+            
+            # TEST:
+            #rnode = rnodes.get(x1, None)
+            #young = (rnode is not None and rnode.age < 500)
+            
+            for name in leaf_names:
+                #c = [1,0,0] if young else spr_colors[name]
+                c = spr_colors[name]
+                y1 = layout[k-1][name]
+                y2 = layout[k][name]
+                l.extend([color(*c), trims[k-1][1], y1, trims[k][0], y2])
+                
+            draw_group.append(lines(*l))
+
+        # hotspots
+        g = group()
+        for name in leaf_names:
+            y = layout[k][name]
+            g.append(hotspot("click", x1+spr_trim, y+.4, x2-spr_trim, y-.4,
+                             chrom_click(win, name, (x1, x2))))
+        draw_group.append(g)
+
+        # SNPs
+        tree = None
+        if sites:
+            l = []
+            for pos, col in sites.iter_region(x1, x2):
+                split = sites.get_minor(pos)
+                if compat:
+                    if tree is None:
+                        tree = arg.get_marginal_tree((x1+x2)/2.0)
+                        arglib.remove_single_lineages(tree)
+                    node = arglib.split_to_arg_branch(tree, pos-.5, split)
+                    if node is not None:
+                        derived = list(tree.leaf_names(node))
+                        c = color(*snp_colors["compat"])
+                    else:
+                        c = color(*snp_colors["noncompat"])
+                        derived = split
+                else:
+                    c = color(*snp_colors["compat"])
+                    derived = split
+                        
+                for d in derived:
+                    y = layout[k][d]
+                    l.extend([c, pos, y+.4, pos, y-.4])
+            draw_group.append(lines(*l))
+
+    return draw_group
+

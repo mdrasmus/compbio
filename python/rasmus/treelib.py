@@ -618,7 +618,11 @@ def iter_trees(treefile):
 
 
 def tokenize_newick(infile):
-    """Iterates through the tokens in a stream in newick format"""
+    """
+    Iterates through the tokens in a stream in newick format
+
+    infile -- a string or file stream
+    """
 
     def iter_stream(infile):
         while True:
@@ -671,6 +675,10 @@ def tokenize_newick(infile):
 def parse_newick(infile, read_data=None, tree=None):
     """
     Parse a newick string or stream
+
+    infile    -- a string or file stream
+    read_data -- an optional function for reading node data fields
+    tree      -- an optional tree to populate
     """
     
     # node stack

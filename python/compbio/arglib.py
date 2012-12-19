@@ -1456,7 +1456,8 @@ def apply_spr(tree, rnode, rtime, cnode, ctime, rpos):
     """
     Apply an Subtree Pruning Regrafting (SPR) operation on a tree
     """
-    assert rnode != cnode
+    if rnode == cnode:
+        return None, None
 
     def add_node(arg, node, time, pos, event):
         node2 = arg.new_node(event=event, age=time, children=[node], pos=pos)
@@ -1508,7 +1509,7 @@ def iter_arg_sprs(arg, start=None, end=None, use_leaves=False, use_local=False):
     if use_leaves is True, yields
         (recomb_pos, (recomb_leaves, rtime), (coal_leaves, ctime))
 
-    if use_local is True, yeilds
+    if use_local is True, yields
         (recomb_pos, (rnode, rtime), (cnode, ctime), local_nodes)
         (recomb_pos, (recomb_leaves, rtime), (coal_leaves, ctime), local_nodes)
     """

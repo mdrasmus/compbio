@@ -1108,20 +1108,25 @@ def lineages_over_time(k, events):
         yield k
         
 
-def make_arg_from_times(k, times, events):
+def make_arg_from_times(k, times, events, start=0, end=1,
+                        names=None, make_names=True):
     """
     Returns an ARG given 'k' samples and a list of 'times' and 'events'
 
     times  -- ordered times of coalescence or recombination
     events -- list of event types (either 'coal' or 'recomb')
     """
-
-    arg = ARG()
+    
+    arg = ARG(start, end)
 
     # make leaves
-    lineages  = set((arg.add(ArgNode(arg.new_name())), 1)
-                     for i in xrange(k))
-
+    if make_names:
+        names = ["n%d" % i for i in range(k)]
+    if names is None:
+        lineages = set((arg.new_node(), 1) for i in xrange(k))
+    else:
+        lineages = set((arg.new_node(name=names[i]), 1) for i in xrange(k))
+    
     # process events
     for t, event in izip(times, events):
         if event == "coal":

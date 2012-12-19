@@ -1504,7 +1504,7 @@ def iter_arg_sprs(arg, start=None, end=None, use_leaves=False, use_local=False):
     if use_leaves is True, yields
         (recomb_pos, (recomb_leaves, rtime), (coal_leaves, ctime))
 
-    if use_local is True, yeilds
+    if use_local is True, yields
         (recomb_pos, (rnode, rtime), (cnode, ctime), local_nodes)
         (recomb_pos, (recomb_leaves, rtime), (coal_leaves, ctime), local_nodes)
     """

@@ -6,6 +6,7 @@ from rasmus.common import *
 
 o = optparse.OptionParser()
 o.add_option("-t", "--type", default="points")
+o.add_option("-b", "--buckets", default=20, type="int")
 conf, args = o.parse_args()
 
 if len(args) == 0:
@@ -15,7 +16,11 @@ else:
 
 data = util.read_delim(infile, parse=True)
 
-if len(data[0]) == 1:
+if conf.type == "hist":
+    x = cget(data, 0)
+    plothist(x, conf.buckets)
+
+elif len(data[0]) == 1:
     x = cget(data, 0)
     plot(x, style=conf.type)
 

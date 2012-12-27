@@ -483,14 +483,14 @@ def iter_window_index_step(x, size, step, minsize=0):
         
     
 
-def iter_window(x, xdist, func=lambda win: win, minsize=0):
+def iter_window(x, xdist, func=lambda win: win, minsize=0, key=lambda x: x):
     """
     iterates a sliding window over x with radius xradius
     
     x must be sorted least to greatest
     """
 
-    for lowi, highi, low, high in iter_window_index(x, xdist):
+    for lowi, highi, low, high in iter_window_index(map(key, x), xdist):
         if highi - lowi >= minsize:
             yield (high + low)/2.0, func(x[lowi:highi])
 

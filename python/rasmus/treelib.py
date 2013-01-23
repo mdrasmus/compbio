@@ -1174,6 +1174,7 @@ def subtree(tree, node):
     # copy nodes and data
     tree2.root = node.copy()
     tree2.copy_data(tree)
+    tree2.root.parent = None
     
     # add nodes
     def walk(node):

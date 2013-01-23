@@ -149,7 +149,7 @@ class Svg:
         
         for i in xrange(0, len(verts), 2):    
             self.out.write("%f,%f " % (verts[i], verts[i+1]))
-        self.out.write("' stroke-width='%f'/>\n", strokeWidth)
+        self.out.write("' stroke-width='%f'/>\n" % strokeWidth)
     
     
     def rect(self, x, y, width, height, strokeColor=black, fillColor=black, strokeWidth=1):
@@ -169,18 +169,22 @@ class Svg:
     
     
     def text(self, msg, x, y, size, strokeColor=null, fillColor=black,
-             anchor="start", angle=0, strokeWidth=1):
+             anchor="start", baseline="auto", angle=0, strokeWidth=1):
+        # http://www.w3.org/TR/SVG/text.html
+        # anchor : start | middle | end
+        # dominant-baseline : auto | use-script | no-change | reset-size | ideographic | alphabetic | hanging | mathematical | central | middle | text-after-edge | text-before-edge | inherit
         
         anglestr = "transform='translate(%f,%f) rotate(%f)'" % \
                     (x, y, angle)
         
         self.out.write(
-            "<g %s><text x='0' y='0' font-size='%f' %s stroke-width='%f' text-anchor='%s'>%s</text></g>\n" % \
-            (anglestr, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, msg))
+            "<g %s><text x='0' y='0' font-size='%f' %s stroke-width='%f' text-anchor='%s' style='dominant-baseline: %s'>%s</text></g>\n" % \
+            (anglestr, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, baseline, msg))
     
     
+
     def text2(self, msg, x, y, size, strokeColor=null, fillColor=black,
-             anchor="start", angle=0, strokeWidth=1):
+             anchor="start", baseline="auto", angle=0, strokeWidth=1):
         
         if angle != 0:
             anglestr = "" #transform='rotate(%f,0,0)'" % angle
@@ -189,9 +193,8 @@ class Svg:
         
         
         self.out.write(
-            "<text x='%f' y='%f' font-size='%f' %s stroke-width='%f' text-anchor='%s' %s>%s</text>\n" % \
-            (x, y, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, 
-            anglestr, msg))
+            "<text x='%f' y='%f' font-size='%f' %s stroke-width='%f' text-anchor='%s' style='dominant-baseline: %s' %s>%s</text>\n" % \
+            (x, y, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, baseline, anglestr, msg))
 
     
     def beginTransform(self, *options):  

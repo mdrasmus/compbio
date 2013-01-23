@@ -850,10 +850,10 @@ def argmax_old(lst, key=lambda x: x):
 
 def minall(iterable, keyfunc=None, minfunc=None):
     """Returns (1) all items with minimum value and (2) the minimum value"""
-    if keyfunc==None:
-        keyfunc=lambda it:it
-    if minfunc==None:
-        minfunc=lambda it:it
+    if keyfunc is None:
+        keyfunc = lambda it: it
+    if minfunc is None:
+        minfunc = lambda it: it
 
     items = []
     minval = INF
@@ -864,15 +864,15 @@ def minall(iterable, keyfunc=None, minfunc=None):
             minval = val
         elif val == minval:
             items.append(keyfunc(it))
-    assert(len(items)>0)
+    assert(len(items) > 0)
     return items, minval
 
 def maxall(iterable, keyfunc=None, maxfunc=None):
     """Returns (1) all items with maximum value and (2) the maximum value"""
-    if keyfunc==None:
-        keyfunc=lambda it:it
-    if maxfunc==None:
-        maxfunc=lambda it:it
+    if keyfunc is None:
+        keyfunc = lambda it: it
+    if maxfunc is None:
+        maxfunc = lambda it: it
 
     items = []
     maxval = -INF
@@ -883,7 +883,7 @@ def maxall(iterable, keyfunc=None, maxfunc=None):
             maxval = val
         elif val==maxval:
             items.append(keyfunc(it))
-    assert(len(items)>0)
+    assert(len(items) > 0)
     return items, maxval    
 
 
@@ -1127,7 +1127,9 @@ def write_list(filename, lst):
         print >>out, i
 
 
-def write_dict(filename, dct, delim="\t"):
+def write_dict(filename, dct, delim="\t",
+               keyfunc=lambda x: str(x),
+               valfunc=lambda x: str(x)):
     """Write a dictionary to a file
     
        filename may also be a stream
@@ -1135,7 +1137,7 @@ def write_dict(filename, dct, delim="\t"):
     
     out = open_stream(filename, "w")
     for k, v in dct.iteritems():
-        out.write("%s%s%s\n" % (str(k), delim, str(v)))
+        out.write("%s%s%s\n" % (keyfunc(k), delim, valfunc(v)))
 
 
 

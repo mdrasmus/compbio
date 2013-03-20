@@ -19,15 +19,25 @@ class LazyR (object):
     def __init__(self, name):
         self.__name = name
 
-    def __getattr__(self, attr):        
-        import rpy
+    def __getattr__(self, attr):
+
+        try:
+            import rpy
+        except:
+            import rpy2.rpy_classic as rpy
+            rpy.set_default_mode(rpy.BASIC_CONVERSION)            
         globals()[self.__name] = rpy.r
         return rpy.r.__getattr__(attr)
 
     def __call__(self, *args, **kargs):
-        import rpy
+        try:
+            import rpy
+        except:
+            import rpy2.rpy_classic as rpy
+            rpy.set_default_mode(rpy.BASIC_CONVERSION)
         globals()[self.__name] = rpy.r
         return rpy.r(*args, **kargs)
+
 
 rp = LazyR("rp")
 

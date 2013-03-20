@@ -13,11 +13,31 @@ _rplot_temp = False
 _rplot_viewer = "xpdf"
 
 
+
+
+
 class LazyR (object):
     """Allows lazy loading of rpy"""
 
     def __init__(self, name):
         self.__name = name
+        self.__thread = None
+
+    def _process_events(self):
+
+        if self.__thread is None:
+            import rpy2.rinterface as rinterface
+            import time
+            import threading
+
+            def r_refresh(interval = 0.05):
+                while True:
+                    rinterface.process_revents()
+                    time.sleep(interval)
+
+            self.__thread = threading.Timer(0.1, r_refresh)
+            self.__thread.start()
+        
 
     def __getattr__(self, attr):
 
@@ -27,6 +47,7 @@ class LazyR (object):
             import rpy2.rpy_classic as rpy
             rpy.set_default_mode(rpy.BASIC_CONVERSION)            
         globals()[self.__name] = rpy.r
+        self._process_events()
         return rpy.r.__getattr__(attr)
 
     def __call__(self, *args, **kargs):
@@ -36,10 +57,12 @@ class LazyR (object):
             import rpy2.rpy_classic as rpy
             rpy.set_default_mode(rpy.BASIC_CONVERSION)
         globals()[self.__name] = rpy.r
+        self._process_events()
         return rpy.r(*args, **kargs)
 
 
 rp = LazyR("rp")
+
 
 
 def rplot_start(filename, *args, **kargs):

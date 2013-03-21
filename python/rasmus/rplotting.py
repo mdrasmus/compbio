@@ -30,9 +30,12 @@ class LazyR (object):
             import time
             import threading
 
-            def r_refresh(interval = 0.05):
+            def r_refresh(interval = 0.05):                
                 while True:
-                    rinterface.process_revents()
+                    try:
+                        rinterface.process_revents()
+                    except:
+                        pass
                     time.sleep(interval)
 
             self.__thread = threading.Timer(0.1, r_refresh)

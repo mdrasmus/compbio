@@ -30,6 +30,8 @@ parser.add_option("-T", "--treeext", dest="treeext",
 parser.add_option("-Y", "--subtreeext", dest="subtreeext",
                   metavar="<subtree filename extension>",
                   default=".sub.tree")
+parser.add_option("--fix-ils", dest="fix_ils",
+                  default=False, action="store_true")
 
 (options,args) = parser.parse_args()
 if options.all and (not options.reroot):
@@ -64,6 +66,9 @@ def splitTree(tree, stree, gene2species, reroot=False):
 
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.label_events(tree, recon)
+    if options.fix_ils:
+        dupcons = phylo.dup_consistency(tree, recon, events)
+        events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
 
     if events[tree.root] == "dup" and \
        recon[tree.root] == stree.root:
@@ -71,6 +76,10 @@ def splitTree(tree, stree, gene2species, reroot=False):
             phylo.recon_root(tree, stree, gene2species, newCopy=False)
             recon = phylo.reconcile(tree, stree, gene2species)
             events = phylo.label_events(tree, recon)
+            if options.fix_ils:
+                dupcons = phylo.dup_consistency(tree, recon, events)
+                events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
+                
         
         #treelib.drawTree(tree, minlen=5)
         

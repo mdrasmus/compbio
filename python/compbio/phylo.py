@@ -244,8 +244,9 @@ def find_loss_under_node(node, recon):
 
 def find_loss(gtree, stree, recon, node=None):
     """Returns a list of gene losses in a gene tree
-       TODO: generalize to non-MPR recon
-             (in particular, to handle duplication followed immediately by loss)
+    
+    TODO: generalize to non-MPR recon
+          (in particular, to handle duplication followed immediately by loss)
     """
     loss = []
 
@@ -273,8 +274,9 @@ def find_loss(gtree, stree, recon, node=None):
 
 def count_dup(gtree, events, node=None):
     """Returns the number of duplications in a gene tree
-       TODO: generalize to non-MPR events
-             (in particular, to handle duplication followed immediately by loss)
+    
+    TODO: generalize to non-MPR events
+          (in particular, to handle duplication followed immediately by loss)
     """
     var = {"dups": 0}
     

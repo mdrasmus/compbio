@@ -14,11 +14,29 @@ from StringIO import StringIO
     
 class Test (unittest.TestCase):
 
-    def test_1(self):
+    def test_guess_types(self):
+
+        text="""\
+name	num	text	truth
+john	-10	1a	true
+matt	123	3b	true
+alex	456	2c	true
+mike	789	1d	false
+"""
+
+        tab = tablelib.read_table(StringIO(text))
+        self.assertEquals(tab[0],
+                          {'text': '1a',
+                           'num': -10.0,
+                           'name':
+                           'john',
+                           'truth': True})
+
+
+    def test_nheaders(self):
 
         text="""\
 ##types:str	int	int
-##headers:0
 #
 # hello
 #
@@ -28,16 +46,16 @@ alex	456	2
 mike	789	1
 """
 
-        tab = tablelib.read_table(StringIO(text))
+        tab = tablelib.read_table(StringIO(text), nheaders=0)
         
-        tab.addCol('extra', bool, False)
+        tab.add_col('extra', bool, False)
         for row in tab:
             row['extra'] = True
         
         self.assertEquals(set(tab[0].keys()), set([0, 1, 2, 'extra']))
 
 
-    def test_2(self):
+    def test_sort(self):
         text="""\
 ##types:str	int	int
 name	num	num2
@@ -48,9 +66,6 @@ mike	789	1
 
         tab = tablelib.read_table(StringIO(text))
         tab.sort()
-    
-        print repr(tab)
-        print tab
         self.assertEqual(tab.cget('name', 'num'),
                          [['alex', 'matt', 'mike'], [456, 123, 789]])
 

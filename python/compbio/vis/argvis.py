@@ -933,7 +933,7 @@ def draw_arg_threads(arg, blocks, layout, sites=None,
                      draw_group=None,
                      win=None):
 
-    leaf_names = list(arg.leaf_names())
+    leaf_names = set(arg.leaf_names())
 
     # TEST:
     rnodes = dict((r.pos, r) for r in arg if r.event == "recomb")
@@ -1003,7 +1003,9 @@ def draw_arg_threads(arg, blocks, layout, sites=None,
         if sites:
             l = []
             for pos, col in sites.iter_region(x1, x2):
-                split = sites.get_minor(pos)
+                split = set(sites.get_minor(pos)) & leaf_names
+                if len(split) == 0:
+                    continue
                 if compat:
                     if tree is None:
                         tree = arg.get_marginal_tree((x1+x2)/2.0)

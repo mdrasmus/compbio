@@ -924,7 +924,7 @@ def chrom_click(win, chrom, block):
 
 
 def draw_arg_threads(arg, blocks, layout, sites=None,
-                     chrom_colors=None, chrom_color=[1,1,1],
+                     chrom_colors=None, chrom_color=[.2,.2,.8,.8],
                      snp_colors={"compat": [1, 0, 0],
                                  "noncompat": [0, 1, 0]},
                      spr_alpha=1,
@@ -1022,8 +1022,9 @@ def draw_arg_threads(arg, blocks, layout, sites=None,
                     derived = split
                         
                 for d in derived:
-                    y = layout[k][d]
-                    l.extend([c, pos, y+.4, pos, y-.4])
+                    if d in layout[k]:
+                        y = layout[k][d]
+                        l.extend([c, pos, y+.4, pos, y-.4])
             draw_group.append(lines(*l))
 
     return draw_group

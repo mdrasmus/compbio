@@ -180,8 +180,7 @@ def equal(* vals):
 
 
 def remove(lst, *vals):
-    """Returns a copy of list 'lst' with values 'vals' removed
-    """
+    """Returns a copy of list 'lst' with values 'vals' removed"""
     delset = set(vals)
     return [i for i in lst if i not in delset]
 
@@ -191,8 +190,7 @@ sort = sorted
 
 
 def reverse(lst):
-    """Returns a reversed copy of a list
-    """
+    """Returns a reversed copy of a list"""
     lst2 = list(lst)
     lst2.reverse()
     return lst2
@@ -218,7 +216,6 @@ def cget(mat, *i):
        NOTE: If one column is given, the column is returned as a list.
        If multiple columns are given, a list of columns (also lists) is returned
     """
-    
     if len(i) == 1:
         return [row[i[0]] for row in mat]
     else:
@@ -238,7 +235,6 @@ def mget(lst, ind):
 def concat(* lists):
     """Concatenates several lists into one
     """
-    
     lst = []
     for l in lists:
         lst.extend(l)
@@ -391,8 +387,6 @@ def iter_groups2(items, key):
 def iter_groups(items, key):
     """
     Iterates over groups of consecutive values x from 'items' that have equal key(x)"""
-        
-
     NULL = object()
     last_key = NULL
     group = []
@@ -408,6 +402,7 @@ def iter_groups(items, key):
             last_key = k
         group.append(item)
 
+    # yield last group
     if group:
         yield group
 
@@ -418,7 +413,6 @@ def unique(lst):
     Returns a copy of 'lst' with only unique entries.
     The list is stable (the first occurance is kept).
     """
-    
     found = set()
     
     lst2 = []
@@ -434,7 +428,6 @@ def mapapply(funcs, lst):
     """
     apply each function in 'funcs' to one element in 'lst'
     """
-    
     lst2 = []
     for func, item in izip(funcs, lst):
         lst2.append(func(item))
@@ -443,7 +436,6 @@ def mapapply(funcs, lst):
 
 def cumsum(vals):
     """Returns a cumalative sum of vals (as a list)"""
-    
     lst = []
     tot = 0
     for v in vals:
@@ -453,7 +445,6 @@ def cumsum(vals):
 
 def icumsum(vals):
     """Returns a cumalative sum of vals (as an iterator)"""
-    
     lst = []
     tot = 0
     for v in vals:
@@ -469,7 +460,6 @@ def frange(start, end, step):
     end   -- end of range
     step  -- step size
     """
-    
     i = 0
     val = start
     while val < end:
@@ -803,50 +793,15 @@ def argmin(lst, key=lambda x: x):
     return low
 
 
-'''
-def argmin_old(lst, key=lambda x: x):
-    """
-    Find the index 'i' in 'lst' with minimum lst[i]
-    
-    lst -- list to search
-    key -- function to apply to each lst[i].
-           argmin(lst, key=func) --> argmin(map(key, lst))
-    """
-    
-    assert len(lst) > 0
-    low = 0
-    lowval = key(lst[0])
-    for i in xrange(1, len(lst)):
-        val = key(lst[i])
-        if val < lowval:
-            low = i
-            lowval = val
-    return low
-
-
-def argmax_old(lst, key=lambda x: x):
-    """
-    Find the index 'i' in 'lst' with maximum lst[i]
-    
-    lst -- list to search
-    key -- function to apply to each lst[i].
-           argmax(lst, key=func) --> argmax(map(key, lst))
-    """
-    
-    assert len(lst) > 0
-    top = 0
-    topval = key(lst[0])
-    for i in xrange(1, len(lst)):
-        val = key(lst[i])
-        if val > topval:
-            top = i
-            topval = val
-    return top
-'''
-
-
 #=============================================================================
 # math functions
+
+def prod(lst):
+    """Computes the product of a list of numbers"""
+    p = 1.0
+    for i in lst:
+        p *= i
+    return p
 
 #
 # comparison function factories

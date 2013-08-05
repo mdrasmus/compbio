@@ -22,43 +22,49 @@ class LazyR (object):
     def __init__(self, name):
         self.__name = name
         self.__thread = None
+        self.__setup = False
+        self.__rpy_version = 0
+        self.__rpy = None
 
     def _process_events(self):
-
-        if self.__thread is None:
+        if self.__rpy_version == 2 and self.__thread is None:
             import rpy2.rinterface as rinterface
             import time
             import threading
 
-            def r_refresh(interval = 0.05):
+            def r_refresh(interval=0.05):
                 while True:
-                    rinterface.process_revents()
+                    try:
+                        rinterface.process_revents()
+                    except:
+                        pass
                     time.sleep(interval)
 
             self.__thread = threading.Timer(0.1, r_refresh)
             self.__thread.start()
-        
 
-    def __getattr__(self, attr):
-
+    def _setup(self):
         try:
             import rpy
-        except:
-            import rpy2.rpy_classic as rpy
-            rpy.set_default_mode(rpy.BASIC_CONVERSION)            
-        globals()[self.__name] = rpy.r
-        self._process_events()
-        return rpy.r.__getattr__(attr)
-
-    def __call__(self, *args, **kargs):
-        try:
-            import rpy
+            self.__rpy = rpy
+            self.__rpy_version = 1
         except:
             import rpy2.rpy_classic as rpy
             rpy.set_default_mode(rpy.BASIC_CONVERSION)
-        globals()[self.__name] = rpy.r
-        self._process_events()
-        return rpy.r(*args, **kargs)
+            self.__rpy = rpy
+            self.__rpy_version = 2
+            self._process_events()
+        globals()[self.__name] = rpy.r        
+
+    def __getattr__(self, attr):
+        if not self.__setup:
+            self._setup()
+        return self.__rpy.r.__getattr__(attr)
+
+    def __call__(self, *args, **kargs):
+        if not self.__setup:
+            self._setup()        
+        return self.__rpy.r(*args, **kargs)
 
 
 rp = LazyR("rp")

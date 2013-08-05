@@ -23,7 +23,12 @@ from collections import defaultdict
 
 # rasmus imports
 from rasmus import treelib, stats, util, linked_list
-from rasmus.symbolic import *
+
+try:
+    from rasmus.symbolic import *
+except ImportError:
+    # only experimental functions need symbolic
+    pass
 
 # compbio imports
 from . import birthdeath

@@ -1,0 +1,190 @@
+#!/usr/bin/env python
+# run Notung with standard command-line interface
+
+import sys, os, shutil, time
+import optparse
+import subprocess
+
+from rasmus import util, treelib
+from compbio import phylo, fasta
+from compbio import phylorun as phy
+
+from rasmus.common import *
+
+path = os.path.dirname(__file__)
+#jarfile = os.path.join(path, "Notung-2.6.jar")
+jarfile = os.path.join(path, "Notung-2.7-Beta.jar")
+
+o = optparse.OptionParser()
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>")
+phy.add_common_options(o, align=False)
+#o.set_default("extra", "--costdup 1.5 --costcodiv 0 --costloss 1")
+o.add_option("-R", "--reconext", dest="reconext",
+             metavar="RECON_EXT",
+             default=".recon")
+o.remove_option("--seqtype")
+o.remove_option("--boot")
+o.remove_option("--no-opttree")
+conf, files = phy.parse_common_options(o)
+
+#=============================================================================
+# parsing notung file format
+
+def iter_nhx_comments(text):
+    for m in re.finditer(r"\[[^\]]*\]", text):
+        yield m.group(0)[1:-1]
+
+def is_nhx_comment(comment):
+    return comment.startswith("&&NHX:")
+
+def parse_nhx_comment(comment):
+    app, data = comment.split(":", 1)
+    pairs = data.split(":")
+    return dict(pair.split("=") for pair in pairs)
+
+def remove_nhx_comments(text):
+    return re.sub(r"\[[^\]]*\]", "", text)
+
+def is_notung_stree(comment):
+    return comment.startswith("&&NOTUNG-SPECIES-TREE")
+
+def parse_notung_stree(comment):
+    return treelib.parse_newick(comment[len("&&NOTUNG-SPECIES-TREE"):])
+
+def read_notung(filename):
+    stree = None
+    node_info = []
+
+    text = open_stream(filename).read()
+
+    for comment in iter_nhx_comments(text):
+        if is_nhx_comment(comment):
+            node_info.append(parse_nhx_comment(comment))
+        elif is_notung_stree(comment):
+            stree = parse_notung_stree(comment)
+
+    text2 = remove_nhx_comments(text)
+
+    # fix names of lost nodes
+    def namefunc(name):
+        if name.endswith("*LOST"):
+            return "*LOST"
+        return name
+    tree = treelib.parse_newick(text2, namefunc=namefunc)
+
+    info = {}
+    for node, data in zip(tree.postorder(), node_info):
+        info[node.name] = data
+
+    return tree, info, stree
+
+def parse_recon(tree, stree, info, nstree):
+
+    # figure out how nodes were named by notung
+    smap = phylo.reconcile(nstree, stree)
+
+    # do species tree reconciliation first
+    recon = {}
+    for node in tree:
+        recon[node] = smap[nstree.nodes[info[node.name]["S"]]]
+
+    # now find events
+    events = {}
+    for node in tree:
+        if node.is_leaf():
+            if node.name.startswith("*LOST"):
+                events[node] = "loss"
+            else:
+                events[node] = "gene"
+        elif info[node.name].get("D", "N") == "Y":
+            events[node] = "dup"
+        elif info[node.name].get("cD", "N") == "Y":
+            events[node] = "coal"
+        else:
+            events[node] = "spec"
+
+    return recon, events
+
+
+#=============================================================================
+
+def run(args, outdir):
+    """Run a program in a subprocess within a new directory"""
+    curdir = os.getcwd()
+    os.chdir(outdir)
+    ret = subprocess.call(args)
+    os.chdir(curdir)
+    return ret 
+
+#=============================================================================
+
+gene2species = phylo.read_gene2species(conf.smap)
+stree = treelib.read_tree(conf.stree)
+
+result = 0
+for fn in files:
+    basename = phy.get_basename(fn, conf)
+
+    outdir = basename + conf.outputext
+    phy.make_output_dir(outdir)
+
+    # rename genes with species as nhx comment
+    tree = treelib.read_tree(basename + conf.usertreeext)
+    for node in tree:
+        del node.data["tree"]
+        if node.is_leaf():
+            node.data["S"] = gene2species(node.name)
+    tree.write(outdir + "/intree", writeData=treelib.write_nhx_data)
+
+    # make notung-compatible species tree
+    for node in list(stree):
+        if not node.is_leaf():
+            stree.rename(node.name, "n" + str(node.name))
+    stree.write(outdir + "/stree", rootData=True)
+    
+    # require minimium size of tree
+    if len(tree.leaves()) <= 2:
+        continue
+    
+    # basic arguments
+    # note: we care about losses, so we should NOT use the --nolosses flag
+    #       this allows NOTUNG to keep track of gene tree branches on which losses occur
+    #       - these cannot be inferred using our libraries if using non-binary species trees    
+    args = ["java", "-jar", jarfile, "--reconcile",
+            #"--outputdir", os.path.abspath(outdir),
+            "--usegenedir",
+            "--log", "--silent",
+            "--speciestag", "nhx",
+            "-s", "stree",
+            "-g", "intree"]
+    
+    if conf.extra:
+        args.extend(conf.extra)
+
+    # record command
+    cmd = " ".join(args)
+    print cmd
+    out = open(outdir + "/cmd", "w")
+    out.write(cmd)
+    out.close()
+
+    # run program
+    if run(args, outdir) != 0:
+        open(outdir + "/error", "w").close()
+        result = 1
+	stree = treelib.read_tree(conf.stree)
+    else:
+        outfile = outdir + "/intree.reconciled.0.ntg"
+        tree, info, nstree = read_notung(outfile)
+        tree.write(basename + conf.treeext, rootData=True)
+            
+        # write recon data
+        outrecon = util.replace_ext(basename + conf.treeext, ".tree", ".recon")
+        stree = treelib.read_tree(conf.stree)
+        recon, events = parse_recon(tree, stree, info, nstree)
+        phylo.write_recon_events(outrecon, recon, events, noevent="")
+
+sys.exit(result)

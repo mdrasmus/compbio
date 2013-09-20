@@ -1043,7 +1043,7 @@ def read_nhx_data(node, text):
 
 
 def write_nhx_data(node):
-    """Write data function for writing th data field of an NHX file"""
+    """Write data function for writing the data field of an NHX file"""
     
     text = Tree().write_data(node)
     if node.data:
@@ -1635,7 +1635,7 @@ def midpoint_root(tree):
 # the branch lengths.
 #
 
-def get_tree_ages(tree, root=None, leaves=None, times=None):
+def get_tree_ages(tree, root=None, leaves=None, times=None, esp=0.001):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
@@ -1646,7 +1646,6 @@ def get_tree_ages(tree, root=None, leaves=None, times=None):
     if root is None:
         root = tree.root
 
-    esp = .001
     if times is None:
         times = {}
 
@@ -1659,7 +1658,7 @@ def get_tree_ages(tree, root=None, leaves=None, times=None):
                 t = walk(child)
 
                 # ensure branch lengths are ultrametrix
-                if t2:                    
+                if (t2 is not None) and (esp is not None):
                     assert abs(t - t2)/t < esp, (node.name, t, t2)
                 t2 = t
 

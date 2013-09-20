@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # run Notung-2.7 with standard command-line interface
 
+# === NOT TESTED!!! ===
+
 import sys, os, shutil, time
 import optparse
 import subprocess
@@ -19,6 +21,10 @@ jarfile = os.path.join(path, "Notung-2.7-Beta.jar")
 # by default, Notung 2.7 uses D=1.5, C=0, L=1, T=3
 
 o = optparse.OptionParser()
+o.add_option("-s", "--stree", dest="stree",
+             metavar="<species tree>")
+o.add_option("-S", "--smap", dest="smap",
+             metavar="<gene2species map>")
 o.add_option("--infertransfers", dest="infertransfers",
              default=False, action="store_true",
              help="set to include transfers in event inference and optimization")
@@ -37,13 +43,9 @@ o.add_option("--multsols", dest="multsols",
 o.add_option("--all", dest="all",
              default=False, action="store_true",
 	     help="set to keep all solutions in the main directory, else only keep the first")
-o.add_option("-S", "--smap", dest="smap",
-             metavar="<gene2species map>")
-o.add_option("-s", "--stree", dest="stree",
-             metavar="<species tree>")
 phy.add_common_options(o, align=False)
 o.add_option("-R", "--reconext", dest="reconext",
-             metavar="<reconciliation extension>",
+             metavar="RECON_EXT",
              default=".recon")
 o.remove_option("--seqtype")
 o.remove_option("--boot")
@@ -110,18 +112,17 @@ def parse_recon(tree, stree, info, nstree):
 
     # figure out how nodes were named by notung
     smap = phylo.reconcile(nstree, stree)
-
-    recon = {}
-    events = {}
-    trans = {}
-    
+   
     # do species tree reconciliation first
+    recon = {}
     for node in tree:
         recon[node] = smap[nstree.nodes[info[node.name]["S"]]]
 
     # now find events, including transfer edges
     # use if rather than elif since NOTUNG annotates child of transfer edge,
     # meaning nodes can be labeled with multiple events if one of the events is a transfer
+    events = {}
+    trans = {}
     for node in tree:
         if node.is_leaf():
             assert node not in events
@@ -244,7 +245,7 @@ for fn in files:
 	    if conf.all:
 	        base += "." + str(i)
 
-            # this part is STILL necessary to keep track of how NOTUNG labels internal nodes
+            # this part is necessary to keep track of how NOTUNG labels internal nodes
             # rename genes without species suffix
             for node in tree.leaves():
                 oldname = node.name

@@ -1,16 +1,19 @@
 
-from compbio import fasta, alignlib
+from compbio import alignlib
+from compbio import fasta
 
 
-#=============================================================================
-# testing
-
-if __name__ == "__main__":
+def test_align_subsets():
     aln = fasta.FastaDict()
     aln["a"] = "AAA-A"
     aln["b"] = "-BD-C"
     aln["c"] = "A-D--"
 
-    alignlib.print_align(alignlib.remove_empty_columns(aln))
-    alignlib.print_align(alignlib.remove_gapped_columns(aln))
-    alignlib.print_align(alignlib.require_nseq(aln, 2))
+    aln2 = alignlib.remove_empty_columns(aln)
+    assert aln2 == {'a': 'AAAA', 'c': 'A-D-', 'b': '-BDC'}
+
+    aln2 = alignlib.remove_gapped_columns(aln)
+    assert aln2 == {'a': 'A', 'c': 'D', 'b': 'D'}
+
+    aln2 = alignlib.require_nseqs(aln, 2)
+    assert aln2 == {'a': 'AAAA', 'c': 'A-D-', 'b': '-BDC'}

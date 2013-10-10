@@ -1540,6 +1540,8 @@ def perform_spr(tree, subtree, newpos):
         3. tree is binary
 
 """
+    # TODO: check requirements
+    
     a = subtree
     e = newpos
 
@@ -1612,6 +1614,8 @@ def propose_random_spr(tree):
        b (sibling of a)
     3. tree is binary
     """
+    
+    # TODO: check requirements
 
     assert len(tree.nodes) >= 5, "Tree is too small"
 

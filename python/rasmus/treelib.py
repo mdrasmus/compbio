@@ -296,7 +296,7 @@ class Tree:
                 stack.pop()
 
             elif i < len(node.children) and not is_leaf(node):
-                assert len(node.children) == 2
+                assert len(node.children) == 2, node.name
 
                 if i == 1:
                     # left has been visited
@@ -335,7 +335,7 @@ class Tree:
 	Add a child node to an existing node 'parent' in the tree
 	"""
 	# TODO: check for consistency, i.e. child.parent = None
-        assert parent != child
+        assert parent != child, (parent.name, child.name)
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
         child.parent = parent
@@ -371,7 +371,7 @@ class Tree:
         Updates the parent-child relationships but does NOT remove the nodes (use remove instead).
         """
         
-        assert parent != child and child.parent == parent
+        assert parent != child and child.parent == parent, (parent.name, child.name)
         parent.children.remove(child)
         child.parent = None
     
@@ -396,6 +396,7 @@ class Tree:
     
     def rename(self, oldname, newname):
         """Rename a node in the tree"""
+        assert newname not in self.nodes, newname
         node = self.nodes[oldname]
         del self.nodes[oldname]
         self.nodes[newname] = node
@@ -1073,6 +1074,15 @@ def assert_tree(tree):
     assert tree.root.parent is None, (tree.name, tree.root.name)
     assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
 
+
+def is_binary(tree):
+    """Returns True if tree is binary"""
+    
+    for node in tree:
+        if not node.is_leaf():
+            if len(node.children) != 2:
+                return False
+    return True
 
 
 def lca(nodes):

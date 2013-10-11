@@ -28,10 +28,10 @@ def make_clean_dir(path):
 
 def fequal(f1, f2, rel=.0001, eabs=1e-12):
     """assert whether two floats are approximately equal"""
-    
+
     if f1 == f2:
         return
-    
+
     if f2 == 0:
         err = f1
     elif f1 == 0:
@@ -67,16 +67,20 @@ def eq_sample_pdf(samples, pdf,
 
     chi2, p = stats.chi_square_fit(cdf, [], samples,
                                    ndivs=ndivs, start=start, end=end)
-    
+
     assert p >= pval, p
 
 
-_do_pause = False
+_do_pause = True
 def pause(text="press enter to continue: "):
     """Pause until the user presses enter"""
     if _do_pause:
-        raw_input(text)
+        sys.stderr.write(text)
+        raw_input()
 
+def set_pausing(enabled=True):
+    global _do_pause
+    _do_pause = enabled
 
 
 #=============================================================================
@@ -84,7 +88,7 @@ def pause(text="press enter to continue: "):
 
 
 def list_tests(stack=0):
-    
+
     # get environment
     var = __import__("__main__").__dict__
 
@@ -101,8 +105,6 @@ def list_tests(stack=0):
 
 
 def test_main():
-    global _do_pause
-
     o = optparse.OptionParser()
     o.add_option("-v", "--verbose", action="store_true",
                  help="Verbose output")
@@ -119,7 +121,9 @@ def test_main():
         return
 
     if conf.pause:
-        _do_pause = True
+        set_pausing(True)
+    else:
+        set_pausing(False)
 
 
     # process unittest arguments

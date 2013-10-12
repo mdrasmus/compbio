@@ -1,22 +1,15 @@
 
 import unittest
 
-from rasmus.common import *
-from rasmus.testing import *
-
 from rasmus import tablelib
 from StringIO import StringIO
 
 
-#=============================================================================
-
-
-    
 class Test (unittest.TestCase):
 
     def test_guess_types(self):
 
-        text="""\
+        text = """\
 name	num	text	truth
 john	-10	1a	true
 matt	123	3b	true
@@ -32,10 +25,9 @@ mike	789	1d	false
                            'john',
                            'truth': True})
 
-
     def test_nheaders(self):
 
-        text="""\
+        text = """\
 ##types:str	int	int
 #
 # hello
@@ -47,16 +39,15 @@ mike	789	1
 """
 
         tab = tablelib.read_table(StringIO(text), nheaders=0)
-        
+
         tab.add_col('extra', bool, False)
         for row in tab:
             row['extra'] = True
-        
+
         self.assertEquals(set(tab[0].keys()), set([0, 1, 2, 'extra']))
 
-
     def test_sort(self):
-        text="""\
+        text = """\
 ##types:str	int	int
 name	num	num2
 matt	123	3
@@ -70,10 +61,8 @@ mike	789	1
                          [['alex', 'matt', 'mike'], [456, 123, 789]])
 
 
-
-
 '''
-      
+
 
 
 
@@ -84,7 +73,7 @@ mike	789	1
 ##types:str	int	int
 name	num	num
 matt	123	0
-alex	456	
+alex	456
 mike	789	1
 """
 
@@ -101,21 +90,21 @@ mike	789	1
     # timing
     if 0:
         from rasmus import util
-        
+
         text=["##types:" + "int\t" * 99 + "int",
               "\t".join(map(str, range(100))) ]
 
         for i in range(10000):
             text.append("1\t" * 99 + "1")
         text = "\n".join(text)
-        
+
         stream = StringIO.StringIO(text)
-        
+
         util.tic("read table")
         tab = readTable(stream)
         util.toc()
-    
-    
+
+
     #################################################
     # specialized types
     if 1:
@@ -127,10 +116,10 @@ alex	456	-
 mike	789	+
 john	0	+
 """
-        
-        
-       
-        
+
+
+
+
         class strand_type:
             def __init__(self, text=None):
                 if text == None:
@@ -141,16 +130,16 @@ john	0	+
                     elif text == "-":
                         self.val = False
                     else:
-                        raise Exception("cannot parse '%s' as strand_type" % 
+                        raise Exception("cannot parse '%s' as strand_type" %
                                         str(text))
-                
-            
+
+
             def __str__(self):
                 if self.val:
                     return "+"
                 else:
                     return "-"
-        
+
 
         def strand_parser(text=None):
             if text == None:
@@ -161,23 +150,23 @@ john	0	+
                 elif text == "-":
                     return False
                 else:
-                    raise Exception("cannot parse '%s' as strand_type" % 
+                    raise Exception("cannot parse '%s' as strand_type" %
                                     str(text))
-        
+
         def strand_formatter(val):
             if val:
                 return "+"
             else:
                 return "-"
-        
+
         strand_type = TableType(strand_parser, strand_formatter)
-                    
+
 
         stream = StringIO.StringIO(text)
         tab = readTable(stream, type_lookup=[["strand_type", strand_type]])
         print tab.types
         print tab
-    
+
     #################################################
     # quoted strings
     if 1:
@@ -188,14 +177,14 @@ matt	True	hello\tthere
 alex	False	hello\nthere
 mike	True	hello\\there
 john	False	hello\n\\\nthere
-"""                    
+"""
 
         stream = StringIO.StringIO(text)
         tab = readTable(stream)
         print tab.types
         print tab
-    
-    
+
+
     #################################################
     # python data structures/code
     if 1:
@@ -204,22 +193,22 @@ john	False	hello\n\\\nthere
                 return None
             else:
                 return eval(text)
-        
+
         python_type = TableType(eval2, str)
-    
-    
-    
+
+
+
         tab = Table(headers=["name", "list"],
                     types={"list": python_type},
                     type_lookup=[["python", python_type]])
-                    
-        
+
+
         tab.append({"name": "matt", "list": [1,2,3]})
         tab.append({"name": "mike", "list": [4,5,6]})
         tab.append({"name": "alex", "list": [7,8,9]})
-        
+
         tab.write()
-    
+
     ##################################################
     # join tables
     if 1:
@@ -232,15 +221,10 @@ john	False	hello\n\\\nthere
                       [1, 7, 7],
                       [3, 8, 8]],
                      headers=['a2', 'b2', 'c2'])
-        
-        tab3 = joinTables((tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
-        
+
+        tab3 = joinTables(
+            (tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
+
         print tab3
-    
+
 '''
-
-#=============================================================================
-
-
-if __name__ == "__main__":   
-    unittest.main()

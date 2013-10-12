@@ -59,29 +59,6 @@ class Test (unittest.TestCase):
         newick = tree.get_one_line_newick(writeData=treelib.write_nhx_data)
         self.assertEqual(newick, fungi2)
 
-    def test_write_tree(self):
-        """Test tree writing
-           Test root data writing
-        """
-
-        newick = '''(
- (
-  a:1.000000,
-  b:2.000000
- )x:3.000000,
- (
-  c:4.000000,
-  d:5.000000
- )y:6.000000
-)rra:0.000000;
-'''
-        infile = StringIO(newick)
-        tree = read_tree(infile)
-
-        out = StringIO()
-        tree.write(out, rootData=True)
-        self.assertEqual(newick, out.getvalue())
-
     def test_read_tree_speed(self):
         """Test speed of tree reading."""
         t = timeit.timeit('treelib.parse_newick(fungi2)',
@@ -94,23 +71,6 @@ class Test (unittest.TestCase):
         """Test iterative parsing of many trees."""
         trees = list(treelib.iter_trees(StringIO(fungi + fungi + fungi)))
         self.assertEqual(len(trees), 3)
-
-    def test_reorder(self):
-        """Test reordering of tree children."""
-        infile = StringIO("((a,b),(c,d));")
-        tree = read_tree(infile)
-
-        infile = StringIO("((d,c),(b,a));")
-        tree2 = read_tree(infile)
-
-        hashtree1 = tree.get_one_line_newick()
-        hashtree2 = tree2.get_one_line_newick()
-        self.assertTrue(hashtree1 != hashtree2)
-
-        reorder_tree(tree, tree2)
-        hashtree1 = tree.get_one_line_newick()
-        hashtree2 = tree2.get_one_line_newick()
-        self.assertEqual(hashtree1, hashtree2)
 
     def test_nhx(self):
         """Test parsing of NHX comments."""
@@ -151,3 +111,67 @@ class Test (unittest.TestCase):
 
         for name, data in expected.items():
             self.assertEqual(tree[name].data, data)
+
+    def test_write_tree(self):
+        """Test tree writing
+           Test root data writing
+        """
+
+        newick = '''(
+ (
+  a:1.000000,
+  b:2.000000
+ )x:3.000000,
+ (
+  c:4.000000,
+  d:5.000000
+ )y:6.000000
+)rra:0.000000;
+'''
+        infile = StringIO(newick)
+        tree = read_tree(infile)
+
+        out = StringIO()
+        tree.write(out, rootData=True)
+        self.assertEqual(newick, out.getvalue())
+
+
+class Methods(unittest.TestCase):
+
+    def test_reorder(self):
+        """Test reordering of tree children."""
+        infile = StringIO("((a,b),(c,d));")
+        tree = read_tree(infile)
+
+        infile = StringIO("((d,c),(b,a));")
+        tree2 = read_tree(infile)
+
+        hashtree1 = tree.get_one_line_newick()
+        hashtree2 = tree2.get_one_line_newick()
+        self.assertTrue(hashtree1 != hashtree2)
+
+        reorder_tree(tree, tree2)
+        hashtree1 = tree.get_one_line_newick()
+        hashtree2 = tree2.get_one_line_newick()
+        self.assertEqual(hashtree1, hashtree2)
+
+
+class Draw(unittest.TestCase):
+    def test_draw_tree(self):
+        """Test tree drawing"""
+        text = "((A:10,B:1):5,(C:2,D:3):5);"
+        tree = treelib.parse_newick(text)
+        out = StringIO()
+        treelib.draw_tree(tree, scale=1, spacing=2, out=out,
+                          labelOffset=-1, minlen=1)
+        drawing = out.getvalue()
+        expected = '''\
+      /---------  A
+ /----+
+ |    \  B
+++
+ |    /-  C
+ \----+
+      \--  D
+'''
+        self.assertEqual(drawing, expected)

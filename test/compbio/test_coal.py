@@ -1,17 +1,31 @@
 
-
-from rasmus.common import *
-from rasmus import stats
-from rasmus.testing import *
+from math import exp
+import unittest
 
 from compbio import coal
+from compbio import phylo
 
+from rasmus import stats
+from rasmus import treelib
+from rasmus import util
+from rasmus.gnuplot import Gnuplot
+from rasmus.gnuplot import plot
+from rasmus.gnuplot import plotfunc
+from rasmus.gnuplot import plotdistrib
+from rasmus.tablelib import Table
+from rasmus.testing import eq_sample_pdf
+from rasmus.testing import fequal
+from rasmus.testing import fequals
+from rasmus.util import cumsum
+from rasmus.util import distrib
+from rasmus.util import frange
+from rasmus.util import safelog
 
 
 #=============================================================================
 # test coalescence times (normal, censored, bounded)
 
-    
+
 class Coal (unittest.TestCase):
 
     def test_prob_coal(self):
@@ -25,8 +39,6 @@ class Coal (unittest.TestCase):
         plotdistrib(x, 40, plot=p)
 
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
-        pause()
-        
 
     def test_prob_coal2(self):
         k = 2
@@ -39,8 +51,6 @@ class Coal (unittest.TestCase):
         plotdistrib(x, 40, plot=p)
 
         eq_sample_pdf(x, lambda t: coal.prob_coal(t, k, n), 40)
-        pause()
-
 
     def test_prob_coal_cond_counts_simple(self):
 
@@ -56,9 +66,6 @@ class Coal (unittest.TestCase):
             x, a, b, t, n), 0, 2000, 10)
         plotfunc(lambda x: coal.prob_bounded_coal(x, a, n, t), 0, 2000, 10,
                  ymin=0, plot=p)
-        
-        pause()
-
 
     def test_prob_coal_cond_counts(self):
 
@@ -71,8 +78,6 @@ class Coal (unittest.TestCase):
             x, a, b, t, n), 0, 2000, 10)
         plotfunc(lambda x: coal.prob_coal_cond_counts_simple(
             x, a, b, t, n), 0, 2000, 10, plot=p)
-        
-        pause()
 
     def test_prob_coal_cond_counts2_simple(self):
 
@@ -96,11 +101,9 @@ class Coal (unittest.TestCase):
 
             plotdistrib(x2, 50, plot=p)
 
-            print eq_sample_pdf(x2,
-                                lambda x: coal.prob_coal_cond_counts_simple(
-                x, a, b, t, n), 40)
-            pause()
-
+            print eq_sample_pdf(
+                x2, lambda x: coal.prob_coal_cond_counts_simple(
+                    x, a, b, t, n), 40)
 
     def test_prob_coal_cond_counts2(self):
 
@@ -126,8 +129,6 @@ class Coal (unittest.TestCase):
 
             eq_sample_pdf(x2, lambda x: coal.prob_coal_cond_counts(
                 x, a, b, t, n), 40)
-            pause()
-
 
     def test_cdf_coal_cond_counts(self):
 
@@ -155,8 +156,6 @@ class Coal (unittest.TestCase):
             #print eq_sample_pdf(x2,
             #                    lambda x: coal.prob_coal_cond_counts(
             #    x, a, b, t, n), 40)
-            pause()
-
 
     def test_sample_coal_cond_counts(self):
 
@@ -176,27 +175,22 @@ class Coal (unittest.TestCase):
 
             print eq_sample_pdf(s, lambda x: coal.prob_coal_cond_counts(
                 x, a, b, t, n), 40)
-            pause()
-
 
     def test_sample_coal_tree(self):
         n = 1000
         tree = coal.sample_coal_tree(10, n)
         print
-        draw_tree(tree, scale=.01)
+        treelib.draw_tree(tree, scale=.01)
 
-
-    def test_sample_censored_coal(self):        
+    def test_sample_censored_coal(self):
         n = 1000
         tree, lineages = coal.sample_censored_coal_tree(
             10, n, 300, capped=True)
-        draw_tree(tree, scale=.01)
+        treelib.draw_tree(tree, scale=.01)
         #show_tree(tree)
-        
 
     def test_prob_counts(self):
         print coal.prob_coal_counts(2, 2, 48e6, 20000)
-
 
     def test_prob_mrca(self):
         n = 1000
@@ -209,8 +203,6 @@ class Coal (unittest.TestCase):
                    0, max(x), max(x) / 100.0)
 
         eq_sample_pdf(x, lambda t: coal.prob_mrca(t, k, n), 40)
-        pause()
-        
 
     def test_cdf_mrca(self):
         n = 1000
@@ -220,13 +212,11 @@ class Coal (unittest.TestCase):
         y = [coal.prob_mrca(i, k, n) * step for i in x]
         y2 = cumsum(y)
         y3 = [coal.cdf_mrca(t, k, n) for t in x]
-    
+
         p = plot(x, y2, style="lines")
         p.plot(x, y3, style="lines")
 
         eq_sample_pdf(x, lambda t: coal.cdf_mrca(t, k, n), 40)
-        pause()
-
 
     def test_cdf_mrca2(self):
         n = 1000
@@ -237,14 +227,13 @@ class Coal (unittest.TestCase):
         y2 = cumsum(y)
         y3 = [coal.cdf_mrca(t, k, n) for t in x]
         y4 = [coal.prob_coal_counts(k, 1, t, n) for t in x]
-    
+
         p = plot(x, y2, style="lines")
         p.plot(x, y3, style="lines")
         p.plot(x, y4, style="lines")
 
         fequals(y2, y3, eabs=.01)
         fequals(y3, y4)
-        pause()
 
 
 class BoundedCoal (unittest.TestCase):
@@ -253,15 +242,12 @@ class BoundedCoal (unittest.TestCase):
         n = 1000
         k = 6
         T = 500
-        
+
         # plots should differ
         p = plotfunc(lambda t: coal.prob_bounded_coal(t, k, n, T),
                      0, 1000, 10)
         p.plotfunc(lambda t: coal.prob_coal(t, k, n),
                    0, 1000, 10)
-        
-        pause()
-
 
     def test_cdf_coal_bounded(self):
         n = 1000
@@ -272,16 +258,14 @@ class BoundedCoal (unittest.TestCase):
         y = [coal.prob_bounded_coal(i, k, n, t) * step for i in x]
         y2 = cumsum(y)
         y3 = [coal.cdf_bounded_coal(i, k, n, t) for i in x]
-    
+
         p = plot(x, y2, style="lines")
         p.plot(x, y3, style="lines")
         p.plot([0, 500], [1, 1], style="lines")
 
         fequals(y2, y3, eabs=.01)
-        pause()
 
-
-    def test_sample_bounded_coal2(self):        
+    def test_sample_bounded_coal2(self):
         n = 1000
         k = 2
         T = 800
@@ -290,10 +274,8 @@ class BoundedCoal (unittest.TestCase):
 
         p = plotdistrib(d, 40)
         p.plotfunc(lambda t: coal.prob_bounded_coal(t, k, n, T), 0, T, T/200.0)
-        
+
         eq_sample_pdf(d, lambda t: coal.prob_bounded_coal(t, k, n, T), 40)
-        pause()
-    
 
     def test_sample_bounded_coal(self):
         n = 1000
@@ -306,9 +288,6 @@ class BoundedCoal (unittest.TestCase):
         p.plotfunc(lambda t: coal.prob_bounded_coal(t, k, n, T), 0, T, T/200)
 
         eq_sample_pdf(d, lambda t: coal.prob_bounded_coal(t, k, n, T), 40)
-        pause()
-    
-
 
     def test_plot_prob_bounded_coal(self):
         n = 1000
@@ -329,10 +308,9 @@ class BoundedCoal (unittest.TestCase):
             alltimes.append(times)
 
         p = Gnuplot()
-        for i in range(1, 2): #k):
+        for i in range(1, 2):
             x, y = distrib([q[i] - q[i-1] for q in alltimes], width=20)
             p.plot(x, y, style="lines", xmax=500)
-
 
         x = list(frange(0, 500, 10))
         #for i in range(1, 2): #k):
@@ -340,8 +318,6 @@ class BoundedCoal (unittest.TestCase):
         p.plot(x, y2, style="lines", xmax=500)
 
         fequals(y, y2, rel=.05, eabs=.01)
-        pause()
-    
 
     def test_fast_sample_bounded_coal(self):
 
@@ -367,13 +343,11 @@ class BoundedCoal (unittest.TestCase):
         for i in range(1, k):
             x, y = distrib([q[i] - q[i-1] for q in alltimes], width=30)
             p.plot(x, y, style="lines", xmax=500)
-        time.sleep(1)
         p.enableOutput(True)
         p.replot()
 
-
         # sample times efficently
-        alltimes2 = []    
+        alltimes2 = []
         for i in xrange(5000):
             times = [0]
             for j in xrange(k, 1, -1):
@@ -385,86 +359,74 @@ class BoundedCoal (unittest.TestCase):
         for i in range(1, k):
             x, y = distrib([q[i] - q[i-1] for q in alltimes2], width=30)
             p.plot(x, y, style="lines", xmax=500)
-        time.sleep(1)
         p.enableOutput(True)
         p.replot()
-        pause()
-
 
 
 class CoalCounts (unittest.TestCase):
-    
+
     def test_coal_counts(self):
         b = 1
         t = 1000.0
         n = 1000
 
-        util.tic("test coal counts")
         for a in xrange(1, 100):
             i = coal.prob_coal_counts(a, b, t, n)
             j = coal.cdf_mrca(t, a, n)
-            print i, j
             fequal(i, j)
-        toc()
 
         for a in xrange(1, 10):
             i = sum(coal.prob_coal_counts(a, b, t, n)
-                      for b in xrange(1, a+1))
-            print a, i
+                    for b in xrange(1, a+1))
             fequal(i, 1.0)
-
 
     def test_coal_counts2(self):
         b = 3
         t = 1000.0
         n = 1000
 
-        util.tic("test coal counts")
         for b in xrange(1, 10):
             for a in xrange(b, 10):
                 i = coal.prob_coal_counts(a, b, t, n)
                 j = coal.prob_coal_counts_slow(a, b, t, n)
-                print i, j
                 fequal(i, j)
-        toc()
-
-
-    #def test_prob_coal_counts_extreme(self):
-    #
-    #    assert coal.prob_coal_counts(8, 4, 2000, 400000000) >= 0.0
 
 
 #=============================================================================
 # multicoal
 
-def test_multicoal_tree(stree, n, nsamples):
+def _test_multicoal_tree(stree, n, nsamples):
     """test multicoal_tree"""
     tops = {}
-    
+
     for i in xrange(nsamples):
         tree, recon = coal.sample_multicoal_tree(stree, n,
                                                  namefunc=lambda x: x)
         top = phylo.hash_tree(tree)
         tops.setdefault(top, [0, tree, recon])[0] += 1
-    
+
     tab = Table(headers=["top", "simple_top", "percent", "prob"])
     for top, (num, tree, recon) in tops.items():
         tree2 = tree.copy()
         treelib.remove_single_children(tree2)
+
+        print phylo.hash_tree(tree2)
+        print phylo.hash_tree(stree)
+
         tab.add(top=top,
                 simple_top=phylo.hash_tree(tree2),
                 percent=num/float(nsamples),
                 prob=exp(coal.prob_multicoal_recon_topology(
-            tree, recon, stree, n)))
+                    tree, recon, stree, n)))
     tab.sort(col="prob", reverse=True)
 
     return tab, tops
 
 
-def test_bounded_multicoal_tree(stree, n, T, nsamples):
+def _test_bounded_multicoal_tree(stree, n, T, nsamples):
     """test multicoal_tree"""
     tops = {}
-    
+
     for i in xrange(nsamples):
 
         # use rejection sampling
@@ -475,10 +437,9 @@ def test_bounded_multicoal_tree(stree, n, T, nsamples):
         tree, recon = coal.sample_bounded_multicoal_tree(
             stree, n, T, namefunc=lambda x: x)
 
-        
         top = phylo.hash_tree(tree)
         tops.setdefault(top, [0, tree, recon])[0] += 1
-    
+
     tab = Table(headers=["top", "simple_top", "percent", "prob"])
     for top, (num, tree, recon) in tops.items():
         tree2 = tree.copy()
@@ -487,29 +448,28 @@ def test_bounded_multicoal_tree(stree, n, T, nsamples):
                 simple_top=phylo.hash_tree(tree2),
                 percent=num/float(nsamples),
                 prob=exp(coal.prob_bounded_multicoal_recon_topology(
-            tree, recon, stree, n, T)))
+                    tree, recon, stree, n, T)))
     tab.sort(col="prob", reverse=True)
 
     return tab, tops
 
 
-
 class MultiCoal (unittest.TestCase):
-    
+
     def test_1(self):
-        
-        # test multicoal_tree on simple 4 species tree
-        stree = treelib.parse_newick("((A:1000, B:1000):500, (C:700, D:700):800);")
+        """Test multicoal_tree on simple 4 species tree"""
+
+        stree = treelib.parse_newick(
+            "((A:1000, B:1000):500, (C:700, D:700):800);")
         n = 500
-        nsamples = 50000
-        tab, tops = test_multicoal_tree(stree, n, nsamples)
+        nsamples = 1000
+        tab, tops = _test_multicoal_tree(stree, n, nsamples)
         print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
         a, b = tab[:20].cget("percent", "prob")
         fequals(a, b, eabs=.05)
-        
 
     def test_flies(self):
-        
+
         stree = treelib.parse_newick("""(
   (
     (
@@ -548,12 +508,11 @@ class MultiCoal (unittest.TestCase):
             node.dist *= 1e6 * 10
         n = 10e6
         nsamples = 5000
-        tab, tops = test_multicoal_tree(stree, n, nsamples)
+        tab, tops = _test_multicoal_tree(stree, n, nsamples)
         print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
         a, b = tab[:20].cget("percent", "prob")
         fequals(a, b, eabs=.05)
-        
-        
+
 
 class BMC (unittest.TestCase):
 
@@ -565,8 +524,9 @@ class BMC (unittest.TestCase):
         gene_counts = dict.fromkeys(stree.leaf_names(), 1)
         T = 2000
 
-        print exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n))
-
+        self.assertAlmostEqual(
+            exp(coal.cdf_mrca_bounded_multicoal(gene_counts, T, stree, n)),
+            0.27719726132)
 
     def test_cdf_bmc(self):
 
@@ -587,29 +547,26 @@ class BMC (unittest.TestCase):
                 c += 1
         p2 = c / float(nsamples)
 
-        print p, p2
         fequal(p, p2, .05)
 
-
     def test_recon(self):
-        
+
         # test multicoal_tree on simple 4 species tree
         stree = treelib.parse_newick(
             "((A:1000, B:1000):500, (C:700, D:700):800);")
         n = 500
         T = 2000
         nsamples = 10000
-        tab, tops = test_bounded_multicoal_tree(stree, n, T, nsamples)
+        tab, tops = _test_bounded_multicoal_tree(stree, n, T, nsamples)
         print repr(tab[:20].get(cols=["simple_top", "percent", "prob"]))
 
         a, b = tab[:20].cget("percent", "prob")
         fequals(a, b, rel=.05, eabs=.005)
 
-
     def test_top(self):
 
         stree = treelib.parse_newick(
-        "(((A:200, E:200):800, B:1000):500, (C:700, D:700):800);")
+            "(((A:200, E:200):800, B:1000):500, (C:700, D:700):800);")
         n = 500
         T = 2000
         nsamples = 10000
@@ -617,7 +574,7 @@ class BMC (unittest.TestCase):
         # compare top hist with simpler rejection sampling
         tops = {}
         tops2 = {}
-    
+
         for i in xrange(nsamples):
             if i % (nsamples // 100) == 0:
                 print i
@@ -631,13 +588,12 @@ class BMC (unittest.TestCase):
 
             top = phylo.hash_tree(tree)
             top2 = phylo.hash_tree(tree2)
-            
+
             tops.setdefault(top, [0, tree, recon])[0] += 1
             tops.setdefault(top2, [0, tree2, recon2])
-            
+
             tops2.setdefault(top2, [0, tree2, recon2])[0] += 1
             tops2.setdefault(top, [0, tree, recon])
-
 
         keys = tops.keys()
         x = [safelog(tops[i][0], default=0) for i in keys]
@@ -645,10 +601,6 @@ class BMC (unittest.TestCase):
 
         p = plot(x, y)
         p.plot([min(x), max(x)], [min(x), max(x)], style="lines")
-        pause()
-    
-        
-
 
     '''
     def test_prob_coal(self):
@@ -676,7 +628,7 @@ class BMC (unittest.TestCase):
                 t, u, utime, ucount, gene_counts, T, stree, n,
                 sroot=None, sleaves=None, stimes=None,
                 tree=None, recon=None))
-        
+
 
         print "sum", integrate(pdf, 0, 500, 1)
         print "coal", c
@@ -688,8 +640,3 @@ class BMC (unittest.TestCase):
 
         draw_tree_names(stree, maxlen=8)
     '''
-
-
-#=============================================================================
-if __name__ == "__main__":
-    test_main()

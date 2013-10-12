@@ -1141,8 +1141,8 @@ def assert_tree(tree):
     walk(tree.root)
 
     assert tree.root.parent is None
-    assert (len(tree.nodes) == len(visited),
-            "%d %d" % (len(tree.nodes), len(visited)))
+    assert len(tree.nodes) == len(visited), (
+        "%d %d" % (len(tree.nodes), len(visited)))
 
 
 def lca(nodes):

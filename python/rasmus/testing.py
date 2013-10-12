@@ -58,7 +58,7 @@ def integrate(func, a, b, step):
 def eq_sample_pdf(samples, pdf,
                   ndivs=20, start=-util.INF, end=util.INF, pval=.05,
                   step=None):
-    """Returns true if a sample matches a distribution"""
+    """Asserts a sample matches a distribution"""
 
     if step is None:
         step = (max(samples) - min(samples)) / float(ndivs)

@@ -8,7 +8,6 @@ import unittest
 from rasmus import stats
 from rasmus import util
 from rasmus.gnuplot import Gnuplot
-from rasmus.gnuplot import plot
 from rasmus.testing import make_clean_dir
 
 from rasmus import hmm

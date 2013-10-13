@@ -3,9 +3,8 @@ from math import exp
 import unittest
 
 from compbio import birthdeath
-from rasmus.gnuplot import plotdistrib
+
 from rasmus.testing import eq_sample_pmf
-from rasmus.util import frange
 
 #=============================================================================
 # test coalescence times (normal, censored, bounded)

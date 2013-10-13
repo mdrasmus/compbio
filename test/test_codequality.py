@@ -81,13 +81,21 @@ def get_python_scripts(*paths):
                 yield filename
 
 
+_python_files = list(get_python_scripts(
+    "python/rasmus",
+    "python/compbio",
+    "bin",
+    "test",
+    "test/rasmus",
+    "test/compbio",
+))
+
+
 def test_pyflakes():
     """
     Run pyflakes on python code base.
     """
-    filenames = list(get_python_scripts(
-        "python/rasmus", "python/compbio", "bin"))
-    lines = run_pyflakes(filenames, key=pyflakes_filter)
+    lines = run_pyflakes(_python_files, key=pyflakes_filter)
 
     if len(lines) > 0:
         print "pyflakes errors:"
@@ -99,9 +107,7 @@ def test_pep8():
     """
     Ensure pep8 compliance on python code base.
     """
-    filenames = list(get_python_scripts(
-        "python/rasmus", "python/compbio", "bin"))
-    lines = run_pep8(filenames, key=pep8_filter)
+    lines = run_pep8(_python_files, key=pep8_filter)
 
     if len(lines) > 0:
         print "pep8 errors:"

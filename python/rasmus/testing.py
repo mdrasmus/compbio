@@ -74,11 +74,22 @@ def eq_sample_pdf(samples, pdf,
     assert p >= pval, p
 
 
-def eq_sample_pmf(samples, pmf,
-                  start, end, pval=.05,
-                  step=None):
+def eq_sample_pmf(samples, pmf, pval=.05):
     """Asserts a sample matches a probability mass distribution"""
-    pass
+    import scipy.stats
+
+    hist = util.hist_dict(samples)
+    total = sum(hist.itervalues())
+    observed = []
+    expected = []
+    for sample, count in hist.iteritems():
+        if count >= 5:
+            observed.append(count)
+            expected.append(pmf(sample) * total)
+
+    chi2, p = scipy.stats.chisquare(
+        scipy.array(observed), scipy.array(expected))
+    assert p >= pval, p
 
 
 _do_pause = True

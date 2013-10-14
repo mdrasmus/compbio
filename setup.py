@@ -23,7 +23,7 @@ setup(
     author_email='matt.rasmus@gmail.edu',
     url='https://github.com/mdrasmus/compbio',
     download_url=
-        'https://github.com/mdrasmus/compbio/archive/v%s.tar.gz' % VERSION,
+        'https://github.com/mdrasmus/compbio/tarball/v%s' % VERSION,
 
     packages=[
         'compbio',

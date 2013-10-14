@@ -357,13 +357,6 @@ class ARG (object):
                     return None
             elif len(node.parents) > 1:
                 return node.parents[0 if pos < node.pos else 1]
-
-            '''
-            if len(node.parents) > 0:
-                return node.parents[0 if pos < node.pos else 1]
-            else:
-                return None
-            '''
         else:
             raise Exception("unknown event '%s'" % node.event)
 
@@ -631,9 +624,15 @@ class ARG (object):
     # input/output
 
     def read(self, filename=sys.stdin):
+        """
+        Read ARG from filename or stream.
+        """
         read_arg(filename, arg=self)
 
     def write(self, filename=sys.stdout):
+        """
+        Write ARG to filename or stream.
+        """
         write_arg(filename, self)
 
 
@@ -1155,9 +1154,6 @@ def get_recombs(arg, start=None, end=None, visible=False):
         return rpos
 
 
-get_recomb_pos = get_recombs
-
-
 def iter_recombs(arg, start=None, end=None, visible=False):
     """
     Iterates through an ARG's recombination positions
@@ -1278,10 +1274,6 @@ def iter_local_trees(arg, start=None, end=None, convert=False):
             tree = tree.get_tree()
         yield (start, min(end2, end)), tree
         start = end2
-
-
-# Backward compatiability
-iter_tree_tracks = iter_local_trees
 
 
 def descendants(node, nodes=None):
@@ -1640,7 +1632,7 @@ def iter_arg_sprs_simple(arg, start=None, end=None, use_leaves=False):
 
     Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
     """
-    trees = iter_tree_tracks(arg, start, end)
+    trees = iter_local_trees(arg, start, end)
     block, last_tree = trees.next()
 
     for block, tree in trees:
@@ -2193,8 +2185,6 @@ def make_alignment(arg, mutations, infinite_sites=True,
 
     # make align matrix
     mat = []
-
-    pos = arg.start
     muti = 0
     for i in xrange(alnlen):
         if muti >= len(mutations) or i < int(mutations[muti][2]):

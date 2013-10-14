@@ -1,5 +1,5 @@
 
-.PHONY: bin cq test clean
+.PHONY: bin cq test clean pypi
 
 
 bin:
@@ -10,6 +10,9 @@ test:
 
 cq:
 	nosetests -v test/test_codequality.py
+
+pypi:
+        python setup.py register
 
 clean:
 	rm -rf test/tmp

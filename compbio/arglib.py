@@ -389,13 +389,6 @@ class ARG (object):
                     return None
             elif len(node.parents) > 1:
                 return node.parents[0 if pos < node.pos else 1]
-
-            '''
-            if len(node.parents) > 0:
-                return node.parents[0 if pos < node.pos else 1]
-            else:
-                return None
-            '''
         else:
             raise Exception("unknown event '%s'" % node.event)
 
@@ -478,7 +471,7 @@ class ARG (object):
         for node in self:
             node.data["ancestral"] = []
 
-        for block, tree in iter_tree_tracks(self):
+        for block, tree in iter_local_trees(self):
             pos = (block[0] + block[1]) / 2.0
             for node in chain(tree, root_path(
                     self.nodes[tree.root.name], pos)):
@@ -663,9 +656,15 @@ class ARG (object):
     # input/output
 
     def read(self, filename=sys.stdin):
+        """
+        Read ARG from filename or stream.
+        """
         read_arg(filename, arg=self)
 
     def write(self, filename=sys.stdout):
+        """
+        Write ARG to filename or stream.
+        """
         write_arg(filename, self)
 
 
@@ -1187,9 +1186,6 @@ def get_recombs(arg, start=None, end=None, visible=False):
         return rpos
 
 
-get_recomb_pos = get_recombs
-
-
 def iter_recombs(arg, start=None, end=None, visible=False):
     """
     Iterates through an ARG's recombination positions
@@ -1310,9 +1306,6 @@ def iter_local_trees(arg, start=None, end=None, convert=False):
             tree = tree.get_tree()
         yield (start, min(end2, end)), tree
         start = end2
-
-
-iter_tree_tracks = iter_local_trees
 
 
 def descendants(node, nodes=None):
@@ -1671,7 +1664,7 @@ def iter_arg_sprs_simple(arg, start=None, end=None, use_leaves=False):
 
     Yields (recomb_pos, (rnode, rtime), (cnode, ctime))
     """
-    trees = iter_tree_tracks(arg, start, end)
+    trees = iter_local_trees(arg, start, end)
     block, last_tree = trees.next()
 
     for block, tree in trees:
@@ -1946,7 +1939,7 @@ def arg_lca(arg, leaves, pos, time=None, local=None):
 def arglen(arg, start=None, end=None):
     """Calculate the total branch length of an ARG"""
     treelen = 0.0
-    for (start, end), tree in iter_tree_tracks(arg, start=start, end=end):
+    for (start, end), tree in iter_local_trees(arg, start=start, end=end):
         treelen += sum(x.get_dist() for x in tree) * (end - start)
 
     return treelen
@@ -2056,7 +2049,7 @@ def sample_arg_mutations(arg, mu, minlen=0):
 
     mutations = []
 
-    for (start, end), tree in iter_tree_tracks(arg):
+    for (start, end), tree in iter_local_trees(arg):
         remove_single_lineages(tree)
         for node in tree:
             if not node.parents:
@@ -2224,7 +2217,6 @@ def make_alignment(arg, mutations, infinite_sites=True,
 
     # make align matrix
     mat = []
-
     muti = 0
     for i in xrange(alnlen):
         if muti >= len(mutations) or i < int(mutations[muti][2]):
@@ -2397,7 +2389,7 @@ def read_arg(filename, arg=None):
 
 def write_tree_tracks(filename, arg, start=None, end=None, verbose=False):
     out = util.open_stream(filename, "w")
-    for block, tree in iter_tree_tracks(arg, start, end):
+    for block, tree in iter_local_trees(arg, start, end):
         if verbose:
             print >>sys.stderr, "writing block", block
         remove_single_lineages(tree)

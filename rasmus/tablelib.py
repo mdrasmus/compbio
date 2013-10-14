@@ -384,15 +384,12 @@ class Table (list):
                 raise TableException("Duplicate header '%s'" % header)
             check.add(header)
 
-
-
     def write(self, filename=sys.stdout, delim="\t", comments=True):
         """Write a table to a file or stream.
 
            If 'filename' is a string it will be opened as a file.
            If 'filename' is a stream it will be written to directly.
         """
-
         # remember filename for later saving
         if isinstance(filename, str):
             self.filename = filename
@@ -414,7 +411,6 @@ class Table (list):
                 else:
                     rowstr.append('')
             print >>out, delim.join(rowstr)
-
 
     def write_header(self, out=sys.stdout, delim="\t", comments=True):
         # ensure all info is complete
@@ -438,7 +434,6 @@ class Table (list):
                     print >>out, line
                 else:
                     self._write_directive(line, out, delim)
-
 
         # write header
         if self.nheaders > 0:

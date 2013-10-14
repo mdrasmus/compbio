@@ -27,7 +27,7 @@ options, args = o.parse_args()
 
 def force_ascii(item):
     """Force item to ascii"""
-    
+
     if isinstance(item, basestring):
         return str(item.encode("ascii", "ignore"))
     else:
@@ -38,13 +38,11 @@ def force_ascii(item):
 for filename in args:
     assert filename.endswith(".xls"), "input file must be an XLS file"
 
-
-
     xls = xlrd.open_workbook(filename)
 
     if options.list:
         # list sheets: index<tab>name
-        
+
         for i, name in enumerate(xls.sheet_names()):
             print "%d\t%s" % (i, name)
 

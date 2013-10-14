@@ -47,32 +47,29 @@ def process_tree(tree, stree, gene2species):
 
     #==============================
     # process
-    
+
     if options.hist or options.hashes:
         # count topology
         hashes.append(phylo.hash_tree(tree, gene2species))
-    
+
     elif options.histsplit:
         # count splits
         for leaf in tree.leaves():
             tree.rename(leaf.name, gene2species(leaf.name))
         splits.extend(phylo.find_splits(tree))
-    
+
     elif options.dump:
         # dump mode
         dump_tree(tree)
 
     elif options.events:
         # add event labels
-        assert stree != None and gene2species != None
+        assert stree is not None and gene2species is not None
         phylo.count_dup_loss_tree(tree, stree, gene2species)
-        
+
     else:
         # default mode: display tree
         display_tree(tree, options, gene2species=gene2species, stree=stree)
-
-
-
 
 
 #=============================================================================
@@ -93,7 +90,7 @@ else:
 if conf.recon:
     recon, events = phylo.read_recon_events(open(conf.recon), tree, stree)
     brecon = phylo.recon_events2brecon(recon, events)
-    
+
 else:
     recon = phylo.reconcile(tree, stree, gene2species)
     events = phylo.label_events(tree, recon)
@@ -103,6 +100,3 @@ phylo.add_implied_spec_nodes_brecon(tree, brecon)
 
 transsvg.draw_tree(tree, brecon, stree, filename=conf.output,
                    snames=snames)
-
-
-

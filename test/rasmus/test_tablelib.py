@@ -226,5 +226,4 @@ john	False	hello\n\\\nthere
             (tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
 
         print tab3
-
 '''

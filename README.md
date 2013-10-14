@@ -1,9 +1,9 @@
 compbio
--------
+=======
 
 Python libraries and utilities for computational biology.
 
-## Contents
+## About
 
 This package contains algorithms related to several areas of genomics,
 phylogenetics, and population genetics. Some of the highlights
@@ -27,6 +27,53 @@ contains general utilities for working with scientific data:
 - statistics
 - general data-structures and algorithms:
   quad trees, Union-Find, HHMs, clustering
+
+## Download
+
+The `compbio` package is available for download from several sources:
+
+- https://github.com/mdrasmus/compbio
+- https://pypi.python.org/pypi/compbio
+
+## Requirements
+
+Most modules in this package can be used without any additional dependencies.
+
+For plotting modules, the dependencies include:
+
+- [gnuplot](http://www.gnuplot.info/)
+- [R](http://www.r-project.org/)
+
+For some scientific methods, the dependencies include:
+
+- [scipy](http://www.scipy.org/)
+
+For development of the `compbio` package itself, dependencies can be installed
+with `pip`:
+
+```
+pip install -r requirements-dev.txt
+```
+
+## INSTALL
+
+The `compbio` package is available on pypi, and can be installed using pip:
+```
+pip install compbio
+```
+
+These packages can be installed from the source directory using:
+```
+python setup.py install
+```
+
+Optionally, the libraries can be used directly from the source directory by
+configuring one's environment variables as follows (assuming bash shell):
+
+```
+export PATH=$PATH:path/to/compbio/bin
+export PYTHONPATH=$PYTHONPATH:path/to/compbio
+```
 
 ## Author
 
@@ -53,39 +100,3 @@ several published software projects including:
 these software packages, this package is not a required
 dependency. Instead each software package contains its own private
 copy of modules taken from this package.
-
-## Requirements
-
-Most modules in this package can be used without any additional dependencies.
-
-For plotting modules, the dependencies include:
-
-- [gnuplot](http://www.gnuplot.info/)
-- [R](http://www.r-project.org/)
-
-For some scientific methods, the dependencies include:
-
-- [scipy](http://www.scipy.org/)
-
-For development of the `compbio` package itself, dependencies can be installed
-with `pip`:
-
-```
-pip install -r requirements-dev.txt
-```
-
-## INSTALL
-
-These packages can be installed using distutils:
-
-```
-python setup.py install
-```
-
-Optionally, the libraries can be used directly from the source directory by
-configuring one's environment variables as follows (assuming bash shell):
-
-```
-export PATH=$PATH:path/to/compbio/bin
-export PYTHONPATH=$PYTHONPATH:path/to/compbio
-```

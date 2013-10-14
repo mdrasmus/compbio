@@ -21,6 +21,9 @@ setup(
             """,
     author='Matt Rasmussen',
     author_email='matt.rasmus@gmail.edu',
+    url='https://github.com/mdrasmus/compbio',
+    download_url=
+        'https://github.com/mdrasmus/compbio/archive/v%s.tar.gz' % VERSION,
 
     packages=[
         'compbio',

@@ -13,7 +13,7 @@ VERSION = '0.9'
 
 scripts = [os.path.join('bin', x) for x in os.listdir('bin')]
 
-print setup(
+setup(
     name='compbio',
     version=VERSION,
     description='Python libraries and utilities for computational biology',

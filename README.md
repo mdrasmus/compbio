@@ -1,7 +1,7 @@
 compbio
 -------
 
-A collection of python libraries and utilities for computational biology.
+Python libraries and utilities for computational biology.
 
 ## Contents
 
@@ -49,6 +49,31 @@ several published software projects including:
   learning gene- and species-specific substitution rates across multiple
   complete genomes. Genome Research. 2007.
 
+*Minor note:* Although the libraries of this package supports each of
+these software packages, this package is not a required
+dependency. Instead each software package contains its own private
+copy of modules taken from this package.
+
+## Requirements
+
+Most modules in this package can be used without any additional dependencies.
+
+For plotting modules, the dependencies include:
+
+- [gnuplot](http://www.gnuplot.info/)
+- [R](http://www.r-project.org/)
+
+For some scientific methods, the dependencies include:
+
+- [scipy](http://www.scipy.org/)
+
+For development of the `compbio` package itself, dependencies can be installed
+with `pip`:
+
+```
+pip install -r requirements-dev.txt
+```
+
 ## INSTALL
 
 These packages can be installed using distutils:
@@ -62,5 +87,5 @@ configuring one's environment variables as follows (assuming bash shell):
 
 ```
 export PATH=$PATH:path/to/compbio/bin
-export PYTHONPATH=$PYTHONPATH:path/to/compbio/python
+export PYTHONPATH=$PYTHONPATH:path/to/compbio
 ```

@@ -1,5 +1,5 @@
 
-.PHONY: bin cq test
+.PHONY: bin cq test clean
 
 
 bin:
@@ -10,3 +10,6 @@ test:
 
 cq:
 	nosetests -v test/test_codequality.py
+
+clean:
+	rm -rf test/tmp

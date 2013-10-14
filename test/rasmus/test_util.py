@@ -1,22 +1,16 @@
 
+import sys
 import unittest
 
-from rasmus.common import *
-from rasmus.testing import *
-
-from rasmus import tablelib
-from StringIO import StringIO
+from rasmus import util
 
 
-#=============================================================================
-
-
-    
 class Test (unittest.TestCase):
 
     def test_open_stream1(self):
+        """open_stream shouldn't close existing stream"""
 
-        infile = open_stream(sys.stdin)
+        infile = util.open_stream(sys.stdin)
 
         # ensure attribute access
         infile.read
@@ -25,24 +19,16 @@ class Test (unittest.TestCase):
         infile.close()
         assert not sys.stdin.closed
 
-
     def test_open_stream2(self):
-        
+        """open_stream should close file"""
+
         # make sure regular files close
-        infile = open_stream(__file__)
+        infile = util.open_stream(__file__)
         infile.close()
         assert infile.closed
-        
 
     def test_buckets(self):
+        """Test bucket_bin"""
 
-        bin = bucket_bin(50, 20, 0, 5)
+        bin = util.bucket_bin(50, 20, 0, 5)
         assert bin == 10
-
-
-#=============================================================================
-if __name__ == "__main__":   
-    test_main()
-
-
-

@@ -1236,16 +1236,14 @@ def autoparse(text):
 # Printing functions
 
 def default_justify(val):
-    if isinstance(val, int) or \
-       isinstance(val, float):
+    if isinstance(val, (int, float)):
         return "right"
     else:
         return "left"
 
 
 def default_format(val):
-    if isinstance(val, int) and \
-       not isinstance(val, bool):
+    if isinstance(val, int) and not isinstance(val, bool):
         return int2pretty(val)
     elif isinstance(val, float):
         if abs(val) < 1e-4:

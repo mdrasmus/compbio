@@ -361,12 +361,9 @@ class Table (list):
                 # return completed row
                 yield row
 
-
         except Exception, e:
             # report error in parsing input file
             raise TableException(str(e), self.filename, lineno)
-            #raise
-
 
         # clear temps
         del self.tmptypes
@@ -387,22 +384,19 @@ class Table (list):
                 raise TableException("Duplicate header '%s'" % header)
             check.add(header)
 
-
-
-    def write(self, filename=sys.stdout, delim="\t"):
+    def write(self, filename=sys.stdout, delim="\t", comments=True):
         """Write a table to a file or stream.
 
            If 'filename' is a string it will be opened as a file.
            If 'filename' is a stream it will be written to directly.
         """
-
         # remember filename for later saving
         if isinstance(filename, str):
             self.filename = filename
 
         out = util.open_stream(filename, "w")
 
-        self.write_header(out, delim=delim)
+        self.write_header(out, delim=delim, comments=comments)
 
         # tmp variable
         types = self.types
@@ -418,8 +412,7 @@ class Table (list):
                     rowstr.append('')
             print >>out, delim.join(rowstr)
 
-
-    def write_header(self, out=sys.stdout, delim="\t"):
+    def write_header(self, out=sys.stdout, delim="\t", comments=True):
         # ensure all info is complete
         for key in self.headers:
             if key not in self.types:
@@ -435,12 +428,12 @@ class Table (list):
 
 
         # write comments
-        for line in self.comments:
-            if isinstance(line, str):
-                print >>out, line
-            else:
-                self._write_directive(line, out, delim)
-
+        if comments:
+            for line in self.comments:
+                if isinstance(line, str):
+                    print >>out, line
+                else:
+                    self._write_directive(line, out, delim)
 
         # write header
         if self.nheaders > 0:

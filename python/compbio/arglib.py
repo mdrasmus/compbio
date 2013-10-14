@@ -66,6 +66,20 @@ class ArgNode (object):
         """Returns True if this node is a leaf."""
         return len(self.children) == 0
 
+    def equal(self, other):
+        """
+        Structural equality with another node.
+        """
+        return (
+            self.name == other.name and
+            [parent.name for parent in self.parents] ==
+            [parent.name for parent in other.parents] and
+            set(child.name for child in self.children) ==
+            set(child.name for child in other.children) and
+            self.event == other.event and
+            self.age == other.age and
+            self.pos == other.pos)
+
 
 class ARG (object):
     """
@@ -101,6 +115,24 @@ class ARG (object):
         Returns True if node in ARG has name 'name'.
         """
         return name in self.nodes
+
+    def equal(self, other):
+        """
+        Structural equality with another ARG.
+        """
+        # Is the meta data equal?
+        if (self.start != other.start or
+            self.end != other.end):
+            return False
+
+        # Is each node equal?
+        for node in self:
+            if node.name not in other:
+                return False
+            if not node.equal(other[node.name]):
+                return False
+
+        return True
 
     #=================================
     # node manipulation methods

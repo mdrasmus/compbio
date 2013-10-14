@@ -1,21 +1,15 @@
 
 import unittest
 
-from rasmus.common import *
-from rasmus.testing import *
-
 from rasmus import tablelib
 from StringIO import StringIO
-
-
-#=============================================================================
 
 
 class Test (unittest.TestCase):
 
     def test_guess_types(self):
 
-        text="""\
+        text = """\
 name	num	text	truth
 john	-10	1a	true
 matt	123	3b	true
@@ -31,10 +25,9 @@ mike	789	1d	false
                            'john',
                            'truth': True})
 
-
     def test_nheaders(self):
 
-        text="""\
+        text = """\
 ##types:str	int	int
 #
 # hello
@@ -53,9 +46,8 @@ mike	789	1
 
         self.assertEquals(set(tab[0].keys()), set([0, 1, 2, 'extra']))
 
-
     def test_sort(self):
-        text="""\
+        text = """\
 ##types:str	int	int
 name	num	num2
 matt	123	3
@@ -67,8 +59,6 @@ mike	789	1
         tab.sort()
         self.assertEqual(tab.cget('name', 'num'),
                          [['alex', 'matt', 'mike'], [456, 123, 789]])
-
-
 
 
 '''
@@ -232,14 +222,8 @@ john	False	hello\n\\\nthere
                       [3, 8, 8]],
                      headers=['a2', 'b2', 'c2'])
 
-        tab3 = joinTables((tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
+        tab3 = joinTables(
+            (tab1, lambda x: x['a']+1, ['c', 'b']), (tab2, 'a2', ['b2']))
 
         print tab3
-
 '''
-
-#=============================================================================
-
-
-if __name__ == "__main__":
-    unittest.main()

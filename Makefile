@@ -1,9 +1,12 @@
 
-.PHONY: bin cq test clean pypi
+.PHONY: bin cq test clean pkg pypi
 
 
 bin:
 	./make-bin.sh
+
+pkg:
+	python setup.py sdist
 
 test:
 	nosetests -v test test/rasmus test/compbio
@@ -15,4 +18,5 @@ pypi:
         python setup.py register
 
 clean:
+	python setup.py clean
 	rm -rf test/tmp

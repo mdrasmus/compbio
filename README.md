@@ -1,11 +1,13 @@
 compbio
 -------
 
-A collection of python libraries and utilities for computational biology.
+Python libraries and utilities for computational biology.
 
-The package contains implementations of algorithms related to several
-areas of genomics, phylogenetics, and population genetics. Some of the
-highlights include:
+## Contents
+
+This package contains algorithms related to several areas of genomics,
+phylogenetics, and population genetics. Some of the highlights
+include:
 
 - reading, writing, and manipulating phylogenetic trees
 - reconciling gene-trees with species-trees
@@ -15,7 +17,7 @@ highlights include:
 - finding syntenic regions (i.e. co-linear orthology) between genomes
 - processing common file formats: FASTA, PHYLIP, newick, nexus, etc.
 
-In addition to computational biology-specific methods this package also
+In addition to computational biology-specific methods, this package also
 contains general utilities for working with scientific data:
 
 - sparse matrix file formats
@@ -26,17 +28,64 @@ contains general utilities for working with scientific data:
 - general data-structures and algorithms:
   quad trees, Union-Find, HHMs, clustering
 
-These libraries were built up over the course of the author's Ph.D.
-(Matthew D. Rasmussen <rasmus@alum.mit.edu>). Many of the methods here were
-utilized in several published projects including: SPIDIR, SPIMAP, DLCoal, and
-ARGweaver.
+## Author
 
-- ARGweaver: Rasmussen, Siepel. Genome-wide inference of ancestral
-recombination graphs. ArXiv. 2013/
-- DLCoal: Rasmussen, Kellis. Unified modeling of gene duplication,
-loss, and coalescence using a locus tree.  Genome Research. 2012.
-- SPIMAP: Rasmussen, Kellis. A Bayesian approach for fast and accurate
-gene tree reconstruction. Molecular Biology and Evolution. 2010.
-- SPIDIR: Rasmussen, Kellis. Accurate gene-tree reconstruction by
-learning gene- and species-specific substitution rates across multiple
-complete genomes. Genome Research. 2007.
+These libraries were built up over the course of the Ph.D. of the
+author, Matthew D. Rasmussen (http://mattrasmus.com,
+<rasmus@alum.mit.edu>). Many of the methods here were utilized in
+several published software projects including:
+
+- [ARGweaver](http://mdrasmus.github.io/argweaver/):
+  Rasmussen, Siepel. Genome-wide inference of ancestral
+  recombination graphs. ArXiv. 2013.
+- [DLCoal](http://compbio.mit.edu/dlcoal/):
+  Rasmussen, Kellis. Unified modeling of gene duplication,
+  loss, and coalescence using a locus tree.  Genome Research. 2012.
+- [SPIMAP](http://compbio.mit.edu/spimap/):
+  Rasmussen, Kellis. A Bayesian approach for fast and accurate
+  gene tree reconstruction. Molecular Biology and Evolution. 2010.
+- [SPIDIR](http://compbio.mit.edu/spidir/):
+  Rasmussen, Kellis. Accurate gene-tree reconstruction by
+  learning gene- and species-specific substitution rates across multiple
+  complete genomes. Genome Research. 2007.
+
+*Minor note:* Although the libraries of this package supports each of
+these software packages, this package is not a required
+dependency. Instead each software package contains its own private
+copy of modules taken from this package.
+
+## Requirements
+
+Most modules in this package can be used without any additional dependencies.
+
+For plotting modules, the dependencies include:
+
+- [gnuplot](http://www.gnuplot.info/)
+- [R](http://www.r-project.org/)
+
+For some scientific methods, the dependencies include:
+
+- [scipy](http://www.scipy.org/)
+
+For development of the `compbio` package itself, dependencies can be installed
+with `pip`:
+
+```
+pip install -r requirements-dev.txt
+```
+
+## INSTALL
+
+These packages can be installed using distutils:
+
+```
+python setup.py install
+```
+
+Optionally, the libraries can be used directly from the source directory by
+configuring one's environment variables as follows (assuming bash shell):
+
+```
+export PATH=$PATH:path/to/compbio/bin
+export PYTHONPATH=$PYTHONPATH:path/to/compbio
+```

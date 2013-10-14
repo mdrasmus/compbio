@@ -82,8 +82,8 @@ def get_python_scripts(*paths):
 
 
 _python_files = list(get_python_scripts(
-    "python/rasmus",
-    "python/compbio",
+    "rasmus",
+    "compbio",
     "bin",
     "test",
     "test/rasmus",

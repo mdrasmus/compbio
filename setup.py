@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+#
+# setup for the compbio package
+#
+# use the following to install:
+#   python setup.py install
+#
+
+from distutils.core import setup
+import os
+
+VERSION = '0.9'
+
+scripts = [os.path.join('bin', x) for x in os.listdir('bin')]
+
+print setup(
+    name='compbio',
+    version=VERSION,
+    description='Python libraries and utilities for computational biology',
+    long_description = """
+            """,
+    author='Matt Rasmussen',
+    author_email='matt.rasmus@gmail.edu',
+
+    packages=[
+        'compbio',
+        'compbio.synteny',
+        'compbio.vis',
+        'rasmus',
+        'rasmus.ply',
+        'rasmus.sexp',
+        'rasmus.vis',
+    ],
+    scripts=scripts,
+)

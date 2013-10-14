@@ -15,7 +15,7 @@ cq:
 	nosetests -v test/test_codequality.py
 
 pypi:
-        python setup.py register
+	python setup.py register
 
 clean:
 	python setup.py clean

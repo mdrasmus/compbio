@@ -1156,7 +1156,7 @@ def sample_lineage_counts(node, leaves,
 
         else:
             # unhandled case
-            raise Excepiton("not implemented")
+            raise Exception("not implemented")
 
 
 def coal_cond_lineage_counts(lineages, sroot, sleaves, popsizes, stimes, T,

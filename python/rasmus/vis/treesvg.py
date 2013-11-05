@@ -13,8 +13,7 @@ import os
 
 
 def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
-              leafPadding=10,
-              leafFunc=lambda x: str(x.name),
+              leafPadding=10, leafFunc=lambda x: str(x.name),
               labelOffset=None, fontSize=10, labelSize=None,
               minlen=1, maxlen=util.INF, filename=sys.stdout,
               rmargin=150, lmargin=10, tmargin=0, bmargin=None,
@@ -26,7 +25,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
               dupColor=(1, 0, 0),
               eventSize=4,
               legendScale=False, autoclose=None,
-              extendroot=True, labelLeaves=True, drawHoriz=True, nodeSize=0):
+              extendRoot=True, labelLeaves=True, drawHoriz=True, nodeSize=0):
     
     # set defaults
     fontRatio = 8. / 11.
@@ -93,7 +92,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         if node.parent:
             parentx, parenty = coords[node.parent]
         else:
-            if extendroot:
+            if extendRoot:
                 parentx, parenty = 0, y
             else:
                 parentx, parenty = x, y     # e.g. no branch
@@ -126,7 +125,7 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
         # draw leaf labels or recur
         if node.is_leaf():
             if labelLeaves:
-                canvas.text(str(node.name), 
+                canvas.text(leafFunc(node), 
                             x + leafPadding, y+fontSize/2., fontSize,
                             fillColor=node.color)
         else:

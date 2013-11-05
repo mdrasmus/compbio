@@ -67,18 +67,19 @@ class TreeNode:
         return iter(self.children)
     
     
-    def copy(self, parent=None, copyChildren=True):
+    def copy(self, parent=None, copyChildren=True, copyData=True):
         """Returns a copy of a TreeNode and all of its children"""
         
         node = TreeNode(self.name)
         node.name = self.name
         node.dist = self.dist
         node.parent = parent
-        node.data = copy.copy(self.data)
+        if copyData:
+            node.data = copy.copy(self.data)
         
         if copyChildren:
             for child in self.children:
-                node.children.append(child.copy(node))
+                node.children.append(child.copy(node, copyData=copyData))
         
         return node
         
@@ -500,14 +501,14 @@ class Tree:
         return dataname in self.default_data
 
     
-    def copy(self):
+    def copy(self, copyData=True):
         """Returns a copy of the tree"""
         tree = Tree(nextname = self.nextname, name = self.name)
         
         # copy structure
         if self.root != None:
             # copy all nodes
-            tree.root = self.root.copy()
+            tree.root = self.root.copy(copyData=copyData)
             
             # set all names
             def walk(node):
@@ -517,8 +518,9 @@ class Tree:
             walk(tree.root)
         
         # copy extra data
-        tree.copy_data(self)
-        tree.copy_node_data(self)
+        if copyData:
+            tree.copy_data(self)
+            tree.copy_node_data(self)
 
         # change "tree" reference in data
         for node in tree:
@@ -2023,8 +2025,7 @@ def layout_tree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
 
 def layout_tree_hierarchical(tree, xscale, yscale,
                              minlen=-util.INF, maxlen=util.INF,
-                             rootx=0, rooty=0,
-                             use_dists=True):
+                             rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.
     

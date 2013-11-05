@@ -16,7 +16,7 @@ o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
 o.add_option("-I", "--inext", dest="inext", metavar="INPUT_EXT",
              default="")
 o.add_option("-O", "--outext", dest="outext", metavar="OUTPUT_EXT",
-             default="dlcoal")
+             default="mpr")
 conf, args = o.parse_args()
 
 #=============================================================================

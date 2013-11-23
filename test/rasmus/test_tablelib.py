@@ -1,29 +1,115 @@
 
+from StringIO import StringIO
 import unittest
 
 from rasmus import tablelib
-from StringIO import StringIO
 
 
 class Test (unittest.TestCase):
 
     def test_guess_types(self):
 
+        self.assertEquals(tablelib.guess_type('10'), int)
+        self.assertEquals(tablelib.guess_type('-10'), int)
+        self.assertEquals(tablelib.guess_type('10.0'), float)
+        self.assertEquals(tablelib.guess_type('True'), bool)
+        self.assertEquals(tablelib.guess_type('False'), bool)
+        self.assertEquals(tablelib.guess_type('true'), bool)
+        self.assertEquals(tablelib.guess_type('false'), bool)
+        self.assertEquals(tablelib.guess_type('some text'), str)
+
+    def test_str2bool(self):
+
+        self.assertEquals(tablelib.str2bool('true'), True)
+        self.assertEquals(tablelib.str2bool('false'), False)
+        self.assertEquals(tablelib.str2bool('True'), True)
+        self.assertEquals(tablelib.str2bool('False'), False)
+
+    def test_type_names(self):
+
+        self.assertEqual(tablelib.parse_type('int'), int)
+        self.assertEqual(tablelib.parse_type('float'), float)
+        self.assertEqual(tablelib.parse_type('str'), str)
+        self.assertEqual(tablelib.parse_type('string'), str)
+        self.assertEqual(tablelib.parse_type('bool'), bool)
+
+        self.assertEqual(tablelib.format_type(int), 'int')
+        self.assertEqual(tablelib.format_type(float), 'float')
+        self.assertEqual(tablelib.format_type(str), 'string')
+        self.assertEqual(tablelib.format_type(bool), 'bool')
+
+    def test_read(self):
+        text = """\
+##types:str	int	float	bool
+name	num	real	truth
+matt	-123	10.0	true
+alex	456	2.5	false
+mike	789	-30.0	false
+"""
+        expected = [
+            {'real': 10.0, 'num': -123, 'name': 'matt', 'truth': True},
+            {'real': 2.5, 'num': 456, 'name': 'alex', 'truth': False},
+            {'real': -30.0, 'num': 789, 'name': 'mike', 'truth': False},
+        ]
+        tab = tablelib.read_table(StringIO(text))
+        self.assertEqual(list(tab), expected)
+
+    def test_table_types(self):
+
+        # Explict types.
+        text = """\
+##types:string	int	string	bool
+name	num	text	truth
+john	-10	1a	true
+"""
+        tab = tablelib.read_table(StringIO(text), guess_types=False)
+        self.assertEquals(tab[0],
+                          {'text': '1a',
+                           'num': -10,
+                           'name': 'john',
+                           'truth': True})
+
+        # Do not guess types, always use string.
         text = """\
 name	num	text	truth
 john	-10	1a	true
-matt	123	3b	true
-alex	456	2c	true
-mike	789	1d	false
 """
+        tab = tablelib.read_table(StringIO(text), guess_types=False)
+        self.assertEquals(tab[0],
+                          {'text': '1a',
+                           'num': '-10',
+                           'name': 'john',
+                           'truth': 'true'})
 
+        # Guess types from first row.
+        text = """\
+name	num	text	truth
+john	-10	1a	true
+"""
         tab = tablelib.read_table(StringIO(text))
         self.assertEquals(tab[0],
                           {'text': '1a',
-                           'num': -10.0,
-                           'name':
-                           'john',
+                           'num': -10,
+                           'name': 'john',
                            'truth': True})
+
+        # Only specify some types with no guessing.
+        tab = tablelib.read_table(StringIO(text), guess_types=False,
+                                  types={'truth': bool})
+        self.assertEquals(tab[0],
+                          {'text': '1a',
+                           'num': '-10',
+                           'name': 'john',
+                           'truth': True})
+
+        # Only specify some types with guessing.
+        tab = tablelib.read_table(StringIO(text),
+                                  types={'truth': str})
+        self.assertEquals(tab[0],
+                          {'text': '1a',
+                           'num': -10,
+                           'name': 'john',
+                           'truth': 'true'})
 
     def test_nheaders(self):
 
@@ -37,7 +123,6 @@ matt	123	3
 alex	456	2
 mike	789	1
 """
-
         tab = tablelib.read_table(StringIO(text), nheaders=0)
 
         tab.add_col('extra', bool, False)
@@ -60,51 +145,174 @@ mike	789	1
         self.assertEqual(tab.cget('name', 'num'),
                          [['alex', 'matt', 'mike'], [456, 123, 789]])
 
+    def test_table_data(self):
 
-'''
+        expected_tab = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+        ]
 
+        expected_tab2 = [
+            {0: 1, 1: 2, 2: 3},
+            {0: 4, 1: 5, 2: 6},
+        ]
 
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+        ]
+        tab = tablelib.Table(data)
+        self.assertEqual(list(tab), expected_tab)
 
+        # parse list of lists with header
+        data = [
+            ['a', 'b', 'c'],
+            [1, 2, 3],
+            [4, 5, 6],
+        ]
+        tab = tablelib.Table(data)
+        self.assertEqual(list(tab), expected_tab)
 
-    #################################################
-    # catch parse error
-    if 0:
-        text="""\
+        # parse list of lists with separate header
+        data = [
+            [1, 2, 3],
+            [4, 5, 6],
+        ]
+        tab = tablelib.Table(data, nheaders=0, headers=['a', 'b', 'c'])
+        self.assertEqual(list(tab), expected_tab)
+
+        # parse list of lists with no header
+        data = [
+            [1, 2, 3],
+            [4, 5, 6],
+        ]
+        tab = tablelib.Table(data, nheaders=0)
+        self.assertEqual(list(tab), expected_tab2)
+
+        # parse list of lists with header but no data
+        data = [
+            ['a', 'b', 'c'],
+        ]
+        tab = tablelib.Table(data)
+        self.assertEqual(list(tab), [])
+
+    def test_add(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        tab = tablelib.Table(data)
+        tab.add(a=10, b=11, c=12)
+        self.assertEqual(tab[-1], {'a': 10, 'b': 11, 'c': 12})
+
+        tab.append({'a': 13, 'b': 14, 'c': 15})
+        self.assertEqual(tab[-1], {'a': 13, 'b': 14, 'c': 15})
+
+        expected = [
+            {'a': 1, 'c': 3, 'b': 2},
+            {'a': 4, 'c': 6, 'b': 5},
+            {'a': 7, 'c': 9, 'b': 8},
+            {'a': 10, 'c': 12, 'b': 11},
+            {'a': 13, 'c': 15, 'b': 14},
+            {'a': 1, 'c': 3, 'b': 2},
+            {'a': 4, 'c': 6, 'b': 5},
+        ]
+        tab.extend([
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+        ])
+        self.assertEqual(list(tab), expected)
+
+    def test_add_col(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        expected = [
+            {'a': 1, 'c': 3, 'b': 2, 'd': True},
+            {'a': 4, 'c': 6, 'b': 5, 'd': False},
+            {'a': 7, 'c': 9, 'b': 8, 'd': False},
+        ]
+        tab = tablelib.Table(data)
+        tab.add_col('d', bool, data=[True, False, False])
+        self.assertEqual(list(tab), expected)
+
+    def test_remove_col(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        expected = [
+            {'a': 1, 'b': 2},
+            {'a': 4, 'b': 5},
+            {'a': 7, 'b': 8},
+        ]
+        tab = tablelib.Table(data)
+        tab.remove_col('c')
+        self.assertEqual(list(tab), expected)
+
+        expected = [
+            {'a': 1},
+            {'a': 4},
+            {'a': 7},
+        ]
+        tab = tablelib.Table(data)
+        tab.remove_col('b', 'c')
+        self.assertEqual(list(tab), expected)
+
+    def test_read_error(self):
+        text = """\
 ##types:str	int	int
 name	num	num
+matt	123	0
+alex	456	2
+mike	789	1
+"""
+        self.assertRaises(tablelib.TableException,
+                          lambda: tablelib.read_table(StringIO(text)))
+
+        text = """\
+##types:str	int	int
+name	num	num
+matt	123	0
+alex	456	2	extra
+mike	789	1
+"""
+        self.assertRaises(tablelib.TableException,
+                          lambda: tablelib.read_table(StringIO(text)))
+
+        text = """\
+##types:str	int	int
+name	num	num2
+matt	123	0
+alex	456	not_an_int
+mike	789	1
+"""
+        self.assertRaises(tablelib.TableException,
+                          lambda: tablelib.read_table(StringIO(text)))
+
+        text = """\
+##types:str	int	int
+name	num	num2
 matt	123	0
 alex	456
 mike	789	1
 """
-
-        tab = readTable(StringIO.StringIO(text))
-        tab.sort()
-
-        print repr(tab)
-        print tab.defaults
-        print tab
-        print tab.cget('name', 'num')
+        self.assertRaises(tablelib.TableException,
+                          lambda: tablelib.read_table(StringIO(text)))
 
 
-    #################################################
-    # timing
-    if 0:
-        from rasmus import util
-
-        text=["##types:" + "int\t" * 99 + "int",
-              "\t".join(map(str, range(100))) ]
-
-        for i in range(10000):
-            text.append("1\t" * 99 + "1")
-        text = "\n".join(text)
-
-        stream = StringIO.StringIO(text)
-
-        util.tic("read table")
-        tab = readTable(stream)
-        util.toc()
-
-
+'''
     #################################################
     # specialized types
     if 1:
@@ -116,10 +324,6 @@ alex	456	-
 mike	789	+
 john	0	+
 """
-
-
-
-
         class strand_type:
             def __init__(self, text=None):
                 if text == None:

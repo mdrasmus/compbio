@@ -311,6 +311,52 @@ mike	789	1
         self.assertRaises(tablelib.TableException,
                           lambda: tablelib.read_table(StringIO(text)))
 
+    def test_write(self):
+        text = """\
+##types:string	int	float	bool
+name	num	real	truth
+matt	-123	10.0	True
+alex	456	2.5	False
+mike	789	-30.0	False
+"""
+
+        text_no_comments = """\
+name	num	real	truth
+matt	-123	10.0	True
+alex	456	2.5	False
+mike	789	-30.0	False
+"""
+
+        # Write
+        tab = tablelib.read_table(StringIO(text))
+        out = StringIO()
+        tab.write(out)
+        self.assertEqual(out.getvalue(), text)
+
+        # Write no comments
+        tab = tablelib.read_table(StringIO(text))
+        out = StringIO()
+        tab.write(out, comments=False)
+        self.assertEqual(out.getvalue(), text_no_comments)
+
+        # Write string
+        tab = tablelib.read_table(StringIO(text))
+        out = StringIO()
+        out.write(str(tab))
+        self.assertEqual(out.getvalue(), text)
+
+        expected_repr = ("""\
+name  num   real      truth  \n\
+matt  -123   10.0000   True  \n\
+alex   456    2.5000  False  \n\
+mike   789  -30.0000  False  \n\
+""")
+        # Write repr
+        tab = tablelib.read_table(StringIO(text))
+        out = StringIO()
+        out.write(repr(tab))
+        self.assertEqual(out.getvalue(), expected_repr)
+
 
 '''
     #################################################

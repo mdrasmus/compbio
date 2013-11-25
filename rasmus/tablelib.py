@@ -132,7 +132,9 @@ _type_definitions = [
     ["string", str],
     ["unknown", str],  # backwards compatiable name
     ["str",    str],   # backwards compatiable name
+    ["string", unicode],
     ["int",    int],
+    ["int",    long],
     ["float",  float],
     ["bool",   bool],
 ]
@@ -365,7 +367,8 @@ class Table (list):
                 raise TableException("Duplicate header '%s'" % header)
             check.add(header)
 
-    def write(self, filename=sys.stdout, delim="\t", comments=True):
+    def write(self, filename=sys.stdout, delim="\t", comments=False,
+              nheaders=None):
         """Write a table to a file or stream.
 
            If 'filename' is a string it will be opened as a file.
@@ -377,7 +380,9 @@ class Table (list):
 
         out = util.open_stream(filename, "w")
 
-        self.write_header(out, delim=delim, comments=comments)
+        self.write_header(out, delim=delim, comments=comments,
+                          nheaders=(nheaders if nheaders is not None
+                                    else self.nheaders))
 
         # tmp variable
         types = self.types
@@ -394,7 +399,8 @@ class Table (list):
             out.write(delim.join(rowstr))
             out.write('\n')
 
-    def write_header(self, out=sys.stdout, delim="\t", comments=True):
+    def write_header(self, out=sys.stdout, delim="\t", comments=False,
+                     nheaders=None):
         # ensure all info is complete.
         # introspect types or use str by default.
         for key in self.headers:
@@ -418,7 +424,7 @@ class Table (list):
                     self._write_directive(line, out, delim)
 
         # write header
-        if self.nheaders > 0:
+        if nheaders > 0:
             out.write(delim.join(self.headers))
             out.write('\n')
 
@@ -575,6 +581,13 @@ class Table (list):
             mat.append(util.mget(row, clabels))
 
         return mat, rlabels, clabels
+
+    def as_lists(self, cols=None):
+        """Iterate over rows as lists"""
+        if cols is None:
+            cols = self.headers
+        for row in self:
+            yield [row[header] for header in cols]
 
     def filter(self, cond):
         """Returns a table with a subset of rows such that cond(row) == True"""
@@ -781,7 +794,7 @@ class Table (list):
         return self.__getitem__(slice(a, b))
 
     def __repr__(self):
-        s = StringIO("w")
+        s = StringIO()
         self.write_pretty(s)
         return s.getvalue()
 
@@ -799,7 +812,7 @@ class Table (list):
         util.printcols(mat, spacing=spacing, out=out)
 
     def __str__(self):
-        s = StringIO("w")
+        s = StringIO()
         self.write(s)
         return s.getvalue()
 
@@ -826,9 +839,11 @@ def iter_table(filename, delim="\t", nheaders=1, types=None, guess_types=True):
                            types=types, guess_types=guess_types)
 
 
-def histtab(items, headers=["item", "count", "percent"]):
+def histtab(items, headers=["item", "count", "percent"], item="item"):
     """Make a histogram table."""
     h = util.hist_dict(items)
+    if len(headers) > 0:
+        headers[0] = item
     tab = Table(headers=headers)
     tot = float(sum(h.itervalues()))
 

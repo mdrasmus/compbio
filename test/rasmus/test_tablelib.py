@@ -52,7 +52,7 @@ mike	789	-30.0	false
             {'real': -30.0, 'num': 789, 'name': 'mike', 'truth': False},
         ]
         tab = tablelib.read_table(StringIO(text))
-        self.assertEqual(list(tab), expected)
+        self.assertEqual(tab, expected)
 
     def test_table_types(self):
 
@@ -163,7 +163,7 @@ mike	789	1
             {'a': 4, 'b': 5, 'c': 6},
         ]
         tab = tablelib.Table(data)
-        self.assertEqual(list(tab), expected_tab)
+        self.assertEqual(tab, expected_tab)
 
         # parse list of lists with header
         data = [
@@ -172,7 +172,7 @@ mike	789	1
             [4, 5, 6],
         ]
         tab = tablelib.Table(data)
-        self.assertEqual(list(tab), expected_tab)
+        self.assertEqual(tab, expected_tab)
 
         # parse list of lists with separate header
         data = [
@@ -180,7 +180,7 @@ mike	789	1
             [4, 5, 6],
         ]
         tab = tablelib.Table(data, nheaders=0, headers=['a', 'b', 'c'])
-        self.assertEqual(list(tab), expected_tab)
+        self.assertEqual(tab, expected_tab)
 
         # parse list of lists with no header
         data = [
@@ -188,87 +188,14 @@ mike	789	1
             [4, 5, 6],
         ]
         tab = tablelib.Table(data, nheaders=0)
-        self.assertEqual(list(tab), expected_tab2)
+        self.assertEqual(tab, expected_tab2)
 
         # parse list of lists with header but no data
         data = [
             ['a', 'b', 'c'],
         ]
         tab = tablelib.Table(data)
-        self.assertEqual(list(tab), [])
-
-    def test_add(self):
-
-        # parse list of dicts
-        data = [
-            {'a': 1, 'b': 2, 'c': 3},
-            {'a': 4, 'b': 5, 'c': 6},
-            {'a': 7, 'b': 8, 'c': 9}
-        ]
-        tab = tablelib.Table(data)
-        tab.add(a=10, b=11, c=12)
-        self.assertEqual(tab[-1], {'a': 10, 'b': 11, 'c': 12})
-
-        tab.append({'a': 13, 'b': 14, 'c': 15})
-        self.assertEqual(tab[-1], {'a': 13, 'b': 14, 'c': 15})
-
-        expected = [
-            {'a': 1, 'c': 3, 'b': 2},
-            {'a': 4, 'c': 6, 'b': 5},
-            {'a': 7, 'c': 9, 'b': 8},
-            {'a': 10, 'c': 12, 'b': 11},
-            {'a': 13, 'c': 15, 'b': 14},
-            {'a': 1, 'c': 3, 'b': 2},
-            {'a': 4, 'c': 6, 'b': 5},
-        ]
-        tab.extend([
-            {'a': 1, 'b': 2, 'c': 3},
-            {'a': 4, 'b': 5, 'c': 6},
-        ])
-        self.assertEqual(list(tab), expected)
-
-    def test_add_col(self):
-
-        # parse list of dicts
-        data = [
-            {'a': 1, 'b': 2, 'c': 3},
-            {'a': 4, 'b': 5, 'c': 6},
-            {'a': 7, 'b': 8, 'c': 9}
-        ]
-        expected = [
-            {'a': 1, 'c': 3, 'b': 2, 'd': True},
-            {'a': 4, 'c': 6, 'b': 5, 'd': False},
-            {'a': 7, 'c': 9, 'b': 8, 'd': False},
-        ]
-        tab = tablelib.Table(data)
-        tab.add_col('d', bool, data=[True, False, False])
-        self.assertEqual(list(tab), expected)
-
-    def test_remove_col(self):
-
-        # parse list of dicts
-        data = [
-            {'a': 1, 'b': 2, 'c': 3},
-            {'a': 4, 'b': 5, 'c': 6},
-            {'a': 7, 'b': 8, 'c': 9}
-        ]
-        expected = [
-            {'a': 1, 'b': 2},
-            {'a': 4, 'b': 5},
-            {'a': 7, 'b': 8},
-        ]
-        tab = tablelib.Table(data)
-        tab.remove_col('c')
-        self.assertEqual(list(tab), expected)
-
-        expected = [
-            {'a': 1},
-            {'a': 4},
-            {'a': 7},
-        ]
-        tab = tablelib.Table(data)
-        tab.remove_col('b', 'c')
-        self.assertEqual(list(tab), expected)
+        self.assertEqual(tab, [])
 
     def test_read_error(self):
         text = """\
@@ -330,20 +257,20 @@ mike	789	-30.0	False
         # Write
         tab = tablelib.read_table(StringIO(text))
         out = StringIO()
-        tab.write(out)
+        tab.write(out, comments=True)
         self.assertEqual(out.getvalue(), text)
 
         # Write no comments
         tab = tablelib.read_table(StringIO(text))
         out = StringIO()
-        tab.write(out, comments=False)
+        tab.write(out)
         self.assertEqual(out.getvalue(), text_no_comments)
 
         # Write string
         tab = tablelib.read_table(StringIO(text))
         out = StringIO()
         out.write(str(tab))
-        self.assertEqual(out.getvalue(), text)
+        self.assertEqual(out.getvalue(), text_no_comments)
 
         expected_repr = ("""\
 name  num   real      truth  \n\
@@ -357,6 +284,133 @@ mike   789  -30.0000  False  \n\
         out.write(repr(tab))
         self.assertEqual(out.getvalue(), expected_repr)
 
+        # read with no header and write with header
+        expected = ("""\
+a	b	c
+1	2	3
+4	5	6
+""")
+        data = [
+            [1, 2, 3],
+            [4, 5, 6],
+        ]
+        tab = tablelib.Table(data, nheaders=0, headers=['a', 'b', 'c'])
+        out = StringIO()
+        tab.write(out, nheaders=1)
+        self.assertEqual(out.getvalue(), expected)
+
+    def test_add(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        tab = tablelib.Table(data)
+        tab.add(a=10, b=11, c=12)
+        self.assertEqual(tab[-1], {'a': 10, 'b': 11, 'c': 12})
+
+        tab.append({'a': 13, 'b': 14, 'c': 15})
+        self.assertEqual(tab[-1], {'a': 13, 'b': 14, 'c': 15})
+
+        expected = [
+            {'a': 1, 'c': 3, 'b': 2},
+            {'a': 4, 'c': 6, 'b': 5},
+            {'a': 7, 'c': 9, 'b': 8},
+            {'a': 10, 'c': 12, 'b': 11},
+            {'a': 13, 'c': 15, 'b': 14},
+            {'a': 1, 'c': 3, 'b': 2},
+            {'a': 4, 'c': 6, 'b': 5},
+        ]
+        tab.extend([
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+        ])
+        self.assertEqual(tab, expected)
+
+    def test_add_col(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        expected = [
+            {'a': 1, 'c': 3, 'b': 2, 'd': True},
+            {'a': 4, 'c': 6, 'b': 5, 'd': False},
+            {'a': 7, 'c': 9, 'b': 8, 'd': False},
+        ]
+        tab = tablelib.Table(data)
+        tab.add_col('d', bool, data=[True, False, False])
+        self.assertEqual(tab, expected)
+
+    def test_remove_col(self):
+
+        # parse list of dicts
+        data = [
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ]
+        expected = [
+            {'a': 1, 'b': 2},
+            {'a': 4, 'b': 5},
+            {'a': 7, 'b': 8},
+        ]
+        tab = tablelib.Table(data)
+        tab.remove_col('c')
+        self.assertEqual(tab, expected)
+
+        expected = [
+            {'a': 1},
+            {'a': 4},
+            {'a': 7},
+        ]
+        tab = tablelib.Table(data)
+        tab.remove_col('b', 'c')
+        self.assertEqual(tab, expected)
+
+    def test_join(self):
+
+        tab1 = tablelib.Table([
+            {'a': 1, 'b': 2, 'c': 3},
+            {'a': 4, 'b': 5, 'c': 6},
+            {'a': 7, 'b': 8, 'c': 9}
+        ])
+        tab2 = tablelib.Table([
+            {'a': 1, 'd': 2, 'e': 3},
+            {'a': 4, 'd': 5, 'e': 6},
+            {'a': 7, 'd': 18, 'e': 19}
+        ])
+        tab3 = tablelib.Table([
+            {'a': 1, 'b': 2, 'c': 3, 'd': 2, 'e': 3},
+            {'a': 4, 'b': 5, 'c': 6, 'd': 5, 'e': 6},
+            {'a': 7, 'b': 8, 'c': 9, 'd': 18, 'e': 19},
+        ])
+        tab4 = tablelib.Table([
+            {'a': 1, 'b': 2, 'c': 3, 'd': 2, 'e': 3},
+            {'a': 4, 'b': 5, 'c': 6, 'd': 5, 'e': 6},
+        ])
+
+        # join by column name
+        join = tablelib.join_tables(
+            (tab1, 'a', ['a', 'b', 'c']),
+            (tab2, 'a', ['d', 'e']))
+        self.assertEqual(join, tab3)
+
+        # join by key function
+        join = tablelib.join_tables(
+            (tab1, lambda x: x['a'], ['a', 'b', 'c']),
+            (tab2, lambda x: x['a'], ['d', 'e']))
+        self.assertEqual(join, tab3)
+
+        # join by key function
+        join = tablelib.join_tables(
+            (tab1, lambda x: (x['a'], x['b']), ['a', 'b', 'c']),
+            (tab2, lambda x: (x['a'], x['d']), ['d', 'e']))
+        self.assertEqual(join, tab4)
 
 '''
     #################################################

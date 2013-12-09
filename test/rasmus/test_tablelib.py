@@ -412,6 +412,32 @@ a	b	c
             (tab2, lambda x: (x['a'], x['d']), ['d', 'e']))
         self.assertEqual(join, tab4)
 
+    def test_histtab(self):
+
+        data = "aaaacbb"
+        hist = tablelib.histtab(data)
+        expected = tablelib.Table([
+            {'item': 'a', 'count': 4, 'percent': 4 / 7.},
+            {'item': 'b', 'count': 2, 'percent': 2 / 7.},
+            {'item': 'c', 'count': 1, 'percent': 1 / 7.},
+        ])
+        self.assertEqual(hist, expected)
+
+        data = tablelib.Table([
+            ['first', 'second', 'third'],
+            ['a', 'b', 1],
+            ['a', 'b', 1],
+            ['a', 'c', 2],
+            ['c', 'a', 1],
+            ['a', 'b', 2]])
+        hist = tablelib.histtab(data, cols=['first', 'second'])
+        expected = tablelib.Table([
+            {'count': 3, 'second': 'b', 'percent': 0.6, 'first': 'a'},
+            {'count': 1, 'second': 'a', 'percent': 0.2, 'first': 'c'},
+            {'count': 1, 'second': 'c', 'percent': 0.2, 'first': 'a'},
+        ])
+        self.assertEqual(hist, expected)
+
 '''
     #################################################
     # specialized types

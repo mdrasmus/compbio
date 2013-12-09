@@ -589,6 +589,13 @@ class Table (list):
         for row in self:
             yield [row[header] for header in cols]
 
+    def as_tuples(self, cols=None):
+        """Iterate over rows as lists"""
+        if cols is None:
+            cols = self.headers
+        for row in self:
+            yield tuple(row[header] for header in cols)
+
     def filter(self, cond):
         """Returns a table with a subset of rows such that cond(row) == True"""
         tab = self.new()
@@ -839,29 +846,38 @@ def iter_table(filename, delim="\t", nheaders=1, types=None, guess_types=True):
                            types=types, guess_types=guess_types)
 
 
-def histtab(items, headers=["item", "count", "percent"], item="item"):
+def histtab(items, headers=None, item="item", count="count", percent="percent",
+            cols=None):
     """Make a histogram table."""
+    if cols is not None:
+        # items is a Table.
+        items = items.as_tuples(cols=cols)
+        if headers is None:
+            headers = cols + [count, percent]
+
+    if headers is None:
+        headers = [item, count, percent]
+
     h = util.hist_dict(items)
-    if len(headers) > 0:
-        headers[0] = item
     tab = Table(headers=headers)
     tot = float(sum(h.itervalues()))
+    hist_items = h.items()
 
-    if len(headers) == 2:
-        for key, val in h.items():
-            tab.append({headers[0]: key,
-                        headers[1]: val})
-
-    elif len(headers) == 3:
-        for key, val in h.items():
-            tab.append({headers[0]: key,
-                        headers[1]: val,
-                        headers[2]: val / tot})
-
+    if cols is not None:
+        for key, val in hist_items:
+            row = dict(zip(cols, key))
+            row[count] = val
+            tab.append(row)
     else:
-        raise Exception("Wrong number of headers (2 or 3 only)")
+        for key, val in hist_items:
+            tab.append({item: key,
+                        count: val})
 
-    tab.sort(col=headers[1], reverse=True)
+    if percent is not None:
+        for i, (key, val) in enumerate(hist_items):
+            tab[i][percent] = val / tot
+
+    tab.sort(col=count, reverse=True)
 
     return tab
 

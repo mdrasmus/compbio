@@ -297,7 +297,7 @@ def revdict(dic, allowdups=False):
             dic2[val] = key
     else:
         for key, val in dic.iteritems():
-            assert key not in dic2, "duplicate value '%s' in dict" % val
+            assert val not in dic2, "duplicate value '%s' in dict" % val
             dic2[val] = key
     
     return dic2

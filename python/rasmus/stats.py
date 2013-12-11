@@ -723,10 +723,10 @@ def rhyper(m, n, M, N, report=0):
         raise "unknown option"
 
 
-def cdf(vals, fixed=True):
+def cdf(vals, fixed=True, reverse=False):
     """Computes the CDF of a list of values"""
     
-    vals = sorted(vals)
+    vals = sorted(vals, reverse=reverse)
     tot = float(len(vals))
     x = []
     y = []

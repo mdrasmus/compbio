@@ -2024,7 +2024,6 @@ def layout_tree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
 
 
 def layout_tree_hierarchical(tree, xscale, yscale,
-                             minlen=-util.INF, maxlen=util.INF,
                              rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.

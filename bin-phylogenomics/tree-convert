@@ -20,8 +20,7 @@ informat, outformat = args
 
 
 if informat == "ptree":
-    tree = treelib.Tree()
-    tree.read_parent_tree(sys.stdin, conf.labels)
+    tree = treelib.read_parent_tree(sys.stdin, conf.labels)
 
 elif informat == "newick":
     tree = treelib.read_tree(sys.stdin)
@@ -29,8 +28,9 @@ elif informat == "newick":
 
 if outformat == "ptree":
     labels = tree.leaf_names()
-    tree.write_parent_tree(sys.stdout, labels)
-    util.write_list(conf.labels, labels)
+    tree.write_parent_tree(sys.stdout, tree, labels)
+    util.write_list(conf.labels, tree, labels)
+    
 elif outformat == "newick":
     tree.write_newick(sys.stdout)
 

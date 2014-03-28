@@ -1,0 +1,197 @@
+#!/usr/bin/env python
+
+
+import sys, os
+
+from rasmus.common import *
+from compbio import arglib
+import arghmm
+import tempfile
+import optparse
+
+o = optparse.OptionParser()
+o.add_option("-n", "--nargs", metavar="NUMBER_OF_ARGS", type="int",
+             default=1)
+o.add_option("-o", "--output", default="marg")
+
+
+conf, args = o.parse_args()
+
+
+#=============================================================================
+
+def mktemp():
+    fd, filename = tempfile.mkstemp(".tmp", "")
+    os.close(fd)
+    return filename
+
+    
+def write_marg_input(out, sites):
+    out = util.open_stream(out, "w")
+
+    # NUMCASEHAPLOTYPES NUMCONTROLHAPLOTYPES NUMMARKERS
+    print >>out, sites.nseqs(), 0, sites.nsites()
+
+    pos = sites.positions
+    assert pos == sorted(pos)
+    assert max(hist_dict(pos).values()) == 1, histtab(pos)[:10]
+
+    # marker positions
+    for pos in sites.positions:
+        print >>out, pos
+
+    # haplotype sequences
+    seqs = [[] for i in range(sites.nseqs())]
+    for pos, col in sites:
+        a = col[0]
+        for i, base in enumerate(col):
+            if base == a:
+                seqs[i].append("1")
+            else:
+                seqs[i].append("0")
+
+    for seq in seqs:
+        print >>out, "".join(seq)
+    out.close()
+
+
+def read_marg_arg(infile, nseqs, length, name_format, sites=None, nmuts=None):
+    arg = arglib.ARG(start=0, end=length)
+
+    # setup mutation positions
+    if sites:
+        mutpos = sites.positions
+    else:
+        assert mutpos is not None
+        mutpos = range(nmuts+1)
+    
+
+    # make leaves
+    lineages = {}
+    parents = {}
+    for i in xrange(nseqs):
+        lineages[str(i)] = arg.new_node(
+            name=name_format(i), age=0, event="gene")
+
+    for line in infile:
+        if line.startswith("ARG"):
+            break
+        
+        tokens = line.rstrip().split(" ")
+        age = int(tokens[0])
+        kind = tokens[1]
+
+        if kind == "mu":
+            childid, parentid, pos = tokens[2], tokens[3], tokens[4]
+            lineages[parentid] = lineages[childid]
+            del lineages[childid]
+
+        elif kind == "co":
+            childid1, childid2, parentid = tokens[2], tokens[3], tokens[4]
+            child1 = lineages[childid1]
+            child2 = lineages[childid2]
+            parent = arg.new_node(event="coal", age=age,
+                                  children=[child1, child2])
+            for childid, child in zip((childid1, childid2), (child1, child2)):
+                if child.event != "recomb":
+                    child.parents.append(parent)
+                else:
+                    child.parents[child.parents.index(childid)] = parent
+            lineages[parentid] = parent
+            del lineages[childid1]
+            del lineages[childid2]
+
+        elif kind == "re":
+            childid, parentid1, parentid2 = tokens[2], tokens[3], tokens[4]
+            pos = int(tokens[5])
+            pos = (mutpos[pos] + mutpos[pos+1]) / 2.0
+
+            child = lineages[childid]
+            node = arg.new_node(event="recomb", age=age, pos=pos,
+                                children=[child],
+                                parents=[parentid1, parentid2])
+            if child.event != "recomb":
+                child.parents.append(node)
+            else:
+                child.parents[child.parents.index(childid)] = node
+
+            lineages[parentid1] = node
+            lineages[parentid2] = node
+            del lineages[childid]
+        else:
+            raise Exception("unknown line '%s'" % line)
+
+    # finalize root
+    assert len(lineages) == 1, lineages
+    arg.root = lineages.values()[0]
+
+    for node in arg:
+        assert str not in map(type, node.parents), \
+               (node, node.event, node.parents)
+
+    return arg
+
+
+def read_marg(infile, length, name_format, sites=None):
+
+    # read header
+    print >>sys.stderr, "read args..."
+    assert infile.next().startswith("Margarita")
+    assert infile.next().startswith("%ARGINFERENCE")
+    assert infile.next() == "SEQS SNPS MUTS COAS RECS GECS TRCS SECS HEURP\n"
+
+    tokens = infile.next().split()
+    nseqs = int(tokens[0])
+    nmuts = int(tokens[1])
+
+    nargs = 0
+    line = ""
+    while not line.startswith("%ARG"):
+        line = infile.next()
+        nargs += 1
+    infile.next()
+
+    assert infile.next().startswith("ARG")
+    for i in range(nargs):
+        print >>sys.stderr, "read ARG", i
+        arg = read_marg_arg(infile, nseqs, length, name_format,
+                            sites=sites, nmuts=nmuts)
+        yield arg
+
+
+#=============================================================================
+
+sitesfile = args[0]
+
+print >>sys.stderr, "preparing input..."
+sites = arghmm.read_sites(sitesfile)
+marg_input = mktemp()
+write_marg_input(marg_input, sites)
+
+# usage: infile numargs numpermutations
+marg_out = os.popen("margarita %s %d 1 -args -nomapping" %
+                    (marg_input, conf.nargs))
+
+#print marg_out.read()
+
+args = list(read_marg(marg_out, sites.length(), lambda i: sites.names[i],
+                      sites=sites))
+
+if len(args) == 1:
+    arglib.write_arg(sys.stdout, args[0])
+else:
+    dirpath = os.path.dirname(conf.output)
+    util.makedirs(dirpath)
+    for i, arg in enumerate(args):
+        arglib.write_arg("%s.%d.arg" % (conf.output, i), arg)
+    
+
+os.remove(marg_input)
+
+'''
+time margarita tmp/ratios4-16.margin 1 1 -args -nomapping \
+    > tmp/ratios4-16.margout
+bin/marg2arg tmp/ratios4-16.margout data/seq-20-ratios4/2/16/16.sites \
+    > tmp/ratios4-16.marg.arg
+'''
+

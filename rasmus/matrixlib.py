@@ -409,8 +409,7 @@ def write_imat(out, nrows, ncols, nnz, imat):
     """Write an index matrix"""
 
     out.write("%d\t%d\t%d\n" % (nrows, ncols, nnz))
-
-    for i, j, j in imat:
+    for i, j, v in imat:
         out.write("%d\t%d\t%f\n" % (i, j, v))
 
 

@@ -1,15 +1,14 @@
 
-from rasmus.common import *
-from rasmus.testing import *
 from StringIO import StringIO
+import unittest
 
 from compbio import phylo
 from compbio.vis import transsvg
+from rasmus.testing import make_clean_dir
+from rasmus import treelib
 
 
-#=============================================================================
-
-streefile = StringIO("""((((sde1:1,sde2:1):2,sdd:3):1,(spy1:2,spy2:2):2):1,see:5);""")
+stree_newick = """((((sde1:1,sde2:1):2,sdd:3):1,(spy1:2,spy2:2):2):1,see:5);"""
 
 
 smapfile = StringIO("""\
@@ -87,12 +86,7 @@ SDEG_0318	sde2	gene
 """)
 
 
-
-
-#=============================================================================
-
-treefile2 = StringIO("""\
-(
+treefile2 = StringIO("""(
  SEQ_1075:0.058336,
  (
   (
@@ -149,11 +143,8 @@ SpyM3_0853	spy1	gene
 MGAS10750_Spy1866	spy2	gene
 """)
 
-#=============================================================================
-# 17-1
 
-treefile3 = StringIO("""\
-(
+treefile3 = StringIO("""(
  SEQ_0864:0.094945,
  (
   SDEG_0677:0.117023,
@@ -181,50 +172,37 @@ SDD27957_05160	sdd	gene
 """)
 
 
-
-#=============================================================================
-    
 class Vis (unittest.TestCase):
 
     def test1(self):
-        
-        stree = treelib.read_tree(streefile)
-        #gene2species = phylo.read_gene2species(smapfile)
-        
+        outdir = 'test/tmp/test_vistrans/Vis_test1/'
+        make_clean_dir(outdir)
+
+        stree = treelib.parse_newick(stree_newick)
         tree = treelib.read_tree(treefile1)
         brecon = phylo.read_brecon(breconfile1, tree, stree)
 
-        transsvg.draw_tree(tree, brecon, stree, filename="tmp/tree.svg")
-        os.system("display tmp/tree.svg")
+        transsvg.draw_tree(tree, brecon, stree, filename=outdir + "tree.svg")
 
     def test2(self):
-        
-        stree = treelib.read_tree(streefile)
-        #gene2species = phylo.read_gene2species(smapfile)
-        
+        outdir = 'test/tmp/test_vistrans/Vis_test2/'
+        make_clean_dir(outdir)
+
+        stree = treelib.parse_newick(stree_newick)
         tree = treelib.read_tree(treefile2)
         brecon = phylo.read_brecon(breconfile2, tree, stree)
 
-        transsvg.draw_tree(tree, brecon, stree, filename="tmp/tree.svg")
-        os.system("display tmp/tree.svg")
-
+        transsvg.draw_tree(tree, brecon, stree, filename=outdir + "tree.svg")
 
     def test3(self):
-        
-        stree = treelib.read_tree(streefile)
-        #gene2species = phylo.read_gene2species(smapfile)
-        
+        outdir = 'test/tmp/test_vistrans/Vis_test3/'
+        make_clean_dir(outdir)
+
+        stree = treelib.parse_newick(stree_newick)
         tree = treelib.read_tree(treefile3)
         brecon = phylo.read_brecon(breconfile3, tree, stree)
 
         phylo.add_implied_spec_nodes_brecon(tree, brecon)
+        phylo.write_brecon(open(outdir + 'brecon', 'w'), brecon)
 
-        phylo.write_brecon(sys.stdout, brecon)
-        
-        transsvg.draw_tree(tree, brecon, stree, filename="tmp/tree.svg")
-        os.system("display tmp/tree.svg")
-
-
-
-if __name__ == "__main__":
-    test_main()
+        transsvg.draw_tree(tree, brecon, stree, filename=outdir + "tree.svg")

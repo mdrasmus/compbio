@@ -1,0 +1,6 @@
+pep8
+pyflakes
+nose
+numpy
+scipy
+-e git+https://github.com/mdrasmus/rpy#egg=rpy

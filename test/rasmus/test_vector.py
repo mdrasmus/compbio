@@ -1,5 +1,3 @@
-
-from StringIO import StringIO
 import unittest
 
 from rasmus import vector as v
@@ -36,4 +34,3 @@ class Test (unittest.TestCase):
                          dict(zip('xyz', [0.25, 0.4, 0.5])))
         self.assertAlmostEqual(v.vmag(a), 3.74165738677)
         self.assertAlmostEqual(v.vdist(a, b), 5.19615242271)
-

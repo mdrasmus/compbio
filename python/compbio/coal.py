@@ -23,7 +23,10 @@ from collections import defaultdict
 
 # rasmus imports
 from rasmus import treelib, stats, util, linked_list
-from rasmus.symbolic import *
+try:
+    from rasmus.symbolic import *
+except:
+    pass
 
 # compbio imports
 from . import birthdeath
@@ -1156,7 +1159,7 @@ def sample_lineage_counts(node, leaves,
 
         else:
             # unhandled case
-            raise Excepiton("not implemented")
+            raise Exception("not implemented")
 
 
 def coal_cond_lineage_counts(lineages, sroot, sleaves, popsizes, stimes, T,
@@ -1197,9 +1200,15 @@ def coal_cond_lineage_counts(lineages, sroot, sleaves, popsizes, stimes, T,
     
     tree = join_subtrees(subtrees, recon, caps, sroot)
     
-    # set name leaves
+    # set name leaves -- allow multiple lineages per species
+    name_counts = {}
     for leaf in tree.leaves():
-        tree.rename(leaf.name, namefunc(recon[leaf].name))
+        newname = namefunc(recon[leaf].name)
+        if newname in tree.nodes:   # create unique name
+            if newname not in name_counts: name_counts[newname] = 0
+            name_counts[newname] += 1
+            newname = newname + "_" + str(name_counts[newname])
+        tree.rename(leaf.name, newname)
     
     return tree, recon
 

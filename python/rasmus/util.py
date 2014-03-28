@@ -77,8 +77,12 @@ class Dict (dict):
         default -- default value of a dictionary item
         insert  -- if True, insert missing keys
         """
-        
-        if items is not None:
+
+        if isinstance(items, int):
+            # backwards compatiability
+            default = dim
+            dim = items
+        elif items is not None:
             dict.__init__(self, items)
         else:
             dict.__init__(self)
@@ -293,7 +297,7 @@ def revdict(dic, allowdups=False):
             dic2[val] = key
     else:
         for key, val in dic.iteritems():
-            assert key not in dic2, "duplicate value '%s' in dict" % val
+            assert val not in dic2, "duplicate value '%s' in dict" % val
             dic2[val] = key
     
     return dic2
@@ -827,12 +831,12 @@ def argmin_old(lst, key=lambda x: x):
 def argmax_old(lst, key=lambda x: x):
     """
     Find the index 'i' in 'lst' with maximum lst[i]
-    
+
     lst -- list to search
     key -- function to apply to each lst[i].
            argmax(lst, key=func) --> argmax(map(key, lst))
     """
-    
+
     assert len(lst) > 0
     top = 0
     topval = key(lst[0])
@@ -843,6 +847,44 @@ def argmax_old(lst, key=lambda x: x):
             topval = val
     return top
 '''
+
+def minall(iterable, keyfunc=None, minfunc=None):
+    """Returns (1) all items with minimum value and (2) the minimum value"""
+    if keyfunc is None:
+        keyfunc = lambda it: it
+    if minfunc is None:
+        minfunc = lambda it: it
+
+    items = []
+    minval = INF
+    for it in iterable:
+        val = minfunc(it)
+        if val < minval:
+            items = [keyfunc(it)]
+            minval = val
+        elif val == minval:
+            items.append(keyfunc(it))
+    assert(len(items) > 0)
+    return items, minval
+
+def maxall(iterable, keyfunc=None, maxfunc=None):
+    """Returns (1) all items with maximum value and (2) the maximum value"""
+    if keyfunc is None:
+        keyfunc = lambda it: it
+    if maxfunc is None:
+        maxfunc = lambda it: it
+
+    items = []
+    maxval = -INF
+    for it in iterable:
+        val = maxfunc(it)
+        if val > maxval:
+            items = [keyfunc(it)]
+            maxval = val
+        elif val==maxval:
+            items.append(keyfunc(it))
+    assert(len(items) > 0)
+    return items, maxval    
 
 
 #=============================================================================
@@ -1085,7 +1127,9 @@ def write_list(filename, lst):
         print >>out, i
 
 
-def write_dict(filename, dct, delim="\t"):
+def write_dict(filename, dct, delim="\t",
+               keyfunc=lambda x: str(x),
+               valfunc=lambda x: str(x)):
     """Write a dictionary to a file
     
        filename may also be a stream
@@ -1093,7 +1137,7 @@ def write_dict(filename, dct, delim="\t"):
     
     out = open_stream(filename, "w")
     for k, v in dct.iteritems():
-        out.write("%s%s%s\n" % (str(k), delim, str(v)))
+        out.write("%s%s%s\n" % (keyfunc(k), delim, valfunc(v)))
 
 
 
@@ -1613,10 +1657,24 @@ def sortindex(lst, cmp=cmp, key=None, reverse=False):
     return ind
 
 
-def sortranks(lst, cmp=cmp, key=None, reverse=False):
-    """Returns the ranks of items in lst"""
-    return invperm(sortindex(lst, cmp, key, reverse))
-    
+def sortranks(lst, cmp=cmp, key=None, reverse=False, tied=False):
+    """
+    Returns the ranks of items in lst
+    If tied is True, set rank equal to average of positions
+    """
+    rank = invperm(sortindex(lst, cmp, key, reverse))
+    if not tied:
+        return rank
+
+    s = set(lst)
+    for it in s:
+        ind = [i for i,j in enumerate(lst) if cmp(it,j)==0]
+        ranks = mget(rank, ind)
+        avgrank = float(sum(ranks))/len(ranks)
+        for j in ind:
+            rank[j] = avgrank
+    return rank
+
 
 def sort_many(lst, *others, **args):
     """Sort several lists based on the sorting of 'lst'"""

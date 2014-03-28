@@ -257,7 +257,9 @@ def sample_birth_death_tree(T, birth, death, tree=None, node=None,
 def sample_birth_death_gene_tree(stree, birth, death, 
                                  genename=lambda sp, x: sp + "_" + str(x),
                                  removeloss=True):
-    """Simulate a gene tree within a species tree with birth and death rates"""
+    """Simulate a gene tree within a species tree with birth and death rates
+    Note: birth and death can be floats or dictionaries
+    """
     
     # initialize gene tree
     tree = treelib.Tree()
@@ -265,6 +267,22 @@ def sample_birth_death_gene_tree(stree, birth, death,
     recon = {tree.root: stree.root}
     events = {tree.root: "spec"}
     losses = set()
+
+    # if birth is not a dict, convert to dict
+    if isinstance(birth, dict):
+        birth_dict = birth
+    else:
+        birth_dict = {}
+        for snode in stree:
+            birth_dict[snode.name] = birth
+
+    # if death is not a dict, convert to dict
+    if isinstance(death, dict):
+        death_dict = death
+    else:
+        death_dict = {}
+        for snode in stree:
+            death_dict[snode.name] = death
     
     def walk(snode, node):
         if snode.is_leaf():
@@ -274,7 +292,7 @@ def sample_birth_death_gene_tree(stree, birth, death,
             for child in snode:
                 # determine if loss will occur
                 tree2, doom = sample_birth_death_tree(
-                    child.dist, birth, death, 
+                    child.dist, birth_dict[child.name], death_dict[child.name], 
                     tree=tree, node=node, keepdoom=True)
                 
                 # record reconciliation

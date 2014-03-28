@@ -105,16 +105,22 @@ def get_webcolor(color, maxval=1):
     return colstr
 
 
-def rainbow_color_map(data=None, low=None, high=None):
-    if data != None:
+def rainbow_color_map(data=None, low=None, high=None, alpha=None):
+    if data is not None:
         low = min(data)
         high = max(data)
-    assert low != None and high != None
+    assert low is not None and high is not None
     
-    return ColorMap([[low, blue],
-                     [.5*low+.5*high, green],
-                     [.25*low + .75*high, yellow],
-                     [high, red]])
+    if not alpha:
+        alpha = 1
+
+    def get_color(color, alpha):
+        return color[:3] + (alpha,)
+    
+    return ColorMap([[low,              get_color(blue, alpha)],
+                     [.5*low+.5*high,   get_color(green, alpha)],
+                     [.25*low+.75*high, get_color(yellow, alpha)],
+                     [high,             get_color(red, alpha)]])
 rainbowColorMap = rainbow_color_map
 
 
@@ -134,8 +140,15 @@ def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
 
 
 def make_color_legend(filename, colormap, start, end, step, 
-                    width=100, height=10):
+                      width=100, height=10, display=False):
     from rasmus import util
+
+    if filename is None:
+        filename = util.tempfile(".", "colormap", ".svg")
+        temp = True
+    else:
+        temp = False
+    
     s = svg.Svg(util.open_stream(filename, "w"))    
     s.beginSvg(width, height)
     
@@ -149,6 +162,15 @@ def make_color_legend(filename, colormap, start, end, step,
                color, color)
     
     s.endSvg()
+    s.close()
+    
+    # display
+    if display:
+        os.system("display %s" % filename)
+    
+    # clean up temp files
+    if temp:
+        os.remove(filename)
 makeColorLegend = make_color_legend
 
 
@@ -168,20 +190,27 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             clabelsAngle=270,
             clabelsPadding=None,
             rlabelsAngle=0,
-            rlabelsPadding=None):
+            rlabelsPadding=None,
+            colors=None,
+            strokeColors=None,
+            valAnchor="start",
+            close=True):
 
     from rasmus import util
+    if display and (not close):
+        raise Exception("must close file if display is used")
     
     # determine filename
-    if filename == None:
+    if filename is None:
         filename = util.tempfile(".", "heatmap", ".svg")
         temp = True
     else:
         temp = False
     
     # determine colormap
-    if colormap == None:
-        colormap = rainbowColorMap(util.flatten(matrix))
+    if colors is None:
+        if colormap is None:
+            colormap = rainbowColorMap(util.flatten(matrix))
     
     # determine matrix size and orientation
     nrows = len(matrix)
@@ -222,10 +251,19 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
             if mincutoff and matrix[i][j] < mincutoff: continue
             if maxcutoff and matrix[i][j] > maxcutoff: continue
             
-            color = colormap.get(matrix[i][j])
+            if colors:
+                color = colors[i][j]
+            else:
+                color = colormap.get(matrix[i][j])
+
+            if strokeColors:
+                strokeColor = strokeColors[i][j]
+            else:
+                strokeColor = color
+                
             s.rect(xstart + xdir*j*width, 
                    ystart + ydir*i*height, 
-                   xdir*width, ydir*height, color, color)
+                   xdir*width, ydir*height, strokeColor, color)
     
     # draw values
     if showVals:
@@ -246,7 +284,15 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
                                         width/(float(len(strval)) * fontwidth)))
         textsize = min(textsize)
 
-
+        if valAnchor == "start":
+            xoffset = 0
+        elif valAnchor == "middle":
+            xoffset = 0.5
+        elif valAnchor == "end":
+            xoffset = 1
+        else:
+            raise Exception("anchor not supported: %s" % valAnchor)
+        
         yoffset = int(ydir == -1)
         for i in xrange(nrows):
             for j in xrange(ncols):
@@ -256,11 +302,12 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
                 
                 strval = formatVals(matrix[i][j])
                 s.text(strval, 
-                       xstart + xdir*j*width, 
+                       xstart + xdir*(j+xoffset)*width,
                        ystart + ydir*(i+yoffset)*height + 
                        height/2.0 + textsize/2.0, 
                        textsize,
-                       fillColor=valColor)
+                       fillColor=valColor,
+                       anchor=valAnchor)
     
     # draw labels
     if rlabels != None:
@@ -290,8 +337,9 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
                    angle=clabelsAngle)
     
     # end svg
-    s.endSvg()
-    s.close()
+    if close:
+        s.endSvg()
+        s.close()
     
     
     # display matrix
@@ -304,6 +352,8 @@ def heatmap(matrix, width=20, height=20, colormap=None, filename=None,
     # clean up temp files
     if temp:
         os.remove(filename)
+
+    return s
 
 
 

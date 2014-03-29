@@ -713,8 +713,6 @@ def recon_root(gtree, stree, gene2species=gene2species,
         cost += count_dup(gtree, events) * dupcost
     if rootby in ["loss", "duploss"] and losscost != 0:
         cost += count_loss(gtree, stree,  recon) * losscost
-    if rootby not in ["dup", "loss", "duploss"]:
-        raise "unknown rootby value '%s'"  % rootby
     mincost = cost
 
     # try rooting on everything
@@ -747,9 +745,9 @@ def recon_root(gtree, stree, gene2species=gene2species,
         events[gtree.root] = label_events_node(gtree.root, recon)
 
         if rootby in ["dup", "duploss"] and dupcost != 0:
-            if events[node2] ==  "dup":
-                cost += dupcost
             if events[gtree.root] ==  "dup":
+                cost += dupcost
+            if events[node2] ==  "dup":
                 cost += dupcost
         if rootby in ["loss", "duploss"] and losscost != 0:
             cost += len(find_loss_under_node(gtree.root, recon)) * losscost
@@ -2417,7 +2415,7 @@ def consensus_majority_rule(trees, extended=True, rooted=False):
     contree = treelib.Tree()
 
     # count all splits
-    split_counts = util.Dict(1, 0)
+    split_counts = util.Dict(dim=1, default=0)
     for tree in trees:
         for split in find_splits(tree, rooted):
             split_counts[split] += 1

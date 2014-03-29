@@ -1094,9 +1094,7 @@ def write_list(filename, lst):
         print >>out, i
 
 
-def write_dict(filename, dct, delim="\t",
-               keyfunc=lambda x: str(x),
-               valfunc=lambda x: str(x)):
+def write_dict(filename, dct, delim="\t", key=str, val=str):
     """
     Write a dictionary to a file.
 
@@ -1104,7 +1102,7 @@ def write_dict(filename, dct, delim="\t",
     """
     out = open_stream(filename, "w")
     for k, v in dct.iteritems():
-        out.write("%s%s%s\n" % (keyfunc(k), delim, valfunc(v)))
+        out.write("%s%s%s\n" % (key(k), delim, val(v)))
 
 
 class IgnoreCloseFile (object):

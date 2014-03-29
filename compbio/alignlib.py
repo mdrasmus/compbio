@@ -56,8 +56,8 @@ def subalign(aln, cols):
 def remove_empty_columns(aln, enforce_codon=False):
     """
     Removes any column from an alignment 'aln' that contains only gaps
-    if enforce_codon, only removes empty columns if they correspond to an empty codon position
     
+    if enforce_codon, only removes empty columns if they correspond to an empty codon position
     A new alignment is returned
     """
 

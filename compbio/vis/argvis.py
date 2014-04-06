@@ -928,6 +928,7 @@ def draw_arg_threads(arg, blocks, layout, sites=None,
                      chrom_colors=None, chrom_color=[.2,.2,.8,.8],
                      snp_colors={"compat": [1, 0, 0],
                                  "noncompat": [0, 1, 0]},
+                     get_snp_color=None,
                      spr_alpha=1,
                      spr_trim=10,
                      compat=False,
@@ -1021,6 +1022,9 @@ def draw_arg_threads(arg, blocks, layout, sites=None,
                 else:
                     c = color(*snp_colors["compat"])
                     derived = split
+                if get_snp_color and derived:
+                    allele = sites.get(pos, next(iter(derived)))
+                    c = color(*get_snp_color(arg.chrom, pos, allele))
 
                 for d in derived:
                     if d in layout[k]:

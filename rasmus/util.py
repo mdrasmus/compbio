@@ -1361,7 +1361,7 @@ def printwrap(text, width=80, prefix="", out=sys.stdout):
 
 def int2pretty(num):
     """Return a pretty-printed version of an int."""
-    string = str(num)
+    string = str(abs(num))
     parts = []
     l = len(string)
     for i in xrange(0, l, 3):
@@ -1371,7 +1371,10 @@ def int2pretty(num):
             s = 0
         parts.append(string[s:t])
     parts.reverse()
-    return ",".join(parts)
+    if num < 0:
+        return "-" + ",".join(parts)
+    else:
+        return ",".join(parts)
 
 
 def pretty2int(string):

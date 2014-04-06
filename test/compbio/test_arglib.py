@@ -4,13 +4,10 @@ import unittest
 
 from compbio import arglib
 from rasmus import util
-from rasmus.common import ilen, izip
-from rasmus.gnuplot import Gnuplot
-from rasmus.gnuplot import plot
+from rasmus.common import izip
 from rasmus.rplotting import rp
 from rasmus.rplotting import rplot_end
 from rasmus.rplotting import rplot_start
-from rasmus.stats import mean
 from rasmus.testing import make_clean_dir
 
 

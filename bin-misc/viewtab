@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import os, sys, optparse
+import optparse
+import sys
 
 
 o = optparse.OptionParser()
@@ -18,6 +19,7 @@ o.add_option("-H", "--header", metavar="<# rows>",
 
 #=============================================================================
 
+
 def printcols(data, width=None, spacing=1, out=sys.stdout,
               colwidth=100000, overflow="!"):
     """Prints a list or matrix in aligned columns
@@ -27,35 +29,34 @@ def printcols(data, width=None, spacing=1, out=sys.stdout,
        spacing - number of spaces between columns (default: 1)
        out     - stream to print to (default: sys.stdout)
     """
-    
+
     if len(data) == 0:
         return
-        
+
     # turn all entries into strings
     matstr = [[str(x) for x in row] for row in data]
-    
+
     # overflow
     for row in matstr:
         for j in xrange(len(row)):
             if len(row[j]) > colwidth:
                 row[j] = row[j][:colwidth-len(overflow)] + overflow
-    
+
     # ensure every row has same number of columns
     maxcols = max(map(len, matstr))
     for row in matstr:
         if len(row) < maxcols:
             row.extend([""] * (maxcols - len(row)))
-    
-    
+
     # find the maximum width char in each column
     maxwidths = [max(len(matstr[i][j]) for i in xrange(len(matstr)))
                  for j in xrange(maxcols)]
-    
+
     # print out matrix with whitespace padding
     for i in xrange(len(mat)):
         fields = []
         for j in xrange(len(mat[i])):
-            fields.append(matstr[i][j] + 
+            fields.append(matstr[i][j] +
                           (" " * (maxwidths[j] - len(matstr[i][j]) + spacing)))
         out.write("".join(fields)[:width] + "\n")
 
@@ -88,4 +89,3 @@ for i, line in enumerate(infile):
         mat = []
 
 printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
-

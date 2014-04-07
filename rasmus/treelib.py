@@ -1222,15 +1222,6 @@ def assert_tree(tree):
     assert len(tree.nodes) == len(visited), (
         "%d %d" % (len(tree.nodes), len(visited)))
 
-def is_binary(tree):
-    """Returns True if tree is binary"""
-
-    for node in tree:
-        if not node.is_leaf():
-            if len(node.children) != 2:
-                return False
-    return True
-
 
 def is_binary(tree):
     """Returns True if tree is binary"""

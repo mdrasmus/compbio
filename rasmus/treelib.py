@@ -1538,7 +1538,8 @@ def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf:leaf.name):
 
     if root:
         # reroot tree to match tree2
-        root_branches = [set(map(leafmap, n.leaves())) for n in tree2.root.children]
+        root_branches = [set(map(leafmap, n.leaves()))
+                         for n in tree2.root.children]
 
         def walk(node):
             if node.is_leaf():
@@ -1818,7 +1819,7 @@ def get_tree_ages(tree, root=None, leaves=None, times=None, esp=0.001):
                 t = walk(child)
 
                 # ensure branch lengths are ultrametrix
-                if (t2 is not None) and (esp is not None):
+                if t2 is not None and esp is not None:
                     assert abs(t - t2)/t < esp, (node.name, t, t2)
                 t2 = t
 

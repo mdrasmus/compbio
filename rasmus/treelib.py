@@ -207,7 +207,7 @@ class Tree (object):
 
     def copy(self, copyData=True):
         """Returns a copy of the tree"""
-        tree = Tree(nextname = self.nextname, name=self.name)
+        tree = Tree(nextname=self.nextname, name=self.name)
 
         # copy structure
         if self.root is not None:

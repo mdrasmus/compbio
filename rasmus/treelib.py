@@ -58,18 +58,18 @@ class TreeNode (object):
         """Iterate through child nodes"""
         return iter(self.children)
 
-    def copy(self, parent=None, copyChildren=True):
+    def copy(self, parent=None, copyChildren=True, copyData=True):
         """Returns a copy of a TreeNode and all of its children"""
 
         node = TreeNode(self.name)
         node.name = self.name
         node.dist = self.dist
         node.parent = parent
-        node.data = copy.copy(self.data)
-
+        if copyData:
+            node.data = copy.copy(self.data)
         if copyChildren:
             for child in self.children:
-                node.children.append(child.copy(node))
+                node.children.append(child.copy(node, copyData=copyData))
 
         return node
 
@@ -848,23 +848,6 @@ def write_newick_node(tree, node, out=sys.stdout,
         out.write(writeData(node))
 
 
-'''
-def read_tree(filename):
-    """Read a tree from a newick file"""
-    tree = Tree()
-    tree.read_newick(filename)
-    return tree
-
-
-def parse_newick(newick):
-    """Read a tree from newick notation stored in a string"""
-    tree = Tree()
-    stream = StringIO.StringIO(newick)
-    tree.read_newick(stream)
-    return tree
-'''
-
-
 #=============================================================================
 # alternate reading functions
 
@@ -1507,16 +1490,17 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
                              keep_single=keep_single)
 
 
-def reorder_tree(tree, tree2, root=True):
+def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf:leaf.name):
     """Reorders the branches of tree to match tree2"""
 
     if root:
         # reroot tree to match tree2
-        root_branches = [set(n.leaf_names()) for n in tree2.root.children]
+        root_branches = [set(map(leafmap, n.leaves()))
+                         for n in tree2.root.children]
 
         def walk(node):
             if node.is_leaf():
-                leaves = set([node.name])
+                leaves = set([leafmap(node)])
             else:
                 leaves = set()
                 for child in node.children:
@@ -1534,14 +1518,14 @@ def reorder_tree(tree, tree2, root=True):
         walk(tree.root)
 
     # reorder tree to match tree2
-    leaf_lookup = util.list2lookup(tree2.leaf_names())
+    leaf_lookup = util.list2lookup(map(leafmap, tree2.leaves()))
 
     def mean(lst):
         return sum(lst) / float(len(lst))
 
     def walk2(node):
         if node.is_leaf():
-            return set([node.name])
+            return set([leafmap(node)])
         else:
             leaf_sets = []
 
@@ -1769,7 +1753,7 @@ def midpoint_root(tree):
 # the branch lengths.
 #
 
-def get_tree_ages(tree, root=None, leaves=None, times=None):
+def get_tree_ages(tree, root=None, leaves=None, times=None, esp=0.001):
     """
     Use the branch lengths of a tree to set timestamps for each node
     Assumes ultrametric tree.
@@ -1780,7 +1764,6 @@ def get_tree_ages(tree, root=None, leaves=None, times=None):
     if root is None:
         root = tree.root
 
-    esp = .001
     if times is None:
         times = {}
 
@@ -1793,7 +1776,7 @@ def get_tree_ages(tree, root=None, leaves=None, times=None):
                 t = walk(child)
 
                 # ensure branch lengths are ultrametrix
-                if t2:
+                if t2 is not None and esp is not None:
                     assert abs(t - t2)/t < esp, (node.name, t, t2)
                 t2 = t
 
@@ -2139,9 +2122,7 @@ def layout_tree(tree, xscale, yscale, minlen=-util.INF, maxlen=util.INF,
 
 
 def layout_tree_hierarchical(tree, xscale, yscale,
-                             minlen=-util.INF, maxlen=util.INF,
-                             rootx=0, rooty=0,
-                             use_dists=True):
+                             rootx=0, rooty=0):
     """\
     Determines the x and y coordinates for every branch in the tree.
 

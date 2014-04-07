@@ -200,14 +200,19 @@ class Tree (object):
         self.branch_data = branch_data
         self.name = name
 
-    def copy(self):
+    def __repr__(self):
+        """Returns a representation of the tree"""
+        return "<tree %s>" % (self.name if self.name is not None else
+                              hex(id(self)))
+
+    def copy(self, copyData=True):
         """Returns a copy of the tree"""
-        tree = Tree(nextname=self.nextname)
+        tree = Tree(nextname=self.nextname, name=self.name)
 
         # copy structure
         if self.root is not None:
             # copy all nodes
-            tree.root = self.root.copy()
+            tree.root = self.root.copy(copyData=copyData)
 
             # set all names
             def walk(node):
@@ -217,15 +222,11 @@ class Tree (object):
             walk(tree.root)
 
         # copy extra data
-        tree.copy_data(self)
-        tree.copy_node_data(self)
+        if copyData:
+            tree.copy_data(self)
+            tree.copy_node_data(self)
 
         return tree
-
-    def __repr__(self):
-        """Returns a representation of the tree"""
-        return "<tree %s>" % (self.name if self.name is not None else
-                              hex(id(self)))
 
     #=========================================
     # iterators
@@ -350,10 +351,12 @@ class Tree (object):
         """
         Removes a node from a tree.
         Notifies parent (if it exists) that node has been removed.
+        Updates node.parent to None.
         """
 
         if node.parent:
             node.parent.children.remove(node)
+            node.parent = None
         del self.nodes[node.name]
 
     def remove_child(self, parent, child):
@@ -372,6 +375,7 @@ class Tree (object):
         """
         Removes subtree rooted at 'node' from tree.
         Notifies parent (if it exists) that node has been removed.
+        Updates node.parent to None.
         """
 
         def walk(node):
@@ -596,8 +600,8 @@ class Tree (object):
                      rootData=False):
         """Write the tree in newick notation"""
         write_newick(self, util.open_stream(out, "w"),
-                     writeData=writeData, oneline=oneline,
-                     rootData=rootData)
+                     write_data=writeData, oneline=oneline,
+                     root_data=rootData)
 
     def get_one_line_newick(self, root_data=False, writeData=None):
         """Get a presentation of the tree in a oneline string newick format"""
@@ -622,17 +626,21 @@ def read_newick(infile, read_data=None, tree=None):
     return parse_newick(infile, read_data=read_data, tree=tree)
 
 
-def iter_trees(treefile):
+def iter_trees(treefile, read_data=None):
     """read multiple trees from a tree file"""
 
     infile = util.open_stream(treefile)
 
-    yield read_tree(infile)
+    yield read_tree(infile, read_data=read_data)
     try:
         while True:
-            yield read_tree(infile)
+            yield read_tree(infile, read_data=read_data)
     except Exception:
         pass
+
+
+def read_trees(filename, read_data=None):
+    return list(iter_trees(filename, read_data=read_data))
 
 
 def tokenize_newick(infile):
@@ -793,22 +801,22 @@ def parse_newick(infile, read_data=None, tree=None):
     return tree
 
 
-def write_newick(tree, out=sys.stdout, writeData=None, oneline=False,
-                 rootData=False):
+def write_newick(tree, out=sys.stdout, write_data=None, oneline=False,
+                 root_data=False):
     """Write the tree in newick notation"""
     write_newick_node(tree, tree.root, util.open_stream(out, "w"),
-                      writeData=writeData, oneline=oneline,
-                      rootData=rootData)
+                      write_data=write_data, oneline=oneline,
+                      root_data=root_data)
 
 
 def write_newick_node(tree, node, out=sys.stdout,
-                      depth=0, writeData=None, oneline=False,
-                      rootData=False):
+                      depth=0, write_data=None, oneline=False,
+                      root_data=False):
     """Write the node in newick format to the out file stream"""
 
     # default data writer
-    if writeData is None:
-        writeData = tree.write_data
+    if write_data is None:
+        write_data = tree.write_data
 
     if not oneline:
         out.write(" " * depth)
@@ -824,13 +832,13 @@ def write_newick_node(tree, node, out=sys.stdout,
             out.write("(\n")
         for child in node.children[:-1]:
             write_newick_node(tree, child, out, depth+1,
-                              writeData=writeData, oneline=oneline)
+                              write_data=write_data, oneline=oneline)
             if oneline:
                 out.write(",")
             else:
                 out.write(",\n")
         write_newick_node(tree, node.children[-1], out, depth+1,
-                          writeData=writeData, oneline=oneline)
+                          write_data=write_data, oneline=oneline)
         if oneline:
             out.write(")")
         else:
@@ -838,14 +846,14 @@ def write_newick_node(tree, node, out=sys.stdout,
 
     # don't print data for root node
     if depth == 0:
-        if rootData:
-            out.write(writeData(node))
+        if root_data:
+            out.write(write_data(node))
         if oneline:
             out.write(";")
         else:
             out.write(";\n")
     else:
-        out.write(writeData(node))
+        out.write(write_data(node))
 
 
 #=============================================================================

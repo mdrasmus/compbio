@@ -13,8 +13,7 @@ import os
 
 
 def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
-              leafPadding=10,
-              leafFunc=lambda x: str(x.name),
+              leafPadding=10, leafFunc=lambda x: str(x.name),
               labelOffset=None, fontSize=10, labelSize=None,
               minlen=1, maxlen=util.INF, filename=sys.stdout,
               rmargin=150, lmargin=10, tmargin=0, bmargin=None,
@@ -25,7 +24,8 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
               lossColor=(0, 0, 1),
               dupColor=(1, 0, 0),
               eventSize=4,
-              legendScale=False, autoclose=None):
+              legendScale=False, autoclose=None,
+              extendRoot=True, labelLeaves=True, drawHoriz=True, nodeSize=0):
     
     # set defaults
     fontRatio = 8. / 11.
@@ -56,6 +56,9 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     else:
         events = None
         losses = None
+
+    if len(labels) > 0 or (stree and gene2species):
+        drawHoriz = True
     
     # layout tree
     if layout is None:
@@ -87,12 +90,20 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
     def walk(node):
         x, y = coords[node]
         if node.parent:
-            parentx = coords[node.parent][0]
+            parentx, parenty = coords[node.parent]
         else:
-            parentx = x
+            if extendRoot:
+                parentx, parenty = 0, y
+            else:
+                parentx, parenty = x, y     # e.g. no branch
         
         # draw branch
-        canvas.line(parentx, y, x, y, color=node.color)
+        if drawHoriz:
+            canvas.line(parentx, y, x, y, color=node.color)
+        else:
+            canvas.line(parentx, parenty, x, y, color=node.color)
+
+        # draw branch labels
         if node.name in labels:
             branchlen = x - parentx
             lines = str(labels[node.name]).split("\n")
@@ -106,18 +117,25 @@ def draw_tree(tree, labels={}, xscale=100, yscale=20, canvas=None,
                             y + labelOffset 
                             +(-len(lines)+1+i)*(labelSize+1),
                             labelSize)
-        
+
+        # draw nodes
+        if nodeSize > 0:
+            canvas.circle(x, y, nodeSize, strokeColor=svg.null, fillColor=node.color)
+
+        # draw leaf labels or recur
         if node.is_leaf():
-            canvas.text(leafFunc(node), 
-                        x + leafPadding, y+fontSize/2., fontSize,
-                        fillColor=node.color)
+            if labelLeaves:
+                canvas.text(leafFunc(node), 
+                            x + leafPadding, y+fontSize/2., fontSize,
+                            fillColor=node.color)
         else:
-            top = coords[node.children[0]][1]
-            bot = coords[node.children[-1]][1]
-            
+            if drawHoriz:
+                # draw vertical part of branch
+                top = coords[node.children[0]][1]
+                bot = coords[node.children[-1]][1]
+                canvas.line(x, top, x, bot, color=node.color)
+                
             # draw children
-            canvas.line(x, top, x, bot, color=node.color)
-            
             for child in node.children:
                 walk(child)
     

@@ -75,6 +75,8 @@ def rplot_start(filename, *args, **kargs):
     """Starts a new PDF file"""
     
     global _rplot_pdf
+    if "useDingbats" not in kargs:
+        kargs["useDingbats"] = False
     rp.pdf(file=filename, *args, **kargs)
     _rplot_pdf = filename
 

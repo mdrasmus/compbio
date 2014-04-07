@@ -33,6 +33,13 @@ def prod(lst):
     return p
 
 
+def zscores(vals):
+    """Computes the zscores for a list of numbers"""
+    mu = mean(vals)
+    sd = sdev(vals)
+    return [(float(i)-mu)/sd for i in vals]
+
+
 def mean(vals):
     """Computes the mean of a list of numbers"""
     n = 0
@@ -115,14 +122,22 @@ def corrmatrix(mat):
 
 
 def corr(lst1, lst2):
-    """Pearson's Correlation"""
+    """Pearson's Correlation Coefficient"""
     num = covariance(lst1, lst2)
     denom = float(sdev(lst1) * sdev(lst2))
     if denom != 0:
         return num / denom
     else:
-        return 1e1000
+        return util.INF
 
+def corr_spearman(lst1, lst2):
+    """
+    Spearman's Rank Correlation Coefficient
+    i.e. Pearson's Correlation Coefficient between ranked variables (in ascending order)
+    """
+    rank1 = util.sortranks(lst1, tied=True)
+    rank2 = util.sortranks(lst2, tied=True)
+    return corr(rank1, rank2)
 
 def corr_pvalue(r, n):
     """Returns the signficance of correlation > r with n samples"""
@@ -220,8 +235,11 @@ def fitLineError(xlist, ylist, slope, inter):
 
 
 def pearsonsRegression(observed, expected):
-    """Pearson's coefficient of regression"""
+    """
+    Pearson's coefficient of regression
 
+    e.g. r^2 of least squares linear regression
+    """
     # error sum of squares
     ess = sum((a - b)**2 for a, b in izip(observed, expected))
 
@@ -700,17 +718,16 @@ def rhyper(m, n, M, N, report=0):
         raise "unknown option"
 
 
-def cdf(vals):
+def cdf(vals, reverse=False):
     """Computes the CDF of a list of values"""
-
-    vals = sorted(vals)
+    vals = sorted(vals, reverse=reverse)
     tot = float(len(vals))
     x = []
     y = []
 
     for i, x2 in enumerate(vals):
         x.append(x2)
-        y.append(i / tot)
+        y.append((i+1) / tot)
 
     return x, y
 

@@ -21,7 +21,6 @@ import random
 
 # rasmus imports
 from rasmus import treelib, stats, util, linked_list
-
 try:
     from rasmus.symbolic import assign_vars
     from rasmus.symbolic import derivate

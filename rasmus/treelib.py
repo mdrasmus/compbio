@@ -868,13 +868,13 @@ def write_newick_node(tree, node, out=sys.stdout,
     # don't print data for root node
     if depth == 0:
         if root_data:
-            out.write(write_data(node, namefunc=namefunc))
+            out.write(write_data(node))
         if oneline:
             out.write(";")
         else:
             out.write(";\n")
     else:
-        out.write(write_data(node, namefunc=namefunc))
+        out.write(write_data(node))
 
 
 #=============================================================================

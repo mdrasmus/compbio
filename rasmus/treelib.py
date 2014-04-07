@@ -221,6 +221,7 @@ class Tree (object):
         tree.copy_node_data(self)
 
         return tree
+
     def __repr__(self):
         """Returns a representation of the tree"""
         return "<tree %s>" % (self.name if self.name is not None else
@@ -358,10 +359,12 @@ class Tree (object):
     def remove_child(self, parent, child):
         """
         Removes a child node from an existing node 'parent' in the tree.
-        Updates the parent-child relationships but does NOT remove the nodes (use remove instead).
+        Updates the parent-child relationships but does NOT remove the nodes
+        (use remove instead).
         """
 
-        assert parent != child and child.parent == parent, (parent.name, child.name)
+        assert parent != child and child.parent == parent, (
+            parent.name, child.name)
         parent.children.remove(child)
         child.parent = None
 
@@ -974,7 +977,7 @@ def read_newick_recursive(filename, tree=None):
             if char == ")":
                 opens[0] -= 1
 
-            if not char in "-0123456789.e":
+            if char not in "-0123456789.e":
                 return float(word)
             else:
                 word += char
@@ -1070,7 +1073,7 @@ def read_parent_tree(treefile, labelfile=None, labels=None, tree=None):
             # keep track of all roots
             tree.add_child(tree.root, child)
         else:
-            if not parentid in tree.nodes:
+            if parentid not in tree.nodes:
                 parent = TreeNode(parentid)
                 tree.add(parent)
             else:
@@ -1197,10 +1200,12 @@ def assert_tree(tree):
         node.recurse(walk)
     walk(tree.root)
     assert tree.root.parent is None, (tree.name, tree.root.name)
-    assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
+    assert len(tree.nodes) == len(visited), (
+        "%d %d" % (len(tree.nodes), len(visited)))
     assert tree.root.parent is None
     assert len(tree.nodes) == len(visited), (
         "%d %d" % (len(tree.nodes), len(visited)))
+
 
 def is_binary(tree):
     """Returns True if tree is binary"""
@@ -1243,8 +1248,7 @@ def lca(nodes):
 def find_dist(tree, name1, name2):
     """Returns the branch distance between two nodes in a tree"""
 
-    if (not name1 in tree.nodes or
-            not name2 in tree.nodes):
+    if name1 not in tree.nodes or name2 not in tree.nodes:
         raise Exception("nodes '%s' and '%s' are not in tree" %
                         (name1, name2))
 
@@ -1638,7 +1642,7 @@ def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
     assert not onBranch or newroot != tree.root.name, "No branch specified"
 
     if keepName:
-        assert onBranch # can only keep name if root is in middle of branch
+        assert onBranch  # can only keep name if root is in middle of branch
         oldroot = tree.root.name
 
     unroot(tree, newCopy=False)

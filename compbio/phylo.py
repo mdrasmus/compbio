@@ -286,7 +286,7 @@ def find_loss(gtree, stree, recon, node=None):
         #    if child_snode not in child_snodes:
         #        loss.append([node, child_snode])
 
-	node.recurse(walk)
+        node.recurse(walk)
     if node:
         walk(node)
     else:
@@ -645,12 +645,21 @@ def fix_ils_errors(events, dupcons, newCopy=True):
 
 def recon_root(gtree, stree, gene2species=gene2species,
                rootby="duploss", newCopy=True,
-	       keepName=False, returnCost=False,
-	       dupcost=1, losscost=1):
+               keepName=False, returnCost=False,
+               dupcost=1, losscost=1):
     """
     Reroot a tree by minimizing the number of duplications/losses/both
 
-    Note that rootby trumps dupcost/losscost
+    Note that rootby trumps dupcost/losscost.
+
+    gtree -- gene tree to reroot
+    stree -- species tree
+    gene2species -- mapping from gene names to species names
+    rootby -- method to root by ("dup", "loss", "duploss")
+    returnCost -- if True, also return event cost of rerooted gene tree
+    dupcost -- cost of gene duplication
+    losscost -- cost of gene loss
+    keepName -- if True, reuse existing root name for new root node
     """
     # assert valid inputs
     assert rootby in ["dup", "loss", "duploss"], "unknown rootby value '%s'" % rootby
@@ -1276,12 +1285,10 @@ def remove_spec_node(node, tree, recon=None, events=None):
 
     # remove node from tree - handle root node specially
     if parent is None:
-	tree.root = child
-##	tree.remove_child(node, tree.root)
-	tree.root.parent = None
-	node.children = []
+        tree.root = child
+        tree.root.parent = None
+        node.children = []
     else:
-##        tree.add_child(parent, child)
         nodei = parent.children.index(node)
         parent.children[nodei] = child
         child.parent = parent
@@ -1783,7 +1790,7 @@ class TreeSearchMix (TreeSearch):
 
     def set_tree(self, tree):
         self.tree = tree
-	for method in self.methods:
+        for method in self.methods:
             method[0].set_tree(tree)
 
     def add_proposer(self, proposer, weight):
@@ -1802,11 +1809,11 @@ class TreeSearchMix (TreeSearch):
         # make proposal
         self.last_propose = i
         self.tree = self.methods[i][0].propose()
-	return self.tree
+        return self.tree
 
     def revert(self):
         self.tree = self.methods[self.last_propose][0].revert()
-	return self.tree
+        return self.tree
 
     def reset(self):
         for method in self.methods:
@@ -2371,12 +2378,12 @@ def add_bootstraps(tree, trees, rooted=False):
     # add bootstrap support to tree
     def walk(node):
         if node.is_leaf():
-	    s = set([node.name])
-	else:
-	    s = set()
-	    for child in node.children:
-	        s.update(walk(child))
-	    node.data["boot"] = counts.get(tuple(sorted(s)),0)/float(ntrees)
+            s = set([node.name])
+        else:
+            s = set()
+            for child in node.children:
+                s.update(walk(child))
+            node.data["boot"] = counts.get(tuple(sorted(s)),0)/float(ntrees)
         return s
     for child in tree.root.children:
         walk(child)

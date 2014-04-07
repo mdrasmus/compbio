@@ -202,7 +202,8 @@ class Tree (object):
 
     def __repr__(self):
         """Returns a representation of the tree"""
-        return "<tree %s>" % self.name
+        return "<tree %s>" % (self.name if self.name is not None else
+                              hex(id(self)))
 
     #=========================================
     # iterators
@@ -367,9 +368,9 @@ class Tree (object):
                 walk(child)
         walk(node)
 
-	if node.parent:
+        if node.parent:
             node.parent.children.remove(node)
-	    node.parent = None
+            node.parent = None
 
     def rename(self, oldname, newname):
         """Rename a node in the tree"""

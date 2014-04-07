@@ -99,13 +99,44 @@ class TreeNode (object):
         """Returns the leaf names beneath the node in traversal order"""
         return [x.name for x in self.leaves()]
 
+    def ancestors(self):
+        """Returns the ancestors above the node in traversal order"""
+        ancestors = []
+
+        def walk(node):
+            if node.parent:
+                ancestors.append(node.parent)
+                walk(node.parent)
+        walk(self)
+
+        return ancestors
+
+    def ancestor_names(self):
+        """Returns the ancestor names above the node in traversal order"""
+        return [x.name for x in self.ancestors()]
+
+    def descendants(self):
+        """Returns the descendants beneath the node in traversal order"""
+        descendants = []
+
+        def walk(node):
+            for child in node.children:
+                descendants.append(child)
+                walk(child)
+        walk(self)
+
+        return descendants
+
+    def descendant_names(self):
+        """Returns the descendant names beneath the node in traversal order"""
+        return [x.name for x in self.descendants()]
+
     def write_data(self, out):
         """Writes the data of the node to the file stream 'out'"""
         out.write(str(self.dist))
 
     def __repr__(self):
         """Returns a representation of the node"""
-
         return "<node %s>" % self.name
 
 
@@ -159,13 +190,15 @@ class Tree (object):
     Well suited for phylogenetic trees
     """
 
-    def __init__(self, nextname=1, branch_data=BranchData()):
+    def __init__(self, nextname=1, branch_data=BranchData(),
+                 name=None):
         self.nodes = {}
         self.root = None
         self.nextname = nextname
         self.default_data = {}
         self.data = {}
         self.branch_data = branch_data
+        self.name = name
 
     def copy(self):
         """Returns a copy of the tree"""
@@ -188,6 +221,10 @@ class Tree (object):
         tree.copy_node_data(self)
 
         return tree
+    def __repr__(self):
+        """Returns a representation of the tree"""
+        return "<tree %s>" % (self.name if self.name is not None else
+                              hex(id(self)))
 
     #=========================================
     # iterators
@@ -263,7 +300,7 @@ class Tree (object):
                 stack.pop()
 
             elif i < len(node.children) and not is_leaf(node):
-                assert len(node.children) == 2
+                assert len(node.children) == 2, node.name
 
                 if i == 1:
                     # left has been visited
@@ -318,6 +355,16 @@ class Tree (object):
             node.parent.children.remove(node)
         del self.nodes[node.name]
 
+    def remove_child(self, parent, child):
+        """
+        Removes a child node from an existing node 'parent' in the tree.
+        Updates the parent-child relationships but does NOT remove the nodes (use remove instead).
+        """
+
+        assert parent != child and child.parent == parent, (parent.name, child.name)
+        parent.children.remove(child)
+        child.parent = None
+
     def remove_tree(self, node):
         """
         Removes subtree rooted at 'node' from tree.
@@ -333,9 +380,11 @@ class Tree (object):
 
         if node.parent:
             node.parent.children.remove(node)
+            node.parent = None
 
     def rename(self, oldname, newname):
         """Rename a node in the tree"""
+        assert newname not in self.nodes, newname
         node = self.nodes[oldname]
         del self.nodes[oldname]
         self.nodes[newname] = node
@@ -367,16 +416,8 @@ class Tree (object):
 
     def replace_tree(self, node, childTree):
         """Remove node and replace it with the root of childTree"""
-
-        # merge nodes and change the names of childTree names if they conflict
-        # with existing names
-        self.merge_names(childTree)
-        parent = node.parent
-        if parent:
-            index = parent.children.index(node)
-            parent.children[index] = childTree.root
-            childTree.root.parent = parent
-            del self.nodes[node.name]
+        self.remove_tree(node)
+        self.add_tree(node.parent, childTree)
 
     def merge_names(self, tree2):
         """Merge the node names from tree2 into this tree.
@@ -410,6 +451,22 @@ class Tree (object):
     def leaf_names(self, node=None):
         """Returns the leaf names of the tree in order"""
         return map(lambda x: x.name, self.leaves(node))
+
+    def ancestors(self, node):
+        """Returns the ancestors in order"""
+        return node.ancestors()
+
+    def ancestor_names(self, node):
+        """Returns the ancestor names of the tree in order"""
+        return node.ancestor_names()
+
+    def descendants(self, node):
+        """Returns the descendants in order"""
+        return node.descendants()
+
+    def descendant_names(self, node):
+        """Returns the descendant names in order"""
+        return node.descendant_names()
 
     #===============================
     # data functions
@@ -1130,19 +1187,29 @@ def assert_tree(tree):
     visited = set()
 
     def walk(node):
-        assert node.name in tree.nodes
-        assert node.name not in visited
+        assert node.name in tree.nodes, (tree.name, node.name)
+        assert node.name not in visited, (tree.name, node.name)
         visited.add(node.name)
         if node.parent:
-            assert node in node.parent.children
+            assert node in node.parent.children, (tree.name, node.name)
         for child in node.children:
-            assert child.parent == node
+            assert child.parent == node, (tree.name, node.name, child.name)
         node.recurse(walk)
     walk(tree.root)
-
+    assert tree.root.parent is None, (tree.name, tree.root.name)
+    assert len(tree.nodes) == len(visited), "%d %d" % (len(tree.nodes), len(visited))
     assert tree.root.parent is None
     assert len(tree.nodes) == len(visited), (
         "%d %d" % (len(tree.nodes), len(visited)))
+
+def is_binary(tree):
+    """Returns True if tree is binary"""
+
+    for node in tree:
+        if not node.is_leaf():
+            if len(node.children) != 2:
+                return False
+    return True
 
 
 def lca(nodes):
@@ -1244,6 +1311,7 @@ def subtree(tree, node):
     # copy nodes and data
     tree2.root = node.copy()
     tree2.copy_data(tree)
+    tree2.root.parent = None
 
     # add nodes
     def walk(node):
@@ -1547,12 +1615,13 @@ def unroot(tree, newCopy=True):
         nodes[0].parent = None
 
         # replace root
+        del tree.root.data["tree"]
         del tree.nodes[tree.root.name]
         tree.root = nodes[0]
     return tree
 
 
-def reroot(tree, newroot, onBranch=True, newCopy=True):
+def reroot(tree, newroot, onBranch=True, newCopy=True, keepName=False):
     """
     Change the rooting of a tree
     """
@@ -1566,8 +1635,11 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
         (onBranch and newroot in [x.name for x in tree.root.children] and
          len(tree.root.children) == 2)):
         return tree
-
     assert not onBranch or newroot != tree.root.name, "No branch specified"
+
+    if keepName:
+        assert onBranch # can only keep name if root is in middle of branch
+        oldroot = tree.root.name
 
     unroot(tree, newCopy=False)
 
@@ -1577,7 +1649,10 @@ def reroot(tree, newroot, onBranch=True, newCopy=True):
 
     if onBranch:
         # add new root in middle of branch
-        newNode = TreeNode(tree.new_name())
+        if keepName:
+            newNode = TreeNode(oldroot)
+        else:
+            newNode = TreeNode(tree.new_name())
         node1 = tree.nodes[newroot]
         rootdist = node1.dist
         rootdata1, rootdata2 = tree.split_branch_data(node1)

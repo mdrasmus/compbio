@@ -205,10 +205,32 @@ class Tree (object):
         return "<tree %s>" % (self.name if self.name is not None else
                               hex(id(self)))
 
-    def __repr__(self):
-        """Returns a representation of the tree"""
-        return "<tree %s>" % (self.name if self.name is not None else
-                              hex(id(self)))
+    def copy(self, copyData=True):
+        """Returns a copy of the tree"""
+        tree = Tree(nextname = self.nextname, name=self.name)
+
+        # copy structure
+        if self.root is not None:
+            # copy all nodes
+            tree.root = self.root.copy(copyData=copyData)
+
+            # set all names
+            def walk(node):
+                tree.nodes[node.name] = node
+                for child in node.children:
+                    walk(child)
+            walk(tree.root)
+
+        # copy extra data
+        if copyData:
+            tree.copy_data(self)
+            tree.copy_node_data(self)
+
+        # change "tree" reference in data
+        for node in tree:
+            node.data["tree"] = tree
+
+        return tree
 
     #=========================================
     # iterators
@@ -473,33 +495,6 @@ class Tree (object):
     def has_data(self, dataname):
         """Does the tree contain 'dataname' in its extra data"""
         return dataname in self.default_data
-
-    def copy(self, copyData=True):
-        """Returns a copy of the tree"""
-        tree = Tree(nextname = self.nextname, name = self.name)
-
-        # copy structure
-        if self.root != None:
-            # copy all nodes
-            tree.root = self.root.copy(copyData=copyData)
-
-            # set all names
-            def walk(node):
-                tree.nodes[node.name] = node
-                for child in node.children:
-                    walk(child)
-            walk(tree.root)
-
-        # copy extra data
-        if copyData:
-            tree.copy_data(self)
-            tree.copy_node_data(self)
-
-        # change "tree" reference in data
-        for node in tree:
-            node.data["tree"] = tree
-
-        return tree
 
     def copy_data(self, tree):
         """Copy tree data to another"""
@@ -1611,6 +1606,7 @@ def set_tree_topology(tree, tree2):
 # Rerooting functions
 #
 
+
 def is_rooted(tree):
     """Returns True if tree is rooted"""
     return len(tree.root.children) <= 2
@@ -1777,7 +1773,6 @@ def midpoint_root(tree):
         ptr = ptr.parent
 
     raise AssertionError("Could not find branch with midpoint")
-
 
 
 #=============================================================================

@@ -594,19 +594,14 @@ class Tree (object):
         """
         read_tree(filename, read_data=readData, tree=self, namefunc=namefunc)
 
-    def write(self, out=sys.stdout, writeData=None, oneline=False,
-              rootData=False, namefunc=lambda name: name):
-        """Write the tree in newick notation"""
-        write_newick(self, util.open_stream(out, "w"),
-                     write_data=writeData, oneline=oneline,
-                     root_data=rootData, namefunc=namefunc)
-
     def write_newick(self, out=sys.stdout, writeData=None, oneline=False,
                      rootData=False, namefunc=lambda name: name):
         """Write the tree in newick notation"""
         write_newick(self, util.open_stream(out, "w"),
                      write_data=writeData, oneline=oneline,
                      root_data=rootData, namefunc=namefunc)
+
+    write = write_newick
 
     def get_one_line_newick(self, root_data=False, writeData=None,
                             namefunc=lambda name: name):

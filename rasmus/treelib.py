@@ -608,11 +608,13 @@ class Tree (object):
                      write_data=writeData, oneline=oneline,
                      root_data=rootData, namefunc=namefunc)
 
-    def get_one_line_newick(self, root_data=False, writeData=None):
+    def get_one_line_newick(self, root_data=False, writeData=None,
+                            namefunc=lambda name: name):
         """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
         self.write(stream, oneline=True,
-                   writeData=writeData, rootData=root_data)
+                   writeData=writeData, rootData=root_data,
+                   namefunc=namefunc)
         return stream.getvalue()
 
 
@@ -622,13 +624,15 @@ class Tree (object):
 def read_tree(infile, read_data=None, tree=None, namefunc=lambda name: name):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=tree, namefunc=namefunc)
+    return parse_newick(infile, read_data=read_data, tree=tree,
+                        namefunc=namefunc)
 
 
 def read_newick(infile, read_data=None, tree=None, namefunc=lambda name: name):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=tree, namefunc=namefunc)
+    return parse_newick(infile, read_data=read_data, tree=tree,
+                        namefunc=namefunc)
 
 
 def iter_trees(treefile, read_data=None, namefunc=lambda name: name):
@@ -703,7 +707,8 @@ def tokenize_newick(infile):
         word[:] = []
 
 
-def parse_newick(infile, read_data=None, tree=None, namefunc=lambda name: name):
+def parse_newick(infile, read_data=None, tree=None,
+                 namefunc=lambda name: name):
     """
     Parse a newick string or stream
 
@@ -1506,7 +1511,7 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
                              keep_single=keep_single)
 
 
-def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf:leaf.name):
+def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf: leaf.name):
     """Reorders the branches of tree to match tree2"""
 
     if root:

@@ -226,10 +226,6 @@ class Tree (object):
             tree.copy_data(self)
             tree.copy_node_data(self)
 
-        # change "tree" reference in data
-        for node in tree:
-            node.data["tree"] = tree
-
         return tree
 
     #=========================================
@@ -334,21 +330,17 @@ class Tree (object):
            Does not add node to any specific location (use add_child instead).
         """
         self.nodes[node.name] = node
-        node.data["tree"] = self
         return node
 
     def add_child(self, parent, child):
         """
         Add a child node to an existing node 'parent' in the tree
         """
-        # TODO: check for consistency, i.e. child.parent = None
         assert parent != child, (parent.name, child.name)
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
         child.parent = parent
         parent.children.append(child)
-        child.data["tree"] = self
-        parent.data["tree"] = self
         return child
 
     def new_node(self, name=None):
@@ -367,7 +359,6 @@ class Tree (object):
         if node.parent:
             node.parent.children.remove(node)
             node.parent = None
-        del node.data["tree"]
         del self.nodes[node.name]
 
     def remove_child(self, parent, child):
@@ -391,7 +382,6 @@ class Tree (object):
 
         def walk(node):
             if node.name in self.nodes:
-                del node.data["tree"]
                 del self.nodes[node.name]
             for child in node.children:
                 walk(child)
@@ -456,8 +446,6 @@ class Tree (object):
 
     def clear(self):
         """Clear all nodes from tree"""
-        for node in self:
-            del node.data["tree"]
         self.nodes = {}
         self.root = None
 
@@ -577,7 +565,7 @@ class Tree (object):
             if data:
                 node.name = namefunc(data)
 
-    def write_data(self, node, writeDist=False,
+    def write_data(self, node, writeDist=True,
                    namefunc=lambda name: name):
         """Default data writer: writes optional bootstrap and branch length"""
 
@@ -1433,7 +1421,6 @@ def remove_single_children(tree, simplify_root=True):
         node.parent.children[index] = newnode
 
         # remove old node
-        del node.data["tree"]
         del tree.nodes[node.name]
 
     # remove singleton from root
@@ -2239,10 +2226,6 @@ def layout_tree_vertical(layout, offset=None, root=0, leaves=None,
 
 def tree_color_map(leafmap=lambda x: (0, 0, 0)):
     """Returns a simple color mixing colormap"""
-    def null_func(tree):
-        pass
-    if leafmap is None:
-        return null_func
 
     def func(tree):
         def walk(node):

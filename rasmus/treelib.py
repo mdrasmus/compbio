@@ -333,8 +333,10 @@ class Tree (object):
         return node
 
     def add_child(self, parent, child):
-        """Add a child node to an existing node 'parent' in the tree"""
-        assert parent != child
+        """
+        Add a child node to an existing node 'parent' in the tree
+        """
+        assert parent != child, (parent.name, child.name)
         self.nodes[child.name] = child
         self.nodes[parent.name] = parent
         child.parent = parent
@@ -533,8 +535,7 @@ class Tree (object):
 
     #=======================================================================
     # input and output
-
-    def read_data(self, node, data):
+    def read_data(self, node, data, namefunc=lambda name: name):
         """Default data reader: reads optional bootstrap and branch length"""
 
         # also parse nhx comments
@@ -553,6 +554,8 @@ class Tree (object):
                     except ValueError:
                         # treat as node name
                         name = boot.strip()
+                        if name and isinstance(node.name, int):
+                            node.name = namefunc(name)
                         if name and node.name is None:
                             node.name = name
         else:
@@ -560,9 +563,10 @@ class Tree (object):
 
             # treat as name
             if data:
-                node.name = data
+                node.name = namefunc(data)
 
-    def write_data(self, node):
+    def write_data(self, node, writeDist=True,
+                   namefunc=lambda name: name):
         """Default data writer: writes optional bootstrap and branch length"""
 
         string = ""
@@ -576,71 +580,72 @@ class Tree (object):
         else:
             # see if internal node names exist
             if not node.is_leaf() and isinstance(node.name, str):
-                string += node.name
+                string += namefunc(node.name)
 
-        string += ":%f" % node.dist
+        if node.dist != 0 or writeDist:
+            string += ":%f" % node.dist
         return string
 
-    def read_newick(self, filename, readData=None):
+    def read_newick(self, filename, readData=None, namefunc=lambda name: name):
         """
         Reads newick tree format from a file stream
 
         You can specify a specialized node data reader with 'readData'
         """
-
-        return read_tree(filename, read_data=readData, tree=self)
-
-    def write(self, out=sys.stdout, writeData=None, oneline=False,
-              rootData=False):
-        """Write the tree in newick notation"""
-        self.write_newick(out, writeData=writeData,
-                          oneline=oneline, rootData=rootData)
+        read_tree(filename, read_data=readData, tree=self, namefunc=namefunc)
 
     def write_newick(self, out=sys.stdout, writeData=None, oneline=False,
-                     rootData=False):
+                     rootData=False, namefunc=lambda name: name):
         """Write the tree in newick notation"""
         write_newick(self, util.open_stream(out, "w"),
                      write_data=writeData, oneline=oneline,
-                     root_data=rootData)
+                     root_data=rootData, namefunc=namefunc)
 
-    def get_one_line_newick(self, root_data=False, writeData=None):
+    write = write_newick
+
+    def get_one_line_newick(self, root_data=False, writeData=None,
+                            namefunc=lambda name: name):
         """Get a presentation of the tree in a oneline string newick format"""
         stream = StringIO.StringIO()
         self.write(stream, oneline=True,
-                   writeData=writeData, rootData=root_data)
+                   writeData=writeData, rootData=root_data,
+                   namefunc=namefunc)
         return stream.getvalue()
 
 
 #============================================================================
 # Input/Output functions
 
-def read_tree(infile, read_data=None, tree=None):
+def read_tree(infile, read_data=None, tree=None, namefunc=lambda name: name):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=tree)
+    return parse_newick(infile, read_data=read_data, tree=tree,
+                        namefunc=namefunc)
 
 
-def read_newick(infile, read_data=None, tree=None):
+def read_newick(infile, read_data=None, tree=None, namefunc=lambda name: name):
     """Read a tree from a file stream"""
     infile = util.open_stream(infile)
-    return parse_newick(infile, read_data=read_data, tree=tree)
+    return parse_newick(infile, read_data=read_data, tree=tree,
+                        namefunc=namefunc)
 
 
-def iter_trees(treefile, read_data=None):
+def iter_trees(treefile, read_data=None, namefunc=lambda name: name):
     """read multiple trees from a tree file"""
 
     infile = util.open_stream(treefile)
 
-    yield read_tree(infile, read_data=read_data)
+    # ensure at least one tree in file
+    yield read_tree(infile, read_data=read_data, namefunc=namefunc)
     try:
         while True:
-            yield read_tree(infile, read_data=read_data)
+            yield read_tree(infile, read_data=read_data, namefunc=namefunc)
     except Exception:
         pass
 
 
-def read_trees(filename, read_data=None):
-    return list(iter_trees(filename, read_data=read_data))
+def read_trees(filename, read_data=None, namefunc=lambda name: name):
+    return list(iter_trees(filename, read_data=read_data, namefunc=namefunc))
 
 
 def tokenize_newick(infile):
@@ -697,13 +702,15 @@ def tokenize_newick(infile):
         word[:] = []
 
 
-def parse_newick(infile, read_data=None, tree=None):
+def parse_newick(infile, read_data=None, tree=None,
+                 namefunc=lambda name: name):
     """
     Parse a newick string or stream
 
     infile    -- a string or file stream
     read_data -- an optional function for reading node data fields
     tree      -- an optional tree to populate
+    namefunc  -- an optional map for node names
     """
 
     # node stack
@@ -733,7 +740,7 @@ def parse_newick(infile, read_data=None, tree=None):
 
             if token == '(':  # new branchset
                 if data:
-                    read_data(node, "".join(data))
+                    read_data(node, "".join(data), namefunc)
                     data = []
                 child = TreeNode()
                 nodes.append(child)
@@ -744,7 +751,7 @@ def parse_newick(infile, read_data=None, tree=None):
 
             elif token == ',':  # another branch
                 if data:
-                    read_data(node, "".join(data))
+                    read_data(node, "".join(data), namefunc)
                     data = []
                 parent = ancestors[-1]
                 child = TreeNode()
@@ -756,7 +763,7 @@ def parse_newick(infile, read_data=None, tree=None):
 
             elif token == ')':  # optional name next
                 if data:
-                    read_data(node, "".join(data))
+                    read_data(node, "".join(data), namefunc)
                     data = []
                 node = ancestors.pop()
 
@@ -765,13 +772,13 @@ def parse_newick(infile, read_data=None, tree=None):
 
             elif token == ';':  # end of tree
                 if data:
-                    read_data(node, "".join(data))
+                    read_data(node, "".join(data), namefunc)
                     data = []
                 break
 
             else:
                 if prev_token in '(,':
-                    node.name = token
+                    node.name = namefunc(token)
 
                 elif prev_token in '):':
                     data.append(token)
@@ -802,16 +809,16 @@ def parse_newick(infile, read_data=None, tree=None):
 
 
 def write_newick(tree, out=sys.stdout, write_data=None, oneline=False,
-                 root_data=False):
+                 root_data=False, namefunc=lambda name: name):
     """Write the tree in newick notation"""
     write_newick_node(tree, tree.root, util.open_stream(out, "w"),
                       write_data=write_data, oneline=oneline,
-                      root_data=root_data)
+                      root_data=root_data, namefunc=namefunc)
 
 
 def write_newick_node(tree, node, out=sys.stdout,
                       depth=0, write_data=None, oneline=False,
-                      root_data=False):
+                      root_data=False, namefunc=lambda name: name):
     """Write the node in newick format to the out file stream"""
 
     # default data writer
@@ -823,7 +830,7 @@ def write_newick_node(tree, node, out=sys.stdout,
 
     if len(node.children) == 0:
         # leaf
-        out.write(str(node.name))
+        out.write(str(namefunc(node.name)))
     else:
         # internal node
         if oneline:
@@ -832,13 +839,15 @@ def write_newick_node(tree, node, out=sys.stdout,
             out.write("(\n")
         for child in node.children[:-1]:
             write_newick_node(tree, child, out, depth+1,
-                              write_data=write_data, oneline=oneline)
+                              write_data=write_data, oneline=oneline,
+                              namefunc=namefunc)
             if oneline:
                 out.write(",")
             else:
                 out.write(",\n")
         write_newick_node(tree, node.children[-1], out, depth+1,
-                          write_data=write_data, oneline=oneline)
+                          write_data=write_data, oneline=oneline,
+                          namefunc=namefunc)
         if oneline:
             out.write(")")
         else:
@@ -1164,8 +1173,7 @@ def read_nhx_data(node, text):
 
 
 def write_nhx_data(node):
-    """Write data function for writing th data field of an NHX file"""
-
+    """Write data function for writing the data field of an NHX file"""
     text = Tree().write_data(node)
     if node.data:
         text += format_nhx_comment(node.data)
@@ -1498,7 +1506,7 @@ def subtree_by_leaf_names(tree, leaf_names, keep_single=False, newCopy=False):
                              keep_single=keep_single)
 
 
-def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf:leaf.name):
+def reorder_tree(tree, tree2, root=True, leafmap=lambda leaf: leaf.name):
     """Reorders the branches of tree to match tree2"""
 
     if root:

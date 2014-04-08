@@ -13,7 +13,7 @@ fungi = """(((((((scer:7.061760,spar:7.061760):4.999680,smik:12.061440):5.970600
 fungi2 = """(((((((scer:7.061760[&&NHX:a=b],spar:7.061760):4.999680,smik:12.061440):5.970600,sbay:18.032040):52.682400,cgla:70.714260):7.220700,scas:77.934960):23.181480,((agos:78.553260,klac:78.553260):10.434960,kwal:88.988220):12.128400):78.883560,(((calb:41.275620,ctro:41.275980):29.632860,(cpar:52.323120,lelo:52.323120):18.585720):31.149540,((cgui:75.615840,dhan:75.615840):14.006880,clus:89.622720):12.435660)xx:77.941620);"""  # nopep8
 
 
-class Test (unittest.TestCase):
+class TreeTest (unittest.TestCase):
 
     def test_tokenize_newick(self):
         """Test newick tokenization"""
@@ -134,6 +134,29 @@ class Test (unittest.TestCase):
         out = StringIO()
         tree.write(out, rootData=True)
         self.assertEqual(newick, out.getvalue())
+
+    def test_tree_namefunc(self):
+        """Test reading/writing tree with namefunc."""
+
+        count = [0]
+
+        def namefunc(name):
+            count[0] += 1
+            return 'name%d' % count[0]
+
+        tree = treelib.read_tree(StringIO(fungi2), namefunc=namefunc)
+        newick = tree.get_one_line_newick()
+        expected_newick = '(((((((name1:7.061760,name2:7.061760):4.999680,name3:12.061440):5.970600,name4:18.032040):52.682400,name5:70.714260):7.220700,name6:77.934960):23.181480,((name7:78.553260,name8:78.553260):10.434960,name9:88.988220):12.128400):78.883560,(((name10:41.275620,name11:41.275980):29.632860,(name12:52.323120,name13:52.323120):18.585720):31.149540,((name14:75.615840,name15:75.615840):14.006880,name16:89.622720):12.435660)xx:77.941620);'  # nopep8
+
+        self.assertEqual(newick, expected_newick)
+
+        def namefunc2(name):
+            return 'prefix_' + name
+
+        newick2 = tree.get_one_line_newick(namefunc=namefunc2)
+        expected_newick2 = '(((((((prefix_name1:7.061760,prefix_name2:7.061760):4.999680,prefix_name3:12.061440):5.970600,prefix_name4:18.032040):52.682400,prefix_name5:70.714260):7.220700,prefix_name6:77.934960):23.181480,((prefix_name7:78.553260,prefix_name8:78.553260):10.434960,prefix_name9:88.988220):12.128400):78.883560,(((prefix_name10:41.275620,prefix_name11:41.275980):29.632860,(prefix_name12:52.323120,prefix_name13:52.323120):18.585720):31.149540,((prefix_name14:75.615840,prefix_name15:75.615840):14.006880,prefix_name16:89.622720):12.435660)xx:77.941620);'  # nopep8
+
+        self.assertEqual(newick2, expected_newick2)
 
 
 class Methods(unittest.TestCase):

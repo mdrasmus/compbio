@@ -2,6 +2,7 @@ import copy
 
 from rasmus import util
 
+
 def decorator(deco):
     def new_decorator(f):
         g = deco(f)
@@ -27,7 +28,6 @@ def func_timer(func):
     return wrapper
 
 
-
 def func_defaults(** defaults):
 
     def helper(func):
@@ -44,25 +44,18 @@ def func_defaults(** defaults):
     return helper
 
 
-
 if __name__ == "__main__":
     @func_timer
     def dowork(x):
-        w = [1,2,3]
+        w = [1, 2, 3]
         print x
 
-
     dowork(99)
-    
-    @func_defaults(x=[1,2,3], y=7)
+
+    @func_defaults(x=[1, 2, 3], y=7)
     def doit(x=0, y=0):
         x.append(4)
         print x, y
-    
+
     doit()
     doit()
-    
-    #help(dowork)
-
-
-

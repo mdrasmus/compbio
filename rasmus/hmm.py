@@ -11,7 +11,7 @@
     prob_transition(pos1, state1, pos2, state2)
 
 
-    probs = [[j for j in get_num_states(i)] 
+    probs = [[j for j in get_num_states(i)]
              for i in xrange(npositions)]
 
 
@@ -28,7 +28,7 @@ class HMM (object):
     """
     Base class for defining an Hidden Markov Model (HMM)
     """
-    
+
     def __init__(self):
         pass
 
@@ -47,7 +47,6 @@ class HMM (object):
             self.prob_transition = prob_transition
         if emit:
             self.emit = emit
-
 
     def get_num_states(self, pos):
         """Returns the number of states at position 'pos'"""
@@ -77,7 +76,6 @@ class HMM (object):
         return None
 
 
-
 def sample_hmm_first_state(model):
     state = 0
     nstates = model.get_num_states(0)
@@ -98,11 +96,10 @@ def sample_hmm_next_state(model, pos, state):
         state2 += 1
         p = logadd(p, model.prob_transition(pos-1, state, pos, state2))
     return state2
-        
 
 
 def sample_hmm_states(model):
-    
+
     # sample first state
     pos = 0
     state = sample_hmm_first_state(model)
@@ -117,13 +114,12 @@ def sample_hmm_states(model):
 
 
 def sample_hmm_data(model, states=None):
-    
+
     if states is None:
         states = sample_hmm_states(model)
 
     for i, state in enumerate(states):
         yield model.emit(i, state)
-
 
 
 def viterbi(model, n, verbose=False):
@@ -139,12 +135,12 @@ def viterbi(model, n, verbose=False):
     probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
     ptrs.append([-1] * nstates)
-    
+
     if n > 20:
         step = (n // 20)
     else:
         step = 1
-    
+
     # loop through positions
     for i in xrange(1, n):
         if verbose and i % step == 0:
@@ -168,7 +164,7 @@ def viterbi(model, n, verbose=False):
                     ptr = j
             col2.append(top)
             col2_ptr.append(ptr)
-                
+
         probs.append(col2)
         ptrs.append(col2_ptr)
 
@@ -183,7 +179,6 @@ def viterbi(model, n, verbose=False):
     return traceback
 
 
-
 def forward_algorithm(model, n, verbose=False):
 
     probs = []
@@ -192,12 +187,12 @@ def forward_algorithm(model, n, verbose=False):
     nstates = model.get_num_states(0)
     probs.append([model.prob_prior(0, j) + model.prob_emission(0, j)
                   for j in xrange(nstates)])
-    
+
     if n > 20:
         step = (n // 20)
     else:
         step = 1
-    
+
     # loop through positions
     nstates1 = nstates
     for i in xrange(1, n):
@@ -216,26 +211,25 @@ def forward_algorithm(model, n, verbose=False):
                 p = col1[j] + model.prob_transition(i-1, j, i, k) + emit
                 tot = logadd(tot, p)
             col2.append(tot)
-                
+
         probs.append(col2)
         nstates1 = nstates2
 
     return probs
 
 
-
 def iter_forward_algorithm(model, n, verbose=False):
-    
+
     # calc first position
     nstates = model.get_num_states(0)
     col1 = [model.prob_prior(0, j) + model.prob_emission(0, j)
             for j in xrange(nstates)]
-    
+
     if n > 20:
         step = (n // 20)
     else:
         step = 1
-    
+
     # loop through positions
     nstates1 = nstates
     for i in xrange(1, n):
@@ -259,7 +253,6 @@ def iter_forward_algorithm(model, n, verbose=False):
         nstates1 = nstates2
 
 
-
 def backward_algorithm(model, n, verbose=False):
 
     probs = []
@@ -270,12 +263,12 @@ def backward_algorithm(model, n, verbose=False):
         probs.append(None)
     probs[n-1] = [model.prob_prior(n-1, j) + model.prob_emission(n-1, j)
                   for j in xrange(nstates)]
-    
+
     if n > 20:
         step = (n // 20)
     else:
         step = 1
-    
+
     # loop through positions
     for i in xrange(n-2, -1, -1):
         if verbose and i % step == 0:
@@ -294,7 +287,7 @@ def backward_algorithm(model, n, verbose=False):
                 p = col2[k] + emit[k] + model.prob_transition(i, j, i+1, k)
                 tot = logadd(tot, p)
             col1.append(tot)
-                
+
         probs[i] = col1
 
     return probs
@@ -333,7 +326,7 @@ def sample_posterior(model, n, forward_probs=None, verbose=False):
     i = n-1
     A = [forward_probs[i][j] for j in range(model.get_num_states(i))]
     path[i] = j = stats.sample(map(exp, A))
-  
+
     # recurse
     for i in xrange(n-2, -1, -1):
         C = []
@@ -347,5 +340,5 @@ def sample_posterior(model, n, forward_probs=None, verbose=False):
         path[i] = j = stats.sample(map(exp, A))
         # !$B_{i,j} = C_{i,j} B_{i+1,l}$!
         B += C[j]
-    
+
     return path

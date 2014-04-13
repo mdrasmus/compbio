@@ -5,8 +5,7 @@ import os
 from rasmus import util
 
 
-
-def writeGraphviz(mat, out=sys.stdout, format="undirected", 
+def writeGraphviz(mat, out=sys.stdout, format="undirected",
                   param="overlap=\"false\";"):
     if format == "undirected":
         print >>out, "graph G {"
@@ -20,18 +19,19 @@ def writeGraphviz(mat, out=sys.stdout, format="undirected",
         print >>out, "digraph G {"
         for i in mat:
             for j in mat[i]:
-               print >>out, i, "->", j, ";"
-        print >>out, "}"        
+                print >>out, i, "->", j, ";"
+        print >>out, "}"
 
-def visualize(mat, outfile, format="undirected", 
+
+def visualize(mat, outfile, format="undirected",
               options="-Tjpg", param="overlap=\"false\";"):
     if format == "undirected":
-        out = os.popen("neato "+ options + " -o " + outfile, "w")
+        out = os.popen("neato " + options + " -o " + outfile, "w")
     elif format == "directed":
-        out = os.popen("dot "+ options + " -o " + outfile, "w")
+        out = os.popen("dot " + options + " -o " + outfile, "w")
     print out, format
     writeGraphviz(mat, out, format, param)
-    
+
 
 if __name__ == "__main__":
     mat = util.Dict(dim=2)
@@ -48,5 +48,3 @@ if __name__ == "__main__":
 
 class GraphViz:
     pass
-
-

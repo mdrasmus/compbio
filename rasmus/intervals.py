@@ -20,7 +20,7 @@ where start <= end and ... can be any additional data
 def overlap(region1, region2, inc=True):
     """
     Returns True if range region1=[a,b] overlaps region2=[x,y]
-    
+
     inc -- if True, treat [a,b] and [x,y] as inclusive
     """
     if inc:
@@ -36,7 +36,7 @@ def iter_groups(items, key):
     items -- iterable of values
     key   -- function of one argument
     """
-    
+
     NULL = object()
     last_key = NULL
     group = []
@@ -46,7 +46,7 @@ def iter_groups(items, key):
         if k != last_key:
             if group:
                 yield group
-            
+
             # start new group
             group = []
             last_key = k
@@ -66,13 +66,13 @@ def iter_union_ids(regions):
     """
 
     # TODO: add inclusive option
-    
+
     start = -util.INF
     end = -util.INF
     group = None
     groupnum = -1
 
-    for reg in regions:        
+    for reg in regions:
         if reg[0] > end:
             # start new group
             start = reg[0]
@@ -90,32 +90,32 @@ def iter_union_ids(regions):
 def groupby_unions(regions):
     """
     Iterate over union groups
-    
+
     NOTE: regions must be sorted by start
     """
 
     # TODO: add inclusive option
-    
+
     for group in iter_groups(iter_union_ids(regions), lambda x: x[0]):
         # remove group index from each region
         yield [x[1] for x in group]
 
 
 def iter_unions(regions):
-     """
-     Iterate over union groups
+    """
+    Iterate over union groups
 
-     Yields (start, end, [region1, region2, ...]) for each union group
+    Yields (start, end, [region1, region2, ...]) for each union group
 
-     NOTE: regions must be sorted by start
-     """
+    NOTE: regions must be sorted by start
+    """
 
-     # TODO: add inclusive option
+    # TODO: add inclusive option
 
-     for group in groupby_unions(regions):
-         start = min(r[0] for r in group)
-         end = max(r[1] for r in group)
-         yield (start, end, group)    
+    for group in groupby_unions(regions):
+        start = min(r[0] for r in group)
+        end = max(r[1] for r in group)
+        yield (start, end, group)
 
 
 def iter_intersections(regions):
@@ -123,7 +123,7 @@ def iter_intersections(regions):
     Iterate over intersection groups
 
     Yields (start, end, [region1, region2]) for each intersection group
-    
+
     NOTE: regions must be sorted by start
     """
 
@@ -181,14 +181,15 @@ def iter_substract(regions1, regions2):
     # add a tag to regions
     regions1 = [(reg[0], reg[1], 1, reg) for reg in regions1]
     regions2 = [(reg[0], reg[1], 2, reg) for reg in regions2]
-                
+
     # combine all regions into one list
     regions = sorted(chain(regions1, regions2), key=lambda x: x[0])
 
     for a, b, group in iter_intersections(regions):
         if len(group) == 1 and group[0][2] == 1:
             yield (a, b, group[0][3])
-            
+
+
 '''
 def iter_combine_regions(*regionsets):
     """
@@ -202,8 +203,7 @@ def iter_combine_regions(*regionsets):
 
     for regions in regionsets:
         pass
-'''        
-    
+'''
 
 
 def query_point_regions(point, regions, inc=True):
@@ -235,12 +235,8 @@ def query_regions_regions(query_regions, regions, inc=True):
     pass
 
 
-
-    
-
-
 if __name__ == "__main__":
-    
+
     print "union"
     print list(iter_union_ids([[1, 10], [2, 4], [2, 5],
                                [12, 20], [13, 22]]))
@@ -248,14 +244,13 @@ if __name__ == "__main__":
     print list(iter_unions([[1, 10], [2, 4], [2, 5],
                             [12, 20], [13, 22]]))
 
-
     print list(groupby_unions([[1, 10], [2, 4], [2, 5],
                                [12, 20], [13, 22]]))
 
     print "intersect"
-    print list(iter_intersections( 
-            [[1, 10], [2, 4], [2, 5],
-             [12, 20], [13, 22]]))
+    print list(iter_intersections(
+        [[1, 10], [2, 4], [2, 5],
+         [12, 20], [13, 22]]))
 
     print "union"
     print list(query_point_regions(3, [[1, 10], [2, 4], [2, 5],

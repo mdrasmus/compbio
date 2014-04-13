@@ -4,13 +4,13 @@
 
     imat  -- sparse index matrix
              [(i, j, v), ...]
-             
+
     rmat  -- sparse row compressed matrix
              [{j1: v1, j2: v2, ...}, ...]
-             
+
     dmat  -- dense matrix
              [[v11, v12, ...], [v21, v22, ...], ...]
-             
+
     lmat  -- sparse labeled matrix
              {"row1": {"col2": v, ...}, ...}
 
@@ -18,10 +18,9 @@
              [["", "col1", "col2", ...],
               ["row1", v11, v12, ...],
               ["row2", v21, v22, ...]]
-             
+
     ilmat -- iterate sparse label matrix
              [(labeli, labelj, v), ...]
-
 
 """
 
@@ -30,10 +29,9 @@ from collections import defaultdict
 import copy
 
 
-
 def make_matrix(nrows, ncols, val=0):
     """Returns a dense matrix of desired size"""
-    
+
     mat = []
     for i in xrange(nrows):
         row = []
@@ -46,43 +44,43 @@ def make_matrix(nrows, ncols, val=0):
 def make_lmat(default=0):
     """Returns an empty lmat"""
     return defaultdict(lambda: defaultdict(lambda: default))
-    
+
 
 def submatrix(mat, rows=None, cols=None):
     """Returns the submatrix of mat"""
-    
-    if rows == None:
+
+    if rows is None:
         rows = range(len(mat))
-    if cols == None:
+    if cols is None:
         cols = range(len(mat[0]))
-    
+
     mat2 = []
-    
+
     for i in rows:
         mat2.append([])
         for j in cols:
             mat2[-1].append(mat[i][j])
-    
+
     return mat2
 
 
 def transpose(mat):
     """
     Transpose a matrix
-    
+
     Works better than zip() in that returned rows are lists not tuples
     """
-    
+
     assert len(set(map(len, mat))) == 1, "rows are not equal length"
-    
+
     mat2 = []
-    
+
     for j in xrange(len(mat[0])):
         row2 = []
         mat2.append(row2)
         for row in mat:
             row2.append(row[j])
-    
+
     return mat2
 
 
@@ -94,8 +92,6 @@ def transpose_imat(nrows, ncols, nnz, imat):
             yield j, i, v
 
     return ncols, nrows, nnz, data()
-
-
 
 
 #=============================================================================
@@ -115,6 +111,7 @@ def imat2rmat(nrows, ncols, nnz, imat):
 
     return rows
 
+
 def rmat2imat(nrows, ncols, nnz, rmat):
     """Converts rmat to imat iterator"""
 
@@ -125,10 +122,11 @@ def rmat2imat(nrows, ncols, nnz, rmat):
 
 def dmat2imat(dmat):
     """Converts dense matrix to sparse index matrix"""
-    
+
     for i, row in enumerate(dmat):
         for j, v in enumerate(row):
             yield i, j, v
+
 
 def imat2dmat(nrows, ncols, nnz, imat):
     """Converts sparse index matrix to a dense matrix"""
@@ -142,7 +140,7 @@ def imat2dmat(nrows, ncols, nnz, imat):
 
 def ilmat2lmat(ilmat, default=0):
     """Converts a labeled matrix iterator (ilmat) to a dict of dicts (lmat)"""
-    
+
     lmat = defaultdict(lambda: defaultdict(lambda: default))
     for r, c, v in ilmat:
         lmat[r][c] = v
@@ -192,7 +190,7 @@ def imat2dlmat(imat, rowlabels, collabels):
 
     dlmat = make_matrix(len(rowlabels)+1, len(collabels)+1)
     rowlookup = dict((l, i+1) for i, l in enumerate(rowlabels))
-    collookup = dict((l, i+1) for i, l in enumerate(rowlabels))    
+    collookup = dict((l, i+1) for i, l in enumerate(rowlabels))
 
     # set labels
     dlmat[0][0] = ""
@@ -218,16 +216,16 @@ def dlmat2imat(dlmat):
             for j, v in enumerate(row):
                 if j > 0:
                     yield i-1, j-1, v
-    
+
 
 def dmat2dlmat(dmat, rowlabels, collabels):
     """
     Converts dense matrix (dmat) to dense labeled matrix (dlmat)
     """
-    
+
     dlmat = make_matrix(len(rowlabels)+1, len(collabels)+1)
     rowlookup = dict((l, i+1) for i, l in enumerate(rowlabels))
-    collookup = dict((l, i+1) for i, l in enumerate(collabels))    
+    collookup = dict((l, i+1) for i, l in enumerate(collabels))
 
     # set labels
     dlmat[0][0] = ""
@@ -246,6 +244,7 @@ def dmat2dlmat(dmat, rowlabels, collabels):
 
 #=============================================================================
 # dense matrix I/O
+
 
 def parse_dmat_header(first_row, header, rows):
 
@@ -266,9 +265,9 @@ def parse_dmat_header(first_row, header, rows):
             # no header
             # infer matric dimension
             nrows = ncols = None
-        
+
     elif header:
-        # explicitly parse header        
+        # explicitly parse header
         if len(first_row) == 1:
             nrows = int(first_row[0])
             ncols = nrows
@@ -276,8 +275,9 @@ def parse_dmat_header(first_row, header, rows):
             nrows = int(first_row[0])
             ncols = int(first_row[1])
         else:
-            raise Exception("Wrong number of entries in header (expected 1 or 2)")
-            
+            raise Exception(
+                "Wrong number of entries in header (expected 1 or 2)")
+
     else:
         # no header
         # infer matrix dimension
@@ -294,15 +294,15 @@ def read_dmat(infile, header=False):
     """
 
     # read file
-    rows = [line.rstrip().split() for line in infile]    
+    rows = [line.rstrip().split() for line in infile]
     nrows, ncols = parse_dmat_header(rows[0], header, rows)
     if nrows is not None:
         # skip header
         rows = rows[1:]
-    
+
     # convert data
     data = [[float(v) for v in row] for row in rows]
-    
+
     # assert that all rows have the same number of values
     assert len(set(map(len, data))) == 1
 
@@ -316,7 +316,7 @@ def read_dmat(infile, header=False):
         ncols = len(data[0])
     else:
         assert ncols == len(data[0]), "wrong number of columns"
-    
+
     # return data
     nnz = nrows * ncols
     return nrows, ncols, nnz, data
@@ -330,9 +330,9 @@ def iter_dmat(infile, header=False):
 
     Returns nrows, ncols, nnz, imat (index matrix interator)
     """
-    
+
     # read file
-    rows = [line.rstrip().split() for line in infile]    
+    rows = [line.rstrip().split() for line in infile]
     nrows, ncols = parse_dmat_header(rows[0], header, rows)
     if nrows is not None:
         # skip header
@@ -340,7 +340,7 @@ def iter_dmat(infile, header=False):
         rows = rows[1:]
     else:
         nnz = None
-    
+
     def data():
         for i, row in enumerate(rows):
             for j, v in enumerate(row):
@@ -374,7 +374,7 @@ def iter_imat(infile):
     Read a sparse index matrix
     Returns nrows, ncols, nnz, imat (index matrix iterator)
     """
-    
+
     line = infile.next()
     tokens = line.rstrip().split()
 
@@ -385,7 +385,8 @@ def iter_imat(infile):
             nrows, nnz = map(int, tokens)
             ncols = nrows
     except:
-        raise Exception("header error: expected (nrows, nnz) or (nrows, ncols, nnz) in first line")
+        raise Exception("header error: expected (nrows, nnz) or "
+                        "(nrows, ncols, nnz) in first line")
 
     def data():
         for line in infile:
@@ -403,7 +404,7 @@ def read_imat(infile):
 
     nrows, ncols, nnz, imat = iter_imat(infile)
     return nrows, ncols, nnz, list(imat)
-    
+
 
 def write_imat(out, nrows, ncols, nnz, imat):
     """Write an index matrix"""
@@ -420,7 +421,7 @@ def iter_rmat(infile):
     """
     Read an compressed-row matrix
     Columns are 1 indexed in file, but 0 index in memory
-    Returns nrows, ncols, nnz, imat (index matrix iterator)    
+    Returns nrows, ncols, nnz, imat (index matrix iterator)
     """
 
     line = infile.next()
@@ -482,6 +483,7 @@ def write_rmat(out, nrows, ncols, nnz, rmat, square=False):
 #=============================================================================
 # labeled sparse matrix I/O
 
+
 def read_lmat(infile, delim=None, default=0):
     """
     Reads a labeled sparsed matrix
@@ -505,13 +507,15 @@ def write_lmat(out, lmat):
     """
     Writes a labeled sparsed matrix
     """
-    
+
     for row in lmat:
         for col, val in lmat[row].iteritems():
             out.write("%s\t%s\t%f\n" % (row, col, val))
-            
+
+
 #=============================================================================
 # dense labeled matrix I/O
+
 
 def read_dlmat(infile, delim=None, default=0):
 
@@ -528,10 +532,9 @@ def read_dlmat(infile, delim=None, default=0):
 
 
 def write_dlmat(out, dlmat):
-    
+
     # write data
     for row in dlmat:
         for i in xrange(len(row)-1):
             out.write(str(row[i]) + "\t")
         out.write(str(row[-1]) + "\n")
-

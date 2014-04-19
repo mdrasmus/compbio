@@ -44,6 +44,14 @@ def pyflakes_filter(line):
     """
     Standard filter for pyflakes.
     """
+    # ignore ply library.
+    if 'rasmus/ply' in line:
+        return False
+
+    # Ignore tree grammar.
+    if ('rasmus/treelib_tab.py' in line or
+            'rasmus/treelib_parser.py' in line):
+        return
 
     return True
 
@@ -52,6 +60,19 @@ def pep8_filter(line):
     """
     Standard filter for pep8.
     """
+    # Ignore ply library.
+    if 'rasmus/ply' in line:
+        return False
+
+    # Ignore tree grammar.
+    if ('rasmus/treelib_tab.py' in line or
+            'rasmus/treelib_parser.py' in line):
+        return
+
+    # Ignore sexp grammar.
+    if ('rasmus/sexp/sexp_tab.py' in line or
+            'rasmus/sexp/sexp_lex.py' in line):
+        return
 
     return True
 

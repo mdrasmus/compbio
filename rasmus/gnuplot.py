@@ -308,8 +308,8 @@ class Gnuplot:
 
     def replot(self):
         # do nothing if no data or plotting is not enabled
-        if len(self.data) == 0 or \
-           not self.enable:
+        if (len(self.data) == 0 or
+                not self.enable):
             return
 
         # configure

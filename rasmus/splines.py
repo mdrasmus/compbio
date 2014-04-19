@@ -3,6 +3,7 @@ from LinearAlgebra import *
 
 from rasmus import util, gnuplot
 
+
 def hermite(x0, x1, v0, v1, t):
     a = array([1, t, t**2, t**3])
     M = array([[1, 0, 0, 0],
@@ -10,8 +11,9 @@ def hermite(x0, x1, v0, v1, t):
                [0, 1, 0, 0],
                [0, 1, 2, 3]])
     p = transpose([[x0, x1, v0, v1]])
-    
+
     return dot(dot(a, inverse(M)), p)
+
 
 def bezier2(x0, p1, p2, x1, t):
     a = array([1, t, t**2, t**3])
@@ -25,12 +27,14 @@ def bezier2(x0, p1, p2, x1, t):
                [0, 0, -3, 3]])
     p = transpose([[x0, p1, p2, x1]])
 
-    C = dot(inverse(M),B)
-    
+    C = dot(inverse(M), B)
+
     return dot(dot(a, C), p)
+
 
 def lerp(x0, x1, t):
     return x0 * (1-t) + x1 * t
+
 
 def bezier(x0, x1, x2, x3, t):
     x00 = lerp(x0, x1, t)
@@ -41,6 +45,7 @@ def bezier(x0, x1, x2, x3, t):
     x20 = lerp(x10, x11, t)
     return x20
 
+
 def catmullrom(x0, x1, x2, x3, t):
     x00 = lerp(x0, x1, t+1)
     x01 = lerp(x1, x2, t)
@@ -50,8 +55,10 @@ def catmullrom(x0, x1, x2, x3, t):
     x20 = lerp(x10, x11, t)
     return x20
 
+
 def interpolate(points):
     pts = points[:1] + points + points[-1:]
+
     def func(t):
         t += 1
         it = int(t) - 1
@@ -67,10 +74,12 @@ def bbasis(i, p, t, times):
         else:
             return 0
     else:
-        return (t - times[i]) / (times[i+p] - times[i]) * \
-               bbasis(i, p-1, t, times) + \
-               (times[i+p+1]-t) / (times[i+p+1]-times[i+1]) * \
-               bbasis(i+1, p-1, t, times)
+        return (
+            (t - times[i]) / (times[i+p] - times[i]) *
+            bbasis(i, p-1, t, times) +
+            (times[i+p+1]-t) / (times[i+p+1]-times[i+1]) *
+            bbasis(i+1, p-1, t, times))
+
 
 def bspline(pts, times, t):
     p = len(times) - len(pts) - 1
@@ -78,6 +87,7 @@ def bspline(pts, times, t):
     for i in range(len(pts)):
         tot += pts[i] * bbasis(i, p, t, times)
     return tot
+
 
 def bspline2(pts, times, t):
     p = len(times) - len(pts) - 1
@@ -87,48 +97,49 @@ def bspline2(pts, times, t):
     return b
 
 
-f = lambda x: hermite(0,0,1,-1,x)
-g = lambda x: bezier(0,1,1,0,x)
-h = lambda x: catmullrom(-3,0,0,-3,x)
+if __name__ == "__main__":
 
-if False:
-    p = gnuplot.plotfunc(f,0,1,.1)
-    p.plotfunc(g,0,1,.1)
-    p.plotfunc(h,0,1,.1)
+    f = lambda x: hermite(0, 0, 1, -1, x)
+    g = lambda x: bezier(0, 1, 1, 0, x)
+    h = lambda x: catmullrom(-3, 0, 0, -3, x)
 
-if False:
-    pts = [1,2,2,3,3,1,-5,-4,-5,-3,-5,-2,-5,0]
-    p = gnuplot.plotfunc(interpolate(pts), 0, len(pts)-1, .1)
+    if False:
+        p = gnuplot.plotfunc(f, 0, 1, .1)
+        p.plotfunc(g, 0, 1, .1)
+        p.plotfunc(h, 0, 1, .1)
 
-def frange(n):
-    return map(lambda x: x/float(n), range(n+1))
+    if False:
+        pts = [1, 2, 2, 3, 3, 1, -5, -4, -5, -3, -5, -2, -5, 0]
+        p = gnuplot.plotfunc(interpolate(pts), 0, len(pts)-1, .1)
 
-pts = [0, 4, 0]
-pts2 = [0, 4, 6]
+    def frange(n):
+        return map(lambda x: x/float(n), range(n+1))
 
-p = gnuplot.Gnuplot()
+    pts = [0, 4, 0]
+    pts2 = [0, 4, 6]
 
-def make(n):
-    times = frange(n)
-    f = lambda p: lambda x: bspline(p, times, x)
-    coords = map(f(pts), frange(10))
-    coords2 = map(f(pts2), frange(10))
+    p = gnuplot.Gnuplot()
 
-    p.plot(coords, coords2)
+    def make(n):
+        times = frange(n)
+        f = lambda p: lambda x: bspline(p, times, x)
+        coords = map(f(pts), frange(10))
+        coords2 = map(f(pts2), frange(10))
 
-times = frange(10)
-f = lambda p: lambda x: bspline2(p, times, x)
-coords = map(f(pts), frange(100))
+        p.plot(coords, coords2)
 
-plots = util.unzip(coords)
-for plot in plots:
-    p.plot(plot, style="lines")
+    times = frange(10)
+    f = lambda p: lambda x: bspline2(p, times, x)
+    coords = map(f(pts), frange(100))
 
-#make(4)
-#make(5)
-#make(6)
-#make(7)
-#make(8)
+    plots = util.unzip(coords)
+    for plot in plots:
+        p.plot(plot, style="lines")
 
-#p = util.plotfunc(f, 0, 1, .01)
+    #make(4)
+    #make(5)
+    #make(6)
+    #make(7)
+    #make(8)
 
+    #p = util.plotfunc(f, 0, 1, .01)

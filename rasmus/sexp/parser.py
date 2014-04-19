@@ -2,24 +2,40 @@
 import os
 
 try:
-    from rasmus.ply import lex, yacc
+    from rasmus.ply import lex
+    from rasmus.ply import yacc
 except ImportError:
-    from ply import lex, yacc
+    from ply import lex
+    from ply import yacc
+
 
 #=============================================================================
 # classes
 
+
 class Sym (str):
     """S-expression symbol"""
     def __repr__(self):
-        return self
+        return 'Sym(%s)' % str.__repr__(self)
+
+    def __hash__(self):
+        return hash((Sym, str.__hash__(self)))
+
+    def __eq__(self, other):
+        return isinstance(other, Sym) and str.__eq__(self, other)
+
+    def equals(self, text):
+        """
+        Returns True if symbol text equals 'text'.
+        """
+        return str.__eq__(self, other)
+
 
 #=============================================================================
 # grammar
 
 
-
-literals = ['(',')', "[", "]", "{", "}"]
+literals = ['(', ')', "[", "]", "{", "}"]
 t_ignore = " \t\r\n"
 t_ignore_COMMENT = r";[^\n]*\n"
 
@@ -34,34 +50,40 @@ tokens = (
 def quote(s):
     return s.replace('\\', '\\\\').replace(r'"', r'\"')
 
+
 def unquote(s):
     # fix, use proper unquote
     return s.replace(r'\"', r'"').replace('\\\\', '\\')
+
 
 def t_STRING(t):
     r'"(\\\\|\\"|[^"\\]+)*"'
     t.value = unquote(t.value[1:-1])
     return t
 
+
 def t_SYMBOL(t):
     r'[^()\[\]{}" \#\t\r\n0-9;][^()\[\]{}" \t\r\n]*'
     t.value = Sym(t.value)
     return t
 
+
 def t_NUMBER(t):
     r"[+-]?(\d+\.?|\.\d)(\d+([eE][+-]?\d+)?)?"
     if ("." not in t.value and
-        "e" not in t.value and
-        "E" not in t.value):
+            "e" not in t.value and
+            "E" not in t.value):
         t.value = int(t.value)
     else:
         t.value = float(t.value)
     return t
 
+
 def t_BOOL(t):
     r"\#t|\#f"
     t.value = (t.value == "#t")
     return t
+
 
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
@@ -73,6 +95,7 @@ def p_sexp(p):
     """
     p[0] = p[2]
 
+
 def p_item_list(p):
     """
     item_list : item item_list
@@ -83,6 +106,7 @@ def p_item_list(p):
         p[0].extend(p[2])
     else:
         p[0] = []
+
 
 def p_item(p):
     """
@@ -117,9 +141,7 @@ yacc.yacc(debug=0, optimize=1, tabmodule="sexp_tab", outputdir=outdir)
 parse = yacc.parse
 
 
-
-
 if __name__ == "__main__":
     print yacc.parse('(+ 223 36.6 (aaa) bbb \"ccc\")')
-    print yacc.parse(r'(if (> 2 var) (cons a b) (display "no \\ \"quoted\" \\ " 22) )')
+    print yacc.parse(r'(if (> 2 var) (cons a b) (display "no \\ \"quoted\" \\ " 22) )')  # nopep8
     #print yacc.parse("(7:subject(3:ref5:alice6:mother))")

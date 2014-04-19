@@ -1,20 +1,21 @@
 
-import os, re
+import os
+import re
 
 try:
-    from rasmus.ply import lex, yacc
+    from rasmus.ply import lex
+    from rasmus.ply import yacc
 except ImportError:
     from ply import lex, yacc
 
 
-literals = ['+', ':', ';', '(',')', ","]
+literals = ['+', ':', ';', '(', ')', ","]
 t_ignore = " \t\n"
 
 tokens = (
     "NAME",
     "DATA"
 )
-
 
 
 t_NAME = r"[\w\-_\.]+([\w\-_\. ]*[\w\-_\.])?"
@@ -24,6 +25,7 @@ t_DATA = r"[^,;\(\)]+"
 #t_DATA =  r"([^,;\(\)]+|[^,;\(\)]*\[[^\]]*\])"
 #[^,;\(\)]*XXX\[[^\]]*\])"
 #[^,;\(\)]+)"
+
 
 def t_error(t):
     raise TypeError("Unknown text '%s'" % (t.value,))
@@ -76,7 +78,7 @@ def p_branch_set(p):
         p[0] = [p[1]]
     else:
         p[0] = [p[1]] + p[3]
-    
+
 
 def p_error(p):
     if p:
@@ -98,10 +100,8 @@ if __name__ == "__main__":
     print yacc.parse("((aa:1.0,bb:2)x:33,(cc:4,dd:5):6);")
 
 
-
 #=============================================================================
 # OLD parsing code
-
 
 
 """
@@ -133,7 +133,7 @@ def _tree(p):
 
 def subtree(p):
     """subtree : "(" branch_set ")" NAME
-               | "(" branch_set ")" 
+               | "(" branch_set ")"
                | NAME"""
     if len(p) == 5:
         p[0] = (p[2], p[4])
@@ -154,14 +154,14 @@ def _subtree(p):
 
 def _branch_set(p):
     """branch_set : branch "," branch_set
-                  | branch 
+                  | branch
     """
 
     if len(p) == 2:
         p[0] = [p[1]]
     else:
         p[0] = [p[1]] + p[3]
-    
+
 
 def _branch(p):
     """
@@ -190,10 +190,10 @@ def _branch(p):
         # terminal rules
         # name = Word(alphanums + "_" + "-" + "." + "+")
         name_part  = Word(alphanums + "_" + "-" + "." + "+")
-        name_part2 = Forward()        
+        name_part2 = Forward()
         name_part2 << name_part + Optional(Word(" ") + name_part2)
         name = Combine(name_part + Optional(Word(" ") + name_part2))
-        fnumber = Combine(Word("+-"+nums, nums) + 
+        fnumber = Combine(Word("+-"+nums, nums) +
                           Optional(point + Optional(Word(nums))) +
                           Optional(e + Word("+-"+nums, nums)))
         dist      = fnumber
@@ -203,7 +203,7 @@ def _branch(p):
         # recursive rules
         subtree = Forward()
         subtreelist = Forward()
-        
+
         subtree << \
             Group(
                 (

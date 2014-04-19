@@ -6,7 +6,6 @@
 """
 
 
-
 # python libs
 import math
 import itertools
@@ -26,7 +25,7 @@ from compbio.synteny import SyntenyBlock
 
 def make_chroms(genes):
     """Make default chromosomes for a set of genes"""
-    
+
     chroms = {}
     for gene in genes:
         if gene.seqname in chroms:
@@ -38,12 +37,10 @@ def make_chroms(genes):
             chroms[gene.seqname] = chrom
 
     return sorted(chroms.values(), key=lambda x: x.end, reverse=True)
-   
-
 
 
 class Plot (object):
-    def __init__(self, regions1, regions2, hits, hitnames=True, 
+    def __init__(self, regions1, regions2, hits, hitnames=True,
                  style="line", color=(0, 0, 0),
                  fill_color=None,
                  trace_color=(0, 1, 1, .2),
@@ -56,15 +53,15 @@ class Plot (object):
         self.fill_color = fill_color
         self.trace_color = trace_color
         self.selfhits = selfhits
-        
+
         if hitnames:
             self.hits = []
-        
+
             # resolve hits to regions
             name2region = util.Dict(default=[])
             for region in itertools.chain(self.regions1, self.regions2):
                 name2region[region.data["ID"]].append(region)
-            
+
             for hit in hits:
                 newhit = []
                 for name in hit:
@@ -72,13 +69,13 @@ class Plot (object):
                         newhit.extend(name2region[name])
                 if len(newhit) > 0:
                     self.hits.append(newhit)
-                
+
         else:
             self.hits = hits
 
-    
+
     def draw_plot(self, dotplot):
-        
+
         if self.style not in ("line", "box") and not callable(self.style):
             return group()
 
@@ -100,7 +97,7 @@ class Plot (object):
 
             # draw all pairs of hits
             for region1 in set1:
-                chrom1 = dotplot.chrom1lookup[(region1.species, 
+                chrom1 = dotplot.chrom1lookup[(region1.species,
                                             region1.seqname)]
 
                 for region2 in set2:
@@ -108,7 +105,7 @@ class Plot (object):
                        region1.data["ID"] == region2.data["ID"]:
                         continue
 
-                    chrom2 = dotplot.chrom2lookup[(region2.species, 
+                    chrom2 = dotplot.chrom2lookup[(region2.species,
                                                    region2.seqname)]
 
                     s1 = dotplot.layout1[region1]
@@ -149,10 +146,10 @@ class Plot (object):
 
     def draw_trace(self, dotplot):
         vis = []
-        
+
         # get current view
         view = dotplot.win.get_visible()
-        
+
         for region in self.regions1:
             if region in dotplot.layout1:
                 start = dotplot.layout1[region]
@@ -178,9 +175,9 @@ class Plot (object):
                 vis.extend([color(* self.trace_color),
                             lines(0, start, dotplot.plot_size[0], start),
                             shapes.box(0, start, dotplot.plot_size[0], end)])
-        
+
         return group(*vis)
-    
+
 
 
 
@@ -191,35 +188,35 @@ class SyntenyPlot (Plot):
         regions1 = []
         regions2 = []
         hits = []
-        
+
         for block in blocks:
             regions1.append(block.region1)
             regions2.append(block.region2)
             regions1.append(block.region2)
             regions2.append(block.region1)
             hits.append([block.region1, block.region2])
-        
+
         Plot.__init__(self, regions1, regions2, hits, hitnames=False, **options)
 
 
 
 class DotplotMenu (summon.SummonMenu):
     """summatrix popup menu"""
-    
+
     def __init__(self, viewer):
         summon.SummonMenu.__init__(self, viewer.win)
-        
+
         self.viewer = viewer
-        
+
         self.dotplot_menu = summon.Menu()
         self.dotplot_menu.add_entry("toggle chroms (c)",
                                     viewer.toggle_chrom_divs)
-        
-        
+
+
         self.plots = []
         def func(plot):
             return lambda: viewer.toggle_trace(plot)
-        
+
         for i, plot in enumerate(viewer.plots):
             self.plots.append(summon.Menu())
             self.plots[-1].add_entry("trace", func(plot))
@@ -228,14 +225,14 @@ class DotplotMenu (summon.SummonMenu):
                 plot_name = "plot %i" %(i+1)
             else:
                 plot_name = plot.name
-            
+
             self.dotplot_menu.add_submenu(plot_name, self.plots[-1])
         self.insert_submenu(0, "Dotplot", self.dotplot_menu)
-        
-  
+
+
 
 class Dotplot (object):
-    
+
     def __init__(self, chroms1, chroms2, labels=True, get_label=None,
                  chrom_div_color=(1, 0, 0, .5),
                  genome_div_color=(0, 0, 0)):
@@ -247,28 +244,28 @@ class Dotplot (object):
             self.get_label = lambda x: x.seqname
         else:
             self.get_label = get_label
-        
+
         self.plots = []
-        
+
         # visualization objects
         self.show_chrom_divs = 0
         self.chrom_divs = None
         self.genome_divs = None
         self.traces = {}
-        
+
         # selection
         self.selgenes1 = []
         self.selgenes2 = []
-    
+
         # colors
         self.chrom_div_color = chrom_div_color
         self.genome_div_color = genome_div_color
-    
-        # layouts 
+
+        # layouts
         self.chrom1layout = {}
-        self.chrom2layout = {}        
+        self.chrom2layout = {}
         self.layout1 = {}
-        self.layout2 = {}        
+        self.layout2 = {}
         self.plot_size = [0, 0]
 
         # create chrom lookup
@@ -278,31 +275,31 @@ class Dotplot (object):
             self.chrom1lookup[(chrom.species, chrom.seqname)] = chrom
         for chrom in self.chroms2:
             self.chrom2lookup[(chrom.species, chrom.seqname)] = chrom
-        
+
 
 
     def add_plot(self, plot):
         self.plots.append(plot)
         return plot
     addPlot = add_plot # back-compatiable
-                
-    
+
+
     def show(self, winsize=(600,600), winpos=None):
         self.win = summon.Window("dotplot", size=winsize, position=winpos)
         self.win.set_bgcolor(1, 1, 1)
         self.win.add_group(self.draw())
         self.win.home()
-        
+
         self.menu = DotplotMenu(self)
         self.win.set_menu(self.menu)
-        
+
         self.win.set_binding(input_key("c"), self.toggle_chrom_divs)
-        self.win.set_binding(input_key("t"), self.toggle_trace)        
-    
-    
+        self.win.set_binding(input_key("t"), self.toggle_trace)
+
+
     def draw(self):
         self.layout()
-        
+
         # draw plots
         vis = group()
         for plot in self.plots:
@@ -319,145 +316,145 @@ class Dotplot (object):
                     self.plot_size[0], self.plot_size[1],
                     self.on_click,
                     give_pos=True)))
-        
+
         if self.show_labels:
             vis.append(self.draw_labels())
-        
+
         return vis
 
 
     def layout(self):
         self.chrom1layout = self.layout_chroms(self.chroms1)
         self.chrom2layout = self.layout_chroms(self.chroms2)
-        
+
         self.layout1.clear()
         self.layout2.clear()
-        
+
         for plot in self.plots:
             self.layout_plot(plot)
-        
+
         self.plot_size = [self.chrom1layout[self.chroms1[-1]] +
                           self.chroms1[-1].length(),
                           self.chrom2layout[self.chroms2[-1]] +
                           self.chroms2[-1].length()]
-    
-    
+
+
     def layout_plot(self, plot):
         self.layout_regions(self.layout1, self.chrom1lookup,
                             plot.regions1, self.chrom1layout)
         self.layout_regions(self.layout2, self.chrom2lookup,
                             plot.regions2, self.chrom2layout)
-        
+
 
     def layout_regions(self, layout, chromLookup, regions, chromLayout):
         for region in regions:
             chrom = chromLookup.get((region.species, region.seqname), None)
-            
+
             if chrom in chromLayout and \
                util.overlap(chrom.start, chrom.end, region.start, region.end):
                 chrompos = chromLayout[chrom]
                 layout[region] = chrompos + region.start - chrom.start
-        
-    
+
+
     def layout_chroms(self, chroms):
         # determine chrom layout
         chromLayout = {}
         x = 0
-        
+
         for chrom in chroms:
             chromLayout[chrom] = x
             x += chrom.length()
-                
+
         return chromLayout
 
 
-    
+
     def draw_chrom_borders(self):
         vis = [color(*self.chrom_div_color)]
-                
+
         # determine chrom layout
         divx = [0]
         divy = [0]
-        
+
         for chrom in self.chroms1:
             divx.append(divx[-1] + chrom.length())
         for chrom in self.chroms2:
             divy.append(divy[-1] + chrom.length())
-            
+
         maxx = divx[-1]
         maxy = divy[-1]
-        
+
         # draw dividers
         for x in divx:
             vis.extend([x, 0, x, maxy])
         for y in divy:
             vis.extend([0, y, maxx, y])
-        
+
         return lines(* vis)
-        
+
 
 
 
     def draw_labels(self):
         vis = group(color(*self.genome_div_color))
         thick = 1000000
-    
+
         # determine chrom layout
         divx = [0]
         divy = [0]
         labelsx = []
         labelsy = []
-        
+
         for chrom in self.chroms1:
             labelsx.append(self.get_label(chrom))
             divx.append(divx[-1] + chrom.length())
         for chrom in self.chroms2:
             labelsy.append(self.get_label(chrom))
             divy.append(divy[-1] + chrom.length())
-            
+
         maxx = divx[-1]
         maxy = divy[-1]
-        
+
         last = 0
         for x, label in zip(divx[1:], labelsx):
             vis.append(text_clip(label, last, 0, x, -thick, 4, 20, "left", "top"))
             last = x
 
         last = 0
-        for y, label in zip(divy[1:], labelsy):            
+        for y, label in zip(divy[1:], labelsy):
             vis.append(translate(0, last,
                 rotate(90,
                     text_clip(label, 0, 0, thick, y-last, 4, 20, "left", "bottom"))))
             last = y
         return vis
-            
-    
+
+
     def draw_genome_borders(self):
         vis = [color(*self.genome_div_color)]
-        
+
         assert len(self.chroms1) > 0 and len(self.chroms2) > 0
-        
+
         # determine chrom layout
         divx = [0]
         divy = [0]
         x = self.chroms1[0].length()
         y = self.chroms2[0].length()
-        
+
         for i in xrange(1, len(self.chroms1)):
             if self.chroms1[i].species != self.chroms1[i-1].species:
-                divx.append(x)                
+                divx.append(x)
             x += self.chroms1[i].length()
         for i in xrange(1, len(self.chroms2)):
             if self.chroms2[i].species != self.chroms2[i-1].species:
                 divy.append(y)
             y += self.chroms2[i].length()
-        
+
         divx.append(x)
         divy.append(y)
-        
+
         maxx = x
         maxy = y
-        
+
         # draw dividers
         for x in divx:
             vis.extend([x, 0, x, maxy])
@@ -465,39 +462,39 @@ class Dotplot (object):
             vis.extend([0, y, maxx, y])
 
         return lines(* vis)
-    
+
 
 
     def get_regions_by_pos(self, geneLayout, pos):
         gene_lst = []
-        
+
         for gene, gene_pos in geneLayout.iteritems():
             if gene_pos <= pos <= gene_pos + gene.length():
                 gene_lst.append(gene)
-        
+
         return gene_lst
 
     def on_click(self, clickx, clicky):
         # determine regions that have been clicked
         self.selgenes1 = self.get_regions_by_pos(self.layout1, clickx)
         self.selgenes2 = self.get_regions_by_pos(self.layout2, clicky)
-        
+
         print
         for gene in self.selgenes1:
             if "ID" not in gene.data:
                 continue
-            
+
             print "X %10s (%s %s:%s-%s)" % (gene.data["ID"],
-                gene.species, 
+                gene.species,
                 gene.seqname,
                 util.int2pretty(gene.start),
                 util.int2pretty(gene.end))
         for gene in self.selgenes2:
             if "ID" not in gene.data:
                 continue
-        
+
             print "Y %10s (%s %s:%s-%s)" % (gene.data["ID"],
-                gene.species, 
+                gene.species,
                 gene.seqname,
                 util.int2pretty(gene.start),
                 util.int2pretty(gene.end))
@@ -505,16 +502,16 @@ class Dotplot (object):
 
     def toggle_chrom_divs(self):
         self.show_chrom_divs = (self.show_chrom_divs + 1) % 3
-        
+
         if self.show_chrom_divs == 0:
             self.chrom_divs.set_visible(True)
-            self.genome_divs.set_visible(True)            
+            self.genome_divs.set_visible(True)
         if self.show_chrom_divs == 1:
             self.chrom_divs.set_visible(False)
-            self.genome_divs.set_visible(True)            
+            self.genome_divs.set_visible(True)
         if self.show_chrom_divs == 2:
             self.chrom_divs.set_visible(False)
-            self.genome_divs.set_visible(False)            
+            self.genome_divs.set_visible(False)
 
 
     def enable_trace(self, show, plot=None):
@@ -522,7 +519,7 @@ class Dotplot (object):
             return
         if plot is None:
             plot = self.plots[0]
-    
+
         if show:
             vis = plot.draw_trace(self)
 
@@ -531,7 +528,7 @@ class Dotplot (object):
                 self.traces[plot] = self.win.add_group(vis)
             else:
                 self.traces[plot] = self.win.replace_group(self.traces[plot], vis)
-        
+
         elif plot in self.traces:
             self.win.remove_group(self.traces[plot])
             del self.traces[plot]
@@ -542,7 +539,7 @@ class Dotplot (object):
             return
         if plot == None:
             plot = self.plots[0]
-        
+
         self.enable_trace(plot not in self.traces, plot)
 
 

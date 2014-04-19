@@ -155,9 +155,9 @@ class Pipeline:
 
             for job in self.jobs.itervalues():
                 # job that were running are now back to pending
-                if job.status == STATUS_RUNNING or \
-                   job.status == STATUS_PENDING or \
-                   job.status == STATUS_ERROR:
+                if job.status in [STATUS_RUNNING,
+                                  STATUS_PENDING,
+                                  STATUS_ERROR]:
                     self.writeJobStatus(job, STATUS_UNDONE)
 
             self.isInit = True
@@ -371,8 +371,7 @@ class Pipeline:
             return STATUS_RUNNING
 
         # ensure these are the only valid job states
-        assert (job.status == STATUS_UNDONE or
-                job.status == STATUS_PENDING), (
+        assert job.status in (STATUS_UNDONE, STATUS_PENDING), (
             "unknown job status '%s'" % job.status)
 
         # determine which jobs to wait for
@@ -388,8 +387,8 @@ class Pipeline:
 
         # run job if it is waiting for no one
         # and number of processes is less than max allowed
-        if not job.isWaiting() and \
-           len(self.pids) < self.maxNumProc:
+        if (not job.isWaiting() and
+                len(self.pids) < self.maxNumProc):
             self.execJob(job)
 
         # return job status

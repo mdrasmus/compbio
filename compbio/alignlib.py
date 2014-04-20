@@ -5,16 +5,16 @@
 
 
 # python libs
-import sys
 from collections import defaultdict
+import math
+import sys
+
+# compbio libs
+from . import fasta
+from . import seqlib
 
 # rasmus libs
 from rasmus import util
-
-# compbio libs
-from . import fasta, seqlib
-from seqlib import *
-
 
 #=============================================================================
 # Alignment functions
@@ -31,7 +31,7 @@ def new_align(aln=None):
 
     if aln is None:
         return fasta.FastaDict()
-    elif isinstance(aln, SeqDict):
+    elif isinstance(aln, seqlib.SeqDict):
         return type(aln)()
     else:
         return fasta.FastaDict()
@@ -132,7 +132,6 @@ def calc_conservation(aln):
     percids = []
 
     # find identity positions
-    identity = ""
     for i in xrange(length):
         chars = util.hist_dict(util.cget(seqs, i))
         if "-" in chars:
@@ -229,8 +228,8 @@ def revtranslate_align(aaseqs, dnaseqs, check=False, trim=False):
                             dna = dna[:-3]
                         break
 
-            align[name] = revtranslate(seq, dna, check=check)
-        except TranslateError, e:
+            align[name] = seqlib.revtranslate(seq, dna, check=check)
+        except seqlib.TranslateError:
             raise
 
     return align
@@ -280,9 +279,6 @@ def find_aligned_codons(aln):
     """Returns the columns indices of the alignment that represent aligned
        codons.
     """
-
-    ind = range(aln.alignlen())
-
     # throw out codons with non mod 3 gaps
     ind2 = []
     for i in range(0, aln.alignlen(), 3):
@@ -303,7 +299,7 @@ def find_aligned_codons(aln):
 def filter_aligned_codons(aln):
     """filters an alignment for only aligned codons"""
 
-    ind = find_align_codons(aln)
+    ind = find_aligned_codons(aln)
     return subalign(aln, ind)
 
 
@@ -315,7 +311,7 @@ def find_four_fold(aln):
     """
 
     # create peptide alignment
-    pepAln = mapalign(aln, valfunc=translate)
+    pepAln = mapalign(aln, valfunc=seqlib.translate)
 
     # find peptide conservation
     pepcons = []
@@ -346,7 +342,7 @@ def find_four_fold(aln):
     for i in range(0, len(aln.values()[0]), 3):
         # process only those columns that are conserved at the peptide level
         if pepcons[i//3]:
-            degen = AA_DEGEN[pep[i//3]]
+            degen = seqlib.AA_DEGEN[pep[i//3]]
             for j in range(3):
                 if degen[j] == 4:
                     ind.append(i+j)
@@ -364,7 +360,7 @@ def filter_four_fold(aln):
        3. if the codon column codes for a 4D AA, then keep its 3rd position
     """
 
-    aln_codons = filter_align_codons(aln)
+    aln_codons = filter_aligned_codons(aln)
     ind = find_four_fold(aln_codons)
     return subalign(aln_codons, ind)
 
@@ -400,10 +396,10 @@ def calc_four_fold_dist_matrix(aln):
 def find_degen(aln):
     """Determine the degeneracy of each column in an alignment"""
 
-    codon_ind = find_align_codons(aln)
+    codon_ind = find_aligned_codons(aln)
     aln2 = subalign(aln, codon_ind)
 
-    pep_aln = mapalign(aln2, valfunc=translate)
+    pep_aln = mapalign(aln2, valfunc=seqlib.translate)
     pep = pep_aln.values()[0]
     identies = calc_conservation(pep_aln)
 
@@ -412,7 +408,7 @@ def find_degen(aln):
     for i in range(0, len(codon_ind), 3):
         if pep[i/3] == "X":
             continue
-        degen = AA_DEGEN[pep[i/3]]
+        degen = seqlib.AA_DEGEN[pep[i/3]]
         if identies[i/3] == 1.0:
             for j in range(3):
                 degens[codon_ind[i+j]] = degen[j]
@@ -532,7 +528,7 @@ class CoordConverter (object):
 
         # throw exception for out of bounds
         if local_coord < 0 or \
-           local_coord >= len(alignLookup):
+           local_coord >= len(self.local2alignLookup):
             raise Exception("coordinate outside [start, end]")
 
         return self.local2alignLookup[local_coord]

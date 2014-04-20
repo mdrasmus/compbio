@@ -10,7 +10,6 @@
 # python libs
 import math
 import os
-import sys
 
 # rasmus libs
 from rasmus import treelib
@@ -109,8 +108,6 @@ def clustalwProfiles(aln1, aln2, verbose=True, removetmp=True, options=""):
         except:
             pass
 
-    # convert output
-    keys = aln.keys()
     return aln
 
 

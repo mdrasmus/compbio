@@ -13,7 +13,6 @@ from itertools import izip
 from rasmus import util
 
 # seqlib imports
-from . import seqlib
 from seqlib import SeqDict
 
 
@@ -122,8 +121,6 @@ def read_fasta(filename, keyfunc=firstword, valuefunc=lambda x: x,
 
 def write_fasta(filename, seqs, order=None, width=None):
     """Write a FASTA dictionary into a file"""
-
-    out = util.open_stream(filename, "w")
     seqs.write(filename, order, width)
 
 
@@ -199,7 +196,6 @@ def has_fasta_index(fasta_file):
 def guess_fasta_width(fastaFile):
     fafile = util.open_stream(fastaFile, "rb")
 
-    numlines = 5
     lineno = 0
     width = -1
     width2 = -1

@@ -3,8 +3,10 @@
 
 """
 
-from math import *
+#from math import *
+from math import exp
 import random
+
 from rasmus import util, stats, treelib
 
 
@@ -109,7 +111,6 @@ def prob_no_birth(n, T, birth, death):
     l = birth
     u = death
     r = l - u
-    a = u / l
 
     return (1.0 - (l*(1.0 - exp(-r * T))) /
             (l - u * exp(-r * T))) ** n

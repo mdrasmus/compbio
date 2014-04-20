@@ -37,7 +37,8 @@ try:
     from compbio.regionlib import *
     from compbio import fasta, alignlib, gff, phylo
 except ImportError:
-    pass
+    raise
+    #pass
 
 
 def ipy():

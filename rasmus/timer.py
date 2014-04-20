@@ -204,7 +204,7 @@ def note(*text):
 
 
 def noteflush():
-    return notfile().flush()
+    return notefile().flush()
 
 
 def notefile(out=None):

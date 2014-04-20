@@ -1,6 +1,5 @@
 
 import os
-import re
 
 try:
     from rasmus.ply import lex

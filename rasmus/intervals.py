@@ -67,15 +67,12 @@ def iter_union_ids(regions):
 
     # TODO: add inclusive option
 
-    start = -util.INF
     end = -util.INF
-    group = None
     groupnum = -1
 
     for reg in regions:
         if reg[0] > end:
             # start new group
-            start = reg[0]
             end = reg[1]
             groupnum += 1
 
@@ -209,11 +206,10 @@ def iter_combine_regions(*regionsets):
 def query_point_regions(point, regions, inc=True):
 
     ind = util.sortindex(regions, key=lambda r: r[1])
-    rind = util.mget(range(len(regions)), ind)
     regions_by_end = util.mget(regions, ind)
 
-    end = util.binsearch([r[0] for r in regions], x)[1]
-    start = util.binsearch([r[1] for r in regions_by_end], x)[0]
+    end = util.binsearch([r[0] for r in regions], point)[1]
+    start = util.binsearch([r[1] for r in regions_by_end], point)[0]
 
     if start is None:
         start = 0
@@ -222,11 +218,11 @@ def query_point_regions(point, regions, inc=True):
 
     if inc:
         for i in xrange(start, end):
-            if regions[i][0] <= x <= regions[i][1]:
+            if regions[i][0] <= point <= regions[i][1]:
                 yield regions[i]
     else:
         for i in xrange(start, end):
-            if regions[i][0] < x < regions[i][1]:
+            if regions[i][0] < point < regions[i][1]:
                 yield regions[i]
 
 

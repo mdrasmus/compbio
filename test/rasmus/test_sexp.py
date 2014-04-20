@@ -105,8 +105,9 @@ class SexpTests(TestCase):
         expected = {Sym('score2'): [Sym('+'), 2, [Sym('*'), 3, 7]], Sym('usename'): 'raz', Sym('score'): 23, Sym('renewed'): (Sym('October'), 5, 2009), Sym('started'): (Sym('August'), 17, 2005)}  # nopep8
         self.assertEqual(o, expected)
 
-        write_pretty(prepare(o, [[dict, lambda x, e: dict2sexp(x, e, "account")],
-                                 [tuple, lambda x, e: [Sym("date")] + list(x)]]))
+        write_pretty(
+            prepare(o, [[dict, lambda x, e: dict2sexp(x, e, "account")],
+                        [tuple, lambda x, e: [Sym("date")] + list(x)]]))
         print
         print
 

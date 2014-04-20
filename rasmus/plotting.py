@@ -6,11 +6,7 @@
  Plotting classes and functions: R plotting, GNUPLOT wrapper, svg, heatmaps
 """
 
-import copy
 import os
-import sys
-
-import tempfile as temporaryfile
 
 #from rasmus import util # will not allow from plotting import * inside util
 from rasmus import svg
@@ -122,9 +118,8 @@ rainbowColorMap = rainbow_color_map
 def plothist2(x, y, ndivs1=20, ndivs2=20, width=500, height=500):
     from rasmus import util
     l, h = util.hist2(x, y, ndivs1, ndivs2)
-    bwidth = util.bucket_size(x)
-    bheight = util.bucket_size(y)
-
+    #bwidth = util.bucket_size(x)
+    #bheight = util.bucket_size(y)
     #width *= bwidth/bheight
 
     heatmap(h, width/ndivs1, height/ndivs2)

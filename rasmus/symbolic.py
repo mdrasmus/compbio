@@ -116,7 +116,7 @@ def assign_vars(expr, vars):
         else:
             expr
 
-    raise Expression("unkown expression")
+    raise Exception("unkown expression")
 
 
 if __name__ == "__main__":

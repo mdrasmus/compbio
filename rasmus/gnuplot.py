@@ -8,8 +8,9 @@
 
 import copy
 import os
-import sys
-import tempfile as temporaryfile
+
+
+INF = 1e1000
 
 
 class Gnuplot:
@@ -58,7 +59,7 @@ class Gnuplot:
     def set(self, **options):
         if "noreplot" in options:
             noreplot = False
-            del option["noreplot"]
+            del options["noreplot"]
         else:
             noreplot = True
 
@@ -241,8 +242,6 @@ class Gnuplot:
         os.remove(tmpfile)
 
     def findRange(self):
-
-        INF = 1e1000
 
         bestLeft = INF
         bestRight = -INF

@@ -6,13 +6,8 @@
 
 """
 
-import os
-import sys
-
 from rasmus import graph
 from rasmus import util
-
-from compbio import blast
 
 
 # TODO: update function name styles

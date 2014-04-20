@@ -1,8 +1,5 @@
 
-
-import copy
 import os
-import sys
 import tempfile as temporaryfile
 
 

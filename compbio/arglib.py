@@ -122,7 +122,7 @@ class ARG (object):
         """
         # Is the meta data equal?
         if (self.start != other.start or
-            self.end != other.end):
+                self.end != other.end):
             return False
 
         # Is each node equal?

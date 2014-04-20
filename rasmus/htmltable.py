@@ -1,5 +1,4 @@
 
-from rasmus import tablelib
 from rasmus import util
 
 

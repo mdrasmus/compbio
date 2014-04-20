@@ -47,7 +47,6 @@ def func_defaults(** defaults):
 if __name__ == "__main__":
     @func_timer
     def dowork(x):
-        w = [1, 2, 3]
         print x
 
     dowork(99)

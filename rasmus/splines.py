@@ -1,5 +1,5 @@
-from Numeric import *
-from LinearAlgebra import *
+from Numeric import array
+from LinearAlgebra import dot, inverse, transpose
 
 from rasmus import util, gnuplot
 

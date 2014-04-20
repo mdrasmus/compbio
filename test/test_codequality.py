@@ -44,14 +44,17 @@ def pyflakes_filter(line):
     """
     Standard filter for pyflakes.
     """
-    # ignore ply library.
-    if 'rasmus/ply' in line:
-        return False
-
-    # Ignore tree grammar.
-    if ('rasmus/treelib_tab.py' in line or
-            'rasmus/treelib_parser.py' in line):
-        return
+    ignore = [
+        'from rasmus.timer import *',
+        'from timer import *',
+        'from rasmus.vector import *',
+        'from vector import *',
+        'from rasmus.plotting import *',
+        'from plotting import *',
+    ]
+    for text in ignore:
+        if text in line:
+            return False
 
     return True
 
@@ -60,24 +63,10 @@ def pep8_filter(line):
     """
     Standard filter for pep8.
     """
-    # Ignore ply library.
-    if 'rasmus/ply' in line:
-        return False
-
-    # Ignore tree grammar.
-    if ('rasmus/treelib_tab.py' in line or
-            'rasmus/treelib_parser.py' in line):
-        return
-
-    # Ignore sexp grammar.
-    if ('rasmus/sexp/sexp_tab.py' in line or
-            'rasmus/sexp/sexp_lex.py' in line):
-        return
-
     return True
 
 
-def get_python_scripts(*paths):
+def get_python_scripts(paths, exclude=[]):
     """
     Return the python scripts in a directory
     """
@@ -88,6 +77,11 @@ def get_python_scripts(*paths):
     for filename in filenames:
         # Skip directories
         if not os.path.isfile(filename):
+            continue
+
+        # Skip files that start with exclude prefix
+        if any(filename.startswith(prefix)
+               for prefix in exclude):
             continue
 
         # Return filenames ending in *.py
@@ -102,14 +96,26 @@ def get_python_scripts(*paths):
                 yield filename
 
 
-_python_files = list(get_python_scripts(
-    "rasmus",
-    "compbio",
-    "bin",
-    "test",
-    "test/rasmus",
-    "test/compbio",
-))
+_python_paths = [
+    'rasmus',
+    'compbio',
+    'bin',
+    'test',
+    'test/rasmus',
+    'test/compbio',
+]
+_ignore_files = [
+    'bin/',
+    'compbio/vis/',
+    'rasmus/common.py',
+    'rasmus/ply/',
+    'rasmus/treelib_tab.py',
+    'rasmus/treelib_lex.py',
+    'rasmus/sexp/sexp_tab.py',
+    'rasmus/sexp/sexp_lex.py',
+    'rasmus/vis/',
+]
+_python_files = list(get_python_scripts(_python_paths, exclude=_ignore_files))
 
 
 def test_pyflakes():

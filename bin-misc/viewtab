@@ -5,9 +5,13 @@ import sys
 
 
 o = optparse.OptionParser()
-o.add_option("-r", "--rows", metavar="<number of row to align at a time>",
+o.add_option("-p", "--page", metavar="<number of rows to align per page>",
+             dest='rows',
              default=100, type="int",
-             help="use -1 to align entire file")
+             help="use 0 to align entire file")
+o.add_option("-P", "--paragraph",
+             action="store_true",
+             help="use paragraph style")
 o.add_option("-s", "--spacing", metavar="<column spacing>",
              default=2, type="int")
 o.add_option("-w", "--maxwidth", metavar="<# chars>",
@@ -16,8 +20,12 @@ o.add_option("-d", "--delim", metavar="<delimiter>",
              default="\t")
 o.add_option("-H", "--header", metavar="<# rows>",
              type="int", default=0)
-
-#=============================================================================
+o.add_option("-c", "--num-columns",
+             action="store_true")
+o.add_option("-r", "--num-rows",
+             action="store_true")
+o.add_option("", "--raw",
+             action="store_true")
 
 
 def printcols(data, width=None, spacing=1, out=sys.stdout,
@@ -34,7 +42,7 @@ def printcols(data, width=None, spacing=1, out=sys.stdout,
         return
 
     # turn all entries into strings
-    matstr = [[str(x) for x in row] for row in data]
+    matstr = [[unicode(x) for x in row] for row in data]
 
     # overflow
     for row in matstr:
@@ -53,39 +61,163 @@ def printcols(data, width=None, spacing=1, out=sys.stdout,
                  for j in xrange(maxcols)]
 
     # print out matrix with whitespace padding
-    for i in xrange(len(mat)):
+    for i in xrange(len(data)):
         fields = []
-        for j in xrange(len(mat[i])):
-            fields.append(matstr[i][j] +
-                          (" " * (maxwidths[j] - len(matstr[i][j]) + spacing)))
+        ncols = len(data[i])
+        for j in xrange(ncols):
+            padding = (maxwidths[j] - len(matstr[i][j]) + spacing
+                       if j < ncols - 1 else 0)
+            fields.append(matstr[i][j] + " " * padding)
         out.write("".join(fields)[:width] + "\n")
 
 
-#=============================================================================
+def write_delim(mat, delim='\t', out=sys.stdout):
+    """
+    Write delimited table.
+    """
+    for row in mat:
+        out.write(delim.join(map(unicode, row)))
+        out.write('\n')
 
-conf, args = o.parse_args()
 
-if len(args) > 0 and args[0] != "-":
-    infile = file(args[0])
-else:
-    infile = sys.stdin
+def write_table(mat, conf, out=sys.stdout):
+    """
+    Write tabular data.
+    """
+    if conf.raw:
+        write_delim(mat, delim=conf.delim, out=out)
+    else:
+        printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth, out=out)
 
 
-mat = []
-headers = []
+def read_table(infile, conf):
+    """
+    Read a delimited tabular data.
 
-for i, line in enumerate(infile):
-    tokens = line.rstrip().split(conf.delim)
-    mat.append(tokens)
+    Return headers and an iterator of data rows.
+    """
+    infile = iter(infile)
+    headers = []
 
-    if i < conf.header:
-        headers.append(tokens)
+    # Read headers
+    try:
+        for i in range(conf.header):
+            row = infile.next().rstrip('\r\n').split(conf.delim)
+            headers.append(row)
+    except StopIteration:
+        pass
 
-    if conf.rows > 0 and len(mat) >= conf.rows:
-        if len(headers) > 0 and i > len(mat):
-            mat = [[]] + headers + mat
+    def read_data():
+        for line in infile:
+            row = line.rstrip('\r\n').split(conf.delim)
+            yield row
 
-        printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
+    return headers, read_data()
+
+
+def annotate_table(mat, headers, conf, lineno=1):
+    """
+    Add headers and other annotations to a data matrix.
+    """
+    mat2 = []
+
+    # Add column numbers.
+    headers2 = []
+    if conf.num_columns:
+        ncols = max(map(len, mat))
+        headers2.append(range(1, ncols+1))
+
+    # Collect headers.
+    headers2.extend(headers)
+
+    # Add row number header.
+    if conf.num_rows:
+        headers2 = [[""] + header for header in headers2]
+        if headers2:
+            headers2[-1][0] = 'ROW'
+
+    # Add headers.
+    mat2.extend(headers2)
+
+    # Add data.
+    if conf.num_rows:
+        mat2.extend([i] + row for i, row in enumerate(mat, lineno))
+    else:
+        mat2.extend(mat)
+    return mat2
+
+
+def paginate(data, pagesize=0):
+    """
+    Paginate an interable.
+    """
+    data = iter(data)
+    if pagesize == 0:
+        pagesize = 1e1000
+
+    page = []
+    for row in data:
+        page.append(row)
+        if len(page) == pagesize:
+            yield page
+            page = []
+
+    yield page
+
+
+def print_table(infile, conf):
+    """
+    Print tabular data with aligned columns.
+    """
+    headers, data = read_table(infile, conf)
+
+    lineno = 1
+    for mat in paginate(data, conf.rows):
+        mat2 = annotate_table(mat, headers, conf, lineno)
+        write_table(mat2, conf)
+        lineno += len(mat)
+
+        # Add spacing between pages if using headers.
+        if conf.header:
+            print
+
+
+def print_paragraphs(infile, conf):
+    """
+    Print tabular data in paragraph mode.
+    """
+    headers, data = read_table(infile, conf)
+
+    for i, row in enumerate(data, 1):
+
+        # Build paragraph
         mat = []
+        if conf.num_rows:
+            mat.append(['ROW', i])
+        for j, item in enumerate(row):
+            row2 = []
+            if conf.num_columns:
+                row2.append(j+1)
+            for header in headers:
+                row2.append(header[j] if j < len(header) else '')
+            row2.append(item)
+            mat.append(row2)
 
-printcols(mat, spacing=conf.spacing, colwidth=conf.maxwidth)
+        write_table(mat, conf)
+        print
+
+
+if __name__ == '__main__':
+    # parse arguments
+    conf, args = o.parse_args()
+
+    # determine input stream
+    if len(args) > 0 and args[0] != "-":
+        infile = file(args[0])
+    else:
+        infile = sys.stdin
+
+    if conf.paragraph:
+        print_paragraphs(infile, conf)
+    else:
+        print_table(infile, conf)

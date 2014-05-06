@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import codecs
 import optparse
 import sys
 
@@ -25,10 +26,19 @@ o.add_option("-c", "--num-columns",
 o.add_option("-r", "--num-rows",
              action="store_true")
 o.add_option("", "--raw",
-             action="store_true")
+             action="store_true",
+             help='output a raw delimited table (no whitespace padding)')
+o.add_option("", "--cut",
+             help='show only some columns of the table (comma separated)')
 
 
-def printcols(data, width=None, spacing=1, out=sys.stdout,
+#stdout = codecs.getwriter('utf-8')(sys.stdout)
+#stdin = codecs.getreader('utf-8')(sys.stdin)
+stdin = sys.stdin
+stdout = sys.stdout
+
+
+def printcols(data, width=None, spacing=1, out=stdout,
               colwidth=100000, overflow="!"):
     """Prints a list or matrix in aligned columns
 
@@ -42,7 +52,7 @@ def printcols(data, width=None, spacing=1, out=sys.stdout,
         return
 
     # turn all entries into strings
-    matstr = [[unicode(x) for x in row] for row in data]
+    matstr = [[str(x) for x in row] for row in data]
 
     # overflow
     for row in matstr:
@@ -71,16 +81,16 @@ def printcols(data, width=None, spacing=1, out=sys.stdout,
         out.write("".join(fields)[:width] + "\n")
 
 
-def write_delim(mat, delim='\t', out=sys.stdout):
+def write_delim(mat, delim='\t', out=stdout):
     """
     Write delimited table.
     """
     for row in mat:
-        out.write(delim.join(map(unicode, row)))
+        out.write(delim.join(map(str, row)))
         out.write('\n')
 
 
-def write_table(mat, conf, out=sys.stdout):
+def write_table(mat, conf, out=stdout):
     """
     Write tabular data.
     """
@@ -99,17 +109,25 @@ def read_table(infile, conf):
     infile = iter(infile)
     headers = []
 
+    cut_cols = map(int, conf.cut.split(',')) if conf.cut else None
+
+    def process_row(row):
+        if cut_cols:
+            return [row[i-1] for i in cut_cols if i <= len(row)]
+        else:
+            return row
+
     # Read headers
     try:
         for i in range(conf.header):
-            row = infile.next().rstrip('\r\n').split(conf.delim)
+            row = process_row(infile.next().rstrip('\r\n').split(conf.delim))
             headers.append(row)
     except StopIteration:
         pass
 
     def read_data():
         for line in infile:
-            row = line.rstrip('\r\n').split(conf.delim)
+            row = process_row(line.rstrip('\r\n').split(conf.delim))
             yield row
 
     return headers, read_data()
@@ -215,7 +233,7 @@ if __name__ == '__main__':
     if len(args) > 0 and args[0] != "-":
         infile = file(args[0])
     else:
-        infile = sys.stdin
+        infile = stdin
 
     if conf.paragraph:
         print_paragraphs(infile, conf)

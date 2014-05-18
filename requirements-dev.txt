@@ -3,4 +3,4 @@ pyflakes
 nose
 numpy
 scipy
-# -e git+https://github.com/mdrasmus/rpy
+-e git+https://github.com/mdrasmus/rpy#egg=rpy

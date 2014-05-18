@@ -10,6 +10,7 @@ from rasmus import util, treelib
 from compbio import phylip, fasta
 from compbio import phylorun as phy
 
+
 o = optparse.OptionParser()
 o.add_option("-m", "--model", dest="model", metavar="MODEL")
 phy.add_common_options(o)
@@ -28,7 +29,7 @@ PROG = "raxmlHPC"
 def run(args, outdir):
     """Run a program in a subprocess within a new directory"""
     curdir = os.getcwd()
-    os.chdir(outdir)    
+    os.chdir(outdir)
     ret = subprocess.call(args)
     os.chdir(curdir)
     return ret
@@ -43,11 +44,11 @@ def setup_usertree(treefile, treefile2):
     usertree2 = treelib.unroot(usertree, newCopy=True)
     for n in usertree2:
         n.data = {}
-        
+
     usertree2.write(outdir +"/" + treefile2)
 
     return usertree, data
-    
+
 
 #=============================================================================
 
@@ -77,12 +78,12 @@ for fn in files:
         usertree = None
         usertree_file = None
         data = None
-    
+
 
     # default model
     if conf.seqtype == "dna":
         if conf.model is None:
-            conf.model = "GTRGAMMA"       
+            conf.model = "GTRGAMMA"
     else:
         if conf.model is None:
             conf.model = "PROTGAMMAJTT"
@@ -129,7 +130,7 @@ for fn in files:
     else:
 
         if conf.boot:
-	    # perform consensus
+            # perform consensus
             if subprocess.call(
                 ["treecons",
                  "-o", outdir + "/RAxML_result.out",
@@ -140,13 +141,13 @@ for fn in files:
                 continue
             tree = treelib.read_tree(outdir + "/RAxML_result.out")
 
-	elif conf.fastboot:
-	    # note: consensus topologies from treecons and RAxML may NOT match
+        elif conf.fastboot:
+            # note: consensus topologies from treecons and RAxML may NOT match
             tree = treelib.read_tree(outdir + "/RAxML_bipartitions.out")
 
         else:
             tree = treelib.read_tree(outdir + "/RAxML_result.out")
-        
+
         # reorder tree
         if usertree:
             treelib.reorder_tree(tree, usertree)

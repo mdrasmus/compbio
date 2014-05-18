@@ -56,12 +56,12 @@ def normBoot(tree):
 
 
 def splitTree(tree, stree, gene2species, reroot=False):
-    """            
+    """
     - If root is a pre-speciation duplication:
-	    - recon_root tree
-	    - If root is still a pre-speciation duplication
-		    - remove root and split the tree into two separate trees
-		    - recurse    
+      - recon_root tree
+      - If root is still a pre-speciation duplication
+        - remove root and split the tree into two separate trees
+        - recurse
     """
 
     recon = phylo.reconcile(tree, stree, gene2species)
@@ -79,44 +79,41 @@ def splitTree(tree, stree, gene2species, reroot=False):
             if options.fix_ils:
                 dupcons = phylo.dup_consistency(tree, recon, events)
                 events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
-                
-        
-        #treelib.drawTree(tree, minlen=5)
-        
+
         if events[tree.root] == "dup" and \
            recon[tree.root] == stree.root:
             subtrees = []
-            
+
             for child in tree.root.children:
                 subtrees.append(treelib.subtree(tree, child))
-                
+
                 # use the max bootstrap for the root branches
                 normBoot(subtrees[-1])
-            
+
             subtrees2 = []
             for subtree in subtrees:
                 subtrees2.extend(splitTree(subtree, stree, gene2species, reroot=True)[1])
-            
+
             # return subtrees
             return True, subtrees2
-        
+
         # tree only needs rerooting
         normBoot(tree)
         return True, [tree]
-        
+
     # nothing needs to change
     return False, [tree]
-    
+
 
 for filename in args:
     print "reading", filename
     tree = treelib.read_tree(filename)
-    
+
     if options.all:
         # determine ancestors with genes
         etree = phylo.count_dup_loss_trees([tree],stree,gene2species)
         sps = set([n.name for n in etree if n.data['genes'] > 0])
-        
+
         # try all possible rerootings
         opt = None
         maxct = util.INF
@@ -127,7 +124,7 @@ for filename in args:
             # split
             split,subtrees = splitTree(treelib.reroot(tree, name),
                                        stree, gene2species)
-            
+
             # check if ancestors with genes are the same
             etree2 = phylo.count_dup_loss_trees(subtrees, stree, gene2species)
             sps2 = set([n.name for n in etree2 if n.data['genes'] > 0])
@@ -156,7 +153,7 @@ for filename in args:
     if split:
         partfilename = util.replace_ext(filename, options.treeext, options.parext)
         partfile = open(partfilename, "w")
-        
+
         print "splitting", filename
         print "  ",
         for i, subtree in enumerate(subtrees):
@@ -167,4 +164,4 @@ for filename in args:
             partfile.write("\t".join(subtree.leaf_names()) + "\n")
         print
         partfile.close()
-    
+

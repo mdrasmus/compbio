@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# Same as tree-orth except looks for paralogous pairs.
 
 import os, sys, optparse
 from itertools import chain
@@ -15,6 +15,9 @@ o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
 o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT")
 o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT")
 
+o.add_option("--no-split", dest="split",
+             default=True, action="store_false",
+             help="if set, counts paralogs across pre-root duplications")
 o.add_option("--no-species-branch", dest="no_species_branch",
              action="store_true")
 o.add_option("--fix-ils", dest="fix_ils",
@@ -68,14 +71,15 @@ for filename in filenames:
             dupcons = phylo.dup_consistency(tree, recon, events)
             events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
     
-    orths = phylo.find_orthologs(tree, stree, recon, events,
-                                 species_branch=not conf.no_species_branch)
+    paralogs = phylo.find_paralogs(tree, stree, recon, events,
+                                   species_branch=not conf.no_species_branch,
+                                   split=conf.split)
 
-    for orth in orths:
+    for paralog in paralogs:
         if conf.no_species_branch:
-            gene1, gene2, spcnt1, spcnt2 = orth
+            gene1, gene2, spcnt1, spcnt2 = paralog
         else:
-            gene1, gene2, spcnt1, spcnt2, node = orth
+            gene1, gene2, spcnt1, spcnt2, node = paralog
             
         sp1 = gene2species(gene1)
         sp2 = gene2species(gene2)

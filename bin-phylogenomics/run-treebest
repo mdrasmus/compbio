@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# run RAxML with standard command-line interface
+# run TreeBest with standard command-line interface
 
 
 import sys, os, shutil, time
@@ -71,7 +71,7 @@ for fn in files:
     align.write(outdir + "/align")
 
 
-    # make treebest-compatiable species tree
+    # make treebest-compatible species tree
     for node in list(stree):
         if not node.is_leaf():
             stree.rename(node.name, "n" + str(node.name))
@@ -101,8 +101,17 @@ for fn in files:
         result = 1
     else:
         tree = treelib.read_tree(outdir + "/tree")
+        
+        # rename genes without species suffix
         for node in tree.leaves():
             tree.rename(node.name, node.name[:node.name.rfind("_")])
+            
+        # copy bootstrap data
+        for node in tree:
+            if "B" in node.data:
+                node.data["boot"] = float(node.data["B"])
+                del node.data["B"]
+        
         tree.write(basename + conf.treeext)
 
 

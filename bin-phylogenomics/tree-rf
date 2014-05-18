@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
-import os, sys, optparse
-import commands
-import collections
-import random
-import StringIO
+import optparse
 
-from rasmus import treelib, util
+from rasmus import treelib
 from compbio import phylo
 
 usage = "usage: %prog [options] <gene tree 1> <gene tree 2>"

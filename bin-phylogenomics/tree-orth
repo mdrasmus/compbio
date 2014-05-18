@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 
-import os, sys, optparse
-from itertools import chain
-from rasmus import treelib, util, tablelib
+import os
+import sys
+import optparse
+
+from rasmus import treelib, util
 from compbio import phylo
 
 
@@ -38,7 +40,6 @@ if len(args) == 0:
 else:
     filenames = args
 
-
 for filename in filenames:
     tree = treelib.read_tree(filename)
     if conf.dir:
@@ -53,7 +54,7 @@ for filename in filenames:
     if conf.treeext and conf.reconext:
         if conf.fix_ils:
             raise Exception("Cannot use --fix-ils if --reconext is specified")
-        
+
         try:
             recon, events = phylo.read_recon_events(util.replace_ext(
                 filename, conf.treeext, conf.reconext), tree, stree)
@@ -67,7 +68,7 @@ for filename in filenames:
         if conf.fix_ils:
             dupcons = phylo.dup_consistency(tree, recon, events)
             events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
-    
+
     orths = phylo.find_orthologs(tree, stree, recon, events,
                                  species_branch=not conf.no_species_branch)
 
@@ -76,7 +77,7 @@ for filename in filenames:
             gene1, gene2, spcnt1, spcnt2 = orth
         else:
             gene1, gene2, spcnt1, spcnt2, node = orth
-            
+
         sp1 = gene2species(gene1)
         sp2 = gene2species(gene2)
         if sp1 > sp2:
@@ -88,9 +89,3 @@ for filename in filenames:
         if not conf.no_species_branch:
             toks = toks + (node.name, )
         print "\t".join(map(str, toks))
-
-
-
-
-        
-    

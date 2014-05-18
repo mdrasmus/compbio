@@ -2,11 +2,13 @@
 # run RAxML with standard command-line interface
 
 
-import sys, os, shutil, time
 import optparse
+import os
 import subprocess
+import sys
+import time
 
-from rasmus import util, treelib
+from rasmus import treelib
 from compbio import phylip, fasta
 from compbio import phylorun as phy
 
@@ -34,6 +36,7 @@ def run(args, outdir):
     os.chdir(curdir)
     return ret
 
+
 def setup_usertree(treefile, treefile2):
     usertree = treelib.read_tree(treefile)
 
@@ -45,7 +48,7 @@ def setup_usertree(treefile, treefile2):
     for n in usertree2:
         n.data = {}
 
-    usertree2.write(outdir +"/" + treefile2)
+    usertree2.write(outdir + "/" + treefile2)
 
     return usertree, data
 
@@ -78,7 +81,6 @@ for fn in files:
         usertree = None
         usertree_file = None
         data = None
-
 
     # default model
     if conf.seqtype == "dna":
@@ -164,6 +166,5 @@ for fn in files:
                         tree.nodes[name].data[key] = value
 
         tree.write(basename + conf.treeext)
-
 
 sys.exit(result)

@@ -7,7 +7,6 @@
 """
 
 # python libs
-import sys, os
 import optparse
 
 # rasmus libs
@@ -43,10 +42,9 @@ for filename in files:
     # output file
     outfile = util.replace_ext(filename, options.oldext, options.newext)
     out = util.open_stream(outfile, "w")
-    
+
     for tree in trees:
-        tree = phylo.add_bootstraps(tree, boottrees, rooted=options.rooted)    
+        tree = phylo.add_bootstraps(tree, boottrees, rooted=options.rooted)
         tree.write(out, oneline=oneline)
 
     out.close()
-

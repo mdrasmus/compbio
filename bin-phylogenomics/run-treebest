@@ -2,11 +2,12 @@
 # run TreeBest with standard command-line interface
 
 
-import sys, os, shutil, time
+import sys
+import os
 import optparse
 import subprocess
 
-from rasmus import util, treelib
+from rasmus import treelib
 from compbio import phylo, fasta
 from compbio import phylorun as phy
 
@@ -18,7 +19,7 @@ phy.add_common_options(o)
 
 conf, files = phy.parse_common_options(o)
 
-# raxml program name
+# program name
 PROG = "treebest"
 
 
@@ -32,6 +33,7 @@ def run(args, outdir):
     os.chdir(curdir)
     return ret
 
+
 def setup_usertree(treefile, treefile2):
     usertree = treelib.read_tree(treefile)
 
@@ -42,11 +44,11 @@ def setup_usertree(treefile, treefile2):
     usertree2 = treelib.unroot(usertree, newCopy=True)
     for n in usertree2:
         n.data = {}
-        
-    usertree2.write(outdir +"/" + treefile2)
+
+    usertree2.write(outdir + "/" + treefile2)
 
     return usertree, data
-    
+
 
 #=============================================================================
 
@@ -61,7 +63,6 @@ for fn in files:
     phy.make_output_dir(outdir)
     align = fasta.read_fasta(basename + conf.alignext)
 
-
     # rename genes with species suffix
     for name, seq in align.items():
         del align[name]
@@ -70,21 +71,20 @@ for fn in files:
         align[name + "_" + sp] = seq
     align.write(outdir + "/align")
 
-
     # make treebest-compatible species tree
     for node in list(stree):
         if not node.is_leaf():
             stree.rename(node.name, "n" + str(node.name))
 
     stree.write(outdir + "/stree", rootData=True)
-    
+
     # require minimium size of alignment
     if len(align) <= 2:
         continue
-    
+
     # basic arguments
     args = [PROG, "best", "-f", "stree", "-o", "tree", "align"]
-    
+
     if conf.extra:
         args.extend(conf.extra)
 
@@ -101,18 +101,17 @@ for fn in files:
         result = 1
     else:
         tree = treelib.read_tree(outdir + "/tree")
-        
+
         # rename genes without species suffix
         for node in tree.leaves():
             tree.rename(node.name, node.name[:node.name.rfind("_")])
-            
+
         # copy bootstrap data
         for node in tree:
             if "B" in node.data:
                 node.data["boot"] = float(node.data["B"])
                 del node.data["B"]
-        
-        tree.write(basename + conf.treeext)
 
+        tree.write(basename + conf.treeext)
 
 sys.exit(result)

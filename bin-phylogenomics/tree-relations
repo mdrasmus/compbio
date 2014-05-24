@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-# Tue May 12 15:54:18 EDT 2009
 # output all relations represented in a tree
 
-import os, sys, optparse
-from itertools import chain
+# python imports
+import optparse
+import os
+import sys
+
+# rasmus, compbio imports
 from rasmus import treelib, util
 from compbio import phylo
 
@@ -19,9 +22,12 @@ o.add_option("-T", "--treeext", dest="treeext", metavar="TREE_EXT",
              help="gene tree file extension")
 o.add_option("-R", "--reconext", dest="reconext", metavar="RECON_EXT",
              help="reconciliation file extension")
+
 o.add_option("--no-species-branch", dest="no_species_branch",
              action="store_true",
              help="if given, suppress 'species id' for dup relations")
+o.add_option("--fix-ils", dest="fix_ils",
+             default=False, action="store_true")
 
 conf, args = o.parse_args()
 
@@ -42,7 +48,6 @@ else:
     filenames = args
 
 
-
 def get_tree_relations(tree, recon, events):
 
     # print gene 'events'
@@ -55,7 +60,7 @@ def get_tree_relations(tree, recon, events):
         # skip gene events (already printed)
         if events[node] == "gene":
             continue
-        
+
         rel = sorted((sorted(child.leaf_names()) for child in node.children),
                      key=relation_format)
 
@@ -70,7 +75,6 @@ def get_tree_relations(tree, recon, events):
             elif events[node] == "spec":
                 yield ["spec"] + rel + [recon[node].name]
 
-
     for gbranch, sbranch in phylo.find_loss(tree, stree, recon):
         yield ["loss", sorted(gbranch.leaf_names()),
                str(sbranch.name)]
@@ -80,10 +84,10 @@ def relation_format(val):
     if isinstance(val, (list, tuple)):
         return ",".join(relation_format(v) for v in val)
     else:
-        return str(val)           
+        return str(val)
 
 
-def write_relation(out, treename, rel):    
+def write_relation(out, treename, rel):
     out.write(treename + "\t" + "\t".join(relation_format(val)
                                           for val in rel) + "\n")
 
@@ -102,6 +106,9 @@ for filename in filenames:
 
     # get recon and events
     if conf.treeext and conf.reconext:
+        if conf.fix_ils:
+            raise Exception("Cannot use --fix-ils if --reconext is specified")
+
         try:
             recon, events = phylo.read_recon_events(util.replace_ext(
                 filename, conf.treeext, conf.reconext), tree, stree)
@@ -112,8 +119,9 @@ for filename in filenames:
         # use MPR to build reconciliation and events
         recon = phylo.reconcile(tree, stree, gene2species)
         events = phylo.label_events(tree, recon)
-
+        if conf.fix_ils:
+            dupcons = phylo.dup_consistency(tree, recon, events)
+            events = phylo.fix_ils_errors(events, dupcons, newCopy=False)
 
     for rel in get_tree_relations(tree, recon, events):
         write_relation(sys.stdout, treename, rel)
-

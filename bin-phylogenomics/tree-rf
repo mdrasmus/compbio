@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+import optparse
+
+from rasmus import treelib
+from compbio import phylo
+
+usage = "usage: %prog [options] <gene tree 1> <gene tree 2>"
+parser = optparse.OptionParser(usage=usage)
+parser.add_option("-r", "--rooted", dest="rooted",
+                  default=False, action="store_true",
+                  help="set to find rooted RF distance")
+options, args = parser.parse_args()
+
+#=============================
+# check arguments
+
+if len(args) != 2:
+    parser.error("must specify two trees")
+
+#=============================
+# main
+
+tree1, tree2 = map(treelib.read_tree, args)
+print phylo.robinson_foulds_error(tree1, tree2, rooted=options.rooted)

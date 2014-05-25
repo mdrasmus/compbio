@@ -85,7 +85,7 @@ class Dict (dict):
         self.data = self
 
     def __getitem__(self, i):
-        if not i in self:
+        if i not in self:
             if self._dim > 1:
                 ret = Dict(dim=self._dim - 1, default=self._null)
             else:
@@ -829,6 +829,7 @@ def minall(iterable, keyfunc=None, minfunc=None):
     assert(len(items) > 0)
     return items, minval
 
+
 def maxall(iterable, keyfunc=None, maxfunc=None):
     """Returns (1) all items with maximum value and (2) the maximum value"""
     if keyfunc is None:
@@ -843,7 +844,7 @@ def maxall(iterable, keyfunc=None, maxfunc=None):
         if val > maxval:
             items = [keyfunc(it)]
             maxval = val
-        elif val==maxval:
+        elif val == maxval:
             items.append(keyfunc(it))
     assert(len(items) > 0)
     return items, maxval
@@ -1670,7 +1671,7 @@ def sortranks(lst, cmp=cmp, key=None, reverse=False, tied=False):
 
     s = set(lst)
     for it in s:
-        ind = [i for i,j in enumerate(lst) if cmp(it,j)==0]
+        ind = [i for i, j in enumerate(lst) if cmp(it, j) == 0]
         ranks = mget(rank, ind)
         avgrank = float(sum(ranks))/len(ranks)
         for j in ind:

@@ -79,7 +79,7 @@ def remove_empty_columns(aln, enforce_codon=False):
         for i in range(0, alnlen, 3):
             for seq in seqs:
                 if seq[i:i+3] != "---":
-                    ind.extend([i,i+1,i+2])
+                    ind.extend([i, i+1, i+2])
                     break
 
     return subalign(aln, ind)
@@ -226,7 +226,7 @@ def revtranslate_align(aaseqs, dnaseqs, check=False, trim=False):
                                     break
 
                     aalen2 = sum(int(a != "-") for a in seq)
-                    assert len(dna) == aalen2 * 3,  (
+                    assert len(dna) == aalen2 * 3, (
                         len(dna), aalen2 * 3)
 
                     util.logger("trim dna (%d) and pep (%d)" %
@@ -464,7 +464,7 @@ def print_degen(aln, **args):
 def compute_bgfreq(aln):
     # initialize with pseudo counts
     dna2int = {'A': 0, "C": 1, "G": 2, "T": 3}
-    bgfreq = [1,1,1,1]
+    bgfreq = [1, 1, 1, 1]
     count = 4
 
     # count

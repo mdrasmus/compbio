@@ -131,12 +131,12 @@ def str2bool(text=None):
 _type_definitions = [
     ["string", str],
     ["unknown", str],  # backwards compatiable name
-    ["str",    str],   # backwards compatiable name
+    ["str", str],  # backwards compatiable name
     ["string", unicode],
-    ["int",    int],
-    ["int",    long],
-    ["float",  float],
-    ["bool",   bool],
+    ["int", int],
+    ["int", long],
+    ["float", float],
+    ["bool", bool],
 ]
 
 # NOTE: ordering of name-type pairs is important

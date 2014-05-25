@@ -130,14 +130,18 @@ def corr(lst1, lst2):
     else:
         return util.INF
 
+
 def corr_spearman(lst1, lst2):
     """
     Spearman's Rank Correlation Coefficient
-    i.e. Pearson's Correlation Coefficient between ranked variables (in ascending order)
+
+    Pearson's Correlation Coefficient between ranked variables
+    in ascending order.
     """
     rank1 = util.sortranks(lst1, tied=True)
     rank2 = util.sortranks(lst2, tied=True)
     return corr(rank1, rank2)
+
 
 def corr_pvalue(r, n):
     """Returns the signficance of correlation > r with n samples"""

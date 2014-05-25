@@ -148,35 +148,47 @@ class Svg:
             self.out.write("%f,%f " % (verts[i], verts[i+1]))
         self.out.write("' stroke-width='%f'/>\n" % strokeWidth)
 
-    def rect(self, x, y, width, height, strokeColor=black, fillColor=black, strokeWidth=1):
+    def rect(self, x, y, width, height, strokeColor=black, fillColor=black,
+             strokeWidth=1):
         self.out.write(
-            """<rect x='%f' y='%f' width='%f' height='%f' %s stroke-width='%f'/>\n""" % \
-            (x, y, width, height, colorFields(strokeColor, fillColor), strokeWidth))
+            "<rect x='%f' y='%f' width='%f' height='%f' %s "
+            "stroke-width='%f'/>\n" %
+            (x, y, width, height, colorFields(strokeColor, fillColor),
+             strokeWidth))
 
-    def circle(self, x, y, radius, strokeColor=black, fillColor=black, strokeWidth=1):
-        self.out.write("<circle cx='%f' cy='%f' r='%f' %s stroke-width='%f'/>\n" % \
+    def circle(self, x, y, radius, strokeColor=black,
+               fillColor=black, strokeWidth=1):
+        self.out.write(
+            "<circle cx='%f' cy='%f' r='%f' %s stroke-width='%f'/>\n" %
             (x, y, radius, colorFields(strokeColor, fillColor), strokeWidth))
 
-    def ellipse(self, x, y, xradius, yradius, strokeColor=black, fillColor=black, strokeWidth=1):
-        self.out.write("<ellipse  cx='%f' cy='%f' rx='%f' ry='%f' %s stroke-width='%f'/>\n" %\
-            (x, y, xradius, yradius, colorFields(strokeColor, fillColor), strokeWidth))
+    def ellipse(self, x, y, xradius, yradius, strokeColor=black,
+                fillColor=black, strokeWidth=1):
+        self.out.write(
+            "<ellipse  cx='%f' cy='%f' rx='%f' ry='%f' %s "
+            "stroke-width='%f'/>\n" %
+            (x, y, xradius, yradius, colorFields(strokeColor, fillColor),
+             strokeWidth))
     ellispe = ellipse  # for backward compatibility
 
     def text(self, msg, x, y, size, strokeColor=null, fillColor=black,
              anchor="start", baseline="auto", angle=0, strokeWidth=1):
         # http://www.w3.org/TR/SVG/text.html
         # anchor : start | middle | end
-        # dominant-baseline : auto | use-script | no-change | reset-size | ideographic | alphabetic | hanging | mathematical | central | middle | text-after-edge | text-before-edge | inherit
+        # dominant-baseline : auto | use-script | no-change | reset-size |
+        #     ideographic | alphabetic | hanging | mathematical | central |
+        #     middle | text-after-edge | text-before-edge | inherit
 
-        anglestr = "transform='translate(%f,%f) rotate(%f)'" % \
-                    (x, y, angle)
+        anglestr = "transform='translate(%f,%f) rotate(%f)'" % (x, y, angle)
 
         self.out.write(
-            "<g %s><text x='0' y='0' font-size='%f' %s stroke-width='%f' text-anchor='%s' style='dominant-baseline: %s'>%s</text></g>\n" % \
-            (anglestr, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, baseline, msg))
+            "<g %s><text x='0' y='0' font-size='%f' %s stroke-width='%f' "
+            "text-anchor='%s' style='dominant-baseline: %s'>%s</text></g>\n" %
+            (anglestr, size, colorFields(strokeColor, fillColor), strokeWidth,
+             anchor, baseline, msg))
 
     def text2(self, msg, x, y, size, strokeColor=null, fillColor=black,
-             anchor="start", baseline="auto", angle=0, strokeWidth=1):
+              anchor="start", baseline="auto", angle=0, strokeWidth=1):
 
         if angle != 0:
             anglestr = ""  # transform='rotate(%f,0,0)'" % angle
@@ -184,8 +196,10 @@ class Svg:
             anglestr = ""
 
         self.out.write(
-            "<text x='%f' y='%f' font-size='%f' %s stroke-width='%f' text-anchor='%s' style='dominant-baseline: %s' %s>%s</text>\n" % \
-            (x, y, size, colorFields(strokeColor, fillColor), strokeWidth, anchor, baseline, anglestr, msg))
+            "<text x='%f' y='%f' font-size='%f' %s stroke-width='%f' "
+            "text-anchor='%s' style='dominant-baseline: %s' %s>%s</text>\n" %
+            (x, y, size, colorFields(strokeColor, fillColor), strokeWidth,
+             anchor, baseline, anglestr, msg))
 
     def beginTransform(self, *options):
         self.out.write("<g transform='")

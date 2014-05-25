@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+# MPR
+
+import optparse
+
+# rasmus, compbio imports
+from rasmus import treelib, util
+from compbio import phylo
+
+
+o = optparse.OptionParser()
+o.add_option("-s", "--stree", dest="stree", metavar="SPECIES_TREE")
+o.add_option("-S", "--smap", dest="smap", metavar="GENE_TO_SPECIES_MAP")
+o.add_option("-I", "--inext", dest="inext", metavar="INPUT_EXT",
+             default="")
+o.add_option("-O", "--outext", dest="outext", metavar="OUTPUT_EXT",
+             default="mpr")
+conf, args = o.parse_args()
+
+#=============================================================================
+
+# read inputs
+treefile = args[0]
+stree = treelib.read_tree(conf.stree)
+smap = phylo.read_gene2species(conf.smap)
+tree = treelib.read_tree(treefile)
+
+# perform MPR
+recon = phylo.reconcile(tree, stree, smap)
+events = phylo.label_events(tree, recon)
+
+# output
+phylo.write_recon_events(
+    util.replace_ext(treefile, conf.inext, conf.outext + ".recon"),
+    recon, events)

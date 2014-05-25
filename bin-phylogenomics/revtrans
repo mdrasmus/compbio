@@ -2,7 +2,8 @@
 # reverse transcribe a peptide alignment into a codon aligned alignment
 
 
-import sys, time, os, optparse
+import optparse
+import os
 from rasmus import util
 from compbio import fasta, alignlib
 
@@ -37,8 +38,6 @@ class SeqMap (object):
 
     def __getitem__(self, key):
         return self.seqs[self.transmap[key]]
-    
-
 
 
 seqs = fasta.FastaDict()
@@ -53,22 +52,22 @@ util.toc()
 
 if conf.transmap:
     transmap = {}
-    for row in util.delim_reader(conf.transmap):
+    for row in util.DelimReader(conf.transmap):
         transmap[row[0]] = row[1]
     seqs = SeqMap(seqs, transmap)
-    
-    
+
+
 # process alignments
 util.tic("process alignments")
 for aln_file in args:
     if not os.path.exists(aln_file):
         util.log("skipping '%s', does not exist" % aln_file)
         continue
-        
+
     newfile = util.replace_ext(aln_file, conf.oldext, conf.newext)
     util.log(aln_file, "===>", newfile)
     aln = fasta.read_fasta(aln_file)
-        
+
     try:
         alndna = alignlib.revtranslate_align(aln, seqs,
                                              check=conf.check,
@@ -78,9 +77,7 @@ for aln_file in args:
         print "%s  ! ===> %s" % (e.a, e.codon)
         print e.dna
         print e.aa
-    else:    
+    else:
         alndna.write(newfile)
-            
+
 util.toc()
-
-

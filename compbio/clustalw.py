@@ -125,7 +125,7 @@ def readClustalwAlign(filename):
     for line in infile:
         if line[0].isdigit() or line[0].isalpha():
             (name, seq) = line.split()[:2]
-            if not name in seqs:
+            if name not in seqs:
                 seqs[name] = seq
             else:
                 seqs[name] += seq

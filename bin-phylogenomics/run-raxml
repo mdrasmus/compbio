@@ -2,11 +2,13 @@
 # run RAxML with standard command-line interface
 
 
-import sys, os, shutil, time
 import optparse
+import os
 import subprocess
+import sys
+import time
 
-from rasmus import util, treelib
+from rasmus import treelib
 from compbio import phylip, fasta
 from compbio import phylorun as phy
 
@@ -29,10 +31,11 @@ PROG = "raxmlHPC"
 def run(args, outdir):
     """Run a program in a subprocess within a new directory"""
     curdir = os.getcwd()
-    os.chdir(outdir)    
+    os.chdir(outdir)
     ret = subprocess.call(args)
     os.chdir(curdir)
     return ret
+
 
 def setup_usertree(treefile, treefile2):
     usertree = treelib.read_tree(treefile)
@@ -44,11 +47,11 @@ def setup_usertree(treefile, treefile2):
     usertree2 = treelib.unroot(usertree, newCopy=True)
     for n in usertree2:
         n.data = {}
-        
-    usertree2.write(outdir +"/" + treefile2)
+
+    usertree2.write(outdir + "/" + treefile2)
 
     return usertree, data
-    
+
 
 #=============================================================================
 
@@ -78,12 +81,11 @@ for fn in files:
         usertree = None
         usertree_file = None
         data = None
-    
 
     # default model
     if conf.seqtype == "dna":
         if conf.model is None:
-            conf.model = "GTRGAMMA"       
+            conf.model = "GTRGAMMA"
     else:
         if conf.model is None:
             conf.model = "PROTGAMMAJTT"
@@ -129,19 +131,25 @@ for fn in files:
         result = 1
     else:
 
-        if conf.boot or conf.fastboot:
+        if conf.boot:
             # perform consensus
             if subprocess.call(
-                ["treecons", 
+                ["treecons",
                  "-o", outdir + "/RAxML_result.out",
                  "--binary",
                  "-a", basename + conf.alignext,
                  outdir+"/RAxML_bootstrap.out"]) != 0:
                 result = 1
                 continue
-        
-        tree = treelib.read_tree(outdir + "/RAxML_result.out")
-        
+            tree = treelib.read_tree(outdir + "/RAxML_result.out")
+
+        elif conf.fastboot:
+            # note: consensus topologies from treecons and RAxML may NOT match
+            tree = treelib.read_tree(outdir + "/RAxML_bipartitions.out")
+
+        else:
+            tree = treelib.read_tree(outdir + "/RAxML_result.out")
+
         # reorder tree
         if usertree:
             treelib.reorder_tree(tree, usertree)
@@ -152,10 +160,11 @@ for fn in files:
             tree = treelib.read_tree(basename + conf.treeext)
 
             # copy over data
-            for name, val in data.items():
-                tree.nodes[name] = val
+            for name, val in data.iteritems():
+                for key, value in val.iteritems():
+                    if key not in tree.nodes[name].data:
+                        tree.nodes[name].data[key] = value
 
         tree.write(basename + conf.treeext)
-
 
 sys.exit(result)

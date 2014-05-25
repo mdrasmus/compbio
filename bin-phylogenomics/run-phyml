@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # run phyml with standard command-line interface
 
-import sys, os, shutil
 import optparse
+import os
+import sys
 
 from rasmus import util, treelib
 from compbio import phylip, fasta
@@ -44,14 +45,13 @@ for fn in files:
         usertree2 = treelib.unroot(usertree, newCopy=True)
         for n in usertree2:
             n.data = {}
-        
+
         usertree_file = outdir + "/usertree"
         usertree2.write(usertree_file)
     else:
         usertree = None
         usertree_file = "BIONJ"
         data = None
-    
 
     if conf.seqtype == "dna":
         if conf.model is None:
@@ -88,8 +88,10 @@ for fn in files:
             tree = treelib.read_tree(basename + conf.treeext)
 
             # copy over data
-            for name, val in data.items():
-                tree.nodes[name] = val
+            for name, val in data.iteritems():
+                for key, value in val.iteritems():
+                    if key not in tree.nodes[name].data:
+                        tree.nodes[name].data[key] = value
 
         tree.write(basename + conf.treeext)
 

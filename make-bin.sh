@@ -25,5 +25,3 @@ done
 install bin-misc
 install bin-phylogenomics
 #install bin-compbio-misc
-
-

@@ -44,7 +44,7 @@ class Arg (unittest.TestCase):
         r = rho * l   # recomb/locus/gen
 
         rplot_start(outdir + '/plot.pdf')
-        rp.plot([1, 40000], [1, k],  t="n", log="xy")
+        rp.plot([1, 40000], [1, k], t="n", log="xy")
         times, events = arglib.sample_coal_recomb_times(k, n, r)
         lineages = list(arglib.lineages_over_time(k, events))
         rp.lines(times, lineages)

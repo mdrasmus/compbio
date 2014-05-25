@@ -52,20 +52,35 @@ def subalign(aln, cols):
     return mapalign(aln, valfunc=lambda x: "".join(util.mget(x, cols)))
 
 
-def remove_empty_columns(aln):
+def remove_empty_columns(aln, enforce_codon=False):
     """
     Removes any column from an alignment 'aln' that contains only gaps
 
-    A new alignment is returned
+    if enforce_codon, only removes empty columns if they correspond to an
+    empty codon position a new alignment is returned
     """
 
     ind = []
     seqs = aln.values()
-    for i in range(aln.alignlen()):
-        for seq in seqs:
-            if seq[i] != "-":
-                ind.append(i)
-                break
+    alnlen = aln.alignlen()
+
+    if not enforce_codon:
+        for i in range(alnlen):
+            for seq in seqs:
+                if seq[i] != "-":
+                    ind.append(i)
+                    break
+    else:
+        if alnlen % 3 != 0:
+            raise Exception(
+                "cannot set enforce_codon if alignment length "
+                "is not a multiple of three")
+
+        for i in range(0, alnlen, 3):
+            for seq in seqs:
+                if seq[i:i+3] != "---":
+                    ind.extend([i,i+1,i+2])
+                    break
 
     return subalign(aln, ind)
 
@@ -444,6 +459,26 @@ def print_degen(aln, **args):
 
 
 #=============================================================================
+# background frequency
+#
+def compute_bgfreq(aln):
+    # initialize with pseudo counts
+    dna2int = {'A': 0, "C": 1, "G": 2, "T": 3}
+    bgfreq = [1,1,1,1]
+    count = 4
+
+    # count
+    for name, seq in aln.iteritems():
+        for c in seq.upper():
+            count += 1
+            if c in dna2int:
+                bgfreq[dna2int[c]] += 1
+
+    # normalize
+    bgfreq = [float(freq)/count for freq in bgfreq]
+
+    return bgfreq
+
 # Position Specific Scoring Matrix (PSSM)
 
 

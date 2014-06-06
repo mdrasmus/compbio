@@ -1792,7 +1792,7 @@ def get_tree_ages(tree, root=None, leaves=None, times=None, esp=0.001):
                 t = walk(child)
 
                 # ensure branch lengths are ultrametrix
-                if t2 is not None and esp is not None:
+                if t2 is not None and esp is not None and t != 0:
                     assert abs(t - t2)/t < esp, (node.name, t, t2)
                 t2 = t
 
